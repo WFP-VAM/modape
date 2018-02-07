@@ -84,7 +84,7 @@ cpdef ws2d_vc(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[float] llas):
 
     for lix in range(nl):
         l = pow(10,llas.data.as_floats[lix])
-        z[0:m] = wsmooth2d(y,l,w)
+        z[0:m] = ws2d(y,l,w)
         ### yellow lines means data.as_floats not from array oject
         for i in range(m):
             #w_tmp = w.data.as_floats[i]
