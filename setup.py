@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
-from distutils.core import setup
-from distutils.extension import Extension
+#from distutils.core import setup
+#from distutils.extension import Extension
+from setuptools import setup, Extension, find_packages
 import numpy
 import _version
 USE_CYTHON = 'auto'
@@ -23,11 +24,11 @@ ext_modules = []
 
 if USE_CYTHON:
     ext_modules += [
-        Extension("wsmtk.whittaker", ["wsmtk/_whittaker.pyx"],extra_compile_args = ["-O3", "-ffast-math"])]
+        Extension("wsmtk.whittaker", ["wsmtk/whittaker/_whittaker.pyx"],extra_compile_args = ["-O3", "-ffast-math"])]
     cmdclass.update({'build_ext': build_ext })
 else:
     ext_modules += [
-        Extension("wsmtk.whittaker", ["smtk/_whittaker.c"],extra_compile_args = ["-O3", "-ffast-math"])]
+        Extension("wsmtk.whittaker", ["wsmtk/whittaker/_whittaker.c"],extra_compile_args = ["-O3", "-ffast-math"])]
 
 
 setup(
@@ -38,7 +39,8 @@ setup(
     author_email='valentin.pesendorfer@wfp.org',
     long_description=open('README.rst').read(),
     include_dirs=[numpy.get_include()],
-    packages=['wsmtk'],
+    #packages=['wsmtk'],
+    packages=find_packages(),
     cmdclass = cmdclass,
     ext_modules=ext_modules,
     classifiers=[
