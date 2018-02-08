@@ -1,5 +1,7 @@
 FROM continuumio/miniconda3:4.3.11
 
+LABEL maintainer="valentin.pesendorfer@wfp.org"
+
 ENV CONDA_ENV_PATH /opt/conda/envs/
 ENV CONDA_ENV "python35"
 ENV CPL_ZIP_ENCODING UTF-8
