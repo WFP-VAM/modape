@@ -19,9 +19,9 @@ def createH5(files, convfun = None, name = None, minrows = 10, compression = 'gz
         name = ('dataset-%s.h5' % time.strftime("%Y_%m_%d-%H%M%S", time.localtime()))
     with h5py.File(name,'w',libver='latest') as h5f:
         chunks = (minrows,cols,len(files))
-        dset = h5f.create_dataset('Raw',shape=(rows,cols,len(files)),dtype='f',maxshape=(rows,cols,None),chunks=chunks,compression=compression)#32001
-        h5f.create_dataset('Smooth',shape=(rows,cols,len(files)),dtype='f',maxshape=(rows,cols,None),chunks=chunks,compression=compression)#32001
-        h5f.create_dataset('lgrd',shape=(rows,cols),dtype='f',maxshape=(rows,cols),chunks=chunks[0:2],compression=compression)
+        dset = h5f.create_dataset('Raw',shape=(rows,cols,len(files)),dtype='float32',maxshape=(rows,cols,None),chunks=chunks,compression=compression)#32001
+        h5f.create_dataset('Smooth',shape=(rows,cols,len(files)),dtype='float32',maxshape=(rows,cols,None),chunks=chunks,compression=compression)#32001
+        h5f.create_dataset('lgrd',shape=(rows,cols),dtype='float32',maxshape=(rows,cols),chunks=chunks[0:2],compression=compression)
         dset.attrs['Extent'] = trans
         dset.attrs['Projection'] = proj
         print('Writing data in blocks ...')
