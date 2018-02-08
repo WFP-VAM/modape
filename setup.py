@@ -48,5 +48,5 @@ setup(
     'Programming Language :: Python :: 2',
     'Programming Language :: Python :: 3',
 ],
-    install_requires=['numpy'],
+    install_requires=['numpy','gdal','h5py'],
 )
