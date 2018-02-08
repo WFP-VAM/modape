@@ -3,7 +3,7 @@ import gdal
 import h5py
 import glob
 import time
-from utils import *
+from .utils import block_view
 #create hdf5 file
 
 def createH5(files, convfun, name = None, minrows = 10, compression = 'gzip'):
