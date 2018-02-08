@@ -6,7 +6,7 @@ import time
 from .utils import block_view
 #create hdf5 file
 
-def createH5(files, convfun, name = None, minrows = 10, compression = 'gzip'):
+def createH5(files, convfun = None, name = None, minrows = 10, compression = 'gzip'):
     print('Initializing createH5 - start processing at %s ...' % time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
     fopen = gdal.Open(files[0])
     arr = fopen.ReadAsArray()
@@ -31,13 +31,14 @@ def createH5(files, convfun, name = None, minrows = 10, compression = 'gzip'):
             for ix,f in enumerate(files):
                 currfl = gdal.Open(f)
                 imarr = block_view(currfl.ReadAsArray(),block=(minrows,cols))
-                im = convfun(im)
+                if convfun is not None:
+                    im = convfun(im)
                 block[:,:,ix] = imarr[blk,0,...]
             dset[blk*minrows:blk*minrows+minrows,...] = block
 
 #update hdf5 file
 
-def updateH5(files,convfun ,h5file):
+def updateH5(files, h5file, convfun = None):
     with h5py.File(h5file,'r+') as h5f:
         dset = h5f.get('Raw')
         refsize = dset.shape[2]
@@ -45,5 +46,6 @@ def updateH5(files,convfun ,h5file):
         for ix,f in enumerate(files):
             currfl = gdal.Open(f)
             im = currfl.ReadAsArray()
-            im = convfun(im)
+            if convfun is not None:
+                im = convfun(im)
             dset[:,:,refsize+ix:refsize+(ix+1)] = im
