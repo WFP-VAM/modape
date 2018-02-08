@@ -1,1 +1,5 @@
-__all__ = ['whittaker','utils']
+__all__ = [
+'whittaker',
+'hdf5',
+'utils',
+]
