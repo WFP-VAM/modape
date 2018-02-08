@@ -24,15 +24,15 @@ ext_modules = []
 
 if USE_CYTHON:
     ext_modules += [
-        Extension("wsmtk.whittaker", ["wsmtk/whittaker/_whittaker.pyx"],extra_compile_args = ["-O3", "-ffast-math"])]
+        Extension("wsmtk.whittaker", ["wsmtk/_whittaker.pyx"],extra_compile_args = ["-O3", "-ffast-math"])]
     cmdclass.update({'build_ext': build_ext })
 else:
     ext_modules += [
-        Extension("wsmtk.whittaker", ["wsmtk/whittaker/_whittaker.c"],extra_compile_args = ["-O3", "-ffast-math"])]
+        Extension("wsmtk.whittaker", ["wsmtk/_whittaker.c"],extra_compile_args = ["-O3", "-ffast-math"])]
 
 
 setup(
-    name='wsmkt',
+    name='wsmtk',
     description='Whittaker Smoothing Toolkit',
     version=_version.__version__,
     author='Valentin Pesendorfer',
@@ -44,14 +44,7 @@ setup(
     cmdclass = cmdclass,
     ext_modules=ext_modules,
     classifiers=[
-    # How mature is this project? Common values are
-    #   3 - Alpha
-    #   4 - Beta
-    #   5 - Production/Stable
     'Development Status :: 3 - Alpha',
-
-    # Specify the Python versions you support here. In particular, ensure
-    # that you indicate whether you support Python 2, Python 3 or both.
     'Programming Language :: Python :: 2',
     'Programming Language :: Python :: 3',
 ],
