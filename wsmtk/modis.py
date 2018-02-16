@@ -3,8 +3,14 @@ import requests
 from bs4 import BeautifulSoup
 import re
 import sys, os
+import glob
 import time
 from subprocess import Popen, check_output
+try:
+    import gdal
+except ImportError:
+    from osgeo import gdal
+
 
 class MODISquery:
 
@@ -70,3 +76,7 @@ class MODISquery:
                 print("Couldn't donwload %s - continuing." % u)
 
         print('\n[%s]: Downloading finished.' % time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+
+
+def MODISprocess(modisHDFs,dstorage=None,rdstorage=None):
+    pass
