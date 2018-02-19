@@ -14,12 +14,14 @@ except ImportError:
 
 class MODISquery:
 
-    def __init__(self,url,username=None,password=None,targetdir=os.getcwd()):
+    def __init__(self,url,username=None,password=None,rawdir=os.getcwd(),targetdir=os.getcwd()):
 
         self.queryURL = url
         self.username = username
         self.password = password
+        self.rawdir = rawdir
         self.targetdir = targetdir
+        self.files = []
 
         r = re.compile(".+(h\d+v\d+).+")
 
@@ -64,9 +66,9 @@ class MODISquery:
             sys.exit(1)
 
 
-        args = ['wget','--user',self.username,'--password',self.password,'-P',self.targetdir]
+        args = ['wget','--user',self.username,'--password',self.password,'-P',self.rawdir]
 
-        print('[%s]: Downloading products to %s ...\n' % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),self.targetdir))
+        print('[%s]: Downloading products to %s ...\n' % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),self.rawdir))
 
         for ix,u in enumerate(self.modisURLs):
             print('%s of %s' %(ix+1,self.results))
@@ -74,8 +76,24 @@ class MODISquery:
             p.wait()
             if p.returncode is not 0:
                 print("Couldn't donwload %s - continuing." % u)
+                continue
+            self.files = self.files + [self.rawdir + os.path.basename(u)]
 
         print('\n[%s]: Downloading finished.' % time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+
+
+    def process(self):
+
+        print('[%s]: Starting processing ...\n' % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
+
+
+
+
+
+
+
+
+
 
 
 def MODISprocess(modisHDFs,dstorage=None,rdstorage=None):
