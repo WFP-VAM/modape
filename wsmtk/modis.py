@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import print_function, division
 import requests
 from bs4 import BeautifulSoup
 import re
@@ -6,6 +6,8 @@ import sys, os
 import glob
 import time
 from subprocess import Popen, check_output
+from .utils import block_view
+import h5py
 try:
     import gdal
 except ImportError:
@@ -22,6 +24,10 @@ class MODISquery:
         self.rawdir = rawdir
         self.targetdir = targetdir
         self.files = []
+        self.res_m = ['250m','500m','1km','0.05_Deg']
+        self.res_dg = [x/112000 for x in [250,500,1000,5600]]
+        self.minrows = 112
+
 
         r = re.compile(".+(h\d+v\d+).+")
 
@@ -83,17 +89,53 @@ class MODISquery:
 
 
     def process(self):
+        pass
+
+        ## CHANGE DESIGN:
+
+        ## BLOCKWISE PROCESSING -> LOOP OVER TEMPORAL DIMENSION PER BLOCK
+        ## PROCESS FUNCTION AS CLASS FUNCTION OR GLOBAL?
+        ## GDALWARP IN MEMORY BENEFICIAL?
+
+'''
 
         print('[%s]: Starting processing ...\n' % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
 
+        for f in self.files:
+
+            fopen = gdal.Open(f)
+
+            fopen_sds = [x[0] for x in fopen.GetSubDatasets() if "NDVI" in x[0] or 'LST_' in x[0]]
+
+            for fs in fopen_sds:
+
+                param = [['VIM','LTD','LTN'][ix] for ix,x in enumerate(['NDVI','LST_Day','LST_Night']) if x in fs]
+
+                outname = '{}/{}/{}._{}.h5'.format(self.targetdir,
+                                            param,
+                                            [os.path.basename(f).split('.')[i] for i in [0,2,3]],
+                                            param)
+
+                res = [self.res_dg[ix] for ix,x in enumerate(self.res_m) if x in fs]
+
+                ds = gdal.Warp('', fs, dstSRS='EPSG:4326', format='VRT',
+                              outputType=gdal.GDT_Int16, xRes=res, yRes=res)
 
 
+                rows = ds.RasterYSize
+                cols = ds.RasterXSize
 
+                nblocks = len(range(0,rows,self.minrows))
+                block = np.empty([minrows,cols,len(files)])
 
+                if not os.path.isfile(outname):
+                    if not os.path.exists(os.dirname(outname)):
+                        os.mkdir(os.dirname(outname))
 
+                    trans = ds.GetGeoTransform()
+                    proj = ds.GetProjection()
 
-
-
+'''
 
 
 def MODISprocess(modisHDFs,dstorage=None,rdstorage=None):
