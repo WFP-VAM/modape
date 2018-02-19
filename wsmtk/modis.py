@@ -75,7 +75,7 @@ class MODISquery:
             p = Popen(args + [u])
             p.wait()
             if p.returncode is not 0:
-                print("Couldn't donwload %s - continuing." % u)
+                print("Couldn't download %s - continuing." % u)
                 continue
             self.files = self.files + [self.rawdir + os.path.basename(u)]
 
