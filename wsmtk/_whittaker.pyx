@@ -14,7 +14,6 @@ cpdef ws2d(np.ndarray[dtype_t] y, float lmda, np.ndarray[dtype_t] w):
     cdef int i, i1, i2, m, n
     cdef array z, d, c, e
 
-    #n = len(y)
     n = y.shape[0]
     m = n - 1
 
@@ -55,6 +54,7 @@ cpdef ws2d(np.ndarray[dtype_t] y, float lmda, np.ndarray[dtype_t] w):
 
 
 cdef ws2d_internal(np.ndarray[dtype_t] y, float lmda, array[float] w):
+    ## internal whittaker function for asymmetric smoothing
     cdef array flt_array_template = array('f', [])
     cdef int i, i1, i2, m, n
     cdef array z, d, c, e
@@ -99,7 +99,7 @@ cdef ws2d_internal(np.ndarray[dtype_t] y, float lmda, array[float] w):
 
 
 cpdef ws2d_vc(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[float] llas):
-
+    ## vcurve
     cdef array template = array('f', [])
 
     cdef array fits, pens, diff1, lamids, v, z
@@ -170,5 +170,106 @@ cpdef ws2d_vc(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[float] llas):
     lopt = pow(10,lamids.data.as_floats[k])
 
     z[0:m] = ws2d(y,lopt,w)
+
+    return z, lopt
+
+
+cpdef wsmooth_vc_asy(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[float] llas, float p):
+    ## vcurve with asymmetric smoothing
+
+    cdef array template = array('f', [])
+
+    cdef array fits, pens, diff1, lamids, v, z
+    cdef int m, m1, m2, nl, nl1, lix, i, j, k
+    cdef float w_tmp, y_tmp, z_tmp, z2, llastep, fit1, fit2, pen1, pen2, l, l1, l2, vmin, lopt, p1
+
+    m = y.shape[0]
+    m1 = m - 1
+    m2 = m - 2
+    nl = len(llas)
+    nl1 = nl - 1
+    i = 0
+    k = 0
+    j = 0
+    p1 = 1-p
+
+    template = array('f',[])
+
+    fits = clone(template, nl, True)
+    pens = clone(template,nl,True)
+    z = clone(template,m,True)
+    znew = clone(template,m,True)
+    diff1 = clone(template,m1,True)
+    lamids = clone(template,nl1,False)
+    v = clone(template,nl1,False)
+    wa = clone(template,m,False)
+    ww = clone(template,m,False)
+
+    # Compute v-curve
+
+    for lix in range(nl):
+        l = pow(10,llas.data.as_floats[lix])
+
+        for i in range(10):
+          for j in range(m):
+            y_tmp = [j]
+            z_tmp = z.data.as_floats[j]
+            if y_tmp > z_tmp:
+              wa.data.as_floats[j] = p
+            else:
+              wa.data.as_floats[j] = p1
+            ww.data.as_floats[j] = w[j] * wa.data.as_floats[j]
+
+          znew[0:m] = wsmooth2d(y,l,ww)
+
+          z_tmp = abs(znew.data.as_floats- z.data.as_floats)
+
+          if z_tmp == 0.0:
+            break
+
+          z = znew
+
+        for i in range(m):
+            w_tmp = w[i]
+            y_tmp = y[i]
+            z_tmp = z.data.as_floats[i]
+            fits.data.as_floats[lix] += pow(w_tmp * (y_tmp - z_tmp),2)
+        fits.data.as_floats[lix] = log(fits.data.as_floats[lix])
+
+        for i in range(m1):
+            z_tmp = z.data.as_floats[i]
+            z2 = z.data.as_floats[i+1]
+            diff1.data.as_floats[i] = z2 - z_tmp
+        for i in range(m2):
+            z_tmp = diff1.data.as_floats[i]
+            z2 = diff1.data.as_floats[i+1]
+            pens.data.as_floats[lix] += pow(z2 - z_tmp,2)
+        pens.data.as_floats[lix] = log(pens.data.as_floats[lix])
+
+
+    # Construct v-curve
+
+    llastep = llas[1] - llas[0]
+
+    for i in range(nl1):
+        l1 = llas.data.as_floats[i]
+        l2 = llas.data.as_floats[i+1]
+        fit1 = fits.data.as_floats[i]
+        fit2 = fits.data.as_floats[i+1]
+        pen1 = pens.data.as_floats[i]
+        pen2 = pens.data.as_floats[i+1]
+        v.data.as_floats[i] = sqrt(pow(fit2 - fit1,2) + pow(pen2 - pen1,2)) / (log(10) * llastep)
+        lamids.data.as_floats[i] = (l1+l2) / 2
+
+
+    vmin = v.data.as_floats[k]
+    for i in range(1,nl1):
+        if v.data.as_floats[i] < vmin:
+            vmin = v.data.as_floats[i]
+            k = i
+
+    lopt = pow(10,lamids.data.as_floats[k])
+
+    z[0:m] = wsmooth2d(y,lopt,ww)
 
     return z, lopt
