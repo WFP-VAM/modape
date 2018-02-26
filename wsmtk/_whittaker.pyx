@@ -174,7 +174,7 @@ cpdef ws2d_vc(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[float] llas):
     return z, lopt
 
 
-cpdef wsmooth_vc_asy(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[float] llas, float p):
+cpdef ws2d_vc_asy(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[float] llas, float p):
     ## vcurve with asymmetric smoothing
 
     cdef array template = array('f', [])
@@ -212,7 +212,7 @@ cpdef wsmooth_vc_asy(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[float] 
 
         for i in range(10):
           for j in range(m):
-            y_tmp = [j]
+            y_tmp = y[j]
             z_tmp = z.data.as_floats[j]
             if y_tmp > z_tmp:
               wa.data.as_floats[j] = p
@@ -220,7 +220,7 @@ cpdef wsmooth_vc_asy(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[float] 
               wa.data.as_floats[j] = p1
             ww.data.as_floats[j] = w[j] * wa.data.as_floats[j]
 
-          znew[0:m] = wsmooth2d(y,l,ww)
+          znew[0:m] = ws2d_internal(y,l,ww)
 
           z_tmp = abs(znew.data.as_floats- z.data.as_floats)
 
@@ -270,6 +270,6 @@ cpdef wsmooth_vc_asy(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[float] 
 
     lopt = pow(10,lamids.data.as_floats[k])
 
-    z[0:m] = wsmooth2d(y,lopt,ww)
+    z[0:m] = ws2d_internal(y,lopt,ww)
 
     return z, lopt
