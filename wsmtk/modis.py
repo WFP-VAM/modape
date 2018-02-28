@@ -6,8 +6,9 @@ import sys, os
 import glob
 import time
 from subprocess import Popen, check_output
-from .utils import block_view
+import tables
 import h5py
+from progress.bar import Bar
 try:
     import gdal
 except ImportError:
@@ -88,55 +89,132 @@ class MODISquery:
         print('\n[%s]: Downloading finished.' % time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
 
 
-    def process(self):
-        pass
 
-        ## CHANGE DESIGN:
+class MODIShdf5:
 
-        ## BLOCKWISE PROCESSING -> LOOP OVER TEMPORAL DIMENSION PER BLOCK
-        ## PROCESS FUNCTION AS CLASS FUNCTION OR GLOBAL?
-        ## GDALWARP IN MEMORY BENEFICIAL?
+    def __init__(self,files,param=None,targetdir=os.getcwd(),compression=32001):
 
-'''
+        self.targetdir = targetdir
+        self.resdict = dict(zip(['250m','500m','1km','0.05_Deg'],[x/112000 for x in [250,500,1000,5600]]))
+        self.paramdict = dict(zip(['VIM','VEM','LTD','LTN'],['NDVI','EVI','LST_Day','LST_Night']))
+        self.minrows = 112
+        self.compression = compression
+        self.dts_regexp = re.compile(r'.+A(\d{7}).+')
+        self.dates = [re.findall(self.dts_regexp,x)[0] for x in files]
+        self.dates.sort()
 
-        print('[%s]: Starting processing ...\n' % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
+        self.files = [x for (y,x) in sorted(zip(self.dates,files))]
+        self.nfiles = len(self.files)
+        self.ref_file = self.files[0]
 
-        for f in self.files:
+        ref = gdal.Open(self.ref_file)
 
-            fopen = gdal.Open(f)
+        if not param:
+            ref_sds = ref_sds = [x[0] for x in ref.GetSubDatasets() if self.paramdict['VIM'] in x[0] or self.paramdict['LTD'] in x[0]][0]
+            self.param = [key for key, value in self.paramdict.items() if value in ref_sds][0]
+            ref_sds = None
+        elif param in self.paramdict.keys():
+            self.param = param
+        else:
+            raise ValueError('Parameter string not recognized. Available parameters are %s.' % [x for x in self.paramdict.keys()])
 
-            fopen_sds = [x[0] for x in fopen.GetSubDatasets() if "NDVI" in x[0] or 'LST_' in x[0]]
+        ref = None
 
-            for fs in fopen_sds:
+        self.outname = '{}/{}/{}_{}.h5'.format(
+                                    self.targetdir,
+                                    self.param,
+                                    '.'.join([os.path.basename(self.ref_file).split('.')[i] for i in [0,2,3]]),
+                                    self.param)
 
-                param = [['VIM','LTD','LTN'][ix] for ix,x in enumerate(['NDVI','LST_Day','LST_Night']) if x in fs]
+        self.exists = os.path.isfile(self.outname)
 
-                outname = '{}/{}/{}._{}.h5'.format(self.targetdir,
-                                            param,
-                                            [os.path.basename(f).split('.')[i] for i in [0,2,3]],
-                                            param)
+    def create(self):
+        print('\nCreating file: %s ... ' % self.outname, end='')
 
-                res = [self.res_dg[ix] for ix,x in enumerate(self.res_m) if x in fs]
+        ref = gdal.Open(self.ref_file)
+        ref_sds = [x[0] for x in ref.GetSubDatasets() if self.paramdict[self.param] in x[0]][0]
+        res = [value for key, value in self.resdict.items() if key in ref_sds][0]
 
-                ds = gdal.Warp('', fs, dstSRS='EPSG:4326', format='VRT',
-                              outputType=gdal.GDT_Int16, xRes=res, yRes=res)
+        rst = gdal.Warp('', ref_sds, dstSRS='EPSG:4326', format='VRT',
+                                      outputType=gdal.GDT_Float32, xRes=res, yRes=res)
+
+        ref = None
+        ref_sds = None
+
+        self.rows = rst.RasterYSize
+        self.cols = rst.RasterXSize
+        self.chunks = (self.minrows,self.cols,self.nfiles)
+
+        trans = rst.GetGeoTransform()
+        prj = rst.GetProjection()
+
+        rst = None
+
+        if not os.path.exists(os.path.dirname(self.outname)):
+            os.mkdir(os.path.dirname(self.outname))
+
+        try:
+
+            with h5py.File(self.outname,'x',libver='latest') as h5f:
+                dset = h5f.create_dataset('Raw',shape=(self.rows,self.cols,self.nfiles),dtype='float32',maxshape=(self.rows,self.cols,None),chunks=self.chunks,compression=self.compression)
+                h5f.create_dataset('Smooth',shape=(self.rows,self.cols,self.nfiles),dtype='float32',maxshape=(self.rows,self.cols,None),chunks=self.chunks,compression=self.compression)
+                h5f.create_dataset('lgrd',shape=(self.rows,self.cols),dtype='float32',maxshape=(self.rows,self.cols),chunks=self.chunks[0:2],compression=self.compression)
+                h5f.create_dataset('Dates',shape=(self.nfiles,),maxshape=(None,),dtype='S8',compression=self.compression)
+                dset.attrs['Extent'] = trans
+                dset.attrs['Projection'] = prj
+                dset.attrs['Resolution'] = res
+                dset.attrs['flag'] = False
+
+            self.exists = True
+            print('done.\n')
+
+        except OSError as err:
+            #raise RuntimeError ("{0}".format(err))
+            raise
+
+    def update(self):
+        print('Processing MODIS files ...\n')
+        bar = Bar('Processing',fill='=',max=self.nfiles,suffix='%(percent)d%%')
+        with h5py.File(self.outname,'r+',libver='latest') as h5f:
+            dset = h5f.get('Raw')
+            dts  = h5f.get('Dates')
+            res  = dset.attrs['Resolution']
+
+            if dset.attrs['flag']:
+                uix = dset.shape[2]
+                dset.resize((dset.shape[0],dset.shape[1],dset.shape[2]+self.nfiles))
+            else:
+                uix = 0
+                dset.attrs['flag'] = True
+
+            dts[uix:uix+self.nfiles] = [n.encode("ascii", "ignore") for n in self.dates]
+
+            for fix,fl in enumerate(self.files):
+                fl_o = gdal.Open(fl)
+
+                ref_sds = [x[0] for x in fl_o.GetSubDatasets() if self.paramdict[self.param] in x[0]][0]
+
+                rst = gdal.Warp('', ref_sds, dstSRS='EPSG:4326', format='VRT', outputType=gdal.GDT_Float32, xRes=res, yRes=res)
+
+                arr = rst.ReadAsArray()
+
+                fl_o = None
+                ref_sds = None
+                rst = None
+
+                if self.param in ['LTD','LTN']:
+                    arr = (arr * 0.02) + (-273)
+                elif self.param in ['VIM']:
+                    arr[arr < 0] = 0
+                    arr = arr * 0.0001
+                else:
+                    pass
+
+                dset[...,uix+fix] = arr[...]
+                bar.next()
+
+        print('\ndone.\n')
 
 
-                rows = ds.RasterYSize
-                cols = ds.RasterXSize
-
-                nblocks = len(range(0,rows,self.minrows))
-                block = np.empty([minrows,cols,len(files)])
-
-                if not os.path.isfile(outname):
-                    if not os.path.exists(os.dirname(outname)):
-                        os.mkdir(os.dirname(outname))
-
-                    trans = ds.GetGeoTransform()
-                    proj = ds.GetProjection()
-
-'''
-
-
-def MODISprocess(modisHDFs,dstorage=None,rdstorage=None):
-    pass
+    def __str__(self):
+        return("MODIShdf5 object: %s - %s files - exists on disk: %s" % (self.outname, self.nfiles, self.exists))
