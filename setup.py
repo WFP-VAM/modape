@@ -39,7 +39,12 @@ setup(
     author_email='valentin.pesendorfer@wfp.org',
     long_description=open('README.rst').read(),
     include_dirs=[numpy.get_include()],
-    #packages=['wsmtk'],
+    entry_points={
+    'console_scripts':[
+    'scripts.downloadMODIS:main',
+    'scripts.processMODIS:main',
+        ]
+    },
     packages=find_packages(),
     cmdclass = cmdclass,
     ext_modules=ext_modules,
