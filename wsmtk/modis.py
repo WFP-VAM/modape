@@ -28,7 +28,7 @@ class MODISquery:
 
         r = re.compile(".+(h\d+v\d+).+")
 
-        print('Checking for MODIS products ...')
+        print('Checking for MODIS products ...',end='')
         try:
             response = requests.get(url)
             self.statuscode = response.status_code
