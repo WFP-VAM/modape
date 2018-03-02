@@ -17,16 +17,13 @@ except ImportError:
 
 class MODISquery:
 
-    def __init__(self,url,username=None,password=None,rawdir=os.getcwd(),targetdir=os.getcwd()):
+    def __init__(self,url,username=None,password=None,rawdir=os.getcwd()):
 
         self.queryURL = url
         self.username = username
         self.password = password
         self.rawdir = rawdir
-        self.targetdir = targetdir
         self.files = []
-        self.res_m = ['250m','500m','1km','0.05_Deg']
-        self.res_dg = [x/112000 for x in [250,500,1000,5600]]
         self.minrows = 112
 
         r = re.compile(".+(h\d+v\d+).+")
