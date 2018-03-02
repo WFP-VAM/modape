@@ -41,8 +41,8 @@ setup(
     include_dirs=[numpy.get_include()],
     entry_points={
     'console_scripts':[
-    'scripts.downloadMODIS:main',
-    'scripts.processMODIS:main',
+    'downloadMODIS=scripts.downloadMODIS:main',
+    'processMODIS=scripts.processMODIS:main',
         ]
     },
     packages=find_packages(),
