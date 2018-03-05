@@ -68,11 +68,9 @@ class MODISquery:
             print('No credentials found. Please run .setCredentials(username,password)!')
             sys.exit(1)
 
-
-        args = ['wget','--user',self.username,'--password',self.password,'-P',self.rawdir]
+        args = ['wget','-q','--show-progress','--progress=bar:force','--no-check-certificate','--user',self.username,'--password',self.password,'-P',self.rawdir]
 
         print('[%s]: Downloading products to %s ...\n' % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),self.rawdir))
-        bar = Bar('Downloading',fill='=',max=self.modisURLs)
         for ix,u in enumerate(self.modisURLs):
             print('%s of %s' %(ix+1,self.results))
             p = Popen(args + [u])
@@ -81,8 +79,6 @@ class MODISquery:
                 print("Couldn't download %s - continuing." % u)
                 continue
             self.files = self.files + [self.rawdir + os.path.basename(u)]
-            bar.next()
-        bar.finish()
 
         print('\n[%s]: Downloading finished.' % time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
 
