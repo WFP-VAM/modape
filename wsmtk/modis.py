@@ -3,7 +3,6 @@ import requests
 from bs4 import BeautifulSoup
 import re
 import sys, os
-import glob
 import time
 from subprocess import Popen, check_output
 import tables
