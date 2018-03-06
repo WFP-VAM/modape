@@ -15,7 +15,7 @@ def main():
     parser.add_argument("--prcdir", help='Storage directory for PROCESSED MODIS files',default=os.getcwd(),metavar='')
     parser.add_argument("--rawdir", help='Storage directory for RAW MODIS files',metavar='')
     parser.add_argument("-c","--compression", help='Compression for HDF5 files',default=32001,metavar='')
-    parser.add_argument("--all-parameters", help='Flag to process all possible VAM parameters',action='store_true',metavar='')
+    parser.add_argument("--all-parameters", help='Flag to process all possible VAM parameters',action='store_true')
     args = parser.parse_args()
 
     if not os.path.isdir(args.srcdir):
