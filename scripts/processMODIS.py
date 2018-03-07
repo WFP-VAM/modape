@@ -50,7 +50,7 @@ def main():
                 raise SystemExit('No parameters implemented for %s' % g.split('-')[0])
 
             for p in allps:
-                h5 = MODIShdf5(files_sub,param=p,targetdir=args.prcdir,compression=argv.compression)
+                h5 = MODIShdf5(files_sub,param=p,targetdir=args.prcdir,compression=args.compression)
                 if not h5.exists:
                     h5.create()
 
@@ -62,7 +62,7 @@ def main():
 
             files_sub = [x for x in files if g.split('-')[0] in x and g.split('-')[1] in x]
 
-            h5 = MODIShdf5(files_sub,targetdir=args.prcdir,compression=argv.compression)
+            h5 = MODIShdf5(files_sub,targetdir=args.prcdir,compression=args.compression)
 
             if not h5.exists:
                 h5.create()
