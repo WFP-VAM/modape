@@ -144,7 +144,7 @@ class MODIShdf5:
         rst = None
 
         if not os.path.exists(os.path.dirname(self.outname)):
-            os.mkdir(os.path.dirname(self.outname))
+            os.makedirs(os.path.dirname(self.outname))
 
         try:
 
