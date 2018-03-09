@@ -48,6 +48,7 @@ setup(
     packages=find_packages(),
     cmdclass = cmdclass,
     ext_modules=ext_modules,
+    include_package_data=True,
     classifiers=[
     'Development Status :: 3 - Alpha',
     'Programming Language :: Python :: 2',
