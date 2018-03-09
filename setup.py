@@ -43,6 +43,7 @@ setup(
     'console_scripts':[
     'downloadMODIS=wsmtk.downloadMODIS:main',
     'processMODIS=wsmtk.processMODIS:main',
+    'windowMODIS=wsmtk.windowMODIS:main',
         ]
     },
     packages=find_packages(),
