@@ -252,5 +252,6 @@ class MODIStiles:
         tile_extract = ds.ReadAsArray(x,y,xd,yd)
         ds = None
         tile_tmp = np.unique(tile_extract/100)
+        tiles = ["{:05.2f}".format(x) for x in tile_tmp[tile_tmp != 0]]
 
-        self.tiles = ["{:05.2f}".format(x) for x in tile_tmp[tile_tmp != 0]]
+        self.tiles = ["h{}v{}".format(*x[0].split('.')) for x in tiles]
