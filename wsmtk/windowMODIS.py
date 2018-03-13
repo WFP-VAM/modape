@@ -9,18 +9,19 @@ import datetime
 
 def main():
 
-    ##test!
+    # parser = argparse.ArgumentParser(description="Extract a window from MODIS products")
+    # parser.add_argument("product", help='MODIS product ID(s)',nargs='+')
+    # parser.add_argument("--roi", help='Region of interest. Can be LAT/LON point or bounding box in format llx,lly,urx,ury',nargs='+',required=True)
+    # parser.add_argument("--prcdir", help='Storage directory for PROCESSED MODIS files',default=os.getcwd(),metavar='')
+    # parser.add_argument("--region", help='region 3 letter region code (default is "reg")',default='reg',metavar='')
+    # parser.add_argument("-b","--begin-date", help='Start date (YYY-MM-DD)',metavar='')
+    # parser.add_argument("-e","--end-date", help='End date (YYY-MM-DD)',metavar='')
+    # parser.add_argument("--parameter", help='VAM parameter code',metavar='')
+    # parser.add_argument("--dataset", help='Dataset to extract (either Raw or Smoothed [DEFAULT = Smoothed])',metavar='')
+    # parser.add_argument("--targetdir", help='Target directory for GeoTIFFs (default current directory)',default=os.getcwd(),metavar='')
+    # args = parser.parse_args()
 
-    this_dir, this_filename = os.path.split(__file__)
-
-    DATA_PATH = os.path.join(this_dir, "data", "MODIS_TILES.tif")
-    print(DATA_PATH)
-
-    ds = gdal.Open(DATA_PATH)
-
-    print(ds)
-
-    ds = None
+    pass
 
 
 if __name__=='__main__':
