@@ -254,4 +254,4 @@ class MODIStiles:
         tile_tmp = np.unique(tile_extract/100)
         tiles = ["{:05.2f}".format(x) for x in tile_tmp[tile_tmp != 0]]
 
-        self.tiles = ["h{}v{}".format(*x[0].split('.')) for x in tiles]
+        self.tiles = ["h{}v{}".format(*x.split('.')) for x in tiles]
