@@ -249,7 +249,7 @@ class MODIStiles:
             xo = x[0]
             xd = abs(x[0] - x[1])
 
-        tile_extract = ds.ReadAsArray(x,y,xd,yd)
+        tile_extract = ds.ReadAsArray(xo,yo,xd,yd)
         ds = None
         tile_tmp = np.unique(tile_extract/100)
         tiles = ["{:05.2f}".format(x) for x in tile_tmp[tile_tmp != 0]]
