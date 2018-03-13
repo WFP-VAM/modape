@@ -212,3 +212,41 @@ class MODIShdf5:
 
     def __str__(self):
         return("MODIShdf5 object: %s - %s files - exists on disk: %s" % (self.outname, self.nfiles, self.exists))
+
+
+
+class MODIStiles:
+
+    def __init__(self,aoi):
+
+        self.aoi = aoi
+
+        this_dir, this_filename = os.path.split(__file__)
+        ds = gdal.Open(os.path.join(this_dir, "data", "MODIS_TILES.tif"))
+
+        try:
+            gt = ds.GetGeoTransform()
+
+        except AttributeError:
+            raise SystemExit("Could not find 'MODIS_TILES.tif' index raster. Try reinstalling the package.")
+
+
+        if len(self.aoi) is 2:
+
+            y = round((self.aoi[0]-gt[3])/gt[5])
+            yd = 1
+            x = round((self.aoi[0]-gt[3])/gt[5])
+            xd = 1
+
+
+        elif len(self.aoi) is 4:
+
+            y = [round((x-gt[3])/gt[5]) for x in [aoi[1],aoi[3]]]
+            yd = abs(y[0] - y[1])
+            x = [round((x-gt[0])/gt[1]) for x in [aoi[0],aoi[2]]]
+            xd = abs(x[0] - x[1])
+
+        tile_extract = ds.ReadAsArray(x,y,xd,yd)
+        tile_tmp = np.unique(tile_extract)
+
+        self.tiles = ["{:05.2f}".format(x) for x in tile_tmp[tile_tmp != 0]]]
