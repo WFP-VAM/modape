@@ -1,4 +1,5 @@
 from __future__ import print_function, division
+import numpy as np
 import requests
 from bs4 import BeautifulSoup
 import re
@@ -233,20 +234,23 @@ class MODIStiles:
 
         if len(self.aoi) is 2:
 
-            y = round((self.aoi[0]-gt[3])/gt[5])
+            yo = round((self.aoi[0]-gt[3])/gt[5])
             yd = 1
-            x = round((self.aoi[0]-gt[3])/gt[5])
+            xo = round((self.aoi[0]-gt[3])/gt[5])
             xd = 1
 
 
         elif len(self.aoi) is 4:
 
             y = [round((x-gt[3])/gt[5]) for x in [aoi[1],aoi[3]]]
+            yo = y[0]
             yd = abs(y[0] - y[1])
             x = [round((x-gt[0])/gt[1]) for x in [aoi[0],aoi[2]]]
+            xo = x[0]
             xd = abs(x[0] - x[1])
 
         tile_extract = ds.ReadAsArray(x,y,xd,yd)
-        tile_tmp = np.unique(tile_extract)
+        ds = None
+        tile_tmp = np.unique(tile_extract/100)
 
         self.tiles = ["{:05.2f}".format(x) for x in tile_tmp[tile_tmp != 0]]
