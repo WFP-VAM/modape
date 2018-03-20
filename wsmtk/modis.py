@@ -10,6 +10,7 @@ import tables
 import h5py
 from progress.bar import Bar
 import osr
+from .utils import LDOM
 try:
     import gdal
 except ImportError:
@@ -260,7 +261,7 @@ class MODIStiles:
 
 class MODISwindow:
 
-    def __init__(self,aoi,files):
+    def __init__(self,aoi,datemin,datemax,files):
 
         ## TODO docstring aoi order
 
@@ -268,7 +269,13 @@ class MODISwindow:
             dat = h5f.get('Raw')
             self.resolution = dat.attrs['Resolution']
             dat = None
+            dts = h5f.get('Dates')
 
+        dts_dt = [datetime.datetime.strptime(x.decode(),'%Y%j').date() for x in dts]
+        datemin_p = datetime.datetime.strptime(datemin,'%Y%m').date()
+        datemax_p = LDOM(datetime.datetime.strptime(datemax,'%Y%m'))
+
+        self.ix = [x >= datemin_p and x <= datemax_p for x in dts_dt]
         self.width = int(round(abs(aoi[2] - aoi[0]) / self.resolution))
         self.height = int(round(abs(aoi[3] - aoi[1]) / self.resolution))
         self.geotransform = [aoi[0],self.resolution,0.0,aoi[1],0.0,-self.resolution]
