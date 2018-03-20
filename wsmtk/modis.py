@@ -157,7 +157,7 @@ class MODIShdf5:
                 h5f.create_dataset('Smooth',shape=(self.rows,self.cols,self.nfiles),dtype='float32',maxshape=(self.rows,self.cols,None),chunks=self.chunks,compression=self.compression)
                 h5f.create_dataset('lgrd',shape=(self.rows,self.cols),dtype='float32',maxshape=(self.rows,self.cols),chunks=self.chunks[0:2],compression=self.compression)
                 h5f.create_dataset('Dates',shape=(self.nfiles,),maxshape=(None,),dtype='S8',compression=self.compression)
-                dset.attrs['Extent'] = trans
+                dset.attrs['Geotransform'] = trans
                 dset.attrs['Projection'] = prj
                 dset.attrs['Resolution'] = res
                 dset.attrs['flag'] = False
