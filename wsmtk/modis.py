@@ -9,6 +9,7 @@ from subprocess import Popen, check_output
 import tables
 import h5py
 from progress.bar import Bar
+import osr
 try:
     import gdal
 except ImportError:
@@ -255,3 +256,18 @@ class MODIStiles:
         tiles = ["{:05.2f}".format(x) for x in tile_tmp[tile_tmp != 0]]
 
         self.tiles = ["h{}v{}".format(*x.split('.')) for x in tiles]
+
+
+class MODISwindow:
+
+    def __init__(self,aoi,files):
+
+        with h5py.File(files[0],'r') as h5f:
+            dat = h5f.get('Raw')
+            self.resolution = dat.attrs['Resolution']
+            dat = None
+
+        self.width = int(round(abs(aoi[2] - aoi[0]) / self.resolution))
+        self.height = int(round(abs(aoi[3] - aoi[1]) / self.resolution))
+        self.geotransform = [aoi[0],res,0.0,aoi[3],-res]
+        self.projection = osr.SRS_WKT_WGS84
