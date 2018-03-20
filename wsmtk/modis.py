@@ -269,7 +269,7 @@ class MODISwindow:
             dat = h5f.get('Raw')
             self.resolution = dat.attrs['Resolution']
             dat = None
-            dts = h5f.get('Dates')
+            dts = h5f.get('Dates')[...]
 
         dts_dt = [datetime.datetime.strptime(x.decode(),'%Y%j').date() for x in dts]
         datemin_p = datetime.datetime.strptime(datemin,'%Y%m').date()
