@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup
 import re
 import sys, os
 import time
+import datetime
 from subprocess import Popen, check_output
 import tables
 import h5py

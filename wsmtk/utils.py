@@ -1,5 +1,5 @@
-
 from numpy.lib.stride_tricks import as_strided as ast
+import datetime
 
 def block_view(A, block= (3, 3)):
     ## Credit to http://stackoverflow.com/a/5078155/1828289
