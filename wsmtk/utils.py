@@ -9,13 +9,3 @@ def block_view(A, block= (3, 3)):
     shape= (A.shape[0]// block[0], A.shape[1]// block[1])+ block
     strides= (block[0]* A.strides[0], block[1]* A.strides[1])+ A.strides
     return ast(A, shape= shape, strides= strides)
-
-
-# conv functions
-
-def convLST(arr):
-    return (arr * 0.02) + (-273)
-
-def convVIM(arr):
-    arr[arr < 0] = 0
-    return (arr * 0.0001)
