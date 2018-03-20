@@ -269,5 +269,5 @@ class MODISwindow:
 
         self.width = int(round(abs(aoi[2] - aoi[0]) / self.resolution))
         self.height = int(round(abs(aoi[3] - aoi[1]) / self.resolution))
-        self.geotransform = [aoi[0],res,0.0,aoi[3],-res]
+        self.geotransform = [aoi[0],self.resolution,0.0,aoi[3],-self.resolution]
         self.projection = osr.SRS_WKT_WGS84
