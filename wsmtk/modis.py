@@ -262,6 +262,8 @@ class MODISwindow:
 
     def __init__(self,aoi,files):
 
+        ## TODO docstring aoi order
+
         with h5py.File(files[0],'r') as h5f:
             dat = h5f.get('Raw')
             self.resolution = dat.attrs['Resolution']
@@ -269,5 +271,5 @@ class MODISwindow:
 
         self.width = int(round(abs(aoi[2] - aoi[0]) / self.resolution))
         self.height = int(round(abs(aoi[3] - aoi[1]) / self.resolution))
-        self.geotransform = [aoi[0],self.resolution,0.0,aoi[3],-self.resolution]
+        self.geotransform = [aoi[0],self.resolution,0.0,aoi[1],-self.resolution]
         self.projection = osr.SRS_WKT_WGS84
