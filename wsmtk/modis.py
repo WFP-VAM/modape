@@ -98,9 +98,10 @@ class MODIShdf5:
         self.compression = compression
         self.dts_regexp = re.compile(r'.+A(\d{7}).+')
         self.dates = [re.findall(self.dts_regexp,x)[0] for x in files]
-        self.dates.sort()
+
 
         self.files = [x for (y,x) in sorted(zip(self.dates,files))]
+        self.dates.sort()
         self.nfiles = len(self.files)
         self.ref_file = self.files[0]
 
