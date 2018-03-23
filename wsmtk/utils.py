@@ -20,3 +20,18 @@ def LDOM(x):
     else:
         mn += 1
     return(datetime.date(yr,mn,1) - datetime.timedelta(days=1))
+
+
+def aoi2ix(ref,aoi,res):
+
+    '''Extract indices for intersection over reference'''
+
+    isect = [max(ref[0],aoi[0]),min(ref[1],aoi[1]),min(ref[2],aoi[2]),max(ref[3],aoi[3])]
+
+    xoff = int(round((isect[0] - ref[0])/res))
+    yoff = int(round((ref[1] - isect[1])/res))
+
+    xd = int(round((isect[2] - isect[0])/res))#+1
+    yd = int(round((isect[1] - isect[3])/res))#+1
+
+    return((xoff,xd,yoff,yd))
