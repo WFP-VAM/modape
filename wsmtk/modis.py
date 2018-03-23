@@ -245,12 +245,18 @@ class MODIStiles:
 
         elif len(self.aoi) is 4:
 
-            y = [round((x-gt[3])/gt[5]) for x in [aoi[1],aoi[3]]]
-            yo = y[0]
-            yd = abs(y[0] - y[1])
-            x = [round((x-gt[0])/gt[1]) for x in [aoi[0],aoi[2]]]
-            xo = x[0]
-            xd = abs(x[0] - x[1])
+            #y = [round((x-gt[3])/gt[5]) for x in [aoi[1],aoi[3]]]
+            #yo = y[0]
+            #yd = abs(y[0] - y[1])
+            #x = [round((x-gt[0])/gt[1]) for x in [aoi[0],aoi[2]]]
+            #xo = x[0]
+            #xd = abs(x[0] - x[1])
+
+            xo = int(round((aoi[0] - gt[0])/gt[1]))
+            yo = int(round((gt[3] - aoi[1])/gt[1]))
+
+            xd = int(round((aoi[2] - aoi[0])/gt[1]))#+1
+            yd = int(round((aoi[1] - aoi[3])/gt[1]))#+1
 
         tile_extract = ds.ReadAsArray(xo,yo,xd,yd)
         ds = None
@@ -276,8 +282,9 @@ class MODISwindow:
         datemin_p = datetime.datetime.strptime(datemin,'%Y%m').date()
         datemax_p = LDOM(datetime.datetime.strptime(datemax,'%Y%m'))
 
-        self.ix = [x >= datemin_p and x <= datemax_p for x in dts_dt]
+        self.ix = np.array([x >= datemin_p and x <= datemax_p for x in dts_dt])
         self.width = int(round(abs(aoi[2] - aoi[0]) / self.resolution))
         self.height = int(round(abs(aoi[3] - aoi[1]) / self.resolution))
         self.geotransform = [aoi[0],self.resolution,0.0,aoi[1],0.0,-self.resolution]
         self.projection = osr.SRS_WKT_WGS84
+        #self.tiledict = dict(zip(files,[h5_aoi2ix(x,aoi) for x in files]))
