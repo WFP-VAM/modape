@@ -13,7 +13,7 @@ def main():
     parser.add_argument("srcdir", help='directory with raw MODIS .hdf files',default=os.getcwd(),metavar='DIR')
     #parser.add_argument("-p","--parameter", help='VAM parameter code',metavar='') ## paramter selection not implemented
     parser.add_argument("--prcdir", help='Storage directory for PROCESSED MODIS files',default=os.getcwd(),metavar='')
-    parser.add_argument("--rawdir", help='Storage directory for RAW MODIS files',metavar='')
+    #parser.add_argument("--rawdir", help='Storage directory for RAW MODIS files',metavar='')
     parser.add_argument("-c","--compression", help='Compression for HDF5 files',default=32001,metavar='')
     parser.add_argument("--all-parameters", help='Flag to process all possible VAM parameters',action='store_true')
     args = parser.parse_args()
