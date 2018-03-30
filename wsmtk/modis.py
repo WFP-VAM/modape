@@ -133,8 +133,12 @@ class MODIShdf5:
         ref_sds = [x[0] for x in ref.GetSubDatasets() if self.paramdict[self.param] in x[0]][0]
         res = [value for key, value in self.resdict.items() if key in ref_sds][0]
 
-        rst = gdal.Warp('', ref_sds, dstSRS='EPSG:4326', format='VRT',
-                                      outputType=gdal.GDT_Float32, xRes=res, yRes=res)
+        #rst = gdal.Warp('', ref_sds, dstSRS='EPSG:4326', format='VRT',
+        #                              outputType=gdal.GDT_Float32, xRes=res, yRes=res)
+
+        ## TODO real raster resolution??
+
+        rst = gdal.Open(ref_sds)
 
         ref = None
         ref_sds = None
@@ -160,7 +164,7 @@ class MODIShdf5:
                 h5f.create_dataset('Dates',shape=(self.nfiles,),maxshape=(None,),dtype='S8',compression=self.compression)
                 dset.attrs['Geotransform'] = trans
                 dset.attrs['Projection'] = prj
-                dset.attrs['Resolution'] = res
+                dset.attrs['Resolution'] = trans[1]
                 dset.attrs['flag'] = False
 
             self.exists = True
@@ -176,7 +180,7 @@ class MODIShdf5:
         with h5py.File(self.outname,'r+',libver='latest') as h5f:
             dset = h5f.get('Raw')
             dts  = h5f.get('Dates')
-            res  = dset.attrs['Resolution']
+            #res  = dset.attrs['Resolution']
 
             if dset.attrs['flag']:
                 uix = dset.shape[2]
@@ -192,7 +196,9 @@ class MODIShdf5:
 
                 ref_sds = [x[0] for x in fl_o.GetSubDatasets() if self.paramdict[self.param] in x[0]][0]
 
-                rst = gdal.Warp('', ref_sds, dstSRS='EPSG:4326', format='VRT', outputType=gdal.GDT_Float32, xRes=res, yRes=res)
+                #rst = gdal.Warp('', ref_sds, dstSRS='EPSG:4326', format='VRT', outputType=gdal.GDT_Float32, xRes=res, yRes=res)
+
+                rst = gdal.Open(ref_sds)
 
                 arr = rst.ReadAsArray()
 
@@ -267,6 +273,31 @@ class MODIStiles:
         self.tiles = ["h{}v{}".format(*x.split('.')) for x in tiles]
 
 
+class MODISmosaic:
+
+    def __init__(self,files):
+        tile_re = re.compile('.+(h\d+v\d+).+')
+
+        self.tiles = [re.sub(tile_re,'\\1',x) for x in files]
+        self.tiles.sort()
+        self.files = files
+        self.h_ix = list(set([re.sub('h(\d+)v(\d+)','\\1',x) for x in tiles.tiles]))
+        self.h_ix = list(set([re.sub('h(\d+)v(\d+)','\\1',x) for x in tiles.tiles]))
+
+        # reference tile is top left
+        ref = [x for x in self.files if self.tiles[0] in x][0]
+
+        with h5py.File(ref,'r') as h5f:
+            dset = h5f.get('Raw')
+            r,c,t = dset.shape
+            self.tile_rws = r
+            self.tile_cls = c
+            self.resolution = dset.attrs['Resolution']
+            self.gt = dset.attrs['Geotransform']
+            self.pj = dset.attrs['Projection']
+            dset = None
+
+
 class MODISwindow:
 
     def __init__(self,aoi,datemin,datemax,files):
@@ -275,7 +306,7 @@ class MODISwindow:
 
         with h5py.File(files[0],'r') as h5f:
             dat = h5f.get('Raw')
-            self.resolution = dat.attrs['Resolution']
+            self.resolution = (dat.attrs['Resolution']/112000)
             dat = None
             dts = h5f.get('Dates')[...]
 
