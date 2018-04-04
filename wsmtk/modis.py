@@ -296,6 +296,7 @@ class MODISmosaic:
             self.tile_rws = r
             self.tile_cls = c
             self.resolution = dset.attrs['Resolution']
+            self.resolution_degrees = self.resolution/112000
             self.gt = dset.attrs['Geotransform']
             self.pj = dset.attrs['Projection']
             dset = None
@@ -348,27 +349,3 @@ class MODISmosaic:
         self.raster = None
         driver = None
         del array
-
-
-class MODISwindow:
-
-    def __init__(self,aoi,datemin,datemax,files):
-
-        ## TODO docstring aoi order
-
-        with h5py.File(files[0],'r') as h5f:
-            dat = h5f.get('Raw')
-            self.resolution = (dat.attrs['Resolution']/112000)
-            dat = None
-            dts = h5f.get('Dates')[...]
-
-        dts_dt = [datetime.datetime.strptime(x.decode(),'%Y%j').date() for x in dts]
-        datemin_p = datetime.datetime.strptime(datemin,'%Y%m').date()
-        datemax_p = LDOM(datetime.datetime.strptime(datemax,'%Y%m'))
-
-        self.ix = np.array([x >= datemin_p and x <= datemax_p for x in dts_dt])
-        self.width = int(round(abs(aoi[2] - aoi[0]) / self.resolution))
-        self.height = int(round(abs(aoi[3] - aoi[1]) / self.resolution))
-        self.geotransform = [aoi[0],self.resolution,0.0,aoi[1],0.0,-self.resolution]
-        self.projection = osr.SRS_WKT_WGS84
-        #self.tiledict = dict(zip(files,[h5_aoi2ix(x,aoi) for x in files]))
