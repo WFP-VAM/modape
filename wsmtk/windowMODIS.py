@@ -1,19 +1,20 @@
 #!/usr/bin/env python
 from __future__ import print_function
-from wsmtk.modis import MODIStiles, MODISwindow
+from wsmtk.modis import MODIStiles, MODISmosaic
+import glob
+import re
 import os
 import gdal
 import argparse
 import datetime
 import numpy as np
-from .utils import aoi2ix
-from .hdf5 import h5_file, h5_readArr
+
 
 def main():
 
     parser = argparse.ArgumentParser(description="Extract a window from MODIS products")
     parser.add_argument("product", help='MODIS product ID')
-    parser.add_argument("--roi", help='Region of interest. Can be LAT/LON point or bounding box in format llx,lly,urx,ury',nargs='+',required=True)
+    parser.add_argument("--roi", help='Region of interest. Can be LAT/LON point or bounding box in format llx lly urx ury',nargs='+',required=True,type=float)
     parser.add_argument("--prcdir", help='Storage directory for PROCESSED MODIS files',default=os.getcwd(),metavar='')
     parser.add_argument("--region", help='region 3 letter region code (default is "reg")',default='reg',metavar='')
     parser.add_argument("-b","--begin-date", help='Start date (YYYYMM)',default=datetime.date(2000,1,1).strftime("%Y%m"),metavar='')
@@ -23,41 +24,59 @@ def main():
     parser.add_argument("--targetdir", help='Target directory for GeoTIFFs (default current directory)',default=os.getcwd(),metavar='')
     args = parser.parse_args()
 
-    # change order or corner coordinates for MODIStiles
-    if len(aoi) is 4:
-        aoi = [aoi[i] for i in [0,3,2,1]]
+    # check if targetdir exists
+    if not os.path.exists(args.targetdir):
+        print('\nTarget directory {} does not exist! Creating ... '.format(args.targetdir),end='')
+        try:
+            os.makedirs(args.targetdir)
+            print('done.\n')
+        except:
+            raise
 
-    tiles = MODIStiles(aoi)
+    # change order or corner coordinates for MODIStiles
+    if len(args.roi) is 4:
+        args.roi = [args.roi[i] for i in [0,3,2,1]]
+
+    tiles = MODIStiles(args.roi)
     tileRX = re.compile('|'.join(tiles.tiles))
 
     # files for tile result
     h5files = [y for x in os.walk(args.prcdir) for y in glob.glob(os.path.join(x[0], '*.h5')) if re.search(tileRX,y)]
 
-
     # filter for product (and parameter)
     if args.parameter:
-        h5files_fil = [x for x in h5files if args.product in x and agrs.parameter in x]
+        h5files_fil = [x for x in h5files if args.product in x and args.parameter in x]
     else:
         h5files_fil = [x for x in h5files if args.product in x]
 
-    # get window
-    win = MODISwindow(aoi=aoi,datemin=args.datemin,datemax=args.datemax,files=h5files)
+    # loop over parameters (could be multiple if unspecified)
 
-    try:
-        arr = np.zeros((win.height,win.width,sum(win.ix)),dtype='float32')
+    for par in set([re.sub('.+_(\w{3}).h5','\\1',x) for x in h5files_fil]):
 
-    except MemoryError:
-        raise SystemExit('Error allocating memory. Please specify smaller AOI and/or shorter date range.')
+        h5files_fil_par = [x for x in h5files_fil if par in x]
 
-    for f in h5files:
+        # get mosaic
+        mosaic = MODISmosaic(files=h5files_fil_par,datemin=args.begin_date,datemax=args.end_date)
 
-        h5f = h5_file(f)
+        # loop over dates
 
-        xr,xrd,yr,yrd = aoi2ix(h5f.bbox(),aoi,h5f.res)
+        for ix in mosaic.tempIX:
 
-        xw,xwd,yw,ywd = aoi2ix(h5f.bbox(),aoi,h5f.res)
+            filename = '{}/{}{}{}j{}.tif'.format(args.targetdir,args.region.lower(),par.lower(),mosaic.dates[ix][0:4],mosaic.dates[ix][4:7])
 
-        arr[yw:(yw+ywd),xw:(xw+xwd),...] = h5_readArr(f,xr,xrd,yr,yrd,np.flatnonzero(win.ix),args.dataset)
+            print('Processing file {}'.format(filename))
+
+            with mosaic.getRaster(args.dataset,ix) as mosaic_ropen:
+                ds = gdal.Warp(filename,mosaic_ropen.raster,
+                dstSRS='EPSG:4326',
+                outputType=gdal.GDT_Float32,
+                xRes=mosaic_ropen.resolution_degrees,
+                yRes=mosaic_ropen.resolution_degrees,
+                outputBounds=(args.roi[0],args.roi[3],args.roi[2],args.roi[1]),
+                resampleAlg='near')
+
+                ds = None
+            del mosaic_ropen
 
 
 if __name__=='__main__':
