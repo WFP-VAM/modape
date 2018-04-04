@@ -275,14 +275,16 @@ class MODIStiles:
 
 class MODISmosaic:
 
-    def __init__(self,files):
+    def __init__(self,files,datemin,datemax):
         tile_re = re.compile('.+(h\d+v\d+).+')
 
-        self.tiles = [re.sub(tile_re,'\\1',x) for x in files]
+        self.tiles = [re.sub(tile_re,'\\1',os.path.basename(x)) for x in files]
         self.tiles.sort()
         self.files = files
-        self.h_ix = list(set([re.sub('h(\d+)v(\d+)','\\1',x) for x in tiles.tiles]))
-        self.h_ix = list(set([re.sub('h(\d+)v(\d+)','\\1',x) for x in tiles.tiles]))
+        self.h_ix = list(set([re.sub('(h\d+)(v\d+)','\\1',x) for x in tiles.tiles]))
+        self.h_ix.sort()
+        self.v_ix = list(set([re.sub('(h\d+)(v\d+)','\\2',x) for x in tiles.tiles]))
+        self.v_ix.sort()
 
         # reference tile is top left
         ref = [x for x in self.files if self.tiles[0] in x][0]
@@ -296,6 +298,53 @@ class MODISmosaic:
             self.gt = dset.attrs['Geotransform']
             self.pj = dset.attrs['Projection']
             dset = None
+            self.dates = [x.decode() for x in h5f.get('Dates')[...]]
+
+        dts_dt = [datetime.datetime.strptime(x,'%Y%j').date() for x in self.dates]
+        datemin_p = datetime.datetime.strptime(datemin,'%Y%m').date()
+        datemax_p = datetime.datetime.strptime(datemax,'%Y%m').date()
+
+        self.tempIX = np.flatnonzero(np.array([x >= datemin_p and x <= datemax_p for x in dts_dt]))
+
+    def readArray(self,dataset,ix):
+
+        self.array = np.zeros(((len(self.v_ix) * self.tile_rws),len(self.h_ix) * self.tile_cls),dtype='float32')
+
+        for h5f in self.files:
+
+            t_h = re.sub('.+(h\d+)(v\d+).+','\\1',os.path.basename(h5f))
+            t_v = re.sub('.+(h\d+)(v\d+).+','\\2',os.path.basename(h5f))
+
+            xoff = self.h_ix.index(t_h) * self.tile_cls
+            yoff = self.v_ix.index(t_v) * self.tile_rws
+
+            with h5py.File(h5f,'r') as h5f_o:
+                arr = h5f_o.get(dataset)[...,ix]
+            self.array[yoff:(yoff+self.tile_rws),xoff:(xoff+self.tile_cls)] = arr[...]
+
+        #return(array)
+
+
+    def array2Raster(self):
+
+        height, width = self.array.shape
+
+        driver = gdal.GetDriverByName('GTiff')
+
+        ras = driver.Create('/vsimem/inmem.tif', width, height, 1, gdal.GDT_Float32)
+
+        ras.SetGeoTransform(self.gt)
+        ras.SetProjection(self.pj)
+
+        ras.GetRasterBand(1).WriteArray(self.array)
+
+        return(ras)
+
+
+
+#ds = gdal.Warp('/data/temp/warptest5.tif',r, dstSRS='EPSG:4326',outputType=gdal.GDT_Float32,xRes=win.resolution,yRes=win.resolution, outputBounds=(aoi[0],aoi[3],aoi[2],aoi[1]),
+#              resampleAlg='near')
+
 
 
 class MODISwindow:
