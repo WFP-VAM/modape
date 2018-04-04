@@ -9,9 +9,10 @@ import datetime
 from subprocess import Popen, check_output
 import tables
 import h5py
-from progress.bar import Bar
 import osr
+from progress.bar import Bar
 from .utils import LDOM
+from contextlib import contextmanager
 try:
     import gdal
 except ImportError:
@@ -281,9 +282,9 @@ class MODISmosaic:
         self.tiles = [re.sub(tile_re,'\\1',os.path.basename(x)) for x in files]
         self.tiles.sort()
         self.files = files
-        self.h_ix = list(set([re.sub('(h\d+)(v\d+)','\\1',x) for x in tiles.tiles]))
+        self.h_ix = list(set([re.sub('(h\d+)(v\d+)','\\1',x) for x in self.tiles]))
         self.h_ix.sort()
-        self.v_ix = list(set([re.sub('(h\d+)(v\d+)','\\2',x) for x in tiles.tiles]))
+        self.v_ix = list(set([re.sub('(h\d+)(v\d+)','\\2',x) for x in self.tiles]))
         self.v_ix.sort()
 
         # reference tile is top left
@@ -306,9 +307,9 @@ class MODISmosaic:
 
         self.tempIX = np.flatnonzero(np.array([x >= datemin_p and x <= datemax_p for x in dts_dt]))
 
-    def readArray(self,dataset,ix):
+    def getArray(self,dataset,ix):
 
-        self.array = np.zeros(((len(self.v_ix) * self.tile_rws),len(self.h_ix) * self.tile_cls),dtype='float32')
+        array = np.zeros(((len(self.v_ix) * self.tile_rws),len(self.h_ix) * self.tile_cls),dtype='float32')
 
         for h5f in self.files:
 
@@ -320,31 +321,33 @@ class MODISmosaic:
 
             with h5py.File(h5f,'r') as h5f_o:
                 arr = h5f_o.get(dataset)[...,ix]
-            self.array[yoff:(yoff+self.tile_rws),xoff:(xoff+self.tile_cls)] = arr[...]
-
-        #return(array)
+            array[yoff:(yoff+self.tile_rws),xoff:(xoff+self.tile_cls)] = arr[...]
 
 
-    def array2Raster(self):
+        return(array)
 
-        height, width = self.array.shape
+    @contextmanager
+    def getRaster(self,dataset,ix):
+
+        array = self.getArray(dataset,ix)
+
+        height, width = array.shape
 
         driver = gdal.GetDriverByName('GTiff')
 
-        ras = driver.Create('/vsimem/inmem.tif', width, height, 1, gdal.GDT_Float32)
+        self.raster = driver.Create('/vsimem/inmem.tif', width, height, 1, gdal.GDT_Float32)
 
-        ras.SetGeoTransform(self.gt)
-        ras.SetProjection(self.pj)
+        self.raster.SetGeoTransform(self.gt)
+        self.raster.SetProjection(self.pj)
 
-        ras.GetRasterBand(1).WriteArray(self.array)
+        self.raster.GetRasterBand(1).WriteArray(array)
 
-        return(ras)
+        yield self
 
-
-
-#ds = gdal.Warp('/data/temp/warptest5.tif',r, dstSRS='EPSG:4326',outputType=gdal.GDT_Float32,xRes=win.resolution,yRes=win.resolution, outputBounds=(aoi[0],aoi[3],aoi[2],aoi[1]),
-#              resampleAlg='near')
-
+        gdal.Unlink('/vsimem/inmem.tif')
+        self.raster = None
+        driver = None
+        del array
 
 
 class MODISwindow:
