@@ -93,13 +93,12 @@ class MODIShdf5:
     def __init__(self,files,param=None,targetdir=os.getcwd(),compression=32001):
 
         self.targetdir = targetdir
-        self.resdict = dict(zip(['250m','500m','1km','0.05_Deg'],[x/112000 for x in [250,500,1000,5600]]))
+        #self.resdict = dict(zip(['250m','500m','1km','0.05_Deg'],[x/112000 for x in [250,500,1000,5600]])) ## commented for original resolution
         self.paramdict = dict(zip(['VIM','VEM','LTD','LTN'],['NDVI','EVI','LST_Day','LST_Night']))
         self.minrows = 112
         self.compression = compression
         self.dts_regexp = re.compile(r'.+A(\d{7}).+')
         self.dates = [re.findall(self.dts_regexp,x)[0] for x in files]
-
 
         self.files = [x for (y,x) in sorted(zip(self.dates,files))]
         self.dates.sort()
@@ -132,8 +131,9 @@ class MODIShdf5:
 
         ref = gdal.Open(self.ref_file)
         ref_sds = [x[0] for x in ref.GetSubDatasets() if self.paramdict[self.param] in x[0]][0]
-        res = [value for key, value in self.resdict.items() if key in ref_sds][0]
+        #res = [value for key, value in self.resdict.items() if key in ref_sds][0] ## commented for original resolution
 
+        ## commented for original resolution
         #rst = gdal.Warp('', ref_sds, dstSRS='EPSG:4326', format='VRT',
         #                              outputType=gdal.GDT_Float32, xRes=res, yRes=res)
 
@@ -165,7 +165,7 @@ class MODIShdf5:
                 h5f.create_dataset('Dates',shape=(self.nfiles,),maxshape=(None,),dtype='S8',compression=self.compression)
                 dset.attrs['Geotransform'] = trans
                 dset.attrs['Projection'] = prj
-                dset.attrs['Resolution'] = trans[1]
+                dset.attrs['Resolution'] = trans[1] # res ## commented for original resolution
                 dset.attrs['flag'] = False
 
             self.exists = True
@@ -181,7 +181,7 @@ class MODIShdf5:
         with h5py.File(self.outname,'r+',libver='latest') as h5f:
             dset = h5f.get('Raw')
             dts  = h5f.get('Dates')
-            #res  = dset.attrs['Resolution']
+            #res  = dset.attrs['Resolution'] ## comment for original resolution
 
             if dset.attrs['flag']:
                 uix = dset.shape[2]
@@ -197,6 +197,7 @@ class MODIShdf5:
 
                 ref_sds = [x[0] for x in fl_o.GetSubDatasets() if self.paramdict[self.param] in x[0]][0]
 
+                ## comment for original resolution
                 #rst = gdal.Warp('', ref_sds, dstSRS='EPSG:4326', format='VRT', outputType=gdal.GDT_Float32, xRes=res, yRes=res)
 
                 rst = gdal.Open(ref_sds)
@@ -252,13 +253,6 @@ class MODIStiles:
 
 
         elif len(self.aoi) is 4:
-
-            #y = [round((x-gt[3])/gt[5]) for x in [aoi[1],aoi[3]]]
-            #yo = y[0]
-            #yd = abs(y[0] - y[1])
-            #x = [round((x-gt[0])/gt[1]) for x in [aoi[0],aoi[2]]]
-            #xo = x[0]
-            #xd = abs(x[0] - x[1])
 
             xo = int(round((aoi[0] - gt[0])/gt[1]))
             yo = int(round((gt[3] - aoi[1])/gt[1]))
