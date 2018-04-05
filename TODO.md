@@ -1,5 +1,9 @@
-## TODO
+### TODO
 
-# Documentation
+- Evaluate raster resolution & pixel shifts
 
-# Logging
+- Documentation
+
+- Logging
+
+- Tests
