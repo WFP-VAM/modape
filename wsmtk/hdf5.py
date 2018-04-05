@@ -32,22 +32,6 @@ class h5_file:
         return((self.xmin,self.ymax,self.xmax,self.ymin))
 
 
-# def h5_aoi2ix(file,aoi):
-#
-#     '''Extract indices for intersection over MODIS h5 file'''
-#
-#     h5f = h5_file(file)
-#
-#     isect = [max(h5f.xmin,aoi[0]),min(h5f.ymax,aoi[1]),min(h5f.xmax,aoi[2]),max(h5f.ymin,aoi[3])]
-#
-#     xoff = int(round((isect[0] - h5f.xmin)/h5f.res))
-#     yoff = int(round((h5f.ymax - isect[1])/h5f.res))
-#
-#     xd = int(round((isect[2] - isect[0])/h5f.res))+1
-#     yd = int(round((isect[1] - isect[3])/h5f.res))+1
-#
-#     return((xoff,xd,yoff,yd))
-
 def h5_readArr(file,xoff,xd,yoff,yd,ix,dataset):
 
     with h5py.File(file,'r') as h5open:
