@@ -1,5 +1,5 @@
-
 from numpy.lib.stride_tricks import as_strided as ast
+import datetime
 
 def block_view(A, block= (3, 3)):
     ## Credit to http://stackoverflow.com/a/5078155/1828289
@@ -10,12 +10,28 @@ def block_view(A, block= (3, 3)):
     strides= (block[0]* A.strides[0], block[1]* A.strides[1])+ A.strides
     return ast(A, shape= shape, strides= strides)
 
+def LDOM(x):
+    '''get last day of month'''
+    yr = x.year
+    mn = x.month
+    if mn is 12:
+        mn = 1
+        yr +=1
+    else:
+        mn += 1
+    return(datetime.date(yr,mn,1) - datetime.timedelta(days=1))
 
-# conv functions
 
-def convLST(arr):
-    return (arr * 0.02) + (-273)
+def aoi2ix(ref,aoi,res):
 
-def convVIM(arr):
-    arr[arr < 0] = 0
-    return (arr * 0.0001)
+    '''Extract indices for intersection over reference'''
+
+    isect = [max(ref[0],aoi[0]),min(ref[1],aoi[1]),min(ref[2],aoi[2]),max(ref[3],aoi[3])]
+
+    xoff = int(round((isect[0] - ref[0])/res))
+    yoff = int(round((ref[1] - isect[1])/res))
+
+    xd = int(round((isect[2] - isect[0])/res))#+1
+    yd = int(round((isect[1] - isect[3])/res))#+1
+
+    return((xoff,xd,yoff,yd))

@@ -41,13 +41,15 @@ setup(
     include_dirs=[numpy.get_include()],
     entry_points={
     'console_scripts':[
-    'downloadMODIS=scripts.downloadMODIS:main',
-    'processMODIS=scripts.processMODIS:main',
+    'downloadMODIS=wsmtk.downloadMODIS:main',
+    'processMODIS=wsmtk.processMODIS:main',
+    'windowMODIS=wsmtk.windowMODIS:main',
         ]
     },
     packages=find_packages(),
     cmdclass = cmdclass,
     ext_modules=ext_modules,
+    include_package_data=True,
     classifiers=[
     'Development Status :: 3 - Alpha',
     'Programming Language :: Python :: 2',
