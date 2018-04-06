@@ -284,17 +284,23 @@ class MODISmosaic:
         # reference tile is top left
         ref = [x for x in self.files if self.tiles[0] in x][0]
 
-        with h5py.File(ref,'r') as h5f:
-            dset = h5f.get('Raw')
-            r,c,t = dset.shape
-            self.tile_rws = r
-            self.tile_cls = c
-            self.resolution = dset.attrs['Resolution']
-            self.resolution_degrees = self.resolution/112000
-            self.gt = dset.attrs['Geotransform']
-            self.pj = dset.attrs['Projection']
-            dset = None
-            self.dates = [x.decode() for x in h5f.get('Dates')[...]]
+        try:
+
+            with h5py.File(ref,'r') as h5f:
+                dset = h5f.get('Raw')
+                r,c,t = dset.shape
+                self.tile_rws = r
+                self.tile_cls = c
+                self.resolution = dset.attrs['Resolution']
+                self.resolution_degrees = self.resolution/112000
+                self.gt = dset.attrs['Geotransform']
+                self.pj = dset.attrs['Projection']
+                dset = None
+                self.dates = [x.decode() for x in h5f.get('Dates')[...]]
+        except Exception as e:
+            print('\nError reading refreferece file {} for mosaic! Error message: {}\n'.format(ref,e))
+            raise
+
 
         dts_dt = [datetime.datetime.strptime(x,'%Y%j').date() for x in self.dates]
         datemin_p = datetime.datetime.strptime(datemin,'%Y%m').date()
@@ -314,10 +320,15 @@ class MODISmosaic:
             xoff = self.h_ix.index(t_h) * self.tile_cls
             yoff = self.v_ix.index(t_v) * self.tile_rws
 
-            with h5py.File(h5f,'r') as h5f_o:
-                arr = h5f_o.get(dataset)[...,ix]
-            array[yoff:(yoff+self.tile_rws),xoff:(xoff+self.tile_cls)] = arr[...]
+            try:
 
+                with h5py.File(h5f,'r') as h5f_o:
+                    arr = h5f_o.get(dataset)[...,ix]
+                array[yoff:(yoff+self.tile_rws),xoff:(xoff+self.tile_cls)] = arr[...]
+
+            except Exception as e:
+                print('Error reading data from file {} to array! Error message {}:\n'.format(h5f,e))
+                raise
 
         return(array)
 
