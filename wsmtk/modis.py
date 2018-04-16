@@ -193,28 +193,38 @@ class MODIShdf5:
             dts[uix:uix+self.nfiles] = [n.encode("ascii", "ignore") for n in self.dates]
 
             for fix,fl in enumerate(self.files):
-                fl_o = gdal.Open(fl)
 
-                ref_sds = [x[0] for x in fl_o.GetSubDatasets() if self.paramdict[self.param] in x[0]][0]
+                try:
 
-                ## comment for original resolution
-                #rst = gdal.Warp('', ref_sds, dstSRS='EPSG:4326', format='VRT', outputType=gdal.GDT_Float32, xRes=res, yRes=res)
+                    fl_o = gdal.Open(fl)
 
-                rst = gdal.Open(ref_sds)
+                    ref_sds = [x[0] for x in fl_o.GetSubDatasets() if self.paramdict[self.param] in x[0]][0]
 
-                arr = rst.ReadAsArray()
+                    ## comment for original resolution
+                    #rst = gdal.Warp('', ref_sds, dstSRS='EPSG:4326', format='VRT', outputType=gdal.GDT_Float32, xRes=res, yRes=res)
 
-                fl_o = None
-                ref_sds = None
-                rst = None
+                    rst = gdal.Open(ref_sds)
 
-                if self.param in ['LTD','LTN']:
-                    arr = (arr * 0.02) + (-273)
-                elif self.param in ['VIM']:
-                    arr[arr < 0] = 0
-                    arr = arr * 0.0001
-                else:
-                    pass
+                    arr = rst.ReadAsArray()
+
+                    fl_o = None
+                    ref_sds = None
+                    rst = None
+
+                    if self.param in ['LTD','LTN']:
+                        arr = (arr * 0.02) + (-273)
+                    elif self.param in ['VIM']:
+                        arr[arr < 0] = 0
+                        arr = arr * 0.0001
+                    else:
+                        pass
+
+                except AttributeError:
+
+                    print('Error reading {} ... using empty array.'.format(fl))
+
+                    arr = np.zeros((dset.shape[0],dset.shape[1]),dtype='float32')
+
 
                 dset[...,uix+fix] = arr[...]
                 bar.next()
