@@ -159,8 +159,8 @@ class MODIShdf5:
         try:
 
             with h5py.File(self.outname,'x',libver='latest') as h5f:
-                dset = h5f.create_dataset('Raw',shape=(self.rows,self.cols,self.nfiles),dtype='float32',maxshape=(self.rows,self.cols,None),chunks=self.chunks,compression=self.compression)
-                h5f.create_dataset('Smooth',shape=(self.rows,self.cols,self.nfiles),dtype='float32',maxshape=(self.rows,self.cols,None),chunks=self.chunks,compression=self.compression)
+                dset = h5f.create_dataset('Raw',shape=(self.rows,self.cols,self.nfiles),dtype='int16',maxshape=(self.rows,self.cols,None),chunks=self.chunks,compression=self.compression)
+                h5f.create_dataset('Smooth',shape=(self.rows,self.cols,self.nfiles),dtype='int16',maxshape=(self.rows,self.cols,None),chunks=self.chunks,compression=self.compression)
                 h5f.create_dataset('lgrd',shape=(self.rows,self.cols),dtype='float32',maxshape=(self.rows,self.cols),chunks=self.chunks[0:2],compression=self.compression)
                 h5f.create_dataset('Dates',shape=(self.nfiles,),maxshape=(None,),dtype='S8',compression=self.compression)
                 dset.attrs['Geotransform'] = trans
@@ -207,14 +207,6 @@ class MODIShdf5:
                 fl_o = None
                 ref_sds = None
                 rst = None
-
-                if self.param in ['LTD','LTN']:
-                    arr = (arr * 0.02) + (-273)
-                elif self.param in ['VIM']:
-                    arr[arr < 0] = 0
-                    arr = arr * 0.0001
-                else:
-                    pass
 
                 dset[...,uix+fix] = arr[...]
                 bar.next()
@@ -304,7 +296,7 @@ class MODISmosaic:
 
     def getArray(self,dataset,ix):
 
-        array = np.zeros(((len(self.v_ix) * self.tile_rws),len(self.h_ix) * self.tile_cls),dtype='float32')
+        array = np.zeros(((len(self.v_ix) * self.tile_rws),len(self.h_ix) * self.tile_cls),dtype='int16')
 
         for h5f in self.files:
 
@@ -330,7 +322,7 @@ class MODISmosaic:
 
         driver = gdal.GetDriverByName('GTiff')
 
-        self.raster = driver.Create('/vsimem/inmem.tif', width, height, 1, gdal.GDT_Float32)
+        self.raster = driver.Create('/vsimem/inmem.tif', width, height, 1, gdal.GDT_Int16)
 
         self.raster.SetGeoTransform(self.gt)
         self.raster.SetProjection(self.pj)
