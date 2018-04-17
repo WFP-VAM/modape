@@ -247,19 +247,19 @@ class MODIStiles:
 
         if len(self.aoi) is 2:
 
-            yo = round((self.aoi[0]-gt[3])/gt[5])
-            yd = 1
-            xo = round((self.aoi[0]-gt[3])/gt[5])
-            xd = 1
+            xo = int(round((self.aoi[1]-gt[0])/gt[1]))
+            yo = int(round((gt[3]-self.aoi[0])/gt[1]))
 
+            xd = 1
+            yd = 1
 
         elif len(self.aoi) is 4:
 
-            xo = int(round((aoi[0] - gt[0])/gt[1]))
-            yo = int(round((gt[3] - aoi[1])/gt[1]))
+            xo = int(round((self.aoi[0]-gt[0])/gt[1]))
+            yo = int(round((gt[3]-self.aoi[1])/gt[1]))
 
-            xd = int(round((aoi[2] - aoi[0])/gt[1]))#+1
-            yd = int(round((aoi[1] - aoi[3])/gt[1]))#+1
+            xd = int(round((self.aoi[2] - self.aoi[0])/gt[1]))
+            yd = int(round((self.aoi[1] - self.aoi[3])/gt[1]))
 
         tile_extract = ds.ReadAsArray(xo,yo,xd,yd)
         ds = None
