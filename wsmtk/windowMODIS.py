@@ -53,6 +53,9 @@ def main():
     else:
         h5files_fil = [x for x in h5files if args.product in x]
 
+    if (len(h5files_fil)) is 0:
+        raise SystemExit("\nNo processed MODIS HDF5 files found for combination of product/tile (and parameter)")
+
     # loop over parameters (could be multiple if unspecified)
 
     for par in set([re.sub('.+_(\w{3}).h5','\\1',x) for x in h5files_fil]):
