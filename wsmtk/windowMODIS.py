@@ -75,28 +75,33 @@ def main():
 
             with mosaic.getRaster(args.dataset,ix) as mosaic_ropen:
 
-                if len(args.roi) > 2:
+                try:
 
-                    ds = gdal.Warp(filename,mosaic_ropen.raster,
-                    dstSRS='EPSG:4326',
-                    outputType=gdal.GDT_Int16,
-                    xRes=mosaic_ropen.resolution_degrees,
-                    yRes=mosaic_ropen.resolution_degrees,
-                    outputBounds=(args.roi[0],args.roi[3],args.roi[2],args.roi[1]),
-                    resampleAlg='near')
+                    if len(args.roi) > 2:
 
-                    ds = None
+                        ds = gdal.Warp(filename,mosaic_ropen.raster,
+                        dstSRS='EPSG:4326',
+                        outputType=gdal.GDT_Int16,
+                        xRes=mosaic_ropen.resolution_degrees,
+                        yRes=mosaic_ropen.resolution_degrees,
+                        outputBounds=(args.roi[0],args.roi[3],args.roi[2],args.roi[1]),
+                        resampleAlg='near')
 
-                else:
+                        ds = None
 
-                    ds = gdal.Warp(filename,mosaic_ropen.raster,
-                    dstSRS='EPSG:4326',
-                    outputType=gdal.GDT_Int16,
-                    xRes=mosaic_ropen.resolution_degrees,
-                    yRes=mosaic_ropen.resolution_degrees,
-                    resampleAlg='near')
+                    else:
 
-                    ds = None
+                        ds = gdal.Warp(filename,mosaic_ropen.raster,
+                        dstSRS='EPSG:4326',
+                        outputType=gdal.GDT_Int16,
+                        xRes=mosaic_ropen.resolution_degrees,
+                        yRes=mosaic_ropen.resolution_degrees,
+                        resampleAlg='near')
+
+                        ds = None
+
+                except Exception as e:
+                    print('Error while reading {} data for {}! Please check if dataset exits within file. \n\n Error message:\n\n {}'.format(args.dataset,filename,e))
 
 
             del mosaic_ropen
