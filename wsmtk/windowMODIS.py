@@ -74,15 +74,31 @@ def main():
             print('Processing file {}'.format(filename))
 
             with mosaic.getRaster(args.dataset,ix) as mosaic_ropen:
-                ds = gdal.Warp(filename,mosaic_ropen.raster,
-                dstSRS='EPSG:4326',
-                outputType=gdal.GDT_Int16,
-                xRes=mosaic_ropen.resolution_degrees,
-                yRes=mosaic_ropen.resolution_degrees,
-                outputBounds=(args.roi[0],args.roi[3],args.roi[2],args.roi[1]),
-                resampleAlg='near')
 
-                ds = None
+                if len(args.roi) > 2:
+
+                    ds = gdal.Warp(filename,mosaic_ropen.raster,
+                    dstSRS='EPSG:4326',
+                    outputType=gdal.GDT_Int16,
+                    xRes=mosaic_ropen.resolution_degrees,
+                    yRes=mosaic_ropen.resolution_degrees,
+                    outputBounds=(args.roi[0],args.roi[3],args.roi[2],args.roi[1]),
+                    resampleAlg='near')
+
+                    ds = None
+
+                else:
+
+                    ds = gdal.Warp(filename,mosaic_ropen.raster,
+                    dstSRS='EPSG:4326',
+                    outputType=gdal.GDT_Int16,
+                    xRes=mosaic_ropen.resolution_degrees,
+                    yRes=mosaic_ropen.resolution_degrees,
+                    resampleAlg='near')
+
+                    ds = None
+
+
             del mosaic_ropen
 
 
