@@ -38,6 +38,10 @@ def main():
         args.roi = [args.roi[i] for i in [0,3,2,1]]
 
     tiles = MODIStiles(args.roi)
+
+    if len(tiles.tiles) is 0:
+        raise SystemExit("\nNo MODIS tile(s) found for location. Please check coordinates!")
+
     tileRX = re.compile('|'.join(tiles.tiles))
 
     # files for tile result
