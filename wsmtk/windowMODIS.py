@@ -38,6 +38,10 @@ def main():
         args.roi = [args.roi[i] for i in [0,3,2,1]]
 
     tiles = MODIStiles(args.roi)
+
+    if len(tiles.tiles) is 0:
+        raise SystemExit("\nNo MODIS tile(s) found for location. Please check coordinates!")
+
     tileRX = re.compile('|'.join(tiles.tiles))
 
     # files for tile result
@@ -48,6 +52,9 @@ def main():
         h5files_fil = [x for x in h5files if args.product in x and args.parameter in x]
     else:
         h5files_fil = [x for x in h5files if args.product in x]
+
+    if (len(h5files_fil)) is 0:
+        raise SystemExit("\nNo processed MODIS HDF5 files found for combination of product/tile (and parameter)")
 
     # loop over parameters (could be multiple if unspecified)
 
@@ -67,15 +74,36 @@ def main():
             print('Processing file {}'.format(filename))
 
             with mosaic.getRaster(args.dataset,ix) as mosaic_ropen:
-                ds = gdal.Warp(filename,mosaic_ropen.raster,
-                dstSRS='EPSG:4326',
-                outputType=gdal.GDT_Int16,
-                xRes=mosaic_ropen.resolution_degrees,
-                yRes=mosaic_ropen.resolution_degrees,
-                outputBounds=(args.roi[0],args.roi[3],args.roi[2],args.roi[1]),
-                resampleAlg='near')
 
-                ds = None
+                try:
+
+                    if len(args.roi) > 2:
+
+                        ds = gdal.Warp(filename,mosaic_ropen.raster,
+                        dstSRS='EPSG:4326',
+                        outputType=gdal.GDT_Int16,
+                        xRes=mosaic_ropen.resolution_degrees,
+                        yRes=mosaic_ropen.resolution_degrees,
+                        outputBounds=(args.roi[0],args.roi[3],args.roi[2],args.roi[1]),
+                        resampleAlg='near')
+
+                        ds = None
+
+                    else:
+
+                        ds = gdal.Warp(filename,mosaic_ropen.raster,
+                        dstSRS='EPSG:4326',
+                        outputType=gdal.GDT_Int16,
+                        xRes=mosaic_ropen.resolution_degrees,
+                        yRes=mosaic_ropen.resolution_degrees,
+                        resampleAlg='near')
+
+                        ds = None
+
+                except Exception as e:
+                    print('Error while reading {} data for {}! Please check if dataset exits within file. \n\n Error message:\n\n {}'.format(args.dataset,filename,e))
+
+
             del mosaic_ropen
 
 
