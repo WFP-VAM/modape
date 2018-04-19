@@ -13,6 +13,7 @@ import osr
 from progress.bar import Bar
 from .utils import LDOM
 from contextlib import contextmanager
+import pickle
 try:
     import gdal
 except ImportError:
@@ -23,6 +24,13 @@ class MODISquery:
 
     def __init__(self,url,username=None,password=None,rawdir=os.getcwd()):
 
+        # load product tables
+
+        this_dir, this_filename = os.path.split(__file__)
+
+        with open(os.path.join(this_dir, "data", "MODIS_V6_PT.pkl")) as table_raw:
+            self.product_table = pickle.load(table_raw)
+            
         self.queryURL = url
         self.username = username
         self.password = password
