@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from __future__ import print_function
-from wsmtk.modis import MODISquery, MODIStiles
+from wsmtk.modis import MODISquery
 import os
 import argparse
 import datetime
@@ -21,20 +21,6 @@ def main():
     parser.add_argument("-v","--verbose", help='Destination directory',action='store_true')
     parser.add_argument("--download", help='Download data',action='store_true')
     args = parser.parse_args()
-
-    '''
-    if args.roi:
-        if len(args.roi) is 2:
-            tiles = MODIStiles(args.roi).tiles
-        elif len(args.roi) is 4:
-            tiles = MODIStiles([args.roi[i] for i in [0,3,2,1]]).tiles
-        else:
-            print('Error parsing ROI - querying globally.')
-            tiles = None
-    else:
-        tiles = None
-
-    '''
 
     if args.download & (not args.username or not args.password):
         raise SystemExit('Downloading requires username and password!')
