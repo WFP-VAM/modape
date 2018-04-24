@@ -4,6 +4,7 @@ from wsmtk.modis import MODIStiles, MODISmosaic
 import glob
 import re
 import os
+import sys
 import gdal
 import argparse
 import datetime
@@ -22,6 +23,12 @@ def main():
     parser.add_argument("--parameter", help='VAM parameter code',metavar='')
     parser.add_argument("--dataset", help='Dataset to extract (either Raw or Smoothed [DEFAULT = Smoothed])',default='Smoothed',metavar='')
     parser.add_argument("--targetdir", help='Target directory for GeoTIFFs (default current directory)',default=os.getcwd(),metavar='')
+
+    # fail and print help if no arguments supplied
+    if len(sys.argv)==1:
+        parser.print_help(sys.stderr)
+        sys.exit(1)
+
     args = parser.parse_args()
 
     # check if targetdir exists
