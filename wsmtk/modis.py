@@ -147,6 +147,12 @@ class MODIShdf5:
         self.dates.sort()
         self.nfiles = len(self.files)
         self.ref_file = self.files[0]
+        self.ref_file_basename = os.path.basename(self.ref_file)
+
+
+        ppatt = re.compile(r'M\w{6}')
+        vpatt = re.compile('.+\.(\d{3})\..+')
+        tpatt = re.compile(r'h\d+v\d+')
 
         ref = gdal.Open(self.ref_file)
 
@@ -164,7 +170,7 @@ class MODIShdf5:
         self.outname = '{}/{}/{}_{}.h5'.format(
                                     self.targetdir,
                                     self.param,
-                                    '.'.join([os.path.basename(self.ref_file).split('.')[i] for i in [0,2,3]]),
+                                    '.'.join(re.findall(ppatt,self.ref_file_basename) + re.findall(tpatt,self.ref_file_basename) + [re.sub(vpatt,'\\1',self.ref_file_basename)]),
                                     self.param)
 
         self.exists = os.path.isfile(self.outname)
