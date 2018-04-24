@@ -2,6 +2,7 @@
 from __future__ import print_function
 from wsmtk.modis import MODISquery
 import os
+import sys
 import argparse
 import datetime
 import pickle
@@ -20,6 +21,12 @@ def main():
     parser.add_argument("-d","--dest", help='Destination directory',default=os.getcwd(),metavar='')
     parser.add_argument("-v","--verbose", help='Destination directory',action='store_true')
     parser.add_argument("--download", help='Download data',action='store_true')
+
+    # fail and print help if no arguments supplied
+    if len(sys.argv)==1:
+        parser.print_help(sys.stderr)
+        sys.exit(1)
+
     args = parser.parse_args()
 
     if args.download & (not args.username or not args.password):
