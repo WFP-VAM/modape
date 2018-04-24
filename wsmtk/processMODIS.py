@@ -2,6 +2,7 @@
 from __future__ import print_function
 from wsmtk.modis import MODIShdf5
 import os
+import sys
 import glob
 import argparse
 import datetime
@@ -16,6 +17,12 @@ def main():
     #parser.add_argument("--rawdir", help='Storage directory for RAW MODIS files',metavar='')
     parser.add_argument("-c","--compression", help='Compression for HDF5 files',default=32001,metavar='')
     parser.add_argument("--all-parameters", help='Flag to process all possible VAM parameters',action='store_true')
+
+    # fail and print help if no arguments supplied
+    if len(sys.argv)==1:
+        parser.print_help(sys.stderr)
+        sys.exit(1)
+
     args = parser.parse_args()
 
     if not os.path.isdir(args.srcdir):
