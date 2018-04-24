@@ -14,35 +14,31 @@ from progress.bar import Bar
 from .utils import LDOM
 from contextlib import contextmanager
 import pickle
+import warnings
 try:
     import gdal
 except ImportError:
     from osgeo import gdal
 
+# turn off BeautifulSoup warnings
+warnings.filterwarnings("ignore", category=UserWarning, module='bs4')
 
 class MODISquery:
 
-    def __init__(self,url,username=None,password=None,rawdir=os.getcwd()):
+    def __init__(self,url,begindate,enddate,username=None,password=None,rawdir=os.getcwd(),global_flag=None):
 
-        # load product tables
-
-        this_dir, this_filename = os.path.split(__file__)
-
-        with open(os.path.join(this_dir, "data", "MODIS_V6_PT.pkl")) as table_raw:
-            self.product_table = pickle.load(table_raw)
-            
         self.queryURL = url
         self.username = username
         self.password = password
         self.rawdir = rawdir
         self.files = []
-        self.minrows = 112
-
-        r = re.compile(".+(h\d+v\d+).+")
+        self.modisURLs = []
+        self.begin = datetime.datetime.strptime(begindate,'%Y-%m-%d').date()
+        self.end = datetime.datetime.strptime(enddate,'%Y-%m-%d').date()
 
         print('Checking for MODIS products ...',end='')
         try:
-            response = requests.get(url)
+            response = requests.get(self.queryURL)
             self.statuscode = response.status_code
             response.raise_for_status()
 
@@ -50,16 +46,57 @@ class MODISquery:
             print(e)
             sys.exit(1)
 
-        soup = BeautifulSoup(response.content,"html5lib")
+        soup = BeautifulSoup(response.content)#,"html5lib")
 
-        self.modisURLs = [x.getText() for x in soup.find_all('url')]
+        if global_flag:
+
+            r = re.compile('.*.hdf$')
+
+            dates = np.array([x.getText() for x in soup.findAll('a',href=True) if re.match('\d{4}\.\d{2}\.\d{2}',x.getText())])
+            dates_parsed = [datetime.datetime.strptime(x,'%Y.%m.%d/').date() for x in dates]
+
+            dates_ix = np.flatnonzero(np.array([x >= self.begin and x < self.end for x in dates_parsed]))
+
+            date_urls = [self.queryURL + x.encode('ascii') for x in dates[dates_ix]]
+
+            print(' Checking {} date sub-URLs. This may take some minutes, grab a coffee ...'.format(len(date_urls)),end='')
+
+            for d_url in date_urls:
+
+                try:
+                    resp_temp = requests.get(d_url)
+
+                except requests.exceptions.RequestException as e:
+                    print(e)
+                    print('Error accessing {} - skipping.'.format(d_url))
+                    continue
+
+                soup_temp = BeautifulSoup(resp_temp.content)
+
+                hrefs = soup_temp.find_all('a',href=True)
+
+                hdf_file = [x.getText() for x in hrefs if re.match(r,x.getText())]
+
+                try:
+                    self.modisURLs.append(d_url + hdf_file[0])
+
+                except IndexError:
+                    print('No HDF file found in {} - skipping.'.format(d_url))
+                    continue
+
+        else:
+
+            r = re.compile(".+(h\d+v\d+).+")
+
+            self.modisURLs = [x.getText() for x in soup.find_all('url')]
+            self.tiles = list(set([r.search(x).group(1) for x in self.modisURLs]))
+
+
         self.results = len(self.modisURLs)
-        self.tiles = list(set([r.search(x).group(1) for x in self.modisURLs]))
-
         print('... done.\n')
 
         if self.results > 0:
-            print('%s results found.' % self.results)
+            print('{} results found.'.format(self.results))
         else:
             print('0 results found. Please check query!')
 
@@ -69,16 +106,14 @@ class MODISquery:
         self.password=password
 
     def download(self):
-
         try:
             temp = check_output(['wget', '--version'])
         except:
-            print("Download needs wget to be available in PATH! Please make sure it's installed and available in PATH!")
-            sys.exit(1)
+            raise SystemExit("Download needs wget to be available in PATH! Please make sure it's installed and available in PATH!")
+
 
         if self.username is None or self.password is None:
-            print('No credentials found. Please run .setCredentials(username,password)!')
-            sys.exit(1)
+            raise SystemExit('No credentials found. Please run .setCredentials(username,password)!')
 
         args = ['wget','-q','--show-progress','--progress=bar:force','--no-check-certificate','--user',self.username,'--password',self.password,'-P',self.rawdir]
 
@@ -88,11 +123,11 @@ class MODISquery:
             p = Popen(args + [u])
             p.wait()
             if p.returncode is not 0:
-                print("Couldn't download %s - continuing." % u)
+                print("Couldn't download {} - continuing.".format(u))
                 continue
             self.files = self.files + [self.rawdir + os.path.basename(u)]
 
-        print('\n[%s]: Downloading finished.' % time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+        print('\n[{}]: Downloading finished.'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
 
 
 
