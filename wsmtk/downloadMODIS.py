@@ -34,7 +34,7 @@ def main():
 
     this_dir, this_filename = os.path.split(__file__)
 
-    with open(os.path.join(this_dir, "data", "MODIS_V6_PT.pkl")) as table_raw:
+    with open(os.path.join(this_dir, "data", "MODIS_V6_PT.pkl"),'rb') as table_raw:
         product_table = pickle.load(table_raw)
 
     for p in args.product:
