@@ -19,7 +19,7 @@ def main():
     parser.add_argument("--username", help='Earthdata username (required for download)',metavar='')
     parser.add_argument("--password", help='Earthdata password (required for download)',metavar='')
     parser.add_argument("-d","--dest", help='Destination directory',default=os.getcwd(),metavar='')
-    parser.add_argument("-v","--verbose", help='Destination directory',action='store_true')
+    parser.add_argument("-v","--verbose", help='Verbosity',action='store_true')
     parser.add_argument("--download", help='Download data',action='store_true')
 
     # fail and print help if no arguments supplied
