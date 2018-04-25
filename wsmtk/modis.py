@@ -57,32 +57,7 @@ class MODISquery:
 
             dates_ix = np.flatnonzero(np.array([x >= self.begin and x < self.end for x in dates_parsed]))
 
-            date_urls = [self.queryURL + x.encode('ascii') for x in dates[dates_ix]]
-
-            print(' Checking {} date sub-URLs. This may take some minutes, grab a coffee ...'.format(len(date_urls)),end='')
-
-            for d_url in date_urls:
-
-                try:
-                    resp_temp = requests.get(d_url)
-
-                except requests.exceptions.RequestException as e:
-                    print(e)
-                    print('Error accessing {} - skipping.'.format(d_url))
-                    continue
-
-                soup_temp = BeautifulSoup(resp_temp.content)
-
-                hrefs = soup_temp.find_all('a',href=True)
-
-                hdf_file = [x.getText() for x in hrefs if re.match(r,x.getText())]
-
-                try:
-                    self.modisURLs.append(d_url + hdf_file[0])
-
-                except IndexError:
-                    print('No HDF file found in {} - skipping.'.format(d_url))
-                    continue
+            self.modisURLs = [self.queryURL + x.encode('ascii') for x in dates[dates_ix]]
 
         else:
 
@@ -115,7 +90,7 @@ class MODISquery:
         if self.username is None or self.password is None:
             raise SystemExit('No credentials found. Please run .setCredentials(username,password)!')
 
-        args = ['wget','-q','--show-progress','--progress=bar:force','--no-check-certificate','--user',self.username,'--password',self.password,'-P',self.rawdir]
+        args = ['wget','-q','-nd','-r','-l1','-np','-A','hdf','--show-progress','--progress=bar:force','--no-check-certificate','--user',self.username,'--password',self.password,'-P',self.rawdir]
 
         print('[%s]: Downloading products to %s ...\n' % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),self.rawdir))
         for ix,u in enumerate(self.modisURLs):
