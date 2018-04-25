@@ -138,7 +138,7 @@ class MODIShdf5:
         self.targetdir = targetdir
         #self.resdict = dict(zip(['250m','500m','1km','0.05_Deg'],[x/112000 for x in [250,500,1000,5600]])) ## commented for original resolution
         self.paramdict = dict(zip(['VIM','VEM','LTD','LTN'],['NDVI','EVI','LST_Day','LST_Night']))
-        self.minrows = 112
+        self.minrows = 120
         self.compression = compression
         self.dts_regexp = re.compile(r'.+A(\d{7}).+')
         self.dates = [re.findall(self.dts_regexp,x)[0] for x in files]
