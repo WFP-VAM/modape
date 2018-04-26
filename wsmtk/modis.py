@@ -90,7 +90,7 @@ class MODISquery:
         if self.username is None or self.password is None:
             raise SystemExit('No credentials found. Please run .setCredentials(username,password)!')
 
-        args = ['wget','-q','-nd','-r','-l1','-np','-A','hdf','--show-progress','--progress=bar:force','--no-check-certificate','--user',self.username,'--password',self.password,'-P',self.rawdir]
+        args = ['wget','-q','-nd','-nc','-np','-r','-l1','-A','hdf','--show-progress','--progress=bar:force','--no-check-certificate','--user',self.username,'--password',self.password,'-P',self.rawdir]
 
         print('[%s]: Downloading products to %s ...\n' % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),self.rawdir))
         for ix,u in enumerate(self.modisURLs):
