@@ -57,7 +57,7 @@ class MODISquery:
 
             dates_ix = np.flatnonzero(np.array([x >= self.begin and x < self.end for x in dates_parsed]))
 
-            self.modisURLs = [self.queryURL + x.encode('ascii') for x in dates[dates_ix]]
+            self.modisURLs = [self.queryURL + x for x in dates[dates_ix]]
 
         else:
 
