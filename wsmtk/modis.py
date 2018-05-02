@@ -36,6 +36,7 @@ class MODISquery:
         self.modisURLs = []
         self.begin = datetime.datetime.strptime(begindate,'%Y-%m-%d').date()
         self.end = datetime.datetime.strptime(enddate,'%Y-%m-%d').date()
+        self.global_flag = global_flag
 
         with requests.Session() as sess:
 
@@ -51,39 +52,14 @@ class MODISquery:
 
             soup = BeautifulSoup(response.content)
 
-            if global_flag:
-
-                r = re.compile('.*.hdf$')
+            if self.global_flag:
 
                 dates = np.array([x.getText() for x in soup.findAll('a',href=True) if re.match('\d{4}\.\d{2}\.\d{2}',x.getText())])
                 dates_parsed = [datetime.datetime.strptime(x,'%Y.%m.%d/').date() for x in dates]
 
                 dates_ix = np.flatnonzero(np.array([x >= self.begin and x < self.end for x in dates_parsed]))
 
-                date_urls = [self.queryURL + x for x in dates[dates_ix]]
-
-                for d_url in date_urls:
-
-                    try:
-                        resp_temp = sess.get(d_url)
-
-                    except requests.exceptions.RequestException as e:
-                        print(e)
-                        print('Error accessing {} - skipping.'.format(d_url))
-                        continue
-
-                    soup_temp = BeautifulSoup(resp_temp.content)
-
-                    hrefs = soup_temp.find_all('a',href=True)
-
-                    hdf_file = [x.getText() for x in hrefs if re.match(r,x.getText())]
-
-                    try:
-                        self.modisURLs.append(d_url + hdf_file[0])
-
-                    except IndexError:
-                        print('No HDF file found in {} - skipping.'.format(d_url))
-                        continue
+                self.modisURLs = [self.queryURL + x for x in dates[dates_ix]]
 
             else:
 
@@ -97,7 +73,7 @@ class MODISquery:
         print('... done.\n')
 
         if self.results > 0:
-            print('{} results found.'.format(self.results))
+            print('{} results found.\n'.format(self.results))
         else:
             print('0 results found. Please check query!')
 
@@ -111,14 +87,37 @@ class MODISquery:
         if self.username is None or self.password is None:
             raise SystemExit('No credentials found. Please run .setCredentials(username,password)!')
 
-
         print('[%s]: Downloading products to %s ...\n' % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),self.rawdir))
 
-        ### CHANGE download to REQUESTS - add progress bar?
+        r = re.compile('.*.hdf$')
+
         session = SessionWithHeaderRedirection(self.username, self.password)
 
         for ix,u in enumerate(self.modisURLs):
             print('%s of %s' %(ix+1,self.results))
+
+            if self.global_flag:
+
+                try:
+                    resp_temp = session.get(u)
+
+                except requests.exceptions.RequestException as e:
+                    print(e)
+                    print('Error accessing {} - skipping.'.format(u))
+                    continue
+
+                soup_temp = BeautifulSoup(resp_temp.content)
+
+                hrefs = soup_temp.find_all('a',href=True)
+
+                hdf_file = [x.getText() for x in hrefs if re.match(r,x.getText())]
+
+                try:
+                    u = u + hdf_file[0]
+
+                except IndexError:
+                    print('No HDF file found in {} - skipping.'.format(d_url))
+                    continue
 
             fname = u[u.rfind('/')+1:]
 
