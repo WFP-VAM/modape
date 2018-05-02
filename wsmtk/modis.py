@@ -120,12 +120,16 @@ class MODISquery:
         for ix,u in enumerate(self.modisURLs):
             print('%s of %s' %(ix+1,self.results))
 
+            fname = u[u.rfind('/')+1:]
+
+            if os.path.exists('{}/{}'.format(self.rawdir,fname)):
+                print('\nSkipping {} - {} already exists in {}!\n'.format(u,fname,self.rawdir))
+                continue
+
 
             try:
                 response = session.get(u, stream=True)
                 response.raise_for_status()
-
-                fname = u[u.rfind('/')+1:]
 
                 spinner = Spinner('Downloading {} ... '.format(fname))
 
