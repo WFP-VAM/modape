@@ -15,6 +15,7 @@ from .utils import LDOM
 from contextlib import contextmanager
 import pickle
 import warnings
+import itertools
 try:
     import gdal
 except ImportError:
@@ -201,10 +202,13 @@ class MODIShdf5:
 
     def update(self):
         print('Processing MODIS files ...\n')
-        bar = Bar('Processing',fill='=',max=self.nfiles,suffix='%(percent)d%%')
+
         with h5py.File(self.outname,'r+',libver='latest') as h5f:
             dset = h5f.get('Raw')
             dts  = h5f.get('Dates')
+            self.chunks = dset.chunks
+            self.rows = dset.shape[0]
+            self.cols = dset.shape[1]
             #res  = dset.attrs['Resolution'] ## comment for original resolution
 
             if dset.attrs['flag']:
@@ -216,37 +220,49 @@ class MODIShdf5:
 
             dts[uix:uix+self.nfiles] = [n.encode("ascii", "ignore") for n in self.dates]
 
-            for fix,fl in enumerate(self.files):
+            blks = itertools.product(range(0,self.rows,self.chunks[0]),range(0,self.cols,self.chunks[1]),range(0,self.nfiles,self.chunks[2]))
 
-                try:
+            nblcks = len(list(range(0,self.rows,self.chunks[0]))) * len(list(range(0,self.nfiles,self.chunks[2])))
 
-                    fl_o = gdal.Open(fl)
+            bar = Bar('Processing',fill='=',max=nblcks,suffix='%(percent)d%%')
 
-                    ref_sds = [x[0] for x in fl_o.GetSubDatasets() if self.paramdict[self.param] in x[0]][0]
+            t1 = time.time()
 
-                    ## comment for original resolution
-                    #rst = gdal.Warp('', ref_sds, dstSRS='EPSG:4326', format='VRT', outputType=gdal.GDT_Float32, xRes=res, yRes=res)
+            for blk in blks:
 
-                    rst = gdal.Open(ref_sds)
+                arr = np.zeros((self.chunks[0],self.chunks[1],min(self.nfiles,self.chunks[2])),dtype='int16')
 
-                    arr = rst.ReadAsArray()
+                for fix,fl in enumerate(self.files[blk[2]:(blk[2]+arr.shape[2])]):
 
-                    fl_o = None
-                    ref_sds = None
-                    rst = None
+                    try:
 
-                except AttributeError:
+                        fl_o = gdal.Open(fl)
 
-                    print('Error reading {} ... using empty array.'.format(fl))
+                        ref_sds = [x[0] for x in fl_o.GetSubDatasets() if self.paramdict[self.param] in x[0]][0]
 
-                    arr = np.zeros((dset.shape[0],dset.shape[1]),dtype='int16')
+                        ## comment for original resolution
+                        #rst = gdal.Warp('', ref_sds, dstSRS='EPSG:4326', format='VRT', outputType=gdal.GDT_Float32, xRes=res, yRes=res)
 
-                dset[...,uix+fix] = arr[...]
+                        rst = gdal.Open(ref_sds)
+
+                        arr[...,fix] = rst.ReadAsArray(yoff=blk[0],ysize=self.minrows)
+
+                        fl_o = None
+                        ref_sds = None
+                        rst = None
+
+                    except AttributeError:
+
+                        print('Error reading {} ... using empty array.'.format(fl))
+
+                        arr[...,fix] = np.zeros((self.chunks[0],self.chunks[1]),dtype='int16')
+
+                dset[blk[0]:(blk[0]+self.chunks[0]),:,uix:(uix+arr.shape[2])] = arr[...]
                 bar.next()
         bar.finish()
 
         print('\ndone.\n')
-
+        print(time.time() - t1)
 
     def __str__(self):
         return("MODIShdf5 object: %s - %s files - exists on disk: %s" % (self.outname, self.nfiles, self.exists))
