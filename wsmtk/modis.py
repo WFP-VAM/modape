@@ -225,6 +225,7 @@ class MODIShdf5:
             nblcks = len(list(range(0,self.rows,self.chunks[0]))) * len(list(range(0,self.nfiles,self.chunks[2])))
 
             bar = Bar('Processing',fill='=',max=nblcks,suffix='%(percent)d%%')
+            bar.goto(0)
 
             t1 = time.time()
 
