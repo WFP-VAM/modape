@@ -2,6 +2,7 @@
 from __future__ import print_function
 from wsmtk.modis import MODIShdf5
 import os
+import sys
 import glob
 import argparse
 import datetime
@@ -16,6 +17,12 @@ def main():
     #parser.add_argument("--rawdir", help='Storage directory for RAW MODIS files',metavar='')
     parser.add_argument("-c","--compression", help='Compression for HDF5 files',default=32001,metavar='')
     parser.add_argument("--all-parameters", help='Flag to process all possible VAM parameters',action='store_true')
+
+    # fail and print help if no arguments supplied
+    if len(sys.argv)==1:
+        parser.print_help(sys.stderr)
+        sys.exit(1)
+
     args = parser.parse_args()
 
     if not os.path.isdir(args.srcdir):
@@ -27,9 +34,10 @@ def main():
     # seperate input files into group
 
     ppatt = re.compile(r'M\w{6}')
-    tpatt = re.compile(r'h\d+v\d+\.\d{3}')
+    vpatt = re.compile('.+\.(\d{3})\..+')
+    tpatt = re.compile(r'h\d+v\d+')
 
-    groups = list(set(['-'.join(re.findall(ppatt,os.path.basename(x)) + re.findall(tpatt,os.path.basename(x)))  for x in files]))
+    groups = list(set(['.*'.join(re.findall(ppatt,os.path.basename(x)) + re.findall(tpatt,os.path.basename(x)) + [re.sub(vpatt,'\\1',os.path.basename(x))])  for x in files]))
 
     # if all parameters are requested
     if args.all_parameters:
@@ -39,15 +47,17 @@ def main():
 
         for g in groups:
 
-            files_sub = [x for x in files if g.split('-')[0] in x and g.split('-')[1] in x]
+            gpatt = re.compile(g + '.*hdf')
 
-            if re.match(vimvem,g.split('-')[0]):
+            files_sub = [x for x in files if re.search(gpatt,x)]
+
+            if re.match(vimvem,g.split('.*')[0]):
                 allps = ['VIM','VEM']
-            elif re.match(lst,g.split('-')[0]):
+            elif re.match(lst,g.split('.*')[0]):
                 allps = ['LTD','LTN']
             else:
                 ## maybe change to warning?
-                raise SystemExit('No parameters implemented for %s' % g.split('-')[0])
+                raise SystemExit('No parameters implemented for {}'.format(g.split('.*')[0]))
 
             for p in allps:
                 h5 = MODIShdf5(files_sub,param=p,targetdir=args.prcdir,compression=args.compression)
@@ -60,7 +70,9 @@ def main():
 
         for g in groups:
 
-            files_sub = [x for x in files if g.split('-')[0] in x and g.split('-')[1] in x]
+            gpatt = re.compile(g + '.*hdf')
+
+            files_sub = [x for x in files if re.search(gpatt,x)]
 
             h5 = MODIShdf5(files_sub,targetdir=args.prcdir,compression=args.compression)
 

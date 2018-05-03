@@ -13,28 +13,32 @@ import osr
 from progress.bar import Bar
 from .utils import LDOM
 from contextlib import contextmanager
+import pickle
+import warnings
 try:
     import gdal
 except ImportError:
     from osgeo import gdal
 
+# turn off BeautifulSoup warnings
+warnings.filterwarnings("ignore", category=UserWarning, module='bs4')
 
 class MODISquery:
 
-    def __init__(self,url,username=None,password=None,rawdir=os.getcwd()):
+    def __init__(self,url,begindate,enddate,username=None,password=None,rawdir=os.getcwd(),global_flag=None):
 
         self.queryURL = url
         self.username = username
         self.password = password
         self.rawdir = rawdir
         self.files = []
-        self.minrows = 112
-
-        r = re.compile(".+(h\d+v\d+).+")
+        self.modisURLs = []
+        self.begin = datetime.datetime.strptime(begindate,'%Y-%m-%d').date()
+        self.end = datetime.datetime.strptime(enddate,'%Y-%m-%d').date()
 
         print('Checking for MODIS products ...',end='')
         try:
-            response = requests.get(url)
+            response = requests.get(self.queryURL)
             self.statuscode = response.status_code
             response.raise_for_status()
 
@@ -42,16 +46,32 @@ class MODISquery:
             print(e)
             sys.exit(1)
 
-        soup = BeautifulSoup(response.content,"html5lib")
+        soup = BeautifulSoup(response.content)#,"html5lib")
 
-        self.modisURLs = [x.getText() for x in soup.find_all('url')]
+        if global_flag:
+
+            r = re.compile('.*.hdf$')
+
+            dates = np.array([x.getText() for x in soup.findAll('a',href=True) if re.match('\d{4}\.\d{2}\.\d{2}',x.getText())])
+            dates_parsed = [datetime.datetime.strptime(x,'%Y.%m.%d/').date() for x in dates]
+
+            dates_ix = np.flatnonzero(np.array([x >= self.begin and x < self.end for x in dates_parsed]))
+
+            self.modisURLs = [self.queryURL + x for x in dates[dates_ix]]
+
+        else:
+
+            r = re.compile(".+(h\d+v\d+).+")
+
+            self.modisURLs = [x.getText() for x in soup.find_all('url')]
+            self.tiles = list(set([r.search(x).group(1) for x in self.modisURLs]))
+
+
         self.results = len(self.modisURLs)
-        self.tiles = list(set([r.search(x).group(1) for x in self.modisURLs]))
-
         print('... done.\n')
 
         if self.results > 0:
-            print('%s results found.' % self.results)
+            print('{} results found.'.format(self.results))
         else:
             print('0 results found. Please check query!')
 
@@ -61,18 +81,16 @@ class MODISquery:
         self.password=password
 
     def download(self):
-
         try:
             temp = check_output(['wget', '--version'])
         except:
-            print("Download needs wget to be available in PATH! Please make sure it's installed and available in PATH!")
-            sys.exit(1)
+            raise SystemExit("Download needs wget to be available in PATH! Please make sure it's installed and available in PATH!")
+
 
         if self.username is None or self.password is None:
-            print('No credentials found. Please run .setCredentials(username,password)!')
-            sys.exit(1)
+            raise SystemExit('No credentials found. Please run .setCredentials(username,password)!')
 
-        args = ['wget','-q','--show-progress','--progress=bar:force','--no-check-certificate','--user',self.username,'--password',self.password,'-P',self.rawdir]
+        args = ['wget','-q','-nd','-nc','-np','-r','-l1','-A','hdf','--show-progress','--progress=bar:force','--no-check-certificate','--user',self.username,'--password',self.password,'-P',self.rawdir]
 
         print('[%s]: Downloading products to %s ...\n' % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),self.rawdir))
         for ix,u in enumerate(self.modisURLs):
@@ -80,11 +98,11 @@ class MODISquery:
             p = Popen(args + [u])
             p.wait()
             if p.returncode is not 0:
-                print("Couldn't download %s - continuing." % u)
+                print("Couldn't download {} - continuing.".format(u))
                 continue
             self.files = self.files + [self.rawdir + os.path.basename(u)]
 
-        print('\n[%s]: Downloading finished.' % time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+        print('\n[{}]: Downloading finished.'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
 
 
 
@@ -95,7 +113,7 @@ class MODIShdf5:
         self.targetdir = targetdir
         #self.resdict = dict(zip(['250m','500m','1km','0.05_Deg'],[x/112000 for x in [250,500,1000,5600]])) ## commented for original resolution
         self.paramdict = dict(zip(['VIM','VEM','LTD','LTN'],['NDVI','EVI','LST_Day','LST_Night']))
-        self.minrows = 112
+        self.minrows = 120
         self.compression = compression
         self.dts_regexp = re.compile(r'.+A(\d{7}).+')
         self.dates = [re.findall(self.dts_regexp,x)[0] for x in files]
@@ -104,6 +122,12 @@ class MODIShdf5:
         self.dates.sort()
         self.nfiles = len(self.files)
         self.ref_file = self.files[0]
+        self.ref_file_basename = os.path.basename(self.ref_file)
+
+
+        ppatt = re.compile(r'M\w{6}')
+        vpatt = re.compile('.+\.(\d{3})\..+')
+        tpatt = re.compile(r'h\d+v\d+')
 
         ref = gdal.Open(self.ref_file)
 
@@ -121,7 +145,7 @@ class MODIShdf5:
         self.outname = '{}/{}/{}_{}.h5'.format(
                                     self.targetdir,
                                     self.param,
-                                    '.'.join([os.path.basename(self.ref_file).split('.')[i] for i in [0,2,3]]),
+                                    '.'.join(re.findall(ppatt,self.ref_file_basename) + re.findall(tpatt,self.ref_file_basename) + [re.sub(vpatt,'\\1',self.ref_file_basename)]),
                                     self.param)
 
         self.exists = os.path.isfile(self.outname)

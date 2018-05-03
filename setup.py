@@ -44,6 +44,7 @@ setup(
     'downloadMODIS=wsmtk.downloadMODIS:main',
     'processMODIS=wsmtk.processMODIS:main',
     'windowMODIS=wsmtk.windowMODIS:main',
+    'MODproductTable=wsmtk.MODproductTable:main',
         ]
     },
     packages=find_packages(),
@@ -55,5 +56,5 @@ setup(
     'Programming Language :: Python :: 2',
     'Programming Language :: Python :: 3',
 ],
-    install_requires=['numpy','gdal','h5py','beautifulsoup4','requests','tables','progress'],
+    install_requires=['numpy','gdal','h5py','beautifulsoup4','requests','tables','progress','pandas'],
 )
