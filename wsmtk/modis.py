@@ -203,64 +203,71 @@ class MODIShdf5:
     def update(self):
         print('Processing MODIS files ...\n')
 
-        with h5py.File(self.outname,'r+',libver='latest') as h5f:
-            dset = h5f.get('Raw')
-            dts  = h5f.get('Dates')
-            self.chunks = dset.chunks
-            self.rows = dset.shape[0]
-            self.cols = dset.shape[1]
-            #res  = dset.attrs['Resolution'] ## comment for original resolution
+        try:
 
-            if dset.attrs['flag']:
-                uix = dset.shape[2]
-                dset.resize((dset.shape[0],dset.shape[1],dset.shape[2]+self.nfiles))
-            else:
-                uix = 0
-                dset.attrs['flag'] = True
 
-            dts[uix:uix+self.nfiles] = [n.encode("ascii", "ignore") for n in self.dates]
+            with h5py.File(self.outname,'r+',libver='latest') as h5f:
+                dset = h5f.get('Raw')
+                dts  = h5f.get('Dates')
+                self.chunks = dset.chunks
+                self.rows = dset.shape[0]
+                self.cols = dset.shape[1]
+                #res  = dset.attrs['Resolution'] ## comment for original resolution
 
-            blks = itertools.product(range(0,self.rows,self.chunks[0]),range(0,self.cols,self.chunks[1]),range(0,self.nfiles,self.chunks[2]))
+                if dset.attrs['flag']:
+                    uix = dset.shape[2]
+                    dset.resize((dset.shape[0],dset.shape[1],dset.shape[2]+self.nfiles))
+                else:
+                    uix = 0
+                    dset.attrs['flag'] = True
 
-            nblcks = len(list(range(0,self.rows,self.chunks[0]))) * len(list(range(0,self.nfiles,self.chunks[2])))
+                dts[uix:uix+self.nfiles] = [n.encode("ascii", "ignore") for n in self.dates]
 
-            bar = Bar('Processing',fill='=',max=nblcks,suffix='%(percent)d%%')
-            bar.goto(0)
+                blks = itertools.product(range(0,self.rows,self.chunks[0]),range(0,self.cols,self.chunks[1]),range(0,self.nfiles,self.chunks[2]))
 
-            for blk in blks:
+                nblcks = len(list(range(0,self.rows,self.chunks[0]))) * len(list(range(0,self.nfiles,self.chunks[2])))
 
-                arr = np.zeros((self.chunks[0],self.chunks[1],min(self.nfiles,self.chunks[2])),dtype='int16')
+                bar = Bar('Processing',fill='=',max=nblcks,suffix='%(percent)d%%')
+                bar.goto(0)
 
-                for fix,fl in enumerate(self.files[blk[2]:(blk[2]+arr.shape[2])]):
+                for blk in blks:
 
-                    try:
+                    arr = np.zeros((self.chunks[0],self.chunks[1],min(self.nfiles,self.chunks[2])),dtype='int16')
 
-                        fl_o = gdal.Open(fl)
+                    for fix,fl in enumerate(self.files[blk[2]:(blk[2]+arr.shape[2])]):
 
-                        ref_sds = [x[0] for x in fl_o.GetSubDatasets() if self.paramdict[self.param] in x[0]][0]
+                        try:
 
-                        ## comment for original resolution
-                        #rst = gdal.Warp('', ref_sds, dstSRS='EPSG:4326', format='VRT', outputType=gdal.GDT_Float32, xRes=res, yRes=res)
+                            fl_o = gdal.Open(fl)
 
-                        rst = gdal.Open(ref_sds)
+                            ref_sds = [x[0] for x in fl_o.GetSubDatasets() if self.paramdict[self.param] in x[0]][0]
 
-                        arr[...,fix] = rst.ReadAsArray(yoff=blk[0],ysize=self.minrows)
+                            ## comment for original resolution
+                            #rst = gdal.Warp('', ref_sds, dstSRS='EPSG:4326', format='VRT', outputType=gdal.GDT_Float32, xRes=res, yRes=res)
 
-                        fl_o = None
-                        ref_sds = None
-                        rst = None
+                            rst = gdal.Open(ref_sds)
 
-                    except AttributeError:
+                            arr[...,fix] = rst.ReadAsArray(yoff=blk[0],ysize=self.minrows)
 
-                        print('Error reading {} ... using empty array.'.format(fl))
+                            fl_o = None
+                            ref_sds = None
+                            rst = None
 
-                        arr[...,fix] = np.zeros((self.chunks[0],self.chunks[1]),dtype='int16')
+                        except AttributeError:
 
-                dset[blk[0]:(blk[0]+self.chunks[0]),:,uix:(uix+arr.shape[2])] = arr[...]
-                bar.next()
-        bar.finish()
+                            print('Error reading {} ... using empty array.'.format(fl))
 
-        print('\ndone.\n')
+                            arr[...,fix] = np.zeros((self.chunks[0],self.chunks[1]),dtype='int16')
+
+                    dset[blk[0]:(blk[0]+self.chunks[0]),:,uix:(uix+arr.shape[2])] = arr[...]
+                    bar.next()
+            bar.finish()
+
+            print('\ndone.\n')
+
+        except:
+            print('Error updating {}! File may be corrupt, consider creating the file from scratch, or closer investigation. \n\nError message: \n'.format(self.outname))
+            raise
 
     def __str__(self):
         return("MODIShdf5 object: %s - %s files - exists on disk: %s" % (self.outname, self.nfiles, self.exists))
