@@ -259,7 +259,7 @@ class MODIShdf5:
 
                         except AttributeError:
 
-                            print('Error reading {} ... using empty array.'.format(fl))
+                            print('Error reading {} ... using NoData value {}.'.format(fl,self.nodata_value))
 
                             arr[...,fix] = np.full((self.chunks[0],self.chunks[1]),self.nodata_value,dtype='int16')
                             continue
