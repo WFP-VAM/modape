@@ -16,6 +16,7 @@ from contextlib import contextmanager
 import pickle
 import warnings
 import itertools
+import shutil
 try:
     import gdal
 except ImportError:
@@ -196,8 +197,9 @@ class MODIShdf5:
             self.exists = True
             print('done.\n')
 
-        except OSError as err:
-            #raise RuntimeError ("{0}".format(err))
+        except:
+            print('\n\nError creating {}! Check input parameters (especially if compression/filter is available) and try again. Corrupt file will be removed now. \n\nError message: \n'.format(self.outname))
+            os.remove(self.outname)
             raise
 
     def update(self):
