@@ -172,7 +172,7 @@ class MODIShdf5:
         self.rows = rst.RasterYSize
         self.cols = rst.RasterXSize
         self.chunks = (self.minrows,self.cols,self.nfiles)
-        self.nodata_value = int(ref_sds.GetMetadata_Dict()['_FillValue'])
+        self.nodata_value = int(rst.GetMetadata_Dict()['_FillValue'])
 
         trans = rst.GetGeoTransform()
         prj = rst.GetProjection()
