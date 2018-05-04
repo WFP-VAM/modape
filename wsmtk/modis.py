@@ -16,7 +16,6 @@ from contextlib import contextmanager
 import pickle
 import warnings
 import itertools
-import shutil
 try:
     import gdal
 except ImportError:
