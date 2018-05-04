@@ -15,6 +15,7 @@ from .utils import LDOM
 from contextlib import contextmanager
 import pickle
 import warnings
+import itertools
 try:
     import gdal
 except ImportError:
@@ -195,58 +196,79 @@ class MODIShdf5:
             self.exists = True
             print('done.\n')
 
-        except OSError as err:
-            #raise RuntimeError ("{0}".format(err))
+        except:
+            print('\n\nError creating {}! Check input parameters (especially if compression/filter is available) and try again. Corrupt file will be removed now. \n\nError message: \n'.format(self.outname))
+            os.remove(self.outname)
             raise
 
     def update(self):
         print('Processing MODIS files ...\n')
-        bar = Bar('Processing',fill='=',max=self.nfiles,suffix='%(percent)d%%')
-        with h5py.File(self.outname,'r+',libver='latest') as h5f:
-            dset = h5f.get('Raw')
-            dts  = h5f.get('Dates')
-            #res  = dset.attrs['Resolution'] ## comment for original resolution
 
-            if dset.attrs['flag']:
-                uix = dset.shape[2]
-                dset.resize((dset.shape[0],dset.shape[1],dset.shape[2]+self.nfiles))
-            else:
-                uix = 0
-                dset.attrs['flag'] = True
+        try:
 
-            dts[uix:uix+self.nfiles] = [n.encode("ascii", "ignore") for n in self.dates]
 
-            for fix,fl in enumerate(self.files):
+            with h5py.File(self.outname,'r+',libver='latest') as h5f:
+                dset = h5f.get('Raw')
+                dts  = h5f.get('Dates')
+                self.chunks = dset.chunks
+                self.rows = dset.shape[0]
+                self.cols = dset.shape[1]
+                #res  = dset.attrs['Resolution'] ## comment for original resolution
 
-                try:
+                if dset.attrs['flag']:
+                    uix = dset.shape[2]
+                    dset.resize((dset.shape[0],dset.shape[1],dset.shape[2]+self.nfiles))
+                else:
+                    uix = 0
+                    dset.attrs['flag'] = True
 
-                    fl_o = gdal.Open(fl)
+                dts[uix:uix+self.nfiles] = [n.encode("ascii", "ignore") for n in self.dates]
 
-                    ref_sds = [x[0] for x in fl_o.GetSubDatasets() if self.paramdict[self.param] in x[0]][0]
+                blks = itertools.product(range(0,self.rows,self.chunks[0]),range(0,self.cols,self.chunks[1]),range(0,self.nfiles,self.chunks[2]))
 
-                    ## comment for original resolution
-                    #rst = gdal.Warp('', ref_sds, dstSRS='EPSG:4326', format='VRT', outputType=gdal.GDT_Float32, xRes=res, yRes=res)
+                nblcks = len(list(range(0,self.rows,self.chunks[0]))) * len(list(range(0,self.nfiles,self.chunks[2])))
 
-                    rst = gdal.Open(ref_sds)
+                bar = Bar('Processing',fill='=',max=nblcks,suffix='%(percent)d%%')
+                bar.goto(0)
 
-                    arr = rst.ReadAsArray()
+                for blk in blks:
 
-                    fl_o = None
-                    ref_sds = None
-                    rst = None
+                    arr = np.zeros((self.chunks[0],self.chunks[1],min(self.nfiles,self.chunks[2])),dtype='int16')
 
-                except AttributeError:
+                    for fix,fl in enumerate(self.files[blk[2]:(blk[2]+arr.shape[2])]):
 
-                    print('Error reading {} ... using empty array.'.format(fl))
+                        try:
 
-                    arr = np.zeros((dset.shape[0],dset.shape[1]),dtype='int16')
+                            fl_o = gdal.Open(fl)
 
-                dset[...,uix+fix] = arr[...]
-                bar.next()
-        bar.finish()
+                            ref_sds = [x[0] for x in fl_o.GetSubDatasets() if self.paramdict[self.param] in x[0]][0]
 
-        print('\ndone.\n')
+                            ## comment for original resolution
+                            #rst = gdal.Warp('', ref_sds, dstSRS='EPSG:4326', format='VRT', outputType=gdal.GDT_Float32, xRes=res, yRes=res)
 
+                            rst = gdal.Open(ref_sds)
+
+                            arr[...,fix] = rst.ReadAsArray(yoff=blk[0],ysize=self.minrows)
+
+                            fl_o = None
+                            ref_sds = None
+                            rst = None
+
+                        except AttributeError:
+
+                            print('Error reading {} ... using empty array.'.format(fl))
+
+                            arr[...,fix] = np.zeros((self.chunks[0],self.chunks[1]),dtype='int16')
+
+                    dset[blk[0]:(blk[0]+self.chunks[0]),:,uix:(uix+arr.shape[2])] = arr[...]
+                    bar.next()
+            bar.finish()
+
+            print('\ndone.\n')
+
+        except:
+            print('Error updating {}! File may be corrupt, consider creating the file from scratch, or closer investigation. \n\nError message: \n'.format(self.outname))
+            raise
 
     def __str__(self):
         return("MODIShdf5 object: %s - %s files - exists on disk: %s" % (self.outname, self.nfiles, self.exists))
