@@ -227,8 +227,6 @@ class MODIShdf5:
             bar = Bar('Processing',fill='=',max=nblcks,suffix='%(percent)d%%')
             bar.goto(0)
 
-            t1 = time.time()
-
             for blk in blks:
 
                 arr = np.zeros((self.chunks[0],self.chunks[1],min(self.nfiles,self.chunks[2])),dtype='int16')
@@ -263,7 +261,6 @@ class MODIShdf5:
         bar.finish()
 
         print('\ndone.\n')
-        print(time.time() - t1)
 
     def __str__(self):
         return("MODIShdf5 object: %s - %s files - exists on disk: %s" % (self.outname, self.nfiles, self.exists))
