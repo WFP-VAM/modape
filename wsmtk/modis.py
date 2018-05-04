@@ -265,6 +265,7 @@ class MODIShdf5:
                             continue
 
                     dset[blk[0]:(blk[0]+self.chunks[0]),:,uix:(uix+arr.shape[2])] = arr[...]
+                    del arr
                     bar.next()
             bar.finish()
 
