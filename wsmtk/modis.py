@@ -236,7 +236,13 @@ class MODIShdf5:
 
                 for blk in blks:
 
-                    arr = np.zeros((self.chunks[0],self.chunks[1],min(self.nfiles,self.chunks[2])),dtype='int16')
+                    try:
+
+                        arr = np.zeros((self.chunks[0],self.chunks[1],min(self.nfiles,self.chunks[2])),dtype='int16')
+
+                    except MemoryError:
+                        print("\n\n Can't allocate array for block due to memory restrictions! Make sure enough RAM is availabe, consider using a 64bit PYTHON version or reduce block size.\n\n Traceback:")
+                        raise
 
                     for fix,fl in enumerate(self.files[blk[2]:(blk[2]+arr.shape[2])]):
 
@@ -265,6 +271,7 @@ class MODIShdf5:
                             continue
 
                     dset[blk[0]:(blk[0]+self.chunks[0]),:,uix:(uix+arr.shape[2])] = arr[...]
+                    del arr
                     bar.next()
             bar.finish()
 
