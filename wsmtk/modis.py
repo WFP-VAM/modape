@@ -172,6 +172,7 @@ class MODIShdf5:
         self.rows = rst.RasterYSize
         self.cols = rst.RasterXSize
         self.chunks = (self.minrows,self.cols,self.nfiles)
+        self.nodata_value = int(rst.GetMetadata_Dict()['_FillValue'])
 
         trans = rst.GetGeoTransform()
         prj = rst.GetProjection()
@@ -192,6 +193,7 @@ class MODIShdf5:
                 dset.attrs['Projection'] = prj
                 dset.attrs['Resolution'] = trans[1] # res ## commented for original resolution
                 dset.attrs['flag'] = False
+                dset.attrs['nodata'] = self.nodata_value
 
             self.exists = True
             print('done.\n')
@@ -213,6 +215,7 @@ class MODIShdf5:
                 self.chunks = dset.chunks
                 self.rows = dset.shape[0]
                 self.cols = dset.shape[1]
+                self.nodata_value = dset.attrs['nodata']
                 #res  = dset.attrs['Resolution'] ## comment for original resolution
 
                 if dset.attrs['flag']:
@@ -228,7 +231,7 @@ class MODIShdf5:
 
                 nblcks = len(list(range(0,self.rows,self.chunks[0]))) * len(list(range(0,self.nfiles,self.chunks[2])))
 
-                bar = Bar('Processing',fill='=',max=nblcks,suffix='%(percent)d%%')
+                bar = Bar('Processing',fill='=',max=nblcks,suffix='%(percent)d%%  ')
                 bar.goto(0)
 
                 for blk in blks:
@@ -256,9 +259,10 @@ class MODIShdf5:
 
                         except AttributeError:
 
-                            print('Error reading {} ... using empty array.'.format(fl))
+                            print('Error reading {} ... using NoData value {}.'.format(fl,self.nodata_value))
 
-                            arr[...,fix] = np.zeros((self.chunks[0],self.chunks[1]),dtype='int16')
+                            arr[...,fix] = np.full((self.chunks[0],self.chunks[1]),self.nodata_value,dtype='int16')
+                            continue
 
                     dset[blk[0]:(blk[0]+self.chunks[0]),:,uix:(uix+arr.shape[2])] = arr[...]
                     bar.next()
