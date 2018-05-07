@@ -14,7 +14,7 @@ def dtype_GDNP(dt):
     }
 
     dt_tuple = [(k,v) for k,v in dt_dict.items() if k is dt or v is dt]
-    return(dt_tuple)
+    return(dt_tuple[0])
 
 
 def block_view(A, block= (3, 3)):
