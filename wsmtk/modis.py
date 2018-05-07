@@ -11,7 +11,7 @@ import tables
 import h5py
 import osr
 from progress.bar import Bar
-from .utils import LDOM, dtype_GD2NP
+from .utils import LDOM, dtype_GDNP
 from contextlib import contextmanager
 import pickle
 import warnings
