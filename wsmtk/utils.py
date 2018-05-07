@@ -3,8 +3,7 @@ import datetime
 
 def dtype_GDNP(dt):
     '''GDAL/NP DataType helper'''
-    dt_dict=
-    {
+    dt_dict={
     1: 'uint8',
     2: 'uint16',
     3: 'int16',
