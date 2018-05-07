@@ -11,7 +11,7 @@ import tables
 import h5py
 import osr
 from progress.bar import Bar
-from .utils import LDOM
+from .utils import LDOM, dtype_GDNP
 from contextlib import contextmanager
 import pickle
 import warnings
@@ -174,6 +174,14 @@ class MODIShdf5:
         self.chunks = (self.minrows,self.cols,self.nfiles)
         self.nodata_value = int(rst.GetMetadata_Dict()['_FillValue'])
 
+        dt = rst.GetRasterBand(1).DataType
+
+        try:
+            self.datatype = dtype_GDNP(dt)
+        except IndexError:
+            print("\n\n Couldn't read data type from dataset. Using default Int16!\n")
+            self.datatype = (3,'int16')
+
         trans = rst.GetGeoTransform()
         prj = rst.GetProjection()
 
@@ -185,8 +193,8 @@ class MODIShdf5:
         try:
 
             with h5py.File(self.outname,'x',libver='latest') as h5f:
-                dset = h5f.create_dataset('Raw',shape=(self.rows,self.cols,self.nfiles),dtype='int16',maxshape=(self.rows,self.cols,None),chunks=self.chunks,compression=self.compression)
-                h5f.create_dataset('Smooth',shape=(self.rows,self.cols,self.nfiles),dtype='int16',maxshape=(self.rows,self.cols,None),chunks=self.chunks,compression=self.compression)
+                dset = h5f.create_dataset('Raw',shape=(self.rows,self.cols,self.nfiles),dtype=self.datatype[1],maxshape=(self.rows,self.cols,None),chunks=self.chunks,compression=self.compression)
+                h5f.create_dataset('Smooth',shape=(self.rows,self.cols,self.nfiles),dtype=self.datatype[1],maxshape=(self.rows,self.cols,None),chunks=self.chunks,compression=self.compression)
                 h5f.create_dataset('lgrd',shape=(self.rows,self.cols),dtype='float32',maxshape=(self.rows,self.cols),chunks=self.chunks[0:2],compression=self.compression)
                 h5f.create_dataset('Dates',shape=(self.nfiles,),maxshape=(None,),dtype='S8',compression=self.compression)
                 dset.attrs['Geotransform'] = trans
@@ -238,7 +246,7 @@ class MODIShdf5:
 
                     try:
 
-                        arr = np.zeros((self.chunks[0],self.chunks[1],min(self.nfiles,self.chunks[2])),dtype='int16')
+                        arr = np.zeros((self.chunks[0],self.chunks[1],min(self.nfiles,self.chunks[2])),dtype=self.datatype[1])
 
                     except MemoryError:
                         print("\n\n Can't allocate array for block due to memory restrictions! Make sure enough RAM is availabe, consider using a 64bit PYTHON version or reduce block size.\n\n Traceback:")
@@ -267,7 +275,7 @@ class MODIShdf5:
 
                             print('Error reading {} ... using NoData value {}.'.format(fl,self.nodata_value))
 
-                            arr[...,fix] = np.full((self.chunks[0],self.chunks[1]),self.nodata_value,dtype='int16')
+                            arr[...,fix] = np.full((self.chunks[0],self.chunks[1]),self.nodata_value,dtype=self.datatype[1])
                             continue
 
                     dset[blk[0]:(blk[0]+self.chunks[0]),:,uix:(uix+arr.shape[2])] = arr[...]
@@ -349,6 +357,7 @@ class MODISmosaic:
                 r,c,t = dset.shape
                 self.tile_rws = r
                 self.tile_cls = c
+                self.datatype = dset.dtype
                 self.resolution = dset.attrs['Resolution']
                 self.resolution_degrees = self.resolution/112000
                 self.gt = dset.attrs['Geotransform']
@@ -368,7 +377,7 @@ class MODISmosaic:
 
     def getArray(self,dataset,ix):
 
-        array = np.zeros(((len(self.v_ix) * self.tile_rws),len(self.h_ix) * self.tile_cls),dtype='int16')
+        array = np.zeros(((len(self.v_ix) * self.tile_rws),len(self.h_ix) * self.tile_cls),dtype=self.datatype)
 
         for h5f in self.files:
 
@@ -397,9 +406,15 @@ class MODISmosaic:
 
         height, width = array.shape
 
+        try:
+            dt_gdal = dtype_GDNP(self.datatype)
+        except IndexError:
+            print("\n\n Couldn't read data type from dataset. Using default Int16!\n")
+            dt_gdal = (3,'int16')
+
         driver = gdal.GetDriverByName('GTiff')
 
-        self.raster = driver.Create('/vsimem/inmem.tif', width, height, 1, gdal.GDT_Int16)
+        self.raster = driver.Create('/vsimem/inmem.tif', width, height, 1, dt_gdal[0])
 
         self.raster.SetGeoTransform(self.gt)
         self.raster.SetProjection(self.pj)

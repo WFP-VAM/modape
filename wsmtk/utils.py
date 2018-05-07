@@ -1,6 +1,22 @@
 from numpy.lib.stride_tricks import as_strided as ast
 import datetime
 
+def dtype_GDNP(dt):
+    '''GDAL/NP DataType helper'''
+    dt_dict={
+    1: 'uint8',
+    2: 'uint16',
+    3: 'int16',
+    4: 'uint32',
+    5: 'int32',
+    6: 'float32',
+    7: 'float64'
+    }
+
+    dt_tuple = [(k,v) for k,v in dt_dict.items() if k is dt or v is dt]
+    return(dt_tuple[0])
+
+
 def block_view(A, block= (3, 3)):
     ## Credit to http://stackoverflow.com/a/5078155/1828289
     """Provide a 2D block view to 2D array. No error checking made.
