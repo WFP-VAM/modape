@@ -60,12 +60,16 @@ def main():
                 raise SystemExit('No parameters implemented for {}'.format(g.split('.*')[0]))
 
             for p in allps:
-                h5 = MODIShdf5(files_sub,param=p,targetdir=args.prcdir,compression=args.compression)
-                if not h5.exists:
-                    h5.create()
 
-                h5.update()
+                try:
+                    h5 = MODIShdf5(files_sub,param=p,targetdir=args.prcdir,compression=args.compression)
+                    if not h5.exists:
+                        h5.create()
+                    h5.update()
 
+                except Exception as e:
+                    print('\nError processing file group {}, parameter {}. Skipping to next group/parameter!. \n\n (Exception raised: {})\n)'.format(g,p,e))
+                    continue
     else:
 
         for g in groups:
@@ -74,13 +78,18 @@ def main():
 
             files_sub = [x for x in files if re.search(gpatt,x)]
 
-            h5 = MODIShdf5(files_sub,targetdir=args.prcdir,compression=args.compression)
+            try:
 
-            if not h5.exists:
-                h5.create()
+                h5 = MODIShdf5(files_sub,targetdir=args.prcdir,compression=args.compression)
 
-            h5.update()
+                if not h5.exists:
+                    h5.create()
 
+                h5.update()
+
+            except Exception as e:
+                print('\nError processing file group {}. Skipping to next group!. \n\n (Exception raised: {})\n)'.format(g,e))
+                continue
 
 if __name__ == '__main__':
     main()

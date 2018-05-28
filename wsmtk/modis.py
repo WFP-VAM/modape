@@ -12,10 +12,11 @@ import h5py
 import osr
 from progress.bar import Bar
 from progress.spinner import Spinner
-from .utils import LDOM, SessionWithHeaderRedirection
+from .utils import LDOM, dtype_GDNP, SessionWithHeaderRedirection
 from contextlib import contextmanager
 import pickle
 import warnings
+import itertools
 try:
     import gdal
 except ImportError:
@@ -212,6 +213,15 @@ class MODIShdf5:
         self.rows = rst.RasterYSize
         self.cols = rst.RasterXSize
         self.chunks = (self.minrows,self.cols,self.nfiles)
+        self.nodata_value = int(rst.GetMetadata_Dict()['_FillValue'])
+
+        dt = rst.GetRasterBand(1).DataType
+
+        try:
+            self.datatype = dtype_GDNP(dt)
+        except IndexError:
+            print("\n\n Couldn't read data type from dataset. Using default Int16!\n")
+            self.datatype = (3,'int16')
 
         trans = rst.GetGeoTransform()
         prj = rst.GetProjection()
@@ -224,70 +234,101 @@ class MODIShdf5:
         try:
 
             with h5py.File(self.outname,'x',libver='latest') as h5f:
-                dset = h5f.create_dataset('Raw',shape=(self.rows,self.cols,self.nfiles),dtype='int16',maxshape=(self.rows,self.cols,None),chunks=self.chunks,compression=self.compression)
-                h5f.create_dataset('Smooth',shape=(self.rows,self.cols,self.nfiles),dtype='int16',maxshape=(self.rows,self.cols,None),chunks=self.chunks,compression=self.compression)
+                dset = h5f.create_dataset('Raw',shape=(self.rows,self.cols,self.nfiles),dtype=self.datatype[1],maxshape=(self.rows,self.cols,None),chunks=self.chunks,compression=self.compression)
+                h5f.create_dataset('Smooth',shape=(self.rows,self.cols,self.nfiles),dtype=self.datatype[1],maxshape=(self.rows,self.cols,None),chunks=self.chunks,compression=self.compression)
                 h5f.create_dataset('lgrd',shape=(self.rows,self.cols),dtype='float32',maxshape=(self.rows,self.cols),chunks=self.chunks[0:2],compression=self.compression)
                 h5f.create_dataset('Dates',shape=(self.nfiles,),maxshape=(None,),dtype='S8',compression=self.compression)
                 dset.attrs['Geotransform'] = trans
                 dset.attrs['Projection'] = prj
                 dset.attrs['Resolution'] = trans[1] # res ## commented for original resolution
                 dset.attrs['flag'] = False
+                dset.attrs['nodata'] = self.nodata_value
 
             self.exists = True
             print('done.\n')
 
-        except OSError as err:
-            #raise RuntimeError ("{0}".format(err))
+        except:
+            print('\n\nError creating {}! Check input parameters (especially if compression/filter is available) and try again. Corrupt file will be removed now. \n\nError message: \n'.format(self.outname))
+            os.remove(self.outname)
             raise
 
     def update(self):
         print('Processing MODIS files ...\n')
-        bar = Bar('Processing',fill='=',max=self.nfiles,suffix='%(percent)d%%')
-        with h5py.File(self.outname,'r+',libver='latest') as h5f:
-            dset = h5f.get('Raw')
-            dts  = h5f.get('Dates')
-            #res  = dset.attrs['Resolution'] ## comment for original resolution
 
-            if dset.attrs['flag']:
-                uix = dset.shape[2]
-                dset.resize((dset.shape[0],dset.shape[1],dset.shape[2]+self.nfiles))
-            else:
-                uix = 0
-                dset.attrs['flag'] = True
+        try:
 
-            dts[uix:uix+self.nfiles] = [n.encode("ascii", "ignore") for n in self.dates]
 
-            for fix,fl in enumerate(self.files):
+            with h5py.File(self.outname,'r+',libver='latest') as h5f:
+                dset = h5f.get('Raw')
+                dts  = h5f.get('Dates')
+                self.chunks = dset.chunks
+                self.rows = dset.shape[0]
+                self.cols = dset.shape[1]
+                self.nodata_value = dset.attrs['nodata']
+                #res  = dset.attrs['Resolution'] ## comment for original resolution
 
-                try:
+                if dset.attrs['flag']:
+                    uix = dset.shape[2]
+                    dset.resize((dset.shape[0],dset.shape[1],dset.shape[2]+self.nfiles))
+                else:
+                    uix = 0
+                    dset.attrs['flag'] = True
 
-                    fl_o = gdal.Open(fl)
+                dts[uix:uix+self.nfiles] = [n.encode("ascii", "ignore") for n in self.dates]
 
-                    ref_sds = [x[0] for x in fl_o.GetSubDatasets() if self.paramdict[self.param] in x[0]][0]
+                blks = itertools.product(range(0,self.rows,self.chunks[0]),range(0,self.cols,self.chunks[1]),range(0,self.nfiles,self.chunks[2]))
 
-                    ## comment for original resolution
-                    #rst = gdal.Warp('', ref_sds, dstSRS='EPSG:4326', format='VRT', outputType=gdal.GDT_Float32, xRes=res, yRes=res)
+                nblcks = len(list(range(0,self.rows,self.chunks[0]))) * len(list(range(0,self.nfiles,self.chunks[2])))
 
-                    rst = gdal.Open(ref_sds)
+                bar = Bar('Processing',fill='=',max=nblcks,suffix='%(percent)d%%  ')
+                bar.goto(0)
 
-                    arr = rst.ReadAsArray()
+                for blk in blks:
 
-                    fl_o = None
-                    ref_sds = None
-                    rst = None
+                    try:
 
-                except AttributeError:
+                        arr = np.zeros((self.chunks[0],self.chunks[1],min(self.nfiles,self.chunks[2])),dtype=self.datatype[1])
 
-                    print('Error reading {} ... using empty array.'.format(fl))
+                    except MemoryError:
+                        print("\n\n Can't allocate array for block due to memory restrictions! Make sure enough RAM is availabe, consider using a 64bit PYTHON version or reduce block size.\n\n Traceback:")
+                        raise
 
-                    arr = np.zeros((dset.shape[0],dset.shape[1]),dtype='int16')
+                    for fix,fl in enumerate(self.files[blk[2]:(blk[2]+arr.shape[2])]):
 
-                dset[...,uix+fix] = arr[...]
-                bar.next()
-        bar.finish()
+                        try:
 
-        print('\ndone.\n')
+                            fl_o = gdal.Open(fl)
 
+                            ref_sds = [x[0] for x in fl_o.GetSubDatasets() if self.paramdict[self.param] in x[0]][0]
+
+                            ## comment for original resolution
+                            #rst = gdal.Warp('', ref_sds, dstSRS='EPSG:4326', format='VRT', outputType=gdal.GDT_Float32, xRes=res, yRes=res)
+
+                            rst = gdal.Open(ref_sds)
+
+                            arr[...,fix] = rst.ReadAsArray(yoff=blk[0],ysize=self.minrows)
+
+                            fl_o = None
+                            ref_sds = None
+                            rst = None
+
+                        except AttributeError:
+
+                            print('Error reading {} ... using NoData value {}.'.format(fl,self.nodata_value))
+
+                            arr[...,fix] = np.full((self.chunks[0],self.chunks[1]),self.nodata_value,dtype=self.datatype[1])
+                            continue
+
+                    dset[blk[0]:(blk[0]+self.chunks[0]),:,uix:(uix+arr.shape[2])] = arr[...]
+                    del arr
+                    bar.next()
+            bar.finish()
+
+            print('\ndone.\n')
+
+        except:
+            print('Error updating {}! File may be corrupt, consider creating the file from scratch, or closer investigation. \n\nError message: \n'.format(self.outname))
+            raise
 
     def __str__(self):
         return("MODIShdf5 object: %s - %s files - exists on disk: %s" % (self.outname, self.nfiles, self.exists))
@@ -357,6 +398,7 @@ class MODISmosaic:
                 r,c,t = dset.shape
                 self.tile_rws = r
                 self.tile_cls = c
+                self.datatype = dset.dtype
                 self.resolution = dset.attrs['Resolution']
                 self.resolution_degrees = self.resolution/112000
                 self.gt = dset.attrs['Geotransform']
@@ -376,7 +418,7 @@ class MODISmosaic:
 
     def getArray(self,dataset,ix):
 
-        array = np.zeros(((len(self.v_ix) * self.tile_rws),len(self.h_ix) * self.tile_cls),dtype='int16')
+        array = np.zeros(((len(self.v_ix) * self.tile_rws),len(self.h_ix) * self.tile_cls),dtype=self.datatype)
 
         for h5f in self.files:
 
@@ -405,9 +447,15 @@ class MODISmosaic:
 
         height, width = array.shape
 
+        try:
+            dt_gdal = dtype_GDNP(self.datatype)
+        except IndexError:
+            print("\n\n Couldn't read data type from dataset. Using default Int16!\n")
+            dt_gdal = (3,'int16')
+
         driver = gdal.GetDriverByName('GTiff')
 
-        self.raster = driver.Create('/vsimem/inmem.tif', width, height, 1, gdal.GDT_Int16)
+        self.raster = driver.Create('/vsimem/inmem.tif', width, height, 1, dt_gdal[0])
 
         self.raster.SetGeoTransform(self.gt)
         self.raster.SetProjection(self.pj)
