@@ -11,7 +11,8 @@ import tables
 import h5py
 import osr
 from progress.bar import Bar
-from .utils import LDOM, dtype_GDNP
+from progress.spinner import Spinner
+from .utils import LDOM, dtype_GDNP, SessionWithHeaderRedirection
 from contextlib import contextmanager
 import pickle
 import warnings
@@ -36,43 +37,44 @@ class MODISquery:
         self.modisURLs = []
         self.begin = datetime.datetime.strptime(begindate,'%Y-%m-%d').date()
         self.end = datetime.datetime.strptime(enddate,'%Y-%m-%d').date()
+        self.global_flag = global_flag
 
-        print('Checking for MODIS products ...',end='')
-        try:
-            response = requests.get(self.queryURL)
-            self.statuscode = response.status_code
-            response.raise_for_status()
+        with requests.Session() as sess:
 
-        except requests.exceptions.RequestException as e:
-            print(e)
-            sys.exit(1)
+            print('Checking for MODIS products ...',end='')
+            try:
+                response = sess.get(self.queryURL)
+                self.statuscode = response.status_code
+                response.raise_for_status()
 
-        soup = BeautifulSoup(response.content)#,"html5lib")
+            except requests.exceptions.RequestException as e:
+                print(e)
+                sys.exit(1)
 
-        if global_flag:
+            soup = BeautifulSoup(response.content)
 
-            r = re.compile('.*.hdf$')
+            if self.global_flag:
 
-            dates = np.array([x.getText() for x in soup.findAll('a',href=True) if re.match('\d{4}\.\d{2}\.\d{2}',x.getText())])
-            dates_parsed = [datetime.datetime.strptime(x,'%Y.%m.%d/').date() for x in dates]
+                dates = np.array([x.getText() for x in soup.findAll('a',href=True) if re.match('\d{4}\.\d{2}\.\d{2}',x.getText())])
+                dates_parsed = [datetime.datetime.strptime(x,'%Y.%m.%d/').date() for x in dates]
 
-            dates_ix = np.flatnonzero(np.array([x >= self.begin and x < self.end for x in dates_parsed]))
+                dates_ix = np.flatnonzero(np.array([x >= self.begin and x < self.end for x in dates_parsed]))
 
-            self.modisURLs = [self.queryURL + x for x in dates[dates_ix]]
+                self.modisURLs = [self.queryURL + x for x in dates[dates_ix]]
 
-        else:
+            else:
 
-            r = re.compile(".+(h\d+v\d+).+")
+                r = re.compile(".+(h\d+v\d+).+")
 
-            self.modisURLs = [x.getText() for x in soup.find_all('url')]
-            self.tiles = list(set([r.search(x).group(1) for x in self.modisURLs]))
+                self.modisURLs = [x.getText() for x in soup.find_all('url')]
+                self.tiles = list(set([r.search(x).group(1) for x in self.modisURLs]))
 
 
         self.results = len(self.modisURLs)
         print('... done.\n')
 
         if self.results > 0:
-            print('{} results found.'.format(self.results))
+            print('{} results found.\n'.format(self.results))
         else:
             print('0 results found. Please check query!')
 
@@ -82,26 +84,65 @@ class MODISquery:
         self.password=password
 
     def download(self):
-        try:
-            temp = check_output(['wget', '--version'])
-        except:
-            raise SystemExit("Download needs wget to be available in PATH! Please make sure it's installed and available in PATH!")
-
 
         if self.username is None or self.password is None:
             raise SystemExit('No credentials found. Please run .setCredentials(username,password)!')
 
-        args = ['wget','-q','-nd','-nc','-np','-r','-l1','-A','hdf','--show-progress','--progress=bar:force','--no-check-certificate','--user',self.username,'--password',self.password,'-P',self.rawdir]
-
         print('[%s]: Downloading products to %s ...\n' % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),self.rawdir))
+
+        r = re.compile('.*.hdf$')
+
+        session = SessionWithHeaderRedirection(self.username, self.password)
+
         for ix,u in enumerate(self.modisURLs):
             print('%s of %s' %(ix+1,self.results))
-            p = Popen(args + [u])
-            p.wait()
-            if p.returncode is not 0:
-                print("Couldn't download {} - continuing.".format(u))
+
+            if self.global_flag:
+
+                try:
+                    resp_temp = session.get(u)
+
+                except requests.exceptions.RequestException as e:
+                    print(e)
+                    print('Error accessing {} - skipping.'.format(u))
+                    continue
+
+                soup_temp = BeautifulSoup(resp_temp.content)
+
+                hrefs = soup_temp.find_all('a',href=True)
+
+                hdf_file = [x.getText() for x in hrefs if re.match(r,x.getText())]
+
+                try:
+                    u = u + hdf_file[0]
+
+                except IndexError:
+                    print('No HDF file found in {} - skipping.'.format(d_url))
+                    continue
+
+            fname = u[u.rfind('/')+1:]
+
+            if os.path.exists('{}/{}'.format(self.rawdir,fname)):
+                print('\nSkipping {} - {} already exists in {}!\n'.format(u,fname,self.rawdir))
                 continue
-            self.files = self.files + [self.rawdir + os.path.basename(u)]
+
+
+            try:
+                response = session.get(u, stream=True)
+                response.raise_for_status()
+
+                spinner = Spinner('Downloading {} ... '.format(fname))
+
+                with open(fname, 'wb') as fopen:
+                    for chunk in response.iter_content(chunk_size=1024*1024):
+                        fopen.write(chunk)
+                        spinner.next()
+
+                self.files = self.files + [self.rawdir + fname]
+                print(' done.\n')
+            except requests.exceptions.HTTPError as e:
+                print('Error downloading {} - skipping. Error message: {}'.format(u,e))
+                continue
 
         print('\n[{}]: Downloading finished.'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
 
