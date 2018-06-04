@@ -27,7 +27,7 @@ warnings.filterwarnings("ignore", category=UserWarning, module='bs4')
 
 class MODISquery:
 
-    def __init__(self,url,begindate,enddate,username=None,password=None,rawdir=os.getcwd(),global_flag=None):
+    def __init__(self,url,begindate,enddate,username=None,password=None,rawdir=os.getcwd(),global_flag=None,wget=False):
 
         self.queryURL = url
         self.username = username
@@ -38,6 +38,7 @@ class MODISquery:
         self.begin = datetime.datetime.strptime(begindate,'%Y-%m-%d').date()
         self.end = datetime.datetime.strptime(enddate,'%Y-%m-%d').date()
         self.global_flag = global_flag
+        self.wget = wget
 
         with requests.Session() as sess:
 
@@ -90,59 +91,85 @@ class MODISquery:
 
         print('[%s]: Downloading products to %s ...\n' % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),self.rawdir))
 
-        r = re.compile('.*.hdf$')
-
-        session = SessionWithHeaderRedirection(self.username, self.password)
-
-        for ix,u in enumerate(self.modisURLs):
-            print('%s of %s' %(ix+1,self.results))
-
-            if self.global_flag:
-
-                try:
-                    resp_temp = session.get(u)
-
-                except requests.exceptions.RequestException as e:
-                    print(e)
-                    print('Error accessing {} - skipping.'.format(u))
-                    continue
-
-                soup_temp = BeautifulSoup(resp_temp.content)
-
-                hrefs = soup_temp.find_all('a',href=True)
-
-                hdf_file = [x.getText() for x in hrefs if re.match(r,x.getText())]
-
-                try:
-                    u = u + hdf_file[0]
-
-                except IndexError:
-                    print('No HDF file found in {} - skipping.'.format(d_url))
-                    continue
-
-            fname = u[u.rfind('/')+1:]
-
-            if os.path.exists('{}/{}'.format(self.rawdir,fname)):
-                print('\nSkipping {} - {} already exists in {}!\n'.format(u,fname,self.rawdir))
-                continue
-
+        if self.wget:
 
             try:
-                response = session.get(u, stream=True)
-                response.raise_for_status()
+                temp = check_output(['wget', '--version'])
+            except:
+                raise SystemExit("WGET download needs WGET to be available in PATH! Please make sure it's installed and available in PATH!")
 
-                spinner = Spinner('Downloading {} ... '.format(fname))
+            with open(self.rawdir + '/MODIS_filelist.txt','w') as flist:
+                for item in self.modisURLs:
+                    flist.write("%s\n" % item)
 
-                with open(fname, 'wb') as fopen:
-                    for chunk in response.iter_content(chunk_size=1024*1024):
-                        fopen.write(chunk)
-                        spinner.next()
+            args = ['wget','-q','-nd','-nc','-np','-r','-l1','-A','hdf','--show-progress','--progress=bar:force','--no-check-certificate','--user',self.username,'--password',self.password,'-P',self.rawdir]
+        
+            p = Popen(args + ['-i','{}/MODIS_filelist.txt'.format(self.rawdir)])
+            p.wait()
+            if p.returncode is not 0:
+                print("Error occured during download, please check files against MODIS_filelist.txt!")
+            else:
+                os.remove(self.rawdir + '/MODIS_filelist.txt')
 
-                self.files = self.files + [self.rawdir + fname]
-                print(' done.\n')
-            except requests.exceptions.HTTPError as e:
-                print('Error downloading {} - skipping. Error message: {}'.format(u,e))
-                continue
+
+            self.files = [self.rawdir + os.path.basename(x) for x in self.modisURLs]
+
+
+        else:
+
+            r = re.compile('.*.hdf$')
+
+            session = SessionWithHeaderRedirection(self.username, self.password)
+
+            for ix,u in enumerate(self.modisURLs):
+                print('%s of %s' %(ix+1,self.results))
+
+                if self.global_flag:
+
+                    try:
+                        resp_temp = session.get(u)
+
+                    except requests.exceptions.RequestException as e:
+                        print(e)
+                        print('Error accessing {} - skipping.'.format(u))
+                        continue
+
+                    soup_temp = BeautifulSoup(resp_temp.content)
+
+                    hrefs = soup_temp.find_all('a',href=True)
+
+                    hdf_file = [x.getText() for x in hrefs if re.match(r,x.getText())]
+
+                    try:
+                        u = u + hdf_file[0]
+
+                    except IndexError:
+                        print('No HDF file found in {} - skipping.'.format(d_url))
+                        continue
+
+                fname = u[u.rfind('/')+1:]
+
+                if os.path.exists('{}/{}'.format(self.rawdir,fname)):
+                    print('\nSkipping {} - {} already exists in {}!\n'.format(u,fname,self.rawdir))
+                    continue
+
+
+                try:
+                    response = session.get(u, stream=True)
+                    response.raise_for_status()
+
+                    spinner = Spinner('Downloading {} ... '.format(fname))
+
+                    with open(fname, 'wb') as fopen:
+                        for chunk in response.iter_content(chunk_size=1024*1024):
+                            fopen.write(chunk)
+                            spinner.next()
+
+                    self.files = self.files + [self.rawdir + fname]
+                    print(' done.\n')
+                except requests.exceptions.HTTPError as e:
+                    print('Error downloading {} - skipping. Error message: {}'.format(u,e))
+                    continue
 
         print('\n[{}]: Downloading finished.'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
 
