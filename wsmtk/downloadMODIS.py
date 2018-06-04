@@ -21,6 +21,7 @@ def main():
     parser.add_argument("-d","--dest", help='Destination directory',default=os.getcwd(),metavar='')
     parser.add_argument("-v","--verbose", help='Verbosity',action='store_true')
     parser.add_argument("--download", help='Download data',action='store_true')
+    parser.add_argument("--wget", help='Use WGET for downloading',action='store_true')
 
     # fail and print help if no arguments supplied
     if len(sys.argv)==1:
@@ -89,7 +90,7 @@ def main():
 
         print('\nPRODUCT: {}\n'.format(p))
 
-        res = MODISquery(queryURL,rawdir=args.dest,begindate=args.begin_date,enddate=args.end_date,global_flag=global_flag)
+        res = MODISquery(queryURL,rawdir=args.dest,begindate=args.begin_date,enddate=args.end_date,global_flag=global_flag,wget=args.wget)
 
         if args.download and res.results > 0:
             res.setCredentials(args.username,args.password)
