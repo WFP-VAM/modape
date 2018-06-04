@@ -98,17 +98,22 @@ class MODISquery:
             except:
                 raise SystemExit("WGET download needs WGET to be available in PATH! Please make sure it's installed and available in PATH!")
 
+            with open(self.rawdir + '/MODIS_filelist.txt','w') as flist:
+                for item in self.modisURLs:
+                    flist.write("%s\n" % item)
 
             args = ['wget','-q','-nd','-nc','-np','-r','-l1','-A','hdf','--show-progress','--progress=bar:force','--no-check-certificate','--user',self.username,'--password',self.password,'-P',self.rawdir]
+        
+            p = Popen(args + ['-i','{}/MODIS_filelist.txt'.format(self.rawdir)])
+            p.wait()
+            if p.returncode is not 0:
+                print("Error occured during download, please check files against MODIS_filelist.txt!")
+            else:
+                os.remove(self.rawdir + '/MODIS_filelist.txt')
 
-            for ix,u in enumerate(self.modisURLs):
-                print('%s of %s' %(ix+1,self.results))
-                p = Popen(args + [u])
-                p.wait()
-                if p.returncode is not 0:
-                    print("Couldn't download {} - continuing.".format(u))
-                    continue
-                self.files = self.files + [self.rawdir + os.path.basename(u)]
+
+            self.files = [self.rawdir + os.path.basename(x) for x in self.modisURLs]
+
 
         else:
 
