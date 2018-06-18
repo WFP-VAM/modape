@@ -6,7 +6,7 @@ import sys
 import argparse
 import datetime
 import pickle
-
+import re
 
 def main():
 
@@ -33,6 +33,8 @@ def main():
     if args.download & (not args.username or not args.password):
         raise SystemExit('Downloading requires username and password!')
 
+    args.product = [x.upper() for x in args.product]
+
     this_dir, this_filename = os.path.split(__file__)
 
     with open(os.path.join(this_dir, "data", "MODIS_V6_PT.pkl"),'rb') as table_raw:
@@ -40,61 +42,68 @@ def main():
 
     for p in args.product:
 
-        try:
-            product_table_sub = product_table[p]
-
-        except KeyError:
-
-            if len(args.product) > 1:
-                print('Product {} not recognized. Skipping ...'.format(p))
-                continue
-            else:
-                raise SystemExit('Product {} not recognized!'.format(p))
-
-        global_flag = int(product_table_sub['pixel_size']) > 1000
-
-        if global_flag:
-
-            if 'MOD' in p:
-                queryURL = 'https://e4ftl01.cr.usgs.gov/MOLT/{}.006/'.format(p)
-            elif 'MYD' in p:
-                queryURL = 'https://e4ftl01.cr.usgs.gov/MOLA/{}.006/'.format(p)
-            elif 'MCD' in p:
-                queryURL = 'https://e4ftl01.cr.usgs.gov/MOTA/{}.006/'.format(p)
-            else:
-                raise SystemExit('Product {} not recognized. Available: MOD*, MYD*, MCD*')
-
-
+        if '?' in p:
+            patt = re.compile(p.replace('?','.{1,2}') + '$')
+            p = [x for x in product_table if re.match(patt,x)]
         else:
+            p = [p]
 
-            query = []
+        for p2 in p:
 
             try:
+                product_table_sub = product_table[p2]
 
-                if len(args.roi) is 2:
-                    query.append('latitude={}&longitude={}'.format(*args.roi))
-                elif len(args.roi) is 4:
-                    query.append('bbox={},{},{},{}'.format(*args.roi))
+            except KeyError:
+
+                if len(args.product) > 1:
+                    print('Product {} not recognized. Skipping ...'.format(p2))
+                    continue
                 else:
-                    raise SystemExit('ROI is expected to be point or bounding box coordinates!')
+                    raise SystemExit('Product {} not recognized!'.format(p2))
 
-            except TypeError:
-                raise SystemExit('Download of tiled MODIS products requires ROI!')
+            global_flag = int(product_table_sub['pixel_size']) > 1000
+
+            if global_flag:
+
+                if 'MOD' in p2:
+                    queryURL = 'https://e4ftl01.cr.usgs.gov/MOLT/{}.006/'.format(p2)
+                elif 'MYD' in p2:
+                    queryURL = 'https://e4ftl01.cr.usgs.gov/MOLA/{}.006/'.format(p2)
+                elif 'MCD' in p2:
+                    queryURL = 'https://e4ftl01.cr.usgs.gov/MOTA/{}.006/'.format(p2)
+                else:
+                    raise SystemExit('Product {} not recognized. Available: MOD*, MYD*, MCD*')
+
+            else:
+
+                query = []
+
+                try:
+
+                    if len(args.roi) is 2:
+                        query.append('latitude={}&longitude={}'.format(*args.roi))
+                    elif len(args.roi) is 4:
+                        query.append('bbox={},{},{},{}'.format(*args.roi))
+                    else:
+                        raise SystemExit('ROI is expected to be point or bounding box coordinates!')
+
+                except TypeError:
+                    raise SystemExit('Download of tiled MODIS products requires ROI!')
 
 
-            query.append('version={}'.format(args.collection))
-            query.append('date={}/{}'.format(args.begin_date,args.end_date))
+                query.append('version={}'.format(args.collection))
+                query.append('date={}/{}'.format(args.begin_date,args.end_date))
 
-            queryURL = 'https://lpdaacsvc.cr.usgs.gov/services/inventory?product={}&{}'.format(p,'&'.join(query))
+                queryURL = 'https://lpdaacsvc.cr.usgs.gov/services/inventory?product={}&{}'.format(p2,'&'.join(query))
 
 
-        print('\nPRODUCT: {}\n'.format(p))
+            print('\nPRODUCT: {}\n'.format(p2))
 
-        res = MODISquery(queryURL,rawdir=args.dest,begindate=args.begin_date,enddate=args.end_date,global_flag=global_flag,wget=args.wget)
+            res = MODISquery(queryURL,rawdir=args.dest,begindate=args.begin_date,enddate=args.end_date,global_flag=global_flag,wget=args.wget)
 
-        if args.download and res.results > 0:
-            res.setCredentials(args.username,args.password)
-            res.download()
+            if args.download and res.results > 0:
+                res.setCredentials(args.username,args.password)
+                res.download()
 
 
 if __name__ == '__main__':
