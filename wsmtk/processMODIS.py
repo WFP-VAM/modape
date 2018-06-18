@@ -36,14 +36,17 @@ def main():
     ppatt = re.compile(r'M\w{6}')
     vpatt = re.compile('.+\.(\d{3})\..+')
     tpatt = re.compile(r'h\d+v\d+')
+    vimvem = re.compile('M.D13')
+    lst = re.compile('M.D11')
 
-    groups = list(set(['.*'.join(re.findall(ppatt,os.path.basename(x)) + re.findall(tpatt,os.path.basename(x)) + [re.sub(vpatt,'\\1',os.path.basename(x))])  for x in files]))
+
+    groups = ['.*'.join(re.findall(ppatt,os.path.basename(x)) + re.findall(tpatt,os.path.basename(x)) + [re.sub(vpatt,'\\1',os.path.basename(x))])  for x in files]
+
+    # join MOD13/MYD13
+    groups = list(set([re.sub('(M.{1})(D.+)','M.'+'\\2',x) if re.match(vimvem,x) else x for x in groups]))
 
     # if all parameters are requested
     if args.all_parameters:
-
-        vimvem = re.compile('M.D13')
-        lst = re.compile('M.D11')
 
         for g in groups:
 
