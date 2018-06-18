@@ -195,7 +195,8 @@ class MODIShdf5:
         self.ref_file = self.files[0]
         self.ref_file_basename = os.path.basename(self.ref_file)
 
-        if not re.match(r'M.D13\w\d',self.ref_file) and not re.match(r'M.D11\w\d',self.ref_file):
+
+        if not re.match(r'M.D13\w\d',self.ref_file_basename) and not re.match(r'M.D11\w\d',self.ref_file_basename):
             raise SystemExit("Processing only implemented for M*D11 or M*13 products!")
 
         ppatt = re.compile(r'M\w{6}')
