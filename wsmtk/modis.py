@@ -373,9 +373,9 @@ class MODIShdf5:
 
                             for blk in blks:
 
-                                valarr[...] = val_rst.ReadAsArray(xoff=blk[1],yoff=blk[1],xsize=self.chunks[1],ysize=self.chunks[1])
+                                valarr[...] = val_rst.ReadAsArray(xoff=blk[1],yoff=blk[0],xsize=self.chunks[1],ysize=self.chunks[0])
 
-                                doyarr[...] = doy_rst.ReadAsArray(xoff=blk[1],yoff=blk[1],xsize=self.chunks[1],ysize=self.chunks[1])
+                                doyarr[...] = doy_rst.ReadAsArray(xoff=blk[1],yoff=blk[0],xsize=self.chunks[1],ysize=self.chunks[0])
 
                                 for doy_ix, doy in enumerate(ix):
 
@@ -450,7 +450,7 @@ class MODIShdf5:
 
                             for blk in blks:
 
-                                valarr[...] = val_rst.ReadAsArray(xoff=blk[1],yoff=blk[1],xsize=self.chunks[1],ysize=self.chunks[1])
+                                valarr[...] = val_rst.ReadAsArray(xoff=blk[1],yoff=blk[0],xsize=self.chunks[1],ysize=self.chunks[0])
 
                                 arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.numberofdays:flix*self.numberofdays+self.numberofdays]
 
