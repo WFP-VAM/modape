@@ -254,9 +254,9 @@ class MODIShdf5:
         self.cols = rst.RasterXSize
         self.nodata_value = int(rst.GetMetadataItem('_FillValue'))
 
-        if re.match(r'M.D13\w\d',self.ref_file):
+        if re.match(r'M.{1}D13\w\d',self.ref_file_basename):
             self.numberofdays = 16
-        elif re.match(r'M.D11\w\d',self.ref_file):
+        elif re.match(r'M.{1}D11\w\d',self.ref_file_basename):
             self.numberofdays = 8
         dt = rst.GetRasterBand(1).DataType
 
@@ -282,7 +282,7 @@ class MODIShdf5:
         try:
 
             with h5py.File(self.outname,'x',libver='latest') as h5f:
-                dset = h5f.create_dataset('Raw',shape=(self.rows,self.cols,(self.nfiles * self.numberofdays) + self.numberofdays),dtype=self.datatype[1],maxshape=(self.rows,self.cols,None),chunks=self.chunks,compression=self.compression)
+                dset = h5f.create_dataset('Raw',shape=(self.rows,self.cols,self.nfiles * self.numberofdays),dtype=self.datatype[1],maxshape=(self.rows,self.cols,None),chunks=self.chunks,compression=self.compression)
                 #h5f.create_dataset('Smooth',shape=(self.rows,self.cols,self.nfiles),dtype=self.datatype[1],maxshape=(self.rows,self.cols,None),chunks=self.chunks,compression=self.compression)
                 #h5f.create_dataset('lgrd',shape=(self.rows,self.cols),dtype='float32',maxshape=(self.rows,self.cols),chunks=self.chunks[0:2],compression=self.compression)
                 h5f.create_dataset('Dates',shape=(self.nfiles,),maxshape=(None,),dtype='S8',compression=self.compression)
@@ -419,7 +419,7 @@ class MODIShdf5:
                         del fl_o, val_sds, val_rst, doy_sds, doy_rst
 
                         bar.next()
-                        bar.finish()
+                    bar.finish()
 
                 else:
 
@@ -483,7 +483,7 @@ class MODIShdf5:
                         del fl_o, val_sds, val_rst
 
                         bar.next()
-                        bar.finish()
+                    bar.finish()
 
                 print('\ndone.\n')
 
