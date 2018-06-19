@@ -179,13 +179,14 @@ class MODISquery:
 
 class MODIShdf5:
 
-    def __init__(self,files,param=None,targetdir=os.getcwd(),compression='gzip',chunks=(120,120,16)):
+    def __init__(self,files,param=None,targetdir=os.getcwd(),compression='gzip',crow=120,ccol=120):
 
         self.targetdir = targetdir
         #self.resdict = dict(zip(['250m','500m','1km','0.05_Deg'],[x/112000 for x in [250,500,1000,5600]])) ## commented for original resolution
         self.paramdict = dict(zip(['VIM','VEM','LTD','LTN'],['NDVI','EVI','LST_Day','LST_Night']))
         self.compression = compression
-        self.chunks = chunks
+        self.crow = crow
+        self.ccol = ccol
         self.dts_regexp = re.compile(r'.+A(\d{7}).+')
         self.dates = [re.findall(self.dts_regexp,x)[0] for x in files]
 
@@ -236,7 +237,13 @@ class MODIShdf5:
 
         ref = gdal.Open(self.ref_file)
         ref_sds = [x[0] for x in ref.GetSubDatasets() if self.paramdict[self.param] in x[0]][0]
-        ref_doy = [x[0] for x in ref.GetSubDatasets() if 'day of the year' in x[0]][0]
+
+        try:
+            ref_doy = [x[0] for x in ref.GetSubDatasets() if 'day of the year' in x[0]][0]
+            doyflag = True
+        except IndexError:
+            doyflag = False
+
 
         #res = [value for key, value in self.resdict.items() if key in ref_sds][0] ## commented for original resolution
 
@@ -266,6 +273,8 @@ class MODIShdf5:
             print("\n\n Couldn't read data type from dataset. Using default Int16!\n")
             self.datatype = (3,'int16')
 
+        self.chunks = (self.crow,self.ccol,self.numberofdays)
+
         trans = rst.GetGeoTransform()
         prj = rst.GetProjection()
 
@@ -273,11 +282,6 @@ class MODIShdf5:
 
         if not os.path.exists(os.path.dirname(self.outname)):
             os.makedirs(os.path.dirname(self.outname))
-
-        if ref_doy:
-            doyflag = True
-        else:
-            doyflag = False
 
         try:
 
