@@ -15,7 +15,7 @@ def main():
     #parser.add_argument("-p","--parameter", help='VAM parameter code',metavar='') ## paramter selection not implemented
     parser.add_argument("--prcdir", help='Storage directory for PROCESSED MODIS files',default=os.getcwd(),metavar='')
     #parser.add_argument("--rawdir", help='Storage directory for RAW MODIS files',metavar='')
-    parser.add_argument("-c","--compression", help='Compression for HDF5 files',default=32001,metavar='')
+    parser.add_argument("-c","--compression", help='Compression for HDF5 files',default='gzip',metavar='')
     parser.add_argument("--all-parameters", help='Flag to process all possible VAM parameters',action='store_true')
 
     # fail and print help if no arguments supplied
@@ -36,14 +36,17 @@ def main():
     ppatt = re.compile(r'M\w{6}')
     vpatt = re.compile('.+\.(\d{3})\..+')
     tpatt = re.compile(r'h\d+v\d+')
+    vimvem = re.compile('M.D13')
+    lst = re.compile('M.D11')
 
-    groups = list(set(['.*'.join(re.findall(ppatt,os.path.basename(x)) + re.findall(tpatt,os.path.basename(x)) + [re.sub(vpatt,'\\1',os.path.basename(x))])  for x in files]))
+
+    groups = ['.*'.join(re.findall(ppatt,os.path.basename(x)) + re.findall(tpatt,os.path.basename(x)) + [re.sub(vpatt,'\\1',os.path.basename(x))])  for x in files]
+
+    # join MOD13/MYD13
+    groups = list(set([re.sub('(M.{1})(D.+)','M.'+'\\2',x) if re.match(vimvem,x) else x for x in groups]))
 
     # if all parameters are requested
     if args.all_parameters:
-
-        vimvem = re.compile('M.D13')
-        lst = re.compile('M.D11')
 
         for g in groups:
 

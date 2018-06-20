@@ -1,6 +1,7 @@
 from numpy.lib.stride_tricks import as_strided as ast
 import datetime
 import requests
+import gdal
 
 def dtype_GDNP(dt):
     '''GDAL/NP DataType helper'''
@@ -14,7 +15,7 @@ def dtype_GDNP(dt):
     7: 'float64'
     }
 
-    dt_tuple = [(k,v) for k,v in dt_dict.items() if k is dt or v is dt]
+    dt_tuple = [(k,v) for k,v in dt_dict.items() if k == dt or v == dt]
     return(dt_tuple[0])
 
 

@@ -17,6 +17,8 @@ from contextlib import contextmanager
 import pickle
 import warnings
 import itertools
+import bisect
+import gc
 try:
     import gdal
 except ImportError:
@@ -103,7 +105,7 @@ class MODISquery:
                     flist.write("%s\n" % item)
 
             args = ['wget','-q','-nd','-nc','-np','-r','-l1','-A','hdf','--show-progress','--progress=bar:force','--no-check-certificate','--user',self.username,'--password',self.password,'-P',self.rawdir]
-        
+
             p = Popen(args + ['-i','{}/MODIS_filelist.txt'.format(self.rawdir)])
             p.wait()
             if p.returncode is not 0:
@@ -177,13 +179,14 @@ class MODISquery:
 
 class MODIShdf5:
 
-    def __init__(self,files,param=None,targetdir=os.getcwd(),compression=32001):
+    def __init__(self,files,param=None,targetdir=os.getcwd(),compression='gzip',crow=120,ccol=120):
 
         self.targetdir = targetdir
         #self.resdict = dict(zip(['250m','500m','1km','0.05_Deg'],[x/112000 for x in [250,500,1000,5600]])) ## commented for original resolution
         self.paramdict = dict(zip(['VIM','VEM','LTD','LTN'],['NDVI','EVI','LST_Day','LST_Night']))
-        self.minrows = 120
         self.compression = compression
+        self.crow = crow
+        self.ccol = ccol
         self.dts_regexp = re.compile(r'.+A(\d{7}).+')
         self.dates = [re.findall(self.dts_regexp,x)[0] for x in files]
 
@@ -193,6 +196,9 @@ class MODIShdf5:
         self.ref_file = self.files[0]
         self.ref_file_basename = os.path.basename(self.ref_file)
 
+
+        if not re.match(r'M.D13\w\d',self.ref_file_basename) and not re.match(r'M.D11\w\d',self.ref_file_basename):
+            raise SystemExit("Processing only implemented for M*D11 or M*13 products!")
 
         ppatt = re.compile(r'M\w{6}')
         vpatt = re.compile('.+\.(\d{3})\..+')
@@ -211,19 +217,34 @@ class MODIShdf5:
 
         ref = None
 
+        if self.param is 'VIM' and any(['MOD' in os.path.basename(x) for x in files]) and any(['MYD' in os.path.basename(x) for x in files]):
+            self.product = ['MXD']
+        else:
+            self.product = re.findall(ppatt,self.ref_file_basename)
+
         self.outname = '{}/{}/{}_{}.h5'.format(
                                     self.targetdir,
                                     self.param,
-                                    '.'.join(re.findall(ppatt,self.ref_file_basename) + re.findall(tpatt,self.ref_file_basename) + [re.sub(vpatt,'\\1',self.ref_file_basename)]),
+                                    '.'.join(self.product + re.findall(tpatt,self.ref_file_basename) + [re.sub(vpatt,'\\1',self.ref_file_basename)]),
                                     self.param)
 
         self.exists = os.path.isfile(self.outname)
+        ref = None
+
 
     def create(self):
         print('\nCreating file: %s ... ' % self.outname, end='')
 
         ref = gdal.Open(self.ref_file)
         ref_sds = [x[0] for x in ref.GetSubDatasets() if self.paramdict[self.param] in x[0]][0]
+
+        try:
+            ref_doy = [x[0] for x in ref.GetSubDatasets() if 'day of the year' in x[0]][0]
+            doyflag = True
+        except IndexError:
+            doyflag = False
+
+
         #res = [value for key, value in self.resdict.items() if key in ref_sds][0] ## commented for original resolution
 
         ## commented for original resolution
@@ -234,14 +255,16 @@ class MODIShdf5:
 
         rst = gdal.Open(ref_sds)
 
-        ref = None
         ref_sds = None
 
         self.rows = rst.RasterYSize
         self.cols = rst.RasterXSize
-        self.chunks = (self.minrows,self.cols,self.nfiles)
-        self.nodata_value = int(rst.GetMetadata_Dict()['_FillValue'])
+        self.nodata_value = int(rst.GetMetadataItem('_FillValue'))
 
+        if re.match(r'M.{1}D13\w\d',self.ref_file_basename):
+            self.numberofdays = 16
+        elif re.match(r'M.{1}D11\w\d',self.ref_file_basename):
+            self.numberofdays = 8
         dt = rst.GetRasterBand(1).DataType
 
         try:
@@ -249,6 +272,8 @@ class MODIShdf5:
         except IndexError:
             print("\n\n Couldn't read data type from dataset. Using default Int16!\n")
             self.datatype = (3,'int16')
+
+        self.chunks = (self.crow,self.ccol,self.numberofdays)
 
         trans = rst.GetGeoTransform()
         prj = rst.GetProjection()
@@ -261,15 +286,16 @@ class MODIShdf5:
         try:
 
             with h5py.File(self.outname,'x',libver='latest') as h5f:
-                dset = h5f.create_dataset('Raw',shape=(self.rows,self.cols,self.nfiles),dtype=self.datatype[1],maxshape=(self.rows,self.cols,None),chunks=self.chunks,compression=self.compression)
-                h5f.create_dataset('Smooth',shape=(self.rows,self.cols,self.nfiles),dtype=self.datatype[1],maxshape=(self.rows,self.cols,None),chunks=self.chunks,compression=self.compression)
-                h5f.create_dataset('lgrd',shape=(self.rows,self.cols),dtype='float32',maxshape=(self.rows,self.cols),chunks=self.chunks[0:2],compression=self.compression)
+                dset = h5f.create_dataset('Raw',shape=(self.rows,self.cols,self.nfiles * self.numberofdays),dtype=self.datatype[1],maxshape=(self.rows,self.cols,None),chunks=self.chunks,compression=self.compression)
+                #h5f.create_dataset('Smooth',shape=(self.rows,self.cols,self.nfiles),dtype=self.datatype[1],maxshape=(self.rows,self.cols,None),chunks=self.chunks,compression=self.compression)
+                #h5f.create_dataset('lgrd',shape=(self.rows,self.cols),dtype='float32',maxshape=(self.rows,self.cols),chunks=self.chunks[0:2],compression=self.compression)
                 h5f.create_dataset('Dates',shape=(self.nfiles,),maxshape=(None,),dtype='S8',compression=self.compression)
                 dset.attrs['Geotransform'] = trans
                 dset.attrs['Projection'] = prj
                 dset.attrs['Resolution'] = trans[1] # res ## commented for original resolution
-                dset.attrs['flag'] = False
+                dset.attrs['doyflag'] = doyflag
                 dset.attrs['nodata'] = self.nodata_value
+                dset.attrs['numberofdays'] = self.numberofdays
 
             self.exists = True
             print('done.\n')
@@ -284,7 +310,6 @@ class MODIShdf5:
 
         try:
 
-
             with h5py.File(self.outname,'r+',libver='latest') as h5f:
                 dset = h5f.get('Raw')
                 dts  = h5f.get('Dates')
@@ -292,66 +317,179 @@ class MODIShdf5:
                 self.rows = dset.shape[0]
                 self.cols = dset.shape[1]
                 self.nodata_value = dset.attrs['nodata']
+                self.numberofdays = dset.attrs['numberofdays']
+                self.doyindex = int(self.numberofdays / 2)
+                self.datatype = dtype_GDNP(dset.dtype.name)
                 #res  = dset.attrs['Resolution'] ## comment for original resolution
 
-                if dset.attrs['flag']:
-                    uix = dset.shape[2]
-                    dset.resize((dset.shape[0],dset.shape[1],dset.shape[2]+self.nfiles))
-                else:
-                    uix = 0
-                    dset.attrs['flag'] = True
+                dates = [x.decode() for x in dts[...] if len(x) > 0]
+                [bisect.insort_left(dates,x) for x in self.dates if x not in dates]
 
-                dts[uix:uix+self.nfiles] = [n.encode("ascii", "ignore") for n in self.dates]
+                if len(dates) > dts.shape[0]:
+                    dts.resize((len(dates),))
+                    dset.resize((dset.shape[0],dset.shape[1],dset.shape[2] + len(dates) * self.numberofdays))
 
-                blks = itertools.product(range(0,self.rows,self.chunks[0]),range(0,self.cols,self.chunks[1]),range(0,self.nfiles,self.chunks[2]))
+                dts[...] = [n.encode("ascii", "ignore") for n in dates]
 
-                nblcks = len(list(range(0,self.rows,self.chunks[0]))) * len(list(range(0,self.nfiles,self.chunks[2])))
+                [gc.collect() for x in range(3)]
 
-                bar = Bar('Processing',fill='=',max=nblcks,suffix='%(percent)d%%  ')
-                bar.goto(0)
+                try:
+                    arr = np.zeros(self.chunks,dtype=self.datatype[1])
 
-                for blk in blks:
-
-                    try:
-
-                        arr = np.zeros((self.chunks[0],self.chunks[1],min(self.nfiles,self.chunks[2])),dtype=self.datatype[1])
-
-                    except MemoryError:
-                        print("\n\n Can't allocate array for block due to memory restrictions! Make sure enough RAM is availabe, consider using a 64bit PYTHON version or reduce block size.\n\n Traceback:")
+                except MemoryError:
+                        print("\n\n Can't allocate arrays for block due to memory restrictions! Make sure enough RAM is availabe, consider using a 64bit PYTHON version or reduce block size.\n\n Traceback:")
                         raise
 
-                    for fix,fl in enumerate(self.files[blk[2]:(blk[2]+arr.shape[2])]):
+                if dset.attrs['doyflag']:
+
+                    valarr = np.zeros(self.chunks[0:2],dtype=self.datatype[1])
+                    doyarr = np.zeros(self.chunks[0:2],dtype=self.datatype[1])
+
+
+                    I,J = np.ogrid[:self.chunks[0],:self.chunks[1]]
+
+                    bar = Bar('Processing',fill='=',max=self.nfiles,suffix='%(percent)d%%  ')
+                    bar.goto(0)
+
+                    for fl in self.files:
 
                         try:
 
+                            flix = dates.index(re.sub(self.dts_regexp,'\\1',fl))
+
+                            ix = [int((datetime.datetime.strptime(dates[flix],'%Y%j').date() + datetime.timedelta(x)).strftime('%j')) for x in range(16)]
+
                             fl_o = gdal.Open(fl)
 
-                            ref_sds = [x[0] for x in fl_o.GetSubDatasets() if self.paramdict[self.param] in x[0]][0]
+                            val_sds = [x[0] for x in fl_o.GetSubDatasets() if self.paramdict[self.param] in x[0]][0]
 
-                            ## comment for original resolution
-                            #rst = gdal.Warp('', ref_sds, dstSRS='EPSG:4326', format='VRT', outputType=gdal.GDT_Float32, xRes=res, yRes=res)
+                            doy_sds = [x[0] for x in fl_o.GetSubDatasets() if 'day of the year' in x[0]][0]
 
-                            rst = gdal.Open(ref_sds)
+                            blks = itertools.product(range(0,self.rows,self.chunks[0]),range(0,self.cols,self.chunks[1]))
 
-                            arr[...,fix] = rst.ReadAsArray(yoff=blk[0],ysize=self.minrows)
+                            val_rst = gdal.Open(val_sds)
 
-                            fl_o = None
-                            ref_sds = None
-                            rst = None
+                            doy_rst = gdal.Open(doy_sds)
+
+                            for blk in blks:
+
+                                valarr[...] = val_rst.ReadAsArray(xoff=blk[1],yoff=blk[0],xsize=self.chunks[1],ysize=self.chunks[0])
+
+                                doyarr[...] = doy_rst.ReadAsArray(xoff=blk[1],yoff=blk[0],xsize=self.chunks[1],ysize=self.chunks[0])
+
+                                for doy_ix, doy in enumerate(ix):
+
+                                    doyarr[doyarr == doy] = doy_ix
+                                doyarr[doyarr < 0] = self.doyindex # set -1 to mid value
+                                doyarr[doyarr > doy_ix] = doy_ix # clip to max doy
+
+                                arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.numberofdays:flix*self.numberofdays+self.numberofdays]
+
+                                arr[arr == 0] = self.nodata_value
+
+                                arr[I,J,doyarr] = np.maximum.reduce([arr[I,J,doyarr],valarr[...]])
+
+                                dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.numberofdays:flix*self.numberofdays+self.numberofdays] = arr[...]
+
 
                         except AttributeError:
 
                             print('Error reading {} ... using NoData value {}.'.format(fl,self.nodata_value))
 
-                            arr[...,fix] = np.full((self.chunks[0],self.chunks[1]),self.nodata_value,dtype=self.datatype[1])
-                            continue
+                            blks = itertools.product(range(0,self.rows,self.chunks[0]),range(0,self.cols,self.chunks[1]))
 
-                    dset[blk[0]:(blk[0]+self.chunks[0]),:,uix:(uix+arr.shape[2])] = arr[...]
-                    del arr
-                    bar.next()
-            bar.finish()
+                            ndarr = np.full((self.chunks[0],self.chunks[1]),self.nodata_value,dtype=self.datatype[1])
 
-            print('\ndone.\n')
+                            for blk in blks:
+
+
+                                arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.numberofdays:flix*self.numberofdays+self.numberofdays]
+
+                                arr[arr == 0] = self.nodata_value
+
+                                arr[...,self.doyindex] = np.maximum.reduce([arr[...,self.doyindex],ndarr])
+
+                                dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.numberofdays:flix*self.numberofdays+self.numberofdays] = arr[...]
+
+                            del ndarr
+
+
+                        fl_o = None
+                        val_sds = None
+                        doy_sds = None
+                        val_rst = None
+                        doy_rst = None
+
+                        del fl_o, val_sds, val_rst, doy_sds, doy_rst
+
+                        bar.next()
+                    bar.finish()
+
+                else:
+
+                    valarr = np.zeros(self.chunks[0:2],dtype=self.datatype[1])
+
+                    bar = Bar('Processing',fill='=',max=self.nfiles,suffix='%(percent)d%%  ')
+                    bar.goto(0)
+
+                    for fl in self.files:
+
+                        try:
+
+                            flix = dates.index(re.sub(self.dts_regexp,'\\1',fl))
+
+                            ix = [int((datetime.datetime.strptime(dates[flix],'%Y%j').date() + datetime.timedelta(x)).strftime('%j')) for x in range(16)]
+
+                            fl_o = gdal.Open(fl)
+
+                            val_sds = [x[0] for x in fl_o.GetSubDatasets() if self.paramdict[self.param] in x[0]][0]
+
+                            blks = itertools.product(range(0,self.rows,self.chunks[0]),range(0,self.cols,self.chunks[1]))
+
+                            val_rst = gdal.Open(val_sds)
+
+                            for blk in blks:
+
+                                valarr[...] = val_rst.ReadAsArray(xoff=blk[1],yoff=blk[0],xsize=self.chunks[1],ysize=self.chunks[0])
+
+                                arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.numberofdays:flix*self.numberofdays+self.numberofdays]
+
+                                arr[arr == 0] = self.nodata_value
+
+                                arr[...,self.doyindex] = np.maximum.reduce([arr[...,self.doyindex],valarr[...]])
+
+                                dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.numberofdays:flix*self.numberofdays+self.numberofdays] = arr[...]
+
+                        except AttributeError:
+
+                            print('Error reading {} ... using NoData value {}.'.format(fl,self.nodata_value))
+
+                            blks = itertools.product(range(0,self.rows,self.chunks[0]),range(0,self.cols,self.chunks[1]))
+
+                            ndarr = np.full((self.chunks[0],self.chunks[1]),self.nodata_value,dtype=self.datatype[1])
+
+                            for blk in blks:
+
+                                arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.numberofdays:flix*self.numberofdays+self.numberofdays]
+
+                                arr[arr == 0] = self.nodata_value
+
+                                arr[...,self.doyindex] = np.maximum.reduce([arr[...,self.doyindex],ndarr])
+
+                                dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.numberofdays:flix*self.numberofdays+self.numberofdays] = arr[...]
+
+                            del ndarr
+
+                        fl_o = None
+                        val_sds = None
+                        val_rst = None
+
+                        del fl_o, val_sds, val_rst
+
+                        bar.next()
+                    bar.finish()
+
+                print('\ndone.\n')
 
         except:
             print('Error updating {}! File may be corrupt, consider creating the file from scratch, or closer investigation. \n\nError message: \n'.format(self.outname))
