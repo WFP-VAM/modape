@@ -12,13 +12,14 @@ import h5py
 import osr
 from progress.bar import Bar
 from progress.spinner import Spinner
-from .utils import LDOM, dtype_GDNP, SessionWithHeaderRedirection
+from .utils import LDOM, dtype_GDNP, SessionWithHeaderRedirection, txx
 from contextlib import contextmanager
 import pickle
 import warnings
 import itertools
 import bisect
 import gc
+import array
 try:
     import gdal
 except ImportError:
@@ -219,10 +220,12 @@ class MODISrawh5:
 
         if self.param is 'VIM' and any(['MOD' in os.path.basename(x) for x in files]) and any(['MYD' in os.path.basename(x) for x in files]):
             self.product = ['MXD']
+            self.temporalresolution = 8
         else:
             self.product = re.findall(ppatt,self.ref_file_basename)
+            self.temporalresolution = None
 
-        self.outname = '{}/{}/{}_{}.h5'.format(
+        self.outname = '{}/{}/{}.{}.h5'.format(
                                     self.targetdir,
                                     self.param,
                                     '.'.join(self.product + re.findall(tpatt,self.ref_file_basename) + [re.sub(vpatt,'\\1',self.ref_file_basename)]),
@@ -263,8 +266,11 @@ class MODISrawh5:
 
         if re.match(r'M.{1}D13\w\d',self.ref_file_basename):
             self.numberofdays = 16
+            if not self.temporalresolution:
+                self.temporalresolution = self.numberofdays
         elif re.match(r'M.{1}D11\w\d',self.ref_file_basename):
             self.numberofdays = 8
+            self.temporalresolution = self.numberofdays
         dt = rst.GetRasterBand(1).DataType
 
         try:
@@ -286,16 +292,17 @@ class MODISrawh5:
         try:
 
             with h5py.File(self.outname,'x',libver='latest') as h5f:
-                dset = h5f.create_dataset('Raw',shape=(self.rows,self.cols,self.nfiles * self.numberofdays),dtype=self.datatype[1],maxshape=(self.rows,self.cols,None),chunks=self.chunks,compression=self.compression)
+                dset = h5f.create_dataset('data',shape=(self.rows,self.cols,self.nfiles * self.numberofdays),dtype=self.datatype[1],maxshape=(self.rows,self.cols,None),chunks=self.chunks,compression=self.compression)
                 #h5f.create_dataset('Smooth',shape=(self.rows,self.cols,self.nfiles),dtype=self.datatype[1],maxshape=(self.rows,self.cols,None),chunks=self.chunks,compression=self.compression)
                 #h5f.create_dataset('lgrd',shape=(self.rows,self.cols),dtype='float32',maxshape=(self.rows,self.cols),chunks=self.chunks[0:2],compression=self.compression)
-                h5f.create_dataset('Dates',shape=(self.nfiles,),maxshape=(None,),dtype='S8',compression=self.compression)
+                h5f.create_dataset('dates',shape=(self.nfiles,),maxshape=(None,),dtype='S8',compression=self.compression)
                 dset.attrs['Geotransform'] = trans
                 dset.attrs['Projection'] = prj
                 dset.attrs['Resolution'] = trans[1] # res ## commented for original resolution
                 dset.attrs['doyflag'] = doyflag
                 dset.attrs['nodata'] = self.nodata_value
                 dset.attrs['numberofdays'] = self.numberofdays
+                dset.attrs['temporalresolution'] = self.temporalresolution
 
             self.exists = True
             print('done.\n')
@@ -311,8 +318,8 @@ class MODISrawh5:
         try:
 
             with h5py.File(self.outname,'r+',libver='latest') as h5f:
-                dset = h5f.get('Raw')
-                dts  = h5f.get('Dates')
+                dset = h5f.get('data')
+                dts  = h5f.get('dates')
                 self.chunks = dset.chunks
                 self.rows = dset.shape[0]
                 self.cols = dset.shape[1]
@@ -499,6 +506,53 @@ class MODISrawh5:
         return("MODISrawh5 object: %s - %s files - exists on disk: %s" % (self.outname, self.nfiles, self.exists))
 
 
+class MODISsmth5:
+
+    def __init__(self,rawfile,lmbda=None,lmbdarr=None,tempint=None,targetdir=os.getcwd(),compression='gzip'):
+
+        if not os.path.isfile(rawfile):
+            raise SystemExit('Raw HDF5 {} not found! Please check path.'.format(rawfile))
+
+        self.targetdir = targetdir
+        self.rawfile = rawfile
+
+        try:
+            self.lmbda = 10**lmbda
+        except TypeError:
+            print('Error with lambda value. Expected float log10(lambda)! Continuing with default 0.1!')
+            self.lmbda = 10**0.1
+
+
+        try:
+            self.lmbdarr = array.array('f',np.linspace(float(lmbdarr[0]),float(lmbdarr[1]),float(lmbdarr[1])/float(lmbdarr[2]) + 1.0))
+        except (IndexError,TypeError):
+            print('Error with lambda array values. Expected tuple of float log10(lambda) - (lmin,lmax,lstep)! Continuing with default (0.0,4.0,0.1)!')
+            self.lmbdarr = array.array('f',np.linspace(0.0,4.0,41.0))
+
+        try:
+            txflag = txx(tempint)
+        except ValueError:
+            print('Value for temporal interpolation not valid (interger for nday required)! Continuing with native temporal resolution!')
+            txflag = 'n'
+
+        self.outname = '{}/{}.tx{}.h5'.format(
+                                    self.targetdir,
+                                    '.'.join(os.path.basename(rawfile).split('.')[:-1]),
+                                    txflag)
+
+        self.exists = os.path.isfile(self.outname)
+
+        if txflag == 'n':
+            try:
+                with h5py.File(rawfile,'r') as h5:
+                    ds = h5.get('data')
+                    self.temporalresolution = ds.attrs['temporalresolution']
+                    del ds
+            except Exception as e:
+                    raise SystemExit('Error reading rawfile {}. File may be corrupt. \n\n Error message: \n\n {}'.format(rawfile,e))
+        else:
+            self.temporalresolution = tempint
+
 
 class MODIStiles:
 
@@ -559,7 +613,7 @@ class MODISmosaic:
         try:
 
             with h5py.File(ref,'r') as h5f:
-                dset = h5f.get('Raw')
+                dset = h5f.get('data')
                 r,c,t = dset.shape
                 self.tile_rws = r
                 self.tile_cls = c
@@ -569,7 +623,7 @@ class MODISmosaic:
                 self.gt = dset.attrs['Geotransform']
                 self.pj = dset.attrs['Projection']
                 dset = None
-                self.dates = [x.decode() for x in h5f.get('Dates')[...]]
+                self.dates = [x.decode() for x in h5f.get('dates')[...]]
         except Exception as e:
             print('\nError reading refreferece file {} for mosaic! Error message: {}\n'.format(ref,e))
             raise
