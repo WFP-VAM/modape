@@ -98,3 +98,14 @@ class SessionWithHeaderRedirection(requests.Session):
 
 
         return
+
+def txx(x):
+    if x:
+        if int(x) == 5:
+            return 'p'
+        elif int(x) == 10:
+            return 'd'
+        else:
+            return 'c'
+    else:
+        return 'n'
