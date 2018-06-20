@@ -517,14 +517,20 @@ class MODISsmth5:
         self.rawfile = rawfile
 
         try:
-            self.lmbda = 10**lmbda
+            if lmbda:
+                self.lmbda = 10**lmbda
+            else:
+                self.lmbda = 10**0.1
         except TypeError:
             print('Error with lambda value. Expected float log10(lambda)! Continuing with default 0.1!')
             self.lmbda = 10**0.1
 
 
         try:
-            self.lmbdarr = array.array('f',np.linspace(float(lmbdarr[0]),float(lmbdarr[1]),float(lmbdarr[1])/float(lmbdarr[2]) + 1.0))
+            if lmbdarr:
+                self.lmbdarr = array.array('f',np.linspace(float(lmbdarr[0]),float(lmbdarr[1]),float(lmbdarr[1])/float(lmbdarr[2]) + 1.0))
+            else:
+                self.lmbdarr = array.array('f',np.linspace(0.0,4.0,41.0))
         except (IndexError,TypeError):
             print('Error with lambda array values. Expected tuple of float log10(lambda) - (lmin,lmax,lstep)! Continuing with default (0.0,4.0,0.1)!')
             self.lmbdarr = array.array('f',np.linspace(0.0,4.0,41.0))
