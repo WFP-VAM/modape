@@ -177,7 +177,7 @@ class MODISquery:
 
 
 
-class MODIShdf5:
+class MODISrawh5:
 
     def __init__(self,files,param=None,targetdir=os.getcwd(),compression='gzip',crow=120,ccol=120):
 
@@ -496,7 +496,7 @@ class MODIShdf5:
             raise
 
     def __str__(self):
-        return("MODIShdf5 object: %s - %s files - exists on disk: %s" % (self.outname, self.nfiles, self.exists))
+        return("MODISrawh5 object: %s - %s files - exists on disk: %s" % (self.outname, self.nfiles, self.exists))
 
 
 

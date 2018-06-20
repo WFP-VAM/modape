@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from __future__ import print_function
-from wsmtk.modis import MODIShdf5
+from wsmtk.modis import MODISrawh5
 import os
 import sys
 import glob
@@ -65,7 +65,7 @@ def main():
             for p in allps:
 
                 try:
-                    h5 = MODIShdf5(files_sub,param=p,targetdir=args.prcdir,compression=args.compression)
+                    h5 = MODISrawh5(files_sub,param=p,targetdir=args.prcdir,compression=args.compression)
                     if not h5.exists:
                         h5.create()
                     h5.update()
@@ -83,7 +83,7 @@ def main():
 
             try:
 
-                h5 = MODIShdf5(files_sub,targetdir=args.prcdir,compression=args.compression)
+                h5 = MODISrawh5(files_sub,targetdir=args.prcdir,compression=args.compression)
 
                 if not h5.exists:
                     h5.create()
