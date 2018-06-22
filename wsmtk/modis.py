@@ -265,12 +265,18 @@ class MODISrawh5:
         self.nodata_value = int(rst.GetMetadataItem('_FillValue'))
 
         if re.match(r'M.{1}D13\w\d',self.ref_file_basename):
-            self.numberofdays = 16
             if not self.temporalresolution:
+                self.numberofdays = 16
                 self.temporalresolution = self.numberofdays
+                totaldays = self.nfiles * self.temporalresolution
+            else:
+                self.numberofdays = 16
+                totaldays = self.nfiles * self.temporalresolution + self.temporalresolution
+
         elif re.match(r'M.{1}D11\w\d',self.ref_file_basename):
             self.numberofdays = 8
             self.temporalresolution = self.numberofdays
+            totaldays = self.nfiles * self.temporalresolution
         dt = rst.GetRasterBand(1).DataType
 
         try:
@@ -279,7 +285,7 @@ class MODISrawh5:
             print("\n\n Couldn't read data type from dataset. Using default Int16!\n")
             self.datatype = (3,'int16')
 
-        self.chunks = (self.crow,self.ccol,self.numberofdays)
+        self.chunks = (self.crow,self.ccol,self.temporalresolution)
 
         trans = rst.GetGeoTransform()
         prj = rst.GetProjection()
@@ -292,7 +298,7 @@ class MODISrawh5:
         try:
 
             with h5py.File(self.outname,'x',libver='latest') as h5f:
-                dset = h5f.create_dataset('data',shape=(self.rows,self.cols,self.nfiles * self.numberofdays),dtype=self.datatype[1],maxshape=(self.rows,self.cols,None),chunks=self.chunks,compression=self.compression)
+                dset = h5f.create_dataset('data',shape=(self.rows,self.cols,totaldays),dtype=self.datatype[1],maxshape=(self.rows,self.cols,None),chunks=self.chunks,compression=self.compression)
                 #h5f.create_dataset('Smooth',shape=(self.rows,self.cols,self.nfiles),dtype=self.datatype[1],maxshape=(self.rows,self.cols,None),chunks=self.chunks,compression=self.compression)
                 #h5f.create_dataset('lgrd',shape=(self.rows,self.cols),dtype='float32',maxshape=(self.rows,self.cols),chunks=self.chunks[0:2],compression=self.compression)
                 h5f.create_dataset('dates',shape=(self.nfiles,),maxshape=(None,),dtype='S8',compression=self.compression)
@@ -341,7 +347,7 @@ class MODISrawh5:
                 [gc.collect() for x in range(3)]
 
                 try:
-                    arr = np.zeros(self.chunks,dtype=self.datatype[1])
+                    arr = np.zeros((120,120,16),dtype=self.datatype[1])
 
                 except MemoryError:
                         print("\n\n Can't allocate arrays for block due to memory restrictions! Make sure enough RAM is availabe, consider using a 64bit PYTHON version or reduce block size.\n\n Traceback:")
@@ -380,6 +386,7 @@ class MODISrawh5:
 
                             for blk in blks:
 
+
                                 valarr[...] = val_rst.ReadAsArray(xoff=blk[1],yoff=blk[0],xsize=self.chunks[1],ysize=self.chunks[0])
 
                                 doyarr[...] = doy_rst.ReadAsArray(xoff=blk[1],yoff=blk[0],xsize=self.chunks[1],ysize=self.chunks[0])
@@ -390,13 +397,13 @@ class MODISrawh5:
                                 doyarr[doyarr < 0] = self.doyindex # set -1 to mid value
                                 doyarr[doyarr > doy_ix] = doy_ix # clip to max doy
 
-                                arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.numberofdays:flix*self.numberofdays+self.numberofdays]
+                                arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.temporalresolution:flix*self.temporalresolution+self.numberofdays]
 
                                 arr[arr == 0] = self.nodata_value
 
                                 arr[I,J,doyarr] = np.maximum.reduce([arr[I,J,doyarr],valarr[...]])
 
-                                dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.numberofdays:flix*self.numberofdays+self.numberofdays] = arr[...]
+                                dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.temporalresolution:flix*self.temporalresolution+self.numberofdays] = arr[...]
 
 
                         except AttributeError:
@@ -410,13 +417,13 @@ class MODISrawh5:
                             for blk in blks:
 
 
-                                arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.numberofdays:flix*self.numberofdays+self.numberofdays]
+                                arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.temporalresolution:flix*self.temporalresolution+self.numberofdays]
 
                                 arr[arr == 0] = self.nodata_value
 
                                 arr[...,self.doyindex] = np.maximum.reduce([arr[...,self.doyindex],ndarr])
 
-                                dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.numberofdays:flix*self.numberofdays+self.numberofdays] = arr[...]
+                                dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.temporalresolution:flix*self.temporalresolution+self.numberofdays] = arr[...]
 
                             del ndarr
 
