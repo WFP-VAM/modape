@@ -236,7 +236,7 @@ class MODISrawh5:
 
 
     def create(self):
-        print('\nCreating file: %s ... ' % self.outname, end='')
+        print('\nCreating file: {} ... '.format(self.outname), end='')
 
         ref = gdal.Open(self.ref_file)
         ref_sds = [x[0] for x in ref.GetSubDatasets() if self.paramdict[self.param] in x[0]][0]
@@ -555,15 +555,61 @@ class MODISsmth5:
         self.exists = os.path.isfile(self.outname)
 
         if txflag == 'n':
-            try:
-                with h5py.File(rawfile,'r') as h5:
-                    ds = h5.get('data')
-                    self.temporalresolution = ds.attrs['temporalresolution']
-                    del ds
-            except Exception as e:
-                    raise SystemExit('Error reading rawfile {}. File may be corrupt. \n\n Error message: \n\n {}'.format(rawfile,e))
+            self.temporalresolution = None
         else:
             self.temporalresolution = tempint
+
+
+    def create(self):
+
+        try:
+            with h5py.File(self.rawfile,'r') as h5f:
+                dset = h5f.get('data')
+                dts = h5f.get('dates')
+                dt = dset.dtype.name
+                cmpr = dset.compression
+                rows,cols,rawdays = dset.shape
+                rawchunks = dset.chunks
+                rgt = dset.attrs['geotransform']
+                rpj = dset.attrs['projection']
+                rres = dset.attrs['resolution']
+                rnd = dset.attrs['nodata']
+                rtres = dset.attrs['temporalresolution']
+                firstday = datetime.datetime.strptime(dts[0].decode(),'%Y%j').date()
+
+        except Exception as e:
+            raise SystemExit('Error reading rawfile {}. File may be corrupt. \n\n Error message: \n\n {}'.format(self.rawfile,e))
+
+        if not self.temporalresolution:
+            self.temporalresolution = rtres
+
+        dates = [(firstday + datetime.timedelta(x)).strftime('%Y%j') for x in range(0,rawdays,self.temporalresolution)]
+        print(dates)
+        days = len(dates)
+
+        self.chunks = (rawchunks[0],rawchunks[1],1)
+
+        print('\nCreating file: {} ... '.format(self.outname), end='')
+
+        try:
+            with h5py.File(self.outname,'x',libver='latest') as h5f:
+                dset = h5f.create_dataset('data',shape=(rows,cols,days),dtype=dt,maxshape=(rows,cols,None),chunks=self.chunks,compression=cmpr,fillvalue=rnd)
+                h5f.create_dataset('lgrid',shape=(rows,cols),dtype='float32',maxshape=(rows,cols),chunks=self.chunks[0:2],compression=cmpr)
+                h5f.create_dataset('dates',shape=(days,),maxshape=(None,),dtype='S8',compression=cmpr,data = [x.encode('ascii','ignore') for x in dates])
+                dset.attrs['geotransform'] = rgt
+                dset.attrs['projection'] = rpj
+                dset.attrs['resolution'] = rres
+                dset.attrs['nodata'] = rnd
+                dset.attrs['temporalresolution'] = self.temporalresolution
+
+        except:
+            print('\n\nError creating {}! Check input parameters (especially if compression/filter is available) and try again. Corrupt file will be removed now. \n\nError message: \n'.format(self.outname))
+            os.remove(self.outname)
+            raise
+
+
+        self.exists = True
+        print('done.\n')
 
 
 class MODIStiles:
