@@ -302,9 +302,9 @@ class MODISrawh5:
                 #h5f.create_dataset('Smooth',shape=(self.rows,self.cols,self.nfiles),dtype=self.datatype[1],maxshape=(self.rows,self.cols,None),chunks=self.chunks,compression=self.compression)
                 #h5f.create_dataset('lgrd',shape=(self.rows,self.cols),dtype='float32',maxshape=(self.rows,self.cols),chunks=self.chunks[0:2],compression=self.compression)
                 h5f.create_dataset('dates',shape=(self.nfiles,),maxshape=(None,),dtype='S8',compression=self.compression)
-                dset.attrs['Geotransform'] = trans
-                dset.attrs['Projection'] = prj
-                dset.attrs['Resolution'] = trans[1] # res ## commented for original resolution
+                dset.attrs['geotransform'] = trans
+                dset.attrs['projection'] = prj
+                dset.attrs['resolution'] = trans[1] # res ## commented for original resolution
                 dset.attrs['doyflag'] = doyflag
                 dset.attrs['nodata'] = self.nodata_value
                 dset.attrs['numberofdays'] = self.numberofdays
@@ -415,7 +415,6 @@ class MODISrawh5:
                             ndarr = np.full((self.chunks[0],self.chunks[1]),self.nodata_value,dtype=self.datatype[1])
 
                             for blk in blks:
-
 
                                 arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.temporalresolution:flix*self.temporalresolution+self.numberofdays]
 
