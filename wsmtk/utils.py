@@ -109,3 +109,22 @@ def txx(x):
             return 'c'
     else:
         return 'n'
+
+
+def init_array(cshp, ncell):
+    '''Create shared value array for smoothing'''
+    shared_array_base = multiprocessing.Array(ctypes.c_float,ncell,lock=False)
+    main_nparray = np.frombuffer(shared_array_base, dtype=ctypes.c_float)
+    main_nparray = main_nparray.reshape(cshp[0]*cshp[1],cshp[2])
+
+    assert main_nparray.base.base is shared_array_base
+    return(main_nparray)
+
+def init_lamarray(cshp):
+    '''Create shared lambda array for smoothing'''
+    nc = cshp[0] * cshp[1]
+    shared_array_base = multiprocessing.Array(ctypes.c_float,nc,lock=False)
+    main_nparray = np.frombuffer(shared_array_base, dtype=ctypes.c_float)
+
+    assert main_nparray.base is shared_array_base
+    return(main_nparray)
