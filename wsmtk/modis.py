@@ -12,7 +12,7 @@ import h5py
 import osr
 from progress.bar import Bar
 from progress.spinner import Spinner
-from .utils import LDOM, dtype_GDNP, SessionWithHeaderRedirection, txx, init_array, init_lamarray, worker_fn
+from .utils import LDOM, dtype_GDNP, SessionWithHeaderRedirection, txx, init_array, init_lamarray, worker_fn, fromjulian
 from .whittaker import ws2d
 from contextlib import contextmanager
 import pickle
@@ -372,7 +372,7 @@ class MODISrawh5:
 
                             flix = dates.index(re.sub(self.dts_regexp,'\\1',fl))
 
-                            ix = [int((datetime.datetime.strptime(dates[flix],'%Y%j').date() + datetime.timedelta(x)).strftime('%j')) for x in range(16)]
+                            ix = [int((fromjulian(dates[flix]) + datetime.timedelta(x)).strftime('%j')) for x in range(16)]
 
                             fl_o = gdal.Open(fl)
 
@@ -453,7 +453,7 @@ class MODISrawh5:
 
                             flix = dates.index(re.sub(self.dts_regexp,'\\1',fl))
 
-                            ix = [int((datetime.datetime.strptime(dates[flix],'%Y%j').date() + datetime.timedelta(x)).strftime('%j')) for x in range(16)]
+                            ix = [int((fromjulian(dates[flix]) + datetime.timedelta(x)).strftime('%j')) for x in range(16)]
 
                             fl_o = gdal.Open(fl)
 
@@ -578,7 +578,7 @@ class MODISsmth5:
                 rres = dset.attrs['resolution']
                 rnd = dset.attrs['nodata']
                 rtres = dset.attrs['temporalresolution']
-                firstday = datetime.datetime.strptime(dts[0].decode(),'%Y%j').date()
+                firstday = fromjulian(dts[0].decode())
 
         except Exception as e:
             raise SystemExit('Error reading rawfile {}. File may be corrupt. \n\n Error message: \n\n {}'.format(self.rawfile,e))
@@ -766,7 +766,7 @@ class MODISmosaic:
             raise
 
 
-        dts_dt = [datetime.datetime.strptime(x,'%Y%j').date() for x in self.dates]
+        dts_dt = [fromjulian(x) for x in self.dates]
         datemin_p = datetime.datetime.strptime(datemin,'%Y%m').date()
         datemax_p = datetime.datetime.strptime(datemax,'%Y%m').date()
 
