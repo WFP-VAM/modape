@@ -111,6 +111,10 @@ def txx(x):
         return 'n'
 
 
+def fromjulian(x):
+    return datetime.datetime.strptime(x,'%Y%j').date()
+
+
 def init_array(cshp, ncell):
     '''Create shared value array for smoothing'''
     shared_array_base = multiprocessing.Array(ctypes.c_float,ncell,lock=False)
