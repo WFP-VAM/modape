@@ -1,7 +1,10 @@
 from numpy.lib.stride_tricks import as_strided as ast
+import numpy as np
 import datetime
 import requests
 import gdal
+import ctypes
+import multiprocessing
 
 def dtype_GDNP(dt):
     '''GDAL/NP DataType helper'''
@@ -95,8 +98,6 @@ class SessionWithHeaderRedirection(requests.Session):
             if (original_parsed.hostname != redirect_parsed.hostname) and redirect_parsed.hostname != self.AUTH_HOST and original_parsed.hostname != self.AUTH_HOST:
                 del headers['Authorization']
 
-
-
         return
 
 def txx(x):
@@ -132,3 +133,8 @@ def init_lamarray(cshp):
 
     assert main_nparray.base is shared_array_base
     return(main_nparray)
+
+def worker_fn(ix):
+    #worker function for parallel smoothing
+    if (wts[ix,...].sum().item() != 0.0):
+        arr[ix,...] = ws2d(arr[ix,...],lmda = l,w = wts[ix,...])
