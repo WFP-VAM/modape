@@ -12,7 +12,8 @@ import h5py
 import osr
 from progress.bar import Bar
 from progress.spinner import Spinner
-from .utils import LDOM, dtype_GDNP, SessionWithHeaderRedirection, txx
+from .utils import LDOM, dtype_GDNP, SessionWithHeaderRedirection, txx, init_array, init_lamarray, worker_fn
+from .whittaker import ws2d
 from contextlib import contextmanager
 import pickle
 import warnings
@@ -20,6 +21,7 @@ import itertools
 import bisect
 import gc
 import array
+import multiprocessing
 try:
     import gdal
 except ImportError:
@@ -514,13 +516,14 @@ class MODISrawh5:
 
 class MODISsmth5:
 
-    def __init__(self,rawfile,lmbda=None,lmbdarr=None,tempint=None,targetdir=os.getcwd(),compression='gzip'):
+    def __init__(self,rawfile,lmbda=None,lmbdarr=None,tempint=None,targetdir=os.getcwd(),parallel=False):
 
         if not os.path.isfile(rawfile):
             raise SystemExit('Raw HDF5 {} not found! Please check path.'.format(rawfile))
 
         self.targetdir = targetdir
         self.rawfile = rawfile
+        self.parallel = parallel
 
         try:
             if lmbda:
@@ -584,7 +587,6 @@ class MODISsmth5:
             self.temporalresolution = rtres
 
         dates = [(firstday + datetime.timedelta(x)).strftime('%Y%j') for x in range(0,rawdays,self.temporalresolution)]
-        print(dates)
         days = len(dates)
 
         self.chunks = (rawchunks[0],rawchunks[1],1)
@@ -610,6 +612,83 @@ class MODISsmth5:
 
         self.exists = True
         print('done.\n')
+
+    def ws2d(self):
+
+        global l
+        global arr
+        global wts
+
+        l = self.lmbda
+
+        with h5py.File(self.rawfile,'r') as rawh5, h5py.File(self.outname,'r+') as smth5:
+
+            raw_ds = rawh5.get('data')
+            smt_ds = smth5.get('data')
+
+            rawshape = raw_ds.shape
+            rawchunks = raw_ds.chunks
+
+            nodata = raw_ds.attrs['nodata']
+            tres = smt_ds.attrs['temporalresolution']
+
+            ncell = rawchunks[0] * rawchunks[1] * rawshape[2]
+
+            if self.parallel:
+
+                arr = init_array((rawchunks[0],rawchunks[1],rawshape[2]),ncell)
+                wts = init_array((rawchunks[0],rawchunks[1],rawshape[2]),ncell)
+
+                blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
+
+                for b in blks:
+
+                    for ix in range(0,rawshape[2],rawchunks[2]):
+
+                        arr[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]].reshape(rawchunks[0]*rawchunks[1],rawchunks[2])
+
+                        wts[...] = (arr != nodata) * 1
+
+                    del ix
+
+                    with multiprocessing.Pool() as p:
+                        p.map(worker_fn,range(0,arr.shape[0]))
+
+                    for i,j in enumerate(range(0,rawshape[2],tres)):
+                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr[...,j].reshape(rawchunks[0],rawchunks[1]).round()
+
+            else:
+
+                arr = np.zeros((rawchunks[0]*rawchunks[1],rawshape[2]),dtype='float32')
+                wts = np.zeros((rawchunks[0]*rawchunks[1],rawshape[2]),dtype='float32')
+
+                blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
+
+                for b in blks:
+
+                    for ix in range(0,rawshape[2],rawchunks[2]):
+
+                        arr[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]].reshape(rawchunks[0]*rawchunks[1],rawchunks[2])
+
+                    wts[...] = (arr != nodata) * 1
+
+                    for r in range(arr.shape[0]):
+                        if wts[r,...].sum().item() != 0.0:
+                            arr[r,...] = ws2d(arr[r,...],lmda = self.lmbda,w = wts[r,...])
+
+                    for i,j in enumerate(range(0,rawshape[2],tres)):
+                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr[...,j].reshape(rawchunks[0],rawchunks[1]).round()
+
+
+
+        del arr, wts, l
+
+
+    def ws2d_vc(self):
+        pass
+
+    def ws2d_vc_asy(self):
+        pass
 
 
 class MODIStiles:
