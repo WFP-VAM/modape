@@ -129,7 +129,7 @@ def init_3Darray(cshp):
 def init_2Darray(cshp):
     '''Create shared lambda array for smoothing'''
     ncell = cshp[0] * cshp[1]
-    shared_array_base = multiprocessing.Array(ctypes.c_float,nc,lock=False)
+    shared_array_base = multiprocessing.Array(ctypes.c_float,ncell,lock=False)
     main_nparray = np.frombuffer(shared_array_base, dtype=ctypes.c_float)
 
     assert main_nparray.base is shared_array_base
