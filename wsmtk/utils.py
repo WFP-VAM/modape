@@ -116,8 +116,9 @@ def fromjulian(x):
     return datetime.datetime.strptime(x,'%Y%j').date()
 
 
-def init_array(cshp, ncell):
+def init_3Darray(cshp):
     '''Create shared value array for smoothing'''
+    ncell = cshp[0] * cshp[1] * cshp[2]
     shared_array_base = multiprocessing.Array(ctypes.c_float,ncell,lock=False)
     main_nparray = np.frombuffer(shared_array_base, dtype=ctypes.c_float)
     main_nparray = main_nparray.reshape(cshp[0]*cshp[1],cshp[2])
@@ -125,9 +126,9 @@ def init_array(cshp, ncell):
     assert main_nparray.base.base is shared_array_base
     return(main_nparray)
 
-def init_lamarray(cshp):
+def init_2Darray(cshp):
     '''Create shared lambda array for smoothing'''
-    nc = cshp[0] * cshp[1]
+    ncell = cshp[0] * cshp[1]
     shared_array_base = multiprocessing.Array(ctypes.c_float,nc,lock=False)
     main_nparray = np.frombuffer(shared_array_base, dtype=ctypes.c_float)
 
