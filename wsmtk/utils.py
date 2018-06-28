@@ -147,7 +147,7 @@ class Worker:
     def execute_ws2d_lgrid(ix):
         #worker function for parallel smoothing using whittaker 2d with existing lambda grid
         if Worker.wts[ix,...].sum().item() != 0.0:
-            Worker.arr[ix,...] = ws2d(y = arr[ix,...], lmda = 10**Worker.lamarr[ix,], w = Worker.wts[ix,...])
+            Worker.arr[ix,...] = ws2d(y = Worker.arr[ix,...], lmda = 10**Worker.lamarr[ix,], w = Worker.wts[ix,...])
 
     def execute_ws2d_vc(ix):
         #worker function for parallel smoothing using whittaker 2d with v-curve optimization
@@ -157,4 +157,4 @@ class Worker:
     def execute_ws2d_vc_asy(ix):
         #worker function for parallel asymmetric smoothing using whittaker 2d with v-curve optimization
         if Worker.wts[ix,...].sum().item() != 0.0:
-            Worker.arr[ix,...], Worker.lamarr[ix,] = Worker.ws2d_vc_asy(y = arr[ix,...], w = wts[ix,...], llas = llas, p = p)
+            Worker.arr[ix,...], Worker.lamarr[ix,] = ws2d_vc_asy(y = Worker.arr[ix,...], w = Worker.wts[ix,...], llas = Worker.llas, p = Worker.p)

@@ -853,7 +853,7 @@ class MODISsmth5:
                     del ix
 
                     with multiprocessing.Pool() as pool:
-                        pool.map(Worker.execute_ws2d_vc_asy,range(0,arr.shape[0]))
+                        pool.map(Worker.execute_ws2d_vc_asy,range(0,Worker.arr.shape[0]))
 
 
                     lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = Worker.lamarr.reshape(rawchunks[0],rawchunks[1])
