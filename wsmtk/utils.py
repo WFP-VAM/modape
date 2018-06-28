@@ -5,6 +5,7 @@ import requests
 import gdal
 import ctypes
 import multiprocessing
+from .whittaker import ws2d, ws2d_vc, ws2d_vc_asy
 
 def dtype_GDNP(dt):
     '''GDAL/NP DataType helper'''
@@ -135,7 +136,25 @@ def init_2Darray(cshp):
     assert main_nparray.base is shared_array_base
     return(main_nparray)
 
-def worker_fn(ix):
-    #worker function for parallel smoothing
-    if (wts[ix,...].sum().item() != 0.0):
-        arr[ix,...] = ws2d(arr[ix,...],lmda = l,w = wts[ix,...])
+
+class Worker:
+
+    def execute_ws2d(ix):
+        #worker function for parallel smoothing using whittaker 2d with fixed lambda
+        if Worker.wts[ix,...].sum().item() != 0.0:
+            Worker.arr[ix,...] = ws2d(y = Worker.arr[ix,...], lmda = Worker.l, w = Worker.wts[ix,...])
+
+    def execute_ws2d_lgrid(ix):
+        #worker function for parallel smoothing using whittaker 2d with existing lambda grid
+        if Worker.wts[ix,...].sum().item() != 0.0:
+            Worker.arr[ix,...] = ws2d(y = arr[ix,...], lmda = 10**Worker.lamarr[ix,], w = Worker.wts[ix,...])
+
+    def execute_ws2d_vc(ix):
+        #worker function for parallel smoothing using whittaker 2d with v-curve optimization
+        if Worker.wts[ix,...].sum().item() != 0.0:
+            Worker.arr[ix,...], Worker.lamarr[ix,] =  ws2d_vc(y = Worker.arr[ix,...], w = Worker.wts[ix,...], llas = Worker.llas)
+
+    def execute_ws2d_vc_asy(ix):
+        #worker function for parallel asymmetric smoothing using whittaker 2d with v-curve optimization
+        if Worker.wts[ix,...].sum().item() != 0.0:
+            Worker.arr[ix,...], Worker.lamarr[ix,] = Worker.ws2d_vc_asy(y = arr[ix,...], w = wts[ix,...], llas = llas, p = p)
