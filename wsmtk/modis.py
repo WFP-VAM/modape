@@ -783,7 +783,7 @@ class MODISsmth5:
                         pool.map(Worker.execute_ws2d_vc,range(0,Worker.arr.shape[0]))
 
 
-                    lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = Worker.lamarr.reshape(rawchunks[0],rawchunks[1])
+                    lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = np.log10(Worker.lamarr).reshape(rawchunks[0],rawchunks[1])
 
                     for i,j in enumerate(range(0,rawshape[2],tres)):
                         smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = Worker.arr[...,j].reshape(rawchunks[0],rawchunks[1]).round()
@@ -810,7 +810,9 @@ class MODISsmth5:
                         if wts[r,...].sum().item() != 0.0:
                             arr[r,...], lamarr[ix,] = ws2d_vc(arr[r,...],w = wts[r,...],llas = self.llas)
 
-                    lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = lamarr.reshape(rawchunks[0],rawchunks[1])
+
+
+                    lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = np.log10(lamarr).reshape(rawchunks[0],rawchunks[1])
 
                     for i,j in enumerate(range(0,rawshape[2],tres)):
                         smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr[...,j].reshape(rawchunks[0],rawchunks[1]).round()
@@ -856,7 +858,7 @@ class MODISsmth5:
                         pool.map(Worker.execute_ws2d_vc_asy,range(0,Worker.arr.shape[0]))
 
 
-                    lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = Worker.lamarr.reshape(rawchunks[0],rawchunks[1])
+                    lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = np.log10(Worker.lamarr).reshape(rawchunks[0],rawchunks[1])
 
                     for i,j in enumerate(range(0,rawshape[2],tres)):
                         smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = Worker.arr[...,j].reshape(rawchunks[0],rawchunks[1]).round()
@@ -883,7 +885,7 @@ class MODISsmth5:
                         if wts[r,...].sum().item() != 0.0:
                             arr[r,...], lamarr[ix,] = ws2d_vc_asy(arr[r,...],w = wts[r,...],llas = self.llas, p = self.p)
 
-                    lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = lamarr.reshape(rawchunks[0],rawchunks[1])
+                    lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = np.log10(lamarr).reshape(rawchunks[0],rawchunks[1])
 
                     for i,j in enumerate(range(0,rawshape[2],tres)):
                         smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr[...,j].reshape(rawchunks[0],rawchunks[1]).round()
