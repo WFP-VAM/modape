@@ -12,8 +12,8 @@ import h5py
 import osr
 from progress.bar import Bar
 from progress.spinner import Spinner
-from .utils import LDOM, dtype_GDNP, SessionWithHeaderRedirection, txx, init_array, init_lamarray, worker_fn, fromjulian
-from .whittaker import ws2d
+from .utils import LDOM, dtype_GDNP, SessionWithHeaderRedirection, txx, init_3Darray, init_2Darray, Worker, fromjulian
+from .whittaker import ws2d, ws2d_vc, ws2d_vc_asy
 from contextlib import contextmanager
 import pickle
 import warnings
@@ -516,7 +516,7 @@ class MODISrawh5:
 
 class MODISsmth5:
 
-    def __init__(self,rawfile,lmbda=None,lmbdarr=None,tempint=None,targetdir=os.getcwd(),parallel=False):
+    def __init__(self,rawfile,lmbda=None,llas=None,p=None,tempint=None,targetdir=os.getcwd(),parallel=False):
 
         if not os.path.isfile(rawfile):
             raise SystemExit('Raw HDF5 {} not found! Please check path.'.format(rawfile))
@@ -524,6 +524,7 @@ class MODISsmth5:
         self.targetdir = targetdir
         self.rawfile = rawfile
         self.parallel = parallel
+        self.p = p
 
         try:
             if lmbda:
@@ -536,13 +537,15 @@ class MODISsmth5:
 
 
         try:
-            if lmbdarr:
-                self.lmbdarr = array.array('f',np.linspace(float(lmbdarr[0]),float(lmbdarr[1]),float(lmbdarr[1])/float(lmbdarr[2]) + 1.0))
+            if llas:
+                self.llas = array.array('f',np.linspace(float(llas[0]),float(llas[1]),float(llas[1])/float(llas[2]) + 1.0))
             else:
-                self.lmbdarr = array.array('f',np.linspace(0.0,4.0,41.0))
+                self.llas = array.array('f',np.linspace(0.0,4.0,41.0))
         except (IndexError,TypeError):
             print('Error with lambda array values. Expected tuple of float log10(lambda) - (lmin,lmax,lstep)! Continuing with default (0.0,4.0,0.1)!')
-            self.lmbdarr = array.array('f',np.linspace(0.0,4.0,41.0))
+            self.llas = array.array('f',np.linspace(0.0,4.0,41.0))
+
+
 
         try:
             txflag = txx(tempint)
@@ -615,11 +618,7 @@ class MODISsmth5:
 
     def ws2d(self):
 
-        global l
-        global arr
-        global wts
-
-        l = self.lmbda
+        Worker.l = self.lmbda
 
         with h5py.File(self.rawfile,'r') as rawh5, h5py.File(self.outname,'r+') as smth5:
 
@@ -632,12 +631,10 @@ class MODISsmth5:
             nodata = raw_ds.attrs['nodata']
             tres = smt_ds.attrs['temporalresolution']
 
-            ncell = rawchunks[0] * rawchunks[1] * rawshape[2]
-
             if self.parallel:
 
-                arr = init_array((rawchunks[0],rawchunks[1],rawshape[2]),ncell)
-                wts = init_array((rawchunks[0],rawchunks[1],rawshape[2]),ncell)
+                Worker.arr = init_3Darray((rawchunks[0],rawchunks[1],rawshape[2]))
+                Worker.wts = init_3Darray((rawchunks[0],rawchunks[1],rawshape[2]))
 
                 blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
 
@@ -645,17 +642,17 @@ class MODISsmth5:
 
                     for ix in range(0,rawshape[2],rawchunks[2]):
 
-                        arr[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]].reshape(rawchunks[0]*rawchunks[1],rawchunks[2])
+                        Worker.arr[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]].reshape(rawchunks[0]*rawchunks[1],rawchunks[2])
 
-                        wts[...] = (arr != nodata) * 1
+                    Worker.wts[...] = (Worker.arr != nodata) * 1
 
                     del ix
 
-                    with multiprocessing.Pool() as p:
-                        p.map(worker_fn,range(0,arr.shape[0]))
+                    with multiprocessing.Pool() as pool:
+                        pool.map(Worker.execute_ws2d,range(0,Worker.arr.shape[0]))
 
                     for i,j in enumerate(range(0,rawshape[2],tres)):
-                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr[...,j].reshape(rawchunks[0],rawchunks[1]).round()
+                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = Worker.arr[...,j].reshape(rawchunks[0],rawchunks[1]).round()
 
             else:
 
@@ -680,15 +677,216 @@ class MODISsmth5:
                         smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr[...,j].reshape(rawchunks[0],rawchunks[1]).round()
 
 
+    def ws2d_lgrid(self):
 
-        del arr, wts, l
+        with h5py.File(self.rawfile,'r') as rawh5, h5py.File(self.outname,'r+') as smth5:
+
+            raw_ds = rawh5.get('data')
+            smt_ds = smth5.get('data')
+            lgrid_ds = smth5.get('lgrid')
+
+            rawshape = raw_ds.shape
+            rawchunks = raw_ds.chunks
+
+            nodata = raw_ds.attrs['nodata']
+            tres = smt_ds.attrs['temporalresolution']
+
+            if self.parallel:
+
+                Worker.arr = init_3Darray((rawchunks[0],rawchunks[1],rawshape[2]))
+                Worker.wts = init_3Darray((rawchunks[0],rawchunks[1],rawshape[2]))
+                Worker.lamarr = init_2Darray((rawchunks[0],rawchunks[1]))
+
+                blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
+
+                for b in blks:
+
+                    for ix in range(0,rawshape[2],rawchunks[2]):
+
+                        Worker.arr[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]].reshape(rawchunks[0]*rawchunks[1],rawchunks[2])
+
+                    Worker.wts[...] = (Worker.arr != nodata) * 1
+
+                    Worker.lamarr[...] = lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]].reshape(rawchunks[0] * rawchunks[1])
+
+                    del ix
+
+                    with multiprocessing.Pool() as pool:
+                        pool.map(Worker.execute_ws2d_lgrid,range(0,Worker.arr.shape[0]))
+
+                    for i,j in enumerate(range(0,rawshape[2],tres)):
+                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = Worker.arr[...,j].reshape(rawchunks[0],rawchunks[1]).round()
+
+            else:
+
+                arr = np.zeros((rawchunks[0]*rawchunks[1],rawshape[2]),dtype='float32')
+                wts = np.zeros((rawchunks[0]*rawchunks[1],rawshape[2]),dtype='float32')
+                lamarr = np.zeros((rawchunks[0]*rawchunks[1]),dtype='float32')
+
+                blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
+
+                for b in blks:
+
+                    for ix in range(0,rawshape[2],rawchunks[2]):
+
+                        arr[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]].reshape(rawchunks[0]*rawchunks[1],rawchunks[2])
+
+                    wts[...] = (arr != nodata) * 1
+
+                    lamarr[...] = lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]].reshape(rawchunks[0] * rawchunks[1])
+
+                    for r in range(arr.shape[0]):
+                        if wts[r,...].sum().item() != 0.0:
+                            arr[r,...] = ws2d(arr[r,...],lmda = 10**lamarr[r,],w = wts[r,...])
+
+                    for i,j in enumerate(range(0,rawshape[2],tres)):
+                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr[...,j].reshape(rawchunks[0],rawchunks[1]).round()
 
 
     def ws2d_vc(self):
-        pass
+
+        Worker.llas = self.llas
+
+        with h5py.File(self.rawfile,'r') as rawh5, h5py.File(self.outname,'r+') as smth5:
+
+            raw_ds = rawh5.get('data')
+            smt_ds = smth5.get('data')
+            lgrid_ds = smth5.get('lgrid')
+
+            rawshape = raw_ds.shape
+            rawchunks = raw_ds.chunks
+
+            nodata = raw_ds.attrs['nodata']
+            tres = smt_ds.attrs['temporalresolution']
+
+            if self.parallel:
+
+                Worker.arr = init_3Darray((rawchunks[0],rawchunks[1],rawshape[2]))
+                Worker.wts = init_3Darray((rawchunks[0],rawchunks[1],rawshape[2]))
+                Worker.lamarr = init_2Darray((rawchunks[0],rawchunks[1]))
+
+                blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
+
+                for b in blks:
+
+                    for ix in range(0,rawshape[2],rawchunks[2]):
+
+                        Worker.arr[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]].reshape(rawchunks[0]*rawchunks[1],rawchunks[2])
+
+                    Worker.wts[...] = (Worker.arr != nodata) * 1
+
+                    Worker.lamarr[...] = 0
+
+                    del ix
+
+                    with multiprocessing.Pool() as pool:
+                        pool.map(Worker.execute_ws2d_vc,range(0,Worker.arr.shape[0]))
+
+
+                    lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = Worker.lamarr.reshape(rawchunks[0],rawchunks[1])
+
+                    for i,j in enumerate(range(0,rawshape[2],tres)):
+                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = Worker.arr[...,j].reshape(rawchunks[0],rawchunks[1]).round()
+
+            else:
+
+                arr = np.zeros((rawchunks[0]*rawchunks[1],rawshape[2]),dtype='float32')
+                wts = np.zeros((rawchunks[0]*rawchunks[1],rawshape[2]),dtype='float32')
+                lamarr = np.zeros((rawchunks[0]*rawchunks[1]),dtype='float32')
+
+                blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
+
+                for b in blks:
+
+                    for ix in range(0,rawshape[2],rawchunks[2]):
+
+                        arr[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]].reshape(rawchunks[0]*rawchunks[1],rawchunks[2])
+
+                    wts[...] = (arr != nodata) * 1
+
+                    lamarr[...] = 0
+
+                    for r in range(arr.shape[0]):
+                        if wts[r,...].sum().item() != 0.0:
+                            arr[r,...], lamarr[ix,] = ws2d_vc(arr[r,...],w = wts[r,...],llas = self.llas)
+
+                    lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = lamarr.reshape(rawchunks[0],rawchunks[1])
+
+                    for i,j in enumerate(range(0,rawshape[2],tres)):
+                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr[...,j].reshape(rawchunks[0],rawchunks[1]).round()
 
     def ws2d_vc_asy(self):
-        pass
+
+        Worker.llas = self.llas
+        Worker.p = self.p
+
+        with h5py.File(self.rawfile,'r') as rawh5, h5py.File(self.outname,'r+') as smth5:
+
+            raw_ds = rawh5.get('data')
+            smt_ds = smth5.get('data')
+            lgrid_ds = smth5.get('lgrid')
+
+            rawshape = raw_ds.shape
+            rawchunks = raw_ds.chunks
+
+            nodata = raw_ds.attrs['nodata']
+            tres = smt_ds.attrs['temporalresolution']
+
+            if self.parallel:
+
+                Worker.arr = init_3Darray((rawchunks[0],rawchunks[1],rawshape[2]))
+                Worker.wts = init_3Darray((rawchunks[0],rawchunks[1],rawshape[2]))
+                Worker.lamarr = init_2Darray((rawchunks[0],rawchunks[1]))
+
+                blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
+
+                for b in blks:
+
+                    for ix in range(0,rawshape[2],rawchunks[2]):
+
+                        Worker.arr[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]].reshape(rawchunks[0]*rawchunks[1],rawchunks[2])
+
+                    Worker.wts[...] = (Worker.arr != nodata) * 1
+
+                    Worker.lamarr[...] = 0
+
+                    del ix
+
+                    with multiprocessing.Pool() as pool:
+                        pool.map(Worker.execute_ws2d_vc_asy,range(0,arr.shape[0]))
+
+
+                    lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = Worker.lamarr.reshape(rawchunks[0],rawchunks[1])
+
+                    for i,j in enumerate(range(0,rawshape[2],tres)):
+                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = Worker.arr[...,j].reshape(rawchunks[0],rawchunks[1]).round()
+
+            else:
+
+                arr = np.zeros((rawchunks[0]*rawchunks[1],rawshape[2]),dtype='float32')
+                wts = np.zeros((rawchunks[0]*rawchunks[1],rawshape[2]),dtype='float32')
+                lamarr = np.zeros((rawchunks[0]*rawchunks[1]),dtype='float32')
+
+                blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
+
+                for b in blks:
+
+                    for ix in range(0,rawshape[2],rawchunks[2]):
+
+                        arr[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]].reshape(rawchunks[0]*rawchunks[1],rawchunks[2])
+
+                    wts[...] = (arr != nodata) * 1
+
+                    lamarr[...] = 0
+
+                    for r in range(arr.shape[0]):
+                        if wts[r,...].sum().item() != 0.0:
+                            arr[r,...], lamarr[ix,] = ws2d_vc_asy(arr[r,...],w = wts[r,...],llas = self.llas, p = self.p)
+
+                    lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = lamarr.reshape(rawchunks[0],rawchunks[1])
+
+                    for i,j in enumerate(range(0,rawshape[2],tres)):
+                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr[...,j].reshape(rawchunks[0],rawchunks[1]).round()
 
 
 class MODIStiles:
