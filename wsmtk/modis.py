@@ -12,9 +12,9 @@ import h5py
 import osr
 from progress.bar import Bar
 from progress.spinner import Spinner
-from .utils import LDOM, dtype_GDNP, SessionWithHeaderRedirection, txx, init_3Darray, init_2Darray, Worker, fromjulian
+from .utils import *
 from .whittaker import ws2d, ws2d_vc, ws2d_vc_asy
-from contextlib import contextmanager
+from contextlib import contextmanager, closing
 import pickle
 import warnings
 import itertools
@@ -618,8 +618,6 @@ class MODISsmth5:
 
     def ws2d(self):
 
-        Worker.l = self.lmbda
-
         with h5py.File(self.rawfile,'r') as rawh5, h5py.File(self.outname,'r+') as smth5:
 
             raw_ds = rawh5.get('data')
@@ -629,12 +627,18 @@ class MODISsmth5:
             rawchunks = raw_ds.chunks
 
             nodata = raw_ds.attrs['nodata']
-            tres = smt_ds.attrs['temporalresolution']
+            t_resolution = raw_ds.attrs['temporalresolution']
+            t_interval = smt_ds.attrs['temporalresolution']
 
             if self.parallel:
 
-                Worker.arr = init_3Darray((rawchunks[0],rawchunks[1],rawshape[2]))
-                Worker.wts = init_3Darray((rawchunks[0],rawchunks[1],rawshape[2]))
+                shared_arr = init_shared(rawchunks[0] * rawchunks[1] * rawshape[2])
+
+                arr = tonumpyarray(shared_arr)
+
+                arr_helper = arr.view()
+
+                arr_helper.shape = (rawchunks[0],rawchunks[1],rawshape[2])
 
                 blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
 
@@ -642,22 +646,24 @@ class MODISsmth5:
 
                     for ix in range(0,rawshape[2],rawchunks[2]):
 
-                        Worker.arr[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]].reshape(rawchunks[0]*rawchunks[1],rawchunks[2])
-
-                    Worker.wts[...] = (Worker.arr != nodata) * 1
+                        arr_helper[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]]
 
                     del ix
 
-                    with multiprocessing.Pool() as pool:
-                        pool.map(Worker.execute_ws2d,range(0,Worker.arr.shape[0]))
+                    with closing(multiprocessing.Pool(initializer = init_worker, initargs = (shared_arr,nodata,self.lmbda))) as pool:
+                        pool.map_async(execute_ws2d,[slice(x,x+rawshape[2]) for x in range(0,arr.shape[0],rawshape[2])])
 
-                    for i,j in enumerate(range(0,rawshape[2],tres)):
-                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = Worker.arr[...,j].reshape(rawchunks[0],rawchunks[1]).round()
+                    pool.join()
+
+                    arr_sel = arr.view()
+                    arr_sel.shape = (rawchunks[0],rawchunks[1],rawshape[2])
+
+                    for i,j in enumerate(range(0,rawshape[2],t_interval)):
+                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_sel[...,j].round()
 
             else:
 
                 arr = np.zeros((rawchunks[0]*rawchunks[1],rawshape[2]),dtype='float32')
-                wts = np.zeros((rawchunks[0]*rawchunks[1],rawshape[2]),dtype='float32')
 
                 blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
 
@@ -673,7 +679,7 @@ class MODISsmth5:
                         if wts[r,...].sum().item() != 0.0:
                             arr[r,...] = ws2d(arr[r,...],lmda = self.lmbda,w = wts[r,...])
 
-                    for i,j in enumerate(range(0,rawshape[2],tres)):
+                    for i,j in enumerate(range(0,rawshape[2],t_interval)):
                         smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr[...,j].reshape(rawchunks[0],rawchunks[1]).round()
 
 
@@ -689,7 +695,8 @@ class MODISsmth5:
             rawchunks = raw_ds.chunks
 
             nodata = raw_ds.attrs['nodata']
-            tres = smt_ds.attrs['temporalresolution']
+            t_resolution = raw_ds.attrs['temporalresolution']
+            t_interval = smt_ds.attrs['temporalresolution']
 
             if self.parallel:
 
@@ -714,7 +721,7 @@ class MODISsmth5:
                     with multiprocessing.Pool() as pool:
                         pool.map(Worker.execute_ws2d_lgrid,range(0,Worker.arr.shape[0]))
 
-                    for i,j in enumerate(range(0,rawshape[2],tres)):
+                    for i,j in enumerate(range(0,rawshape[2],t_interval)):
                         smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = Worker.arr[...,j].reshape(rawchunks[0],rawchunks[1]).round()
 
             else:
@@ -739,7 +746,7 @@ class MODISsmth5:
                         if wts[r,...].sum().item() != 0.0:
                             arr[r,...] = ws2d(arr[r,...],lmda = 10**lamarr[r,],w = wts[r,...])
 
-                    for i,j in enumerate(range(0,rawshape[2],tres)):
+                    for i,j in enumerate(range(0,rawshape[2],t_interval)):
                         smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr[...,j].reshape(rawchunks[0],rawchunks[1]).round()
 
 
@@ -757,7 +764,8 @@ class MODISsmth5:
             rawchunks = raw_ds.chunks
 
             nodata = raw_ds.attrs['nodata']
-            tres = smt_ds.attrs['temporalresolution']
+            t_resolution = raw_ds.attrs['temporalresolution']
+            t_interval = smt_ds.attrs['temporalresolution']
 
             if self.parallel:
 
@@ -785,7 +793,7 @@ class MODISsmth5:
 
                     lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = np.log10(Worker.lamarr).reshape(rawchunks[0],rawchunks[1])
 
-                    for i,j in enumerate(range(0,rawshape[2],tres)):
+                    for i,j in enumerate(range(0,rawshape[2],t_interval)):
                         smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = Worker.arr[...,j].reshape(rawchunks[0],rawchunks[1]).round()
 
             else:
@@ -814,7 +822,7 @@ class MODISsmth5:
 
                     lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = np.log10(lamarr).reshape(rawchunks[0],rawchunks[1])
 
-                    for i,j in enumerate(range(0,rawshape[2],tres)):
+                    for i,j in enumerate(range(0,rawshape[2],t_interval)):
                         smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr[...,j].reshape(rawchunks[0],rawchunks[1]).round()
 
     def ws2d_vc_asy(self):
@@ -832,7 +840,8 @@ class MODISsmth5:
             rawchunks = raw_ds.chunks
 
             nodata = raw_ds.attrs['nodata']
-            tres = smt_ds.attrs['temporalresolution']
+            t_resolution = raw_ds.attrs['temporalresolution']
+            t_interval = smt_ds.attrs['temporalresolution']
 
             if self.parallel:
 
@@ -860,7 +869,7 @@ class MODISsmth5:
 
                     lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = np.log10(Worker.lamarr).reshape(rawchunks[0],rawchunks[1])
 
-                    for i,j in enumerate(range(0,rawshape[2],tres)):
+                    for i,j in enumerate(range(0,rawshape[2],t_interval)):
                         smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = Worker.arr[...,j].reshape(rawchunks[0],rawchunks[1]).round()
 
             else:
@@ -887,7 +896,7 @@ class MODISsmth5:
 
                     lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = np.log10(lamarr).reshape(rawchunks[0],rawchunks[1])
 
-                    for i,j in enumerate(range(0,rawshape[2],tres)):
+                    for i,j in enumerate(range(0,rawshape[2],t_interval)):
                         smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr[...,j].reshape(rawchunks[0],rawchunks[1]).round()
 
 

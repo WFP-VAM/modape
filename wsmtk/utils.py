@@ -116,45 +116,46 @@ def txx(x):
 def fromjulian(x):
     return datetime.datetime.strptime(x,'%Y%j').date()
 
-
-def init_3Darray(cshp):
+def init_shared(ncell):
     '''Create shared value array for smoothing'''
-    ncell = cshp[0] * cshp[1] * cshp[2]
     shared_array_base = multiprocessing.Array(ctypes.c_float,ncell,lock=False)
-    main_nparray = np.frombuffer(shared_array_base, dtype=ctypes.c_float)
-    main_nparray = main_nparray.reshape(cshp[0]*cshp[1],cshp[2])
+    return(shared_array_base)
 
-    assert main_nparray.base.base is shared_array_base
-    return(main_nparray)
+def tonumpyarray(shared_array):
 
-def init_2Darray(cshp):
-    '''Create shared lambda array for smoothing'''
-    ncell = cshp[0] * cshp[1]
-    shared_array_base = multiprocessing.Array(ctypes.c_float,ncell,lock=False)
-    main_nparray = np.frombuffer(shared_array_base, dtype=ctypes.c_float)
+    nparray= np.frombuffer(shared_array,dtype=ctypes.c_float)
+    assert nparray.base is shared_array
+    return nparray
 
-    assert main_nparray.base is shared_array_base
-    return(main_nparray)
+def init_worker(shared_arr_,nd_,l_ = None,llas_ = None,p_ = None):
+    global shared_arr
+    global nd
+    global l
+    global llas
+    global p
+    shared_arr = tonumpyarray(shared_arr_)
+    nd = nd_
+    l = l_
+    llas = llas_
+    p = p_
 
+def execute_ws2d(ix):
+    #worker function for parallel smoothing using whittaker 2d with fixed lambda
+    arr = tonumpyarray(shared_array)
+    if (arr[ix] != nd ).any():
+        arr[ix] = ws2d(y = arr[ix], lmda = l, w = np.array((arr[ix] != nd) * 1,dtype='float32'))
 
-class Worker:
+def execute_ws2d_lgrid(ix):
+    #worker function for parallel smoothing using whittaker 2d with existing lambda grid
+    if (arr[ix] != nd ).any():
+        arr[ix] = ws2d(y = arr[ix], lmda = 10**lamarr[ix], w = np.array((arr[ix] != nd ) * 1,dtype='float32'))
 
-    def execute_ws2d(ix):
-        #worker function for parallel smoothing using whittaker 2d with fixed lambda
-        if Worker.wts[ix,...].sum().item() != 0.0:
-            Worker.arr[ix,...] = ws2d(y = Worker.arr[ix,...], lmda = Worker.l, w = Worker.wts[ix,...])
+def execute_ws2d_vc(ix):
+    #worker function for parallel smoothing using whittaker 2d with v-curve optimization
+    if (arr[ix] != nd ).any():
+        arr[ix], lamarr[ix,] =  ws2d_vc(y = arr[ix], w = np.array((arr[ix] != nd ) * 1,dtype='float32'), llas = llas)
 
-    def execute_ws2d_lgrid(ix):
-        #worker function for parallel smoothing using whittaker 2d with existing lambda grid
-        if Worker.wts[ix,...].sum().item() != 0.0:
-            Worker.arr[ix,...] = ws2d(y = Worker.arr[ix,...], lmda = 10**Worker.lamarr[ix,], w = Worker.wts[ix,...])
-
-    def execute_ws2d_vc(ix):
-        #worker function for parallel smoothing using whittaker 2d with v-curve optimization
-        if Worker.wts[ix,...].sum().item() != 0.0:
-            Worker.arr[ix,...], Worker.lamarr[ix,] =  ws2d_vc(y = Worker.arr[ix,...], w = Worker.wts[ix,...], llas = Worker.llas)
-
-    def execute_ws2d_vc_asy(ix):
-        #worker function for parallel asymmetric smoothing using whittaker 2d with v-curve optimization
-        if Worker.wts[ix,...].sum().item() != 0.0:
-            Worker.arr[ix,...], Worker.lamarr[ix,] = ws2d_vc_asy(y = Worker.arr[ix,...], w = Worker.wts[ix,...], llas = Worker.llas, p = Worker.p)
+def execute_ws2d_vc_asy(ix):
+    #worker function for parallel asymmetric smoothing using whittaker 2d with v-curve optimization
+    if (arr[ix] != nd ).any():
+        arr[ix], lamarr[ix] = ws2d_vc_asy(y = arr[ix], w = np.array((arr[ix] != nd ) * 1,dtype='float32'), llas = llas, p = p)
