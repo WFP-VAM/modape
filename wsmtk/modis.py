@@ -21,7 +21,7 @@ import itertools
 import bisect
 import gc
 import array
-import multiprocessing
+import multiprocessing as mp
 try:
     import gdal
 except ImportError:
@@ -516,7 +516,7 @@ class MODISrawh5:
 
 class MODISsmth5:
 
-    def __init__(self,rawfile,lmbda=None,llas=None,p=None,tempint=None,targetdir=os.getcwd(),parallel=False):
+    def __init__(self,rawfile,lmbda=None,llas=None,p=None,tempint=None,targetdir=os.getcwd(),parallel=False,ncores=mp.cpu_count()-1):
 
         if not os.path.isfile(rawfile):
             raise SystemExit('Raw HDF5 {} not found! Please check path.'.format(rawfile))
@@ -525,6 +525,7 @@ class MODISsmth5:
         self.rawfile = rawfile
         self.parallel = parallel
         self.p = p
+        self.ncores = ncores
 
         try:
             if lmbda:
@@ -647,24 +648,20 @@ class MODISsmth5:
 
                 blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
 
-                for b in blks:
+                with closing(mp.Pool(initializer = init_worker, initargs = (shared_array,params))) as pool:
 
-                    for ix in range(0,rawshape[2],rawchunks[2]):
+                    for b in blks:
 
-                        arr_helper[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]]
+                        for ix in range(0,rawshape[2],rawchunks[2]):
 
-                    del ix
+                            arr_helper[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]]
 
-                    with closing(multiprocessing.Pool(initializer = init_worker, initargs = (shared_array,params))) as pool:
+                        del ix
 
-                        pool.map_async(execute_ws2d,range(0,arr.shape[0]))
-                        #pool.map_async(execute_ws2d,[range(x,x + step) for x in range()])
-                        #pool.map_async(execute_ws2d,[slice(x,x+rawshape[2]) for x in range(0,arr.shape[0],rawshape[2])])
+                        res = pool.map(execute_ws2d,np.array_split(range(arr.shape[0]),self.ncores))
 
-                    pool.join()
-
-                    for i,j in enumerate(range(0,rawshape[2],t_interval)):
-                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
+                        for i,j in enumerate(range(0,rawshape[2],t_interval)):
+                            smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
 
             else:
 
@@ -726,24 +723,22 @@ class MODISsmth5:
 
                 blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
 
-                for b in blks:
+                with closing(mp.Pool(initializer = init_worker, initargs = (shared_array,params))) as pool:
 
-                    for ix in range(0,rawshape[2],rawchunks[2]):
+                    for b in blks:
 
-                        arr_helper[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]]
+                        for ix in range(0,rawshape[2],rawchunks[2]):
 
+                            arr_helper[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]]
 
-                    lamarr[...] = lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]]
+                        lamarr[...] = lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]]
 
-                    del ix
+                        del ix
 
-                    with closing(multiprocessing.Pool(initializer = init_worker, initargs = (shared_array,params))) as pool:
-                        pool.map_async(execute_ws2d_lgrid,range(0,arr.shape[0]))
+                        res = pool.map(execute_ws2d_lgrid,np.array_split(range(arr.shape[0]),self.ncores))
 
-                    pool.join()
-
-                    for i,j in enumerate(range(0,rawshape[2],t_interval)):
-                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
+                        for i,j in enumerate(range(0,rawshape[2],t_interval)):
+                            smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
 
             else:
 
@@ -807,29 +802,28 @@ class MODISsmth5:
 
                 blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
 
-                for b in blks:
+                with closing(mp.Pool(initializer = init_worker, initargs = (shared_array,params))) as pool:
 
-                    for ix in range(0,rawshape[2],rawchunks[2]):
+                    for b in blks:
 
-                        arr_helper[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]]
+                        for ix in range(0,rawshape[2],rawchunks[2]):
+
+                            arr_helper[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]]
 
 
-                    del ix
+                        del ix
 
-                    # set lmbdas to zero
-                    lamarr[...] = 0
+                        # set lmbdas to zero
+                        lamarr[...] = 0
 
-                    with closing(multiprocessing.Pool(initializer = init_worker, initargs = (shared_array,params))) as pool:
-                        pool.map_async(execute_ws2d_vc,range(0,arr.shape[0]))
+                        pool.map(execute_ws2d_vc,np.array_split(range(arr.shape[0]),self.ncores))
 
-                    pool.join()
+                        lamarr[lamarr>0] = np.log10(lamarr[lamarr>0])
 
-                    lamarr[lamarr>0] = np.log10(lamarr[lamarr>0])
+                        lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = lamarr[...]
 
-                    lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = lamarr[...]
-
-                    for i,j in enumerate(range(0,rawshape[2],t_interval)):
-                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
+                        for i,j in enumerate(range(0,rawshape[2],t_interval)):
+                            smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
 
             else:
 
@@ -852,8 +846,6 @@ class MODISsmth5:
                     for r in range(arr.shape[0]):
                         if wts[r,...].sum().item() != 0.0:
                             arr[r,...], lamarr[ix,] = ws2d_vc(arr[r,...],w = wts[r,...],llas = self.llas)
-
-
 
                     lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = np.log10(lamarr).reshape(rawchunks[0],rawchunks[1])
 
@@ -896,28 +888,27 @@ class MODISsmth5:
 
                 blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
 
-                for b in blks:
+                with closing(mp.Pool(initializer = init_worker, initargs = (shared_array,params))) as pool:
 
-                    for ix in range(0,rawshape[2],rawchunks[2]):
+                    for b in blks:
 
-                        arr_helper[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]]
+                        for ix in range(0,rawshape[2],rawchunks[2]):
 
-                    del ix
+                            arr_helper[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]]
 
-                    # set lmbdas to zero
-                    lamarr[...] = 0
+                        del ix
 
-                    with closing(multiprocessing.Pool(initializer = init_worker, initargs = (shared_array,params))) as pool:
-                        pool.map_async(execute_ws2d_vc_asy,range(0,arr.shape[0]))
+                        # set lmbdas to zero
+                        lamarr[...] = 0
 
-                    pool.join()
+                        pool.map(execute_ws2d_vc_asy,np.array_split(range(arr.shape[0]),self.ncores))
 
-                    lamarr[lamarr>0] = np.log10(lamarr[lamarr>0])
+                        lamarr[lamarr>0] = np.log10(lamarr[lamarr>0])
 
-                    lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = lamarr[...]
+                        lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = lamarr[...]
 
-                    for i,j in enumerate(range(0,rawshape[2],t_interval)):
-                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
+                        for i,j in enumerate(range(0,rawshape[2],t_interval)):
+                            smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
 
             else:
 
