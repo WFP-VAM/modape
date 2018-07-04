@@ -74,8 +74,6 @@ class SessionWithHeaderRedirection(requests.Session):
         self.auth = (username, password)
 
 
-
-
    # Overrides from the library to keep headers when redirected to or from
 
    # the NASA auth host.
@@ -159,8 +157,9 @@ def execute_ws2d(ix):
     #worker function for parallel smoothing using whittaker 2d with fixed lambda
     arr = tonumpyarray(shared_array)
     arr.shape = dim
-    if (arr[ix,] != nd ).any():
-        arr[ix,] = ws2d(y = arr[ix,], lmda = l, w = np.array((arr[ix,] != nd) * 1,dtype='float32'))
+    for ii in ix:
+        if (arr[ii,] != nd ).any():
+            arr[ii,] = ws2d(y = arr[ii,], lmda = l, w = np.array((arr[ii,] != nd) * 1,dtype='float32'))
 
 def execute_ws2d_lgrid(ix):
     #worker function for parallel smoothing using whittaker 2d with existing lambda grid
@@ -168,8 +167,9 @@ def execute_ws2d_lgrid(ix):
     lamarr = tonumpyarray(shared_lmbda)
     arr.shape = dim
 
-    if (arr[ix,] != nd ).any():
-        arr[ix,] = ws2d(y = arr[ix,], lmda = 10**lamarr[ix], w = np.array((arr[ix,] != nd ) * 1,dtype='float32'))
+    for ii in ix:
+        if (arr[ii,] != nd ).any():
+            arr[ii,] = ws2d(y = arr[ii,], lmda = 10**lamarr[ii], w = np.array((arr[ii,] != nd ) * 1,dtype='float32'))
 
 def execute_ws2d_vc(ix):
     #worker function for parallel smoothing using whittaker 2d with v-curve optimization
@@ -177,8 +177,9 @@ def execute_ws2d_vc(ix):
     lamarr = tonumpyarray(shared_lmbda)
     arr.shape = dim
 
-    if (arr[ix,] != nd ).any():
-        arr[ix,], lamarr[ix] =  ws2d_vc(y = arr[ix], w = np.array((arr[ix,] != nd ) * 1,dtype='float32'), llas = llas)
+    for ii in ix:
+        if (arr[ii,] != nd ).any():
+            arr[ii,], lamarr[ii] =  ws2d_vc(y = arr[ii], w = np.array((arr[ii,] != nd ) * 1,dtype='float32'), llas = llas)
 
 def execute_ws2d_vc_asy(ix):
     #worker function for parallel asymmetric smoothing using whittaker 2d with v-curve optimization
@@ -186,5 +187,6 @@ def execute_ws2d_vc_asy(ix):
     lamarr = tonumpyarray(shared_lmbda)
     arr.shape = dim
 
-    if (arr[ix,] != nd ).any():
-        arr[ix,], lamarr[ix] = ws2d_vc_asy(y = arr[ix], w = np.array((arr[ix,] != nd ) * 1,dtype='float32'), llas = llas, p = p)
+    for ii in ix:
+        if (arr[ii,] != nd ).any():
+            arr[ii,], lamarr[ii] = ws2d_vc_asy(y = arr[ii], w = np.array((arr[ii,] != nd ) * 1,dtype='float32'), llas = llas, p = p)
