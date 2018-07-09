@@ -6,6 +6,7 @@ import sys
 import argparse
 import multiprocessing as mp
 import array
+import numpy as np
 from .modis import MODISsmth5
 
 
@@ -13,7 +14,7 @@ def main():
 
     parser = argparse.ArgumentParser(description="Smooth, gapfill and interpolate processed raw MODIS HDF5 files")
     parser.add_argument("rawfile", help='Raw MODIS HDF5 file',metavar='RAW HDF5')
-    parser.add_argument("-l","--lambda", help='LAMBDA value for smoothing (has to be log10(l)', metavar='')
+    parser.add_argument("-l","--Lambda", help='LAMBDA value for smoothing (has to be log10(l)', metavar='')
     parser.add_argument("-L","--llas", help='LAMBDA range for V-curve (tuple of float log10(l) values where (lmin, lmax, lstep) - default (0,4,0.1))', metavar='')
     parser.add_argument("-t","--tempint", help='Value for temporal interpolation (integer required - default is native temporal resolution AKA no interpolation)', metavar='')
     parser.add_argument("-p","--pvalue", help='Value for asymmetric smoothing (float required)', metavar='')
@@ -26,7 +27,6 @@ def main():
     # fail and print help if no arguments supplied
     if len(sys.argv)==1:
         parser.print_help(sys.stderr)
-        sys.exit(1)
 
     args = parser.parse_args()
 
@@ -65,25 +65,24 @@ def main():
 
         else:
 
-            smt_h5.ws2d_vc_asy(llas=llas)
+            smt_h5.ws2d_vc(llas=llas)
+            sys.exit(1)
 
 
     else:
 
-        if args.l:
+        if args.Lambda:
 
             try:
-                l = 10**float(l)
+                l = 10**float(args.Lambda)
             except:
                 raise SystemExit('Error with lambda value. Expected float log10(lambda)!')
 
-            smt.ws2d(l=l)
+            smt_h5.ws2d(l=l)
 
         else:
 
-            smt.ws2d_lgrid()
-
-
+            smt_h5.ws2d_lgrid()
 
 
 
