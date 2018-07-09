@@ -602,6 +602,9 @@ class MODISsmth5:
             t_resolution = raw_ds.attrs['temporalresolution']
             t_interval = smt_ds.attrs['temporalresolution']
 
+            barmax = (rawshape[0]/rawchunks[0]) * (rawshape[1]/rawchunks[1])
+            bar = Bar('Processing',fill='=',max=barmax,suffix='%(percent)d%%  ')
+            bar.goto(0)
 
             if self.parallel:
 
@@ -633,6 +636,8 @@ class MODISsmth5:
 
                         for i,j in enumerate(range(0,rawshape[2],t_interval)):
                             smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
+                        bar.next()
+                    bar.finish()
 
             else:
 
@@ -658,6 +663,8 @@ class MODISsmth5:
 
                     for i,j in enumerate(range(0,rawshape[2],t_interval)):
                         smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
+                    bar.next()
+                bar.finish()
 
 
     def ws2d_lgrid(self):
@@ -675,6 +682,10 @@ class MODISsmth5:
             t_resolution = raw_ds.attrs['temporalresolution']
             t_interval = smt_ds.attrs['temporalresolution']
 
+            barmax = (rawshape[0]/rawchunks[0]) * (rawshape[1]/rawchunks[1])
+            print(barmax)
+            bar = Bar('Processing',fill='=',max=barmax,suffix='%(percent)d%%  ')
+            bar.goto(0)
 
             if self.parallel:
 
@@ -713,6 +724,8 @@ class MODISsmth5:
 
                         for i,j in enumerate(range(0,rawshape[2],t_interval)):
                             smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
+                        bar.next()
+                    bar.finish()
 
             else:
 
@@ -742,6 +755,8 @@ class MODISsmth5:
                     for i,j in enumerate(range(0,rawshape[2],t_interval)):
                         smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
 
+                    bar.next()
+                bar.finish()
 
     def ws2d_vc(self,llas):
 
@@ -757,6 +772,10 @@ class MODISsmth5:
             nodata = raw_ds.attrs['nodata']
             t_resolution = raw_ds.attrs['temporalresolution']
             t_interval = smt_ds.attrs['temporalresolution']
+
+            barmax = (rawshape[0]/rawchunks[0]) * (rawshape[1]/rawchunks[1])
+            bar = Bar('Processing',fill='=',max=barmax,suffix='%(percent)d%%  ')
+            bar.goto(0)
 
             if self.parallel:
 
@@ -787,7 +806,6 @@ class MODISsmth5:
 
                             arr_helper[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]]
 
-
                         del ix
 
                         # set lmbdas to zero
@@ -801,6 +819,9 @@ class MODISsmth5:
 
                         for i,j in enumerate(range(0,rawshape[2],t_interval)):
                             smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
+
+                        bar.next()
+                    bar.finish()
 
             else:
 
@@ -834,6 +855,9 @@ class MODISsmth5:
                     for i,j in enumerate(range(0,rawshape[2],t_interval)):
                         smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
 
+                    bar.next()
+                bar.finish()
+
     def ws2d_vc_asy(self,llas,p):
 
         with h5py.File(self.rawfile,'r') as rawh5, h5py.File(self.outname,'r+') as smth5:
@@ -848,6 +872,10 @@ class MODISsmth5:
             nodata = raw_ds.attrs['nodata']
             t_resolution = raw_ds.attrs['temporalresolution']
             t_interval = smt_ds.attrs['temporalresolution']
+
+            barmax = (rawshape[0]/rawchunks[0]) * (rawshape[1]/rawchunks[1])
+            bar = Bar('Processing',fill='=',max=barmax,suffix='%(percent)d%%  ')
+            bar.goto(0)
 
             if self.parallel:
 
@@ -892,6 +920,9 @@ class MODISsmth5:
                         for i,j in enumerate(range(0,rawshape[2],t_interval)):
                             smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
 
+                        bar.next()
+                    bar.finish()
+
             else:
 
                 arr = np.zeros((rawchunks[0]*rawchunks[1],rawshape[2]),dtype='float32')
@@ -924,7 +955,8 @@ class MODISsmth5:
                     for i,j in enumerate(range(0,rawshape[2],t_interval)):
                         smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
 
-
+                    bar.next()
+                bar.finish()
 
 class MODIStiles:
 
