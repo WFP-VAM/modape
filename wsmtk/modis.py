@@ -648,7 +648,7 @@ class MODISsmth5:
 
                 blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
 
-                with closing(mp.Pool(initializer = init_worker, initargs = (shared_array,params))) as pool:
+                with closing(mp.Pool(processes=self.ncores,initializer = init_worker, initargs = (shared_array,params))) as pool:
 
                     for b in blks:
 
@@ -723,7 +723,7 @@ class MODISsmth5:
 
                 blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
 
-                with closing(mp.Pool(initializer = init_worker, initargs = (shared_array,params))) as pool:
+                with closing(mp.Pool(processes=self.ncores,initializer = init_worker, initargs = (shared_array,params))) as pool:
 
                     for b in blks:
 
@@ -802,7 +802,7 @@ class MODISsmth5:
 
                 blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
 
-                with closing(mp.Pool(initializer = init_worker, initargs = (shared_array,params))) as pool:
+                with closing(mp.Pool(processes=self.ncores,initializer = init_worker, initargs = (shared_array,params))) as pool:
 
                     for b in blks:
 
@@ -888,7 +888,7 @@ class MODISsmth5:
 
                 blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
 
-                with closing(mp.Pool(initializer = init_worker, initargs = (shared_array,params))) as pool:
+                with closing(mp.Pool(processes=self.ncores,initializer = init_worker, initargs = (shared_array,params))) as pool:
 
                     for b in blks:
 
