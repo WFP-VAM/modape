@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 from __future__ import print_function
-from wsmtk.modis import MODISrawh5
 import os
 import sys
 import argparse
