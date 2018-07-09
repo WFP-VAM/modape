@@ -221,7 +221,7 @@ class MODISrawh5:
         ref = None
 
         if self.param is 'VIM' and any(['MOD' in os.path.basename(x) for x in files]) and any(['MYD' in os.path.basename(x) for x in files]):
-            self.product = ['MXD']
+            self.product = [re.sub(r'M[O,Y]D','MXD',re.findall(ppatt,self.ref_file_basename)[0])]
             self.temporalresolution = 8
         else:
             self.product = re.findall(ppatt,self.ref_file_basename)
