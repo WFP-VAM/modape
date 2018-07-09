@@ -256,7 +256,6 @@ class MODISrawh5:
         #rst = gdal.Warp('', ref_sds, dstSRS='EPSG:4326', format='VRT',
         #                              outputType=gdal.GDT_Float32, xRes=res, yRes=res)
 
-        ## TODO real raster resolution??
 
         rst = gdal.Open(ref_sds)
 
@@ -301,8 +300,6 @@ class MODISrawh5:
 
             with h5py.File(self.outname,'x',libver='latest') as h5f:
                 dset = h5f.create_dataset('data',shape=(self.rows,self.cols,totaldays),dtype=self.datatype[1],maxshape=(self.rows,self.cols,None),chunks=self.chunks,compression=self.compression)
-                #h5f.create_dataset('Smooth',shape=(self.rows,self.cols,self.nfiles),dtype=self.datatype[1],maxshape=(self.rows,self.cols,None),chunks=self.chunks,compression=self.compression)
-                #h5f.create_dataset('lgrd',shape=(self.rows,self.cols),dtype='float32',maxshape=(self.rows,self.cols),chunks=self.chunks[0:2],compression=self.compression)
                 h5f.create_dataset('dates',shape=(self.nfiles,),maxshape=(None,),dtype='S8',compression=self.compression)
                 dset.attrs['geotransform'] = trans
                 dset.attrs['projection'] = prj
@@ -640,7 +637,10 @@ class MODISsmth5:
             else:
 
                 arr = np.zeros((rawchunks[0]*rawchunks[1],rawshape[2]),dtype='float32')
-                wts = np.zeros((rawchunks[0]*rawchunks[1],rawshape[2]),dtype='float32')
+                wts = arr.copy()
+
+                arr_helper = arr.view()
+                arr_helper.shape = (rawchunks[0],rawchunks[1],rawshape[2])
 
                 blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
 
@@ -648,7 +648,7 @@ class MODISsmth5:
 
                     for ix in range(0,rawshape[2],rawchunks[2]):
 
-                        arr[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]].reshape(rawchunks[0]*rawchunks[1],rawchunks[2])
+                        arr_helper[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]]
 
                     wts[...] = (arr != nodata) * 1
 
@@ -657,7 +657,7 @@ class MODISsmth5:
                             arr[r,...] = ws2d(arr[r,...],l = l,w = wts[r,...])
 
                     for i,j in enumerate(range(0,rawshape[2],t_interval)):
-                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr[...,j].reshape(rawchunks[0],rawchunks[1]).round()
+                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
 
 
     def ws2d_lgrid(self):
@@ -717,8 +717,11 @@ class MODISsmth5:
             else:
 
                 arr = np.zeros((rawchunks[0]*rawchunks[1],rawshape[2]),dtype='float32')
-                wts = np.zeros((rawchunks[0]*rawchunks[1],rawshape[2]),dtype='float32')
+                wts = arr.copy()
                 lamarr = np.zeros((rawchunks[0]*rawchunks[1]),dtype='float32')
+
+                arr_helper = arr.view()
+                arr_helper.shape = (rawchunks[0],rawchunks[1],rawshape[2])
 
                 blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
 
@@ -726,7 +729,7 @@ class MODISsmth5:
 
                     for ix in range(0,rawshape[2],rawchunks[2]):
 
-                        arr[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]].reshape(rawchunks[0]*rawchunks[1],rawchunks[2])
+                        arr_helper[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]]
 
                     wts[...] = (arr != nodata) * 1
 
@@ -737,7 +740,7 @@ class MODISsmth5:
                             arr[r,...] = ws2d(arr[r,...],lmda = 10**lamarr[r,],w = wts[r,...])
 
                     for i,j in enumerate(range(0,rawshape[2],t_interval)):
-                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr[...,j].reshape(rawchunks[0],rawchunks[1]).round()
+                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
 
 
     def ws2d_vc(self,llas):
@@ -802,8 +805,11 @@ class MODISsmth5:
             else:
 
                 arr = np.zeros((rawchunks[0]*rawchunks[1],rawshape[2]),dtype='float32')
-                wts = np.zeros((rawchunks[0]*rawchunks[1],rawshape[2]),dtype='float32')
+                wts = arr.copy()
                 lamarr = np.zeros((rawchunks[0]*rawchunks[1]),dtype='float32')
+
+                arr_helper = arr.view()
+                arr_helper.shape = (rawchunks[0],rawchunks[1],rawshape[2])
 
                 blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
 
@@ -811,7 +817,7 @@ class MODISsmth5:
 
                     for ix in range(0,rawshape[2],rawchunks[2]):
 
-                        arr[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]].reshape(rawchunks[0]*rawchunks[1],rawchunks[2])
+                        arr_helper[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]]
 
                     wts[...] = (arr != nodata) * 1
 
@@ -819,12 +825,14 @@ class MODISsmth5:
 
                     for r in range(arr.shape[0]):
                         if wts[r,...].sum().item() != 0.0:
-                            arr[r,...], lamarr[ix,] = ws2d_vc(arr[r,...],w = wts[r,...],llas = llas)
+                            arr[r,...], lamarr[ix] = ws2d_vc(arr[r,...],w = wts[r,...],llas = llas)
 
-                    lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = np.log10(lamarr).reshape(rawchunks[0],rawchunks[1])
+                    lamarr[lamarr>0] = np.log10(lamarr[lamarr>0])
+
+                    lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = lamarr.reshape(rawchunks[0],rawchunks[1])
 
                     for i,j in enumerate(range(0,rawshape[2],t_interval)):
-                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr[...,j].reshape(rawchunks[0],rawchunks[1]).round()
+                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
 
     def ws2d_vc_asy(self,llas,p):
 
@@ -887,8 +895,11 @@ class MODISsmth5:
             else:
 
                 arr = np.zeros((rawchunks[0]*rawchunks[1],rawshape[2]),dtype='float32')
-                wts = np.zeros((rawchunks[0]*rawchunks[1],rawshape[2]),dtype='float32')
+                wts = arr.copy()
                 lamarr = np.zeros((rawchunks[0]*rawchunks[1]),dtype='float32')
+
+                arr_helper = arr.view()
+                arr_helper.shape = (rawchunks[0],rawchunks[1],rawshape[2])
 
                 blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
 
@@ -896,7 +907,7 @@ class MODISsmth5:
 
                     for ix in range(0,rawshape[2],rawchunks[2]):
 
-                        arr[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]].reshape(rawchunks[0]*rawchunks[1],rawchunks[2])
+                        arr_helper[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]]
 
                     wts[...] = (arr != nodata) * 1
 
@@ -904,12 +915,15 @@ class MODISsmth5:
 
                     for r in range(arr.shape[0]):
                         if wts[r,...].sum().item() != 0.0:
-                            arr[r,...], lamarr[ix,] = ws2d_vc_asy(arr[r,...],w = wts[r,...],llas = llas, p = p)
+                            arr[r,...], lamarr[ix] = ws2d_vc_asy(arr[r,...],w = wts[r,...],llas = llas,p = p)
 
-                    lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = np.log10(lamarr).reshape(rawchunks[0],rawchunks[1])
+                    lamarr[lamarr>0] = np.log10(lamarr[lamarr>0])
+
+                    lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = lamarr.reshape(rawchunks[0],rawchunks[1])
 
                     for i,j in enumerate(range(0,rawshape[2],t_interval)):
-                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr[...,j].reshape(rawchunks[0],rawchunks[1]).round()
+                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
+
 
 
 class MODIStiles:
