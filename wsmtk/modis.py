@@ -516,43 +516,17 @@ class MODISrawh5:
 
 class MODISsmth5:
 
-    def __init__(self,rawfile,lmbda=None,llas=None,p=None,tempint=None,targetdir=os.getcwd(),parallel=False,ncores=mp.cpu_count()-1):
-
-        if not os.path.isfile(rawfile):
-            raise SystemExit('Raw HDF5 {} not found! Please check path.'.format(rawfile))
+    def __init__(self,rawfile,tempint=None,targetdir=os.getcwd(),parallel=False,ncores=mp.cpu_count()-1):
 
         self.targetdir = targetdir
         self.rawfile = rawfile
         self.parallel = parallel
-        self.p = p
         self.ncores = ncores
-
-        try:
-            if lmbda:
-                self.lmbda = 10**lmbda
-            else:
-                self.lmbda = 10**0.1
-        except TypeError:
-            print('Error with lambda value. Expected float log10(lambda)! Continuing with default 0.1!')
-            self.lmbda = 10**0.1
-
-
-        try:
-            if llas:
-                self.llas = array.array('f',np.linspace(float(llas[0]),float(llas[1]),float(llas[1])/float(llas[2]) + 1.0))
-            else:
-                self.llas = array.array('f',np.linspace(0.0,4.0,41.0))
-        except (IndexError,TypeError):
-            print('Error with lambda array values. Expected tuple of float log10(lambda) - (lmin,lmax,lstep)! Continuing with default (0.0,4.0,0.1)!')
-            self.llas = array.array('f',np.linspace(0.0,4.0,41.0))
-
-
 
         try:
             txflag = txx(tempint)
         except ValueError:
-            print('Value for temporal interpolation not valid (interger for nday required)! Continuing with native temporal resolution!')
-            txflag = 'n'
+            raise SystemExit('Value for temporal interpolation not valid (interger for number of days required)!')
 
         self.outname = '{}/{}.tx{}.h5'.format(
                                     self.targetdir,
@@ -617,7 +591,7 @@ class MODISsmth5:
         self.exists = True
         print('done.\n')
 
-    def ws2d(self):
+    def ws2d(self,l):
 
         with h5py.File(self.rawfile,'r') as rawh5, h5py.File(self.outname,'r+') as smth5:
 
@@ -634,7 +608,7 @@ class MODISsmth5:
 
             if self.parallel:
 
-                params = init_parameters(l=self.lmbda,nd=nodata,dim=(rawchunks[0]*rawchunks[1],rawshape[2]))
+                params = init_parameters(l=l,nd=nodata,dim=(rawchunks[0]*rawchunks[1],rawshape[2]))
 
                 shared_array = init_shared(rawchunks[0] * rawchunks[1] * rawshape[2])
 
@@ -680,7 +654,7 @@ class MODISsmth5:
 
                     for r in range(arr.shape[0]):
                         if wts[r,...].sum().item() != 0.0:
-                            arr[r,...] = ws2d(arr[r,...],lmda = self.lmbda,w = wts[r,...])
+                            arr[r,...] = ws2d(arr[r,...],l = l,w = wts[r,...])
 
                     for i,j in enumerate(range(0,rawshape[2],t_interval)):
                         smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr[...,j].reshape(rawchunks[0],rawchunks[1]).round()
@@ -766,7 +740,7 @@ class MODISsmth5:
                         smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr[...,j].reshape(rawchunks[0],rawchunks[1]).round()
 
 
-    def ws2d_vc(self):
+    def ws2d_vc(self,llas):
 
         with h5py.File(self.rawfile,'r') as rawh5, h5py.File(self.outname,'r+') as smth5:
 
@@ -783,7 +757,7 @@ class MODISsmth5:
 
             if self.parallel:
 
-                params = init_parameters(nd=nodata,dim=(rawchunks[0]*rawchunks[1],rawshape[2]),llas=self.llas)
+                params = init_parameters(nd=nodata,dim=(rawchunks[0]*rawchunks[1],rawshape[2]),llas=llas)
 
                 shared_array = init_shared(rawchunks[0] * rawchunks[1] * rawshape[2])
 
@@ -845,14 +819,14 @@ class MODISsmth5:
 
                     for r in range(arr.shape[0]):
                         if wts[r,...].sum().item() != 0.0:
-                            arr[r,...], lamarr[ix,] = ws2d_vc(arr[r,...],w = wts[r,...],llas = self.llas)
+                            arr[r,...], lamarr[ix,] = ws2d_vc(arr[r,...],w = wts[r,...],llas = llas)
 
                     lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = np.log10(lamarr).reshape(rawchunks[0],rawchunks[1])
 
                     for i,j in enumerate(range(0,rawshape[2],t_interval)):
                         smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr[...,j].reshape(rawchunks[0],rawchunks[1]).round()
 
-    def ws2d_vc_asy(self):
+    def ws2d_vc_asy(self,llas,p):
 
         with h5py.File(self.rawfile,'r') as rawh5, h5py.File(self.outname,'r+') as smth5:
 
@@ -869,7 +843,7 @@ class MODISsmth5:
 
             if self.parallel:
 
-                params = init_parameters(nd=nodata,dim=(rawchunks[0]*rawchunks[1],rawshape[2]),llas=self.llas,p=self.p)
+                params = init_parameters(nd=nodata,dim=(rawchunks[0]*rawchunks[1],rawshape[2]),llas=llas,p=p)
 
                 shared_array = init_shared(rawchunks[0] * rawchunks[1] * rawshape[2])
 
@@ -930,7 +904,7 @@ class MODISsmth5:
 
                     for r in range(arr.shape[0]):
                         if wts[r,...].sum().item() != 0.0:
-                            arr[r,...], lamarr[ix,] = ws2d_vc_asy(arr[r,...],w = wts[r,...],llas = self.llas, p = self.p)
+                            arr[r,...], lamarr[ix,] = ws2d_vc_asy(arr[r,...],w = wts[r,...],llas = llas, p = p)
 
                     lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = np.log10(lamarr).reshape(rawchunks[0],rawchunks[1])
 
