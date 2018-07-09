@@ -7,7 +7,7 @@ import multiprocessing as mp
 import array
 import numpy as np
 from .modis import MODISsmth5
-
+import time
 
 def main():
 
@@ -27,6 +27,8 @@ def main():
     if len(sys.argv)==1:
         parser.print_help(sys.stderr)
 
+    print('\n[{}]: Starting smoothMODIS.py ... \n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
+
     args = parser.parse_args()
 
     # check if raw file exisis
@@ -34,6 +36,7 @@ def main():
     if not os.path.isfile(args.rawfile):
         raise SystemExit('Raw HDF5 {} not found! Please check path.'.format(args.rawfile))
 
+    print('\nInput file: {}\n'.format(args.rawfile))
 
     smt_h5 = MODISsmth5(rawfile = args.rawfile, tempint = args.tempint, targetdir = args.targetdir, parallel = args.parallel, ncores = args.ncores)
 
@@ -60,13 +63,15 @@ def main():
             except ValueError:
                 raise SystemExit('Error using p-value ... expected float, got {}.'.format(type(args.pvalue)))
 
+            print('\nRunning asymmetric whittaker smoother with v-cuve optimization ... \n')
+
             smt_h5.ws2d_vc_asy(llas=llas,p=p)
 
         else:
 
-            smt_h5.ws2d_vc(llas=llas)
-            sys.exit(1)
+            print('\nRunning whittaker smoother with v-cuve optimization ... \n')
 
+            smt_h5.ws2d_vc(llas=llas)
 
     else:
 
@@ -77,13 +82,17 @@ def main():
             except:
                 raise SystemExit('Error with lambda value. Expected float log10(lambda)!')
 
+            print('\nRunning whittaker smoother with fixed lambda ... \n')
+
             smt_h5.ws2d(l=l)
 
         else:
 
+            print('\nRunning whittaker smoother with lambda from grid ... \n')
+
             smt_h5.ws2d_lgrid()
 
-
+    print('\n[{}]: smoothMODIS.py finished successfully.\n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
 
 if __name__ == '__main__':
     main()
