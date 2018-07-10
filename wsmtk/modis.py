@@ -1030,7 +1030,7 @@ class MODISmosaic:
                 dset = None
                 self.dates = [x.decode() for x in h5f.get('dates')[...]]
         except Exception as e:
-            print('\nError reading refreferece file {} for mosaic! Error message: {}\n'.format(ref,e))
+            print('\nError reading referece file {} for mosaic! Error message: {}\n'.format(ref,e))
             raise
 
 
