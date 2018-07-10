@@ -1040,9 +1040,9 @@ class MODISmosaic:
 
         self.tempIX = np.flatnonzero(np.array([x >= datemin_p and x <= datemax_p for x in dts_dt]))
 
-    def getArray(self,dataset,ix):
+    def getArray(self,dataset,ix,dt):
 
-        array = np.zeros(((len(self.v_ix) * self.tile_rws),len(self.h_ix) * self.tile_cls),dtype=self.datatype)
+        array = np.zeros(((len(self.v_ix) * self.tile_rws),len(self.h_ix) * self.tile_cls),dtype=dt)
 
         for h5f in self.files:
 
@@ -1055,8 +1055,11 @@ class MODISmosaic:
             try:
 
                 with h5py.File(h5f,'r') as h5f_o:
-                    arr = h5f_o.get(dataset)[...,ix]
-                array[yoff:(yoff+self.tile_rws),xoff:(xoff+self.tile_cls)] = arr[...]
+
+                    if dataset == 'lgrid':
+                        array[yoff:(yoff+self.tile_rws),xoff:(xoff+self.tile_cls)] = h5f_o.get(dataset)[...]
+                    else:
+                        array[yoff:(yoff+self.tile_rws),xoff:(xoff+self.tile_cls)] = h5f_o.get(dataset)[...,ix]
 
             except Exception as e:
                 print('Error reading data from file {} to array! Error message {}:\n'.format(h5f,e))
@@ -1067,19 +1070,22 @@ class MODISmosaic:
     @contextmanager
     def getRaster(self,dataset,ix):
 
-        array = self.getArray(dataset,ix)
-
-        height, width = array.shape
-
         try:
-            dt_gdal = dtype_GDNP(self.datatype.name)
+            if dataset == 'lgrid':
+                self.dt_gdal = dtype_GDNP('float32')
+            else:
+                self.dt_gdal = dtype_GDNP(self.datatype.name)
         except IndexError:
             print("\n\n Couldn't read data type from dataset. Using default Int16!\n")
             dt_gdal = (3,'int16')
 
+        array = self.getArray(dataset,ix,self.dt_gdal[1])
+
+        height, width = array.shape
+
         driver = gdal.GetDriverByName('GTiff')
 
-        self.raster = driver.Create('/vsimem/inmem.tif', width, height, 1, dt_gdal[0])
+        self.raster = driver.Create('/vsimem/inmem.tif', width, height, 1, self.dt_gdal[0])
 
         self.raster.SetGeoTransform(self.gt)
         self.raster.SetProjection(self.pj)

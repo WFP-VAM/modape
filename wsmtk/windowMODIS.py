@@ -21,8 +21,8 @@ def main():
     parser.add_argument("-b","--begin-date", help='Start date (YYYYMM)',default=datetime.date(2000,1,1).strftime("%Y%m"),metavar='')
     parser.add_argument("-e","--end-date", help='End date (YYYYMM)',default=datetime.date.today().strftime("%Y%m"),metavar='')
     parser.add_argument("--parameter", help='VAM parameter code',metavar='')
-    parser.add_argument("--dataset", help='Dataset to extract (either Raw or Smoothed [DEFAULT = Smoothed])',default='data',metavar='')
     parser.add_argument("-d","--targetdir", help='Target directory for GeoTIFFs (default current directory)',default=os.getcwd(),metavar='')
+    parser.add_argument("--lgrid", help='Extract (mosaic of) lambda grid(s))',action='store_true')
 
     # fail and print help if no arguments supplied
     if len(sys.argv)==1:
@@ -42,6 +42,11 @@ def main():
 
     # force product code upper
     args.product = args.product.upper()
+
+    if args.lgrid:
+        dset = 'lgrid'
+    else:
+        dset = 'data'
 
     # change order or corner coordinates for MODIStiles
     if len(args.roi) is 4:
@@ -75,15 +80,13 @@ def main():
         # get mosaic
         mosaic = MODISmosaic(files=h5files_fil_par,datemin=args.begin_date,datemax=args.end_date)
 
-        # loop over dates
+        if args.lgrid:
 
-        for ix in mosaic.tempIX:
-
-            filename = '{}/{}{}{}j{}.tif'.format(args.targetdir,args.region.lower(),par.lower(),mosaic.dates[ix][0:4],mosaic.dates[ix][4:7])
+            filename = '{}/{}{}_lgrid.tif'.format(args.targetdir,args.region.lower(),par.lower())
 
             print('Processing file {}'.format(filename))
 
-            with mosaic.getRaster(args.dataset,ix) as mosaic_ropen:
+            with mosaic.getRaster(dset,None) as mosaic_ropen:
 
                 try:
 
@@ -91,7 +94,7 @@ def main():
 
                         ds = gdal.Warp(filename,mosaic_ropen.raster,
                         dstSRS='EPSG:4326',
-                        outputType=gdal.GDT_Int16,
+                        outputType=mosaic_ropen.dt_gdal[0],
                         xRes=mosaic_ropen.resolution_degrees,
                         yRes=mosaic_ropen.resolution_degrees,
                         outputBounds=(args.roi[0],args.roi[3],args.roi[2],args.roi[1]),
@@ -103,7 +106,7 @@ def main():
 
                         ds = gdal.Warp(filename,mosaic_ropen.raster,
                         dstSRS='EPSG:4326',
-                        outputType=gdal.GDT_Int16,
+                        outputType=mosaic_ropen.dt_gdal[0],
                         xRes=mosaic_ropen.resolution_degrees,
                         yRes=mosaic_ropen.resolution_degrees,
                         resampleAlg='near')
@@ -115,6 +118,49 @@ def main():
 
 
             del mosaic_ropen
+
+        else:
+
+            # loop over dates
+
+            for ix in mosaic.tempIX:
+
+                filename = '{}/{}{}{}j{}.tif'.format(args.targetdir,args.region.lower(),par.lower(),mosaic.dates[ix][0:4],mosaic.dates[ix][4:7])
+
+                print('Processing file {}'.format(filename))
+
+                with mosaic.getRaster(dset,ix) as mosaic_ropen:
+
+                    try:
+
+                        if len(args.roi) > 2:
+
+                            ds = gdal.Warp(filename,mosaic_ropen.raster,
+                            dstSRS='EPSG:4326',
+                            outputType=mosaic_ropen.dt_gdal[0],
+                            xRes=mosaic_ropen.resolution_degrees,
+                            yRes=mosaic_ropen.resolution_degrees,
+                            outputBounds=(args.roi[0],args.roi[3],args.roi[2],args.roi[1]),
+                            resampleAlg='near')
+
+                            ds = None
+
+                        else:
+
+                            ds = gdal.Warp(filename,mosaic_ropen.raster,
+                            dstSRS='EPSG:4326',
+                            outputType=mosaic_ropen.dt_gdal[0],
+                            xRes=mosaic_ropen.resolution_degrees,
+                            yRes=mosaic_ropen.resolution_degrees,
+                            resampleAlg='near')
+
+                            ds = None
+
+                    except Exception as e:
+                        print('Error while reading {} data for {}! Please check if dataset exits within file. \n\n Error message:\n\n {}'.format(args.dataset,filename,e))
+
+
+                del mosaic_ropen
 
 
 if __name__=='__main__':
