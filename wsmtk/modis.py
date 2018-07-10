@@ -450,8 +450,6 @@ class MODISrawh5:
 
                             flix = dates.index(re.sub(self.dts_regexp,'\\1',fl))
 
-                            ix = [int((fromjulian(dates[flix]) + datetime.timedelta(x)).strftime('%j')) for x in range(16)]
-
                             fl_o = gdal.Open(fl)
 
                             val_sds = [x[0] for x in fl_o.GetSubDatasets() if self.paramdict[self.param] in x[0]][0]
@@ -1001,8 +999,10 @@ class MODIStiles:
 
 class MODISmosaic:
 
-    def __init__(self,files,datemin,datemax):
+    def __init__(self,files,datemin,datemax,global_flag):
         tile_re = re.compile('.+(h\d+v\d+).+')
+
+        self.global_flag = global_flag
 
         self.tiles = [re.sub(tile_re,'\\1',os.path.basename(x)) for x in files]
         self.tiles.sort()
@@ -1023,10 +1023,16 @@ class MODISmosaic:
                 self.tile_rws = r
                 self.tile_cls = c
                 self.datatype = dset.dtype
-                self.resolution = dset.attrs['resolution']
-                self.resolution_degrees = self.resolution/112000
                 self.gt = dset.attrs['geotransform']
                 self.pj = dset.attrs['projection']
+
+                if self.global_flag:
+                    self.resolution_degrees = dset.attrs['resolution']
+                else:
+                    self.resolution = dset.attrs['resolution']
+                    self.resolution_degrees = self.resolution/112000
+
+
                 dset = None
                 self.dates = [x.decode() for x in h5f.get('dates')[...]]
         except Exception as e:
@@ -1067,6 +1073,27 @@ class MODISmosaic:
 
         return(array)
 
+    def getArrayGlobal(self,dataset,ix,dt):
+
+        array = np.zeros((self.tile_rws,self.tile_cls),dtype=dt)
+
+        for h5f in self.files:
+
+            try:
+
+                with h5py.File(h5f,'r') as h5f_o:
+
+                    if dataset == 'lgrid':
+                        array[...] = h5f_o.get(dataset)[...]
+                    else:
+                        array[...] = h5f_o.get(dataset)[...,ix]
+
+            except Exception as e:
+                print('Error reading data from file {} to array! Error message {}:\n'.format(h5f,e))
+                raise
+
+        return(array)
+
     @contextmanager
     def getRaster(self,dataset,ix):
 
@@ -1079,7 +1106,10 @@ class MODISmosaic:
             print("\n\n Couldn't read data type from dataset. Using default Int16!\n")
             dt_gdal = (3,'int16')
 
-        array = self.getArray(dataset,ix,self.dt_gdal[1])
+        if self.global_flag:
+            array = self.getArrayGlobal(dataset,ix,self.dt_gdal[1])
+        else:
+            array = self.getArray(dataset,ix,self.dt_gdal[1])
 
         height, width = array.shape
 
@@ -1087,11 +1117,11 @@ class MODISmosaic:
 
         self.raster = driver.Create('/vsimem/inmem.tif', width, height, 1, self.dt_gdal[0])
 
+
         self.raster.SetGeoTransform(self.gt)
         self.raster.SetProjection(self.pj)
 
         self.raster.GetRasterBand(1).WriteArray(array)
-
         yield self
 
         gdal.Unlink('/vsimem/inmem.tif')

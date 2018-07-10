@@ -9,6 +9,7 @@ import gdal
 import argparse
 import datetime
 import numpy as np
+import pickle
 
 
 def main():
@@ -31,6 +32,11 @@ def main():
 
     args = parser.parse_args()
 
+    this_dir, this_filename = os.path.split(__file__)
+
+    with open(os.path.join(this_dir, "data", "MODIS_V6_PT.pkl"),'rb') as table_raw:
+        product_table = pickle.load(table_raw)
+
     # check if targetdir exists
     if not os.path.exists(args.targetdir):
         print('\nTarget directory {} does not exist! Creating ... '.format(args.targetdir),end='')
@@ -43,6 +49,11 @@ def main():
     # force product code upper
     args.product = args.product.upper()
 
+    if 'MXD' in args.product:
+        global_flag = int(product_table[re.sub('MXD','MOD',args.product)]['pixel_size']) == 5600
+    else:
+        global_flag = int(product_table[args.product]['pixel_size']) == 5600
+
     if args.lgrid:
         dset = 'lgrid'
     else:
@@ -52,15 +63,21 @@ def main():
     if len(args.roi) is 4:
         args.roi = [args.roi[i] for i in [0,3,2,1]]
 
-    tiles = MODIStiles(args.roi)
+    if global_flag:
 
-    if len(tiles.tiles) is 0:
-        raise SystemExit("\nNo MODIS tile(s) found for location. Please check coordinates!")
+        h5files = glob.glob(args.prcdir + '/*h5')
 
-    tileRX = re.compile('|'.join(tiles.tiles))
+    else:
 
-    # files for tile result
-    h5files = [y for x in os.walk(args.prcdir) for y in glob.glob(os.path.join(x[0], '*.h5')) if re.search(tileRX,y)]
+        tiles = MODIStiles(args.roi)
+
+        if len(tiles.tiles) is 0:
+            raise SystemExit("\nNo MODIS tile(s) found for location. Please check coordinates!")
+
+        tileRX = re.compile('|'.join(tiles.tiles))
+
+        # files for tile result
+        h5files = [y for x in os.walk(args.prcdir) for y in glob.glob(os.path.join(x[0], '*.h5')) if re.search(tileRX,y)]
 
     # filter for product (and parameter)
     if args.parameter:
@@ -78,7 +95,7 @@ def main():
         h5files_fil_par = [x for x in h5files_fil if par in x]
 
         # get mosaic
-        mosaic = MODISmosaic(files=h5files_fil_par,datemin=args.begin_date,datemax=args.end_date)
+        mosaic = MODISmosaic(files=h5files_fil_par,datemin=args.begin_date,datemax=args.end_date,global_flag=global_flag)
 
         if args.lgrid:
 
@@ -91,7 +108,6 @@ def main():
                 try:
 
                     if len(args.roi) > 2:
-
                         ds = gdal.Warp(filename,mosaic_ropen.raster,
                         dstSRS='EPSG:4326',
                         outputType=mosaic_ropen.dt_gdal[0],
