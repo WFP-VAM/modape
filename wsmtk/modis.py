@@ -658,7 +658,7 @@ class MODISsmth5:
 
                     for r in range(arr.shape[0]):
                         if wts[r,...].sum().item() != 0.0:
-                            arr[r,...] = ws2d(arr[r,...],l = l,w = wts[r,...])
+                            arr[r,...] = ws2d(y = arr[r,...],lmda = l, w = wts[r,...])
 
                     for i,j in enumerate(range(0,rawshape[2],t_interval)):
                         smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
