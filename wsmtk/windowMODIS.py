@@ -22,7 +22,7 @@ def main():
     parser.add_argument("-e","--end-date", help='End date (YYYYMM)',default=datetime.date.today().strftime("%Y%m"),metavar='')
     parser.add_argument("--parameter", help='VAM parameter code',metavar='')
     parser.add_argument("--dataset", help='Dataset to extract (either Raw or Smoothed [DEFAULT = Smoothed])',default='data',metavar='')
-    parser.add_argument("--targetdir", help='Target directory for GeoTIFFs (default current directory)',default=os.getcwd(),metavar='')
+    parser.add_argument("-d","--targetdir", help='Target directory for GeoTIFFs (default current directory)',default=os.getcwd(),metavar='')
 
     # fail and print help if no arguments supplied
     if len(sys.argv)==1:
@@ -39,6 +39,9 @@ def main():
             print('done.\n')
         except:
             raise
+
+    # force product code upper
+    args.product = args.product.upper()
 
     # change order or corner coordinates for MODIStiles
     if len(args.roi) is 4:
@@ -65,7 +68,7 @@ def main():
 
     # loop over parameters (could be multiple if unspecified)
 
-    for par in set([re.sub('.+_(\w{3}).h5','\\1',x) for x in h5files_fil]):
+    for par in set([re.sub('.+([^\W\d_]{3}).h5','\\1',x) for x in h5files_fil]):
 
         h5files_fil_par = [x for x in h5files_fil if par in x]
 

@@ -525,10 +525,11 @@ class MODISsmth5:
         except ValueError:
             raise SystemExit('Value for temporal interpolation not valid (interger for number of days required)!')
 
-        self.outname = '{}/{}.tx{}.h5'.format(
+        self.outname = '{}/{}.tx{}.{}.h5'.format(
                                     self.targetdir,
-                                    '.'.join(os.path.basename(rawfile).split('.')[:-1]),
-                                    txflag)
+                                    '.'.join(os.path.basename(rawfile).split('.')[:-2]),
+                                    txflag,
+                                    os.path.basename(rawfile).split('.')[-2:-1][0])
 
         self.exists = os.path.isfile(self.outname)
 
@@ -1022,10 +1023,10 @@ class MODISmosaic:
                 self.tile_rws = r
                 self.tile_cls = c
                 self.datatype = dset.dtype
-                self.resolution = dset.attrs['Resolution']
+                self.resolution = dset.attrs['resolution']
                 self.resolution_degrees = self.resolution/112000
-                self.gt = dset.attrs['Geotransform']
-                self.pj = dset.attrs['Projection']
+                self.gt = dset.attrs['geotransform']
+                self.pj = dset.attrs['projection']
                 dset = None
                 self.dates = [x.decode() for x in h5f.get('dates')[...]]
         except Exception as e:
@@ -1071,7 +1072,7 @@ class MODISmosaic:
         height, width = array.shape
 
         try:
-            dt_gdal = dtype_GDNP(self.datatype)
+            dt_gdal = dtype_GDNP(self.datatype.name)
         except IndexError:
             print("\n\n Couldn't read data type from dataset. Using default Int16!\n")
             dt_gdal = (3,'int16')
