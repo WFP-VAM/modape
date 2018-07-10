@@ -26,10 +26,11 @@ def main():
     # fail and print help if no arguments supplied
     if len(sys.argv)==1:
         parser.print_help(sys.stderr)
-
-    print('\n[{}]: Starting smoothMODIS.py ... \n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
+        print('\n')
 
     args = parser.parse_args()
+
+    print('\n[{}]: Starting smoothMODIS.py ... \n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
 
     # check if raw file exisis
 
