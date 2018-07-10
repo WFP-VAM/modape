@@ -95,4 +95,5 @@ def main():
     print('\n[{}]: smoothMODIS.py finished successfully.\n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
 
 if __name__ == '__main__':
+    mp.freeze_support()
     main()
