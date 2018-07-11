@@ -14,9 +14,9 @@ def main():
     parser.add_argument("srcdir", help='directory with raw MODIS .hdf files',default=os.getcwd(),metavar='DIR')
     #parser.add_argument("-p","--parameter", help='VAM parameter code',metavar='') ## paramter selection not implemented
     parser.add_argument("--prcdir", help='Storage directory for PROCESSED MODIS files',default=os.getcwd(),metavar='')
-    #parser.add_argument("--rawdir", help='Storage directory for RAW MODIS files',metavar='')
     parser.add_argument("-c","--compression", help='Compression for HDF5 files',default='gzip',metavar='')
     parser.add_argument("--all-parameters", help='Flag to process all possible VAM parameters',action='store_true')
+    parser.add_argument("-b","--blocksize", help='Minimum values for row & columns per processing block (default 120 120)',nargs=2,default=[120,120],type=int,metavar='')
 
     # fail and print help if no arguments supplied
     if len(sys.argv)==1:
@@ -65,7 +65,7 @@ def main():
             for p in allps:
 
                 try:
-                    h5 = MODISrawh5(files_sub,param=p,targetdir=args.prcdir,compression=args.compression)
+                    h5 = MODISrawh5(files_sub,param=p,targetdir=args.prcdir,compression=args.compression,crow=args.blocksize[0],ccol=args.blocksize[1])
                     if not h5.exists:
                         h5.create()
                     h5.update()
@@ -83,7 +83,7 @@ def main():
 
             try:
 
-                h5 = MODISrawh5(files_sub,targetdir=args.prcdir,compression=args.compression)
+                h5 = MODISrawh5(files_sub,targetdir=args.prcdir,compression=args.compression,crow=args.blocksize[0],ccol=args.blocksize[1])
 
                 if not h5.exists:
                     h5.create()

@@ -265,6 +265,9 @@ class MODISrawh5:
         self.cols = rst.RasterXSize
         self.nodata_value = int(rst.GetMetadataItem('_FillValue'))
 
+        if self.rows % self.crow != 0 or self.cols % self.ccol != 0:
+            raise SystemExit('Modulo of processing blocksize and row/column returned non-zero which could have unintended side-effects. Please change size of processing blocks!')
+
         if re.match(r'M.{1}D13\w\d',self.ref_file_basename):
             if not self.temporalresolution:
                 self.numberofdays = 16
@@ -346,7 +349,7 @@ class MODISrawh5:
                 [gc.collect() for x in range(3)]
 
                 try:
-                    arr = np.zeros((120,120,16),dtype=self.datatype[1])
+                    arr = np.zeros((self.chunks[0],self.chunks[1],16),dtype=self.datatype[1])
 
                 except MemoryError:
                         print("\n\n Can't allocate arrays for block due to memory restrictions! Make sure enough RAM is availabe, consider using a 64bit PYTHON version or reduce block size.\n\n Traceback:")
