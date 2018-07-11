@@ -92,6 +92,8 @@ def main():
 
     for par in set([re.sub('.+([^\W\d_]{3}).h5','\\1',x) for x in h5files_fil]):
 
+        print('\n')
+
         h5files_fil_par = [x for x in h5files_fil if par in x]
 
         # get mosaic
