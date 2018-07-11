@@ -20,7 +20,7 @@ def main():
     parser.add_argument("-d","--targetdir", help='Target directory for smoothed output',default=os.getcwd(),metavar='')
     parser.add_argument("--loptimize", help='Use V-curve for lambda optimization',action='store_true')
     parser.add_argument("--parallel", help='Parallel processing',action='store_true')
-    parser.add_argument("--ncores", help='Number of cores used for parallel processing (defaul is number available minus 1)',default=mp.cpu_count()-1, metavar='')
+    parser.add_argument("--ncores", help='Number of cores used for parallel processing (defaul is number available minus 1)',default=mp.cpu_count()-1, metavar='', type = int)
 
 
     # fail and print help if no arguments supplied
