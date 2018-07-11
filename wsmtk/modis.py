@@ -333,6 +333,7 @@ class MODISrawh5:
                 self.cols = dset.shape[1]
                 self.nodata_value = dset.attrs['nodata']
                 self.numberofdays = dset.attrs['numberofdays']
+                self.temporalresolution = dset.attrs['temporalresolution']
                 self.doyindex = int(self.numberofdays / 2)
                 self.datatype = dtype_GDNP(dset.dtype.name)
                 #res  = dset.attrs['Resolution'] ## comment for original resolution
