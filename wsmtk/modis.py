@@ -22,6 +22,7 @@ import bisect
 import gc
 import array
 import multiprocessing as mp
+import traceback
 try:
     import gdal
 except ImportError:
@@ -221,7 +222,7 @@ class MODISrawh5:
         ref = None
 
         if self.param is 'VIM' and any(['MOD' in os.path.basename(x) for x in files]) and any(['MYD' in os.path.basename(x) for x in files]):
-            self.product = [re.sub(r'M[O,Y]D','MXD',re.findall(ppatt,self.ref_file_basename)[0])]
+            self.product = [re.sub(r'M[O|Y]D','MXD',re.findall(ppatt,self.ref_file_basename)[0])]
             self.temporalresolution = 8
         else:
             self.product = re.findall(ppatt,self.ref_file_basename)
@@ -268,7 +269,7 @@ class MODISrawh5:
         if self.rows % self.crow != 0 or self.cols % self.ccol != 0:
             raise SystemExit('Modulo of processing blocksize and row/column returned non-zero which could have unintended side-effects. Please change size of processing blocks!')
 
-        if re.match(r'M.{1}D13\w\d',self.ref_file_basename):
+        if re.match(r'M[O|Y]D13\w\d',self.ref_file_basename):
             if not self.temporalresolution:
                 self.numberofdays = 16
                 self.temporalresolution = self.numberofdays
@@ -277,7 +278,7 @@ class MODISrawh5:
                 self.numberofdays = 16
                 totaldays = self.nfiles * self.temporalresolution + self.temporalresolution
 
-        elif re.match(r'M.{1}D11\w\d',self.ref_file_basename):
+        elif re.match(r'M[O|Y]D11\w\d',self.ref_file_basename):
             self.numberofdays = 8
             self.temporalresolution = self.numberofdays
             totaldays = self.nfiles * self.temporalresolution
@@ -350,7 +351,7 @@ class MODISrawh5:
                 [gc.collect() for x in range(3)]
 
                 try:
-                    arr = np.zeros((self.chunks[0],self.chunks[1],16),dtype=self.datatype[1])
+                    arr = np.zeros((self.chunks[0],self.chunks[1],self.numberofdays),dtype=self.datatype[1])
 
                 except MemoryError:
                         print("\n\n Can't allocate arrays for block due to memory restrictions! Make sure enough RAM is availabe, consider using a 64bit PYTHON version or reduce block size.\n\n Traceback:")
@@ -507,6 +508,7 @@ class MODISrawh5:
 
         except:
             print('Error updating {}! File may be corrupt, consider creating the file from scratch, or closer investigation. \n\nError message: \n'.format(self.outname))
+            traceback.print_exc()
             raise
 
     def __str__(self):
