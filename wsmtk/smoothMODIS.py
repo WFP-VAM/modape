@@ -65,13 +65,13 @@ def main():
             except ValueError:
                 raise SystemExit('Error using p-value ... expected float, got {}.'.format(type(args.pvalue)))
 
-            print('\nRunning asymmetric whittaker smoother with v-cuve optimization ... \n')
+            print('\nRunning asymmetric whittaker smoother with v-curve optimization ... \n')
 
             smt_h5.ws2d_vc_asy(llas=llas,p=p)
 
         else:
 
-            print('\nRunning whittaker smoother with v-cuve optimization ... \n')
+            print('\nRunning whittaker smoother with v-curve optimization ... \n')
 
             smt_h5.ws2d_vc(llas=llas)
 

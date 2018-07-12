@@ -755,7 +755,7 @@ class MODISsmth5:
 
                     for r in range(arr.shape[0]):
                         if wts[r,...].sum().item() != 0.0:
-                            arr[r,...] = ws2d(arr[r,...],lmda = 10**lamarr[r,],w = wts[r,...])
+                            arr[r,...] = ws2d(arr[r,...],lmda = 10**lamarr[r],w = wts[r,...])
 
                     for i,j in enumerate(range(0,rawshape[2],t_interval)):
                         smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
@@ -851,7 +851,7 @@ class MODISsmth5:
 
                     for r in range(arr.shape[0]):
                         if wts[r,...].sum().item() != 0.0:
-                            arr[r,...], lamarr[ix] = ws2d_vc(arr[r,...],w = wts[r,...],llas = llas)
+                            arr[r,...], lamarr[r] = ws2d_vc(arr[r,...],w = wts[r,...],llas = llas)
 
                     lamarr[lamarr>0] = np.log10(lamarr[lamarr>0])
 
@@ -951,7 +951,7 @@ class MODISsmth5:
 
                     for r in range(arr.shape[0]):
                         if wts[r,...].sum().item() != 0.0:
-                            arr[r,...], lamarr[ix] = ws2d_vc_asy(arr[r,...],w = wts[r,...],llas = llas,p = p)
+                            arr[r,...], lamarr[r] = ws2d_vc_asy(arr[r,...],w = wts[r,...],llas = llas,p = p)
 
                     lamarr[lamarr>0] = np.log10(lamarr[lamarr>0])
 
