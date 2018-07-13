@@ -74,8 +74,6 @@ class SessionWithHeaderRedirection(requests.Session):
         self.auth = (username, password)
 
 
-
-
    # Overrides from the library to keep headers when redirected to or from
 
    # the NASA auth host.
@@ -116,45 +114,79 @@ def txx(x):
 def fromjulian(x):
     return datetime.datetime.strptime(x,'%Y%j').date()
 
-
-def init_3Darray(cshp):
+def init_shared(ncell):
     '''Create shared value array for smoothing'''
-    ncell = cshp[0] * cshp[1] * cshp[2]
     shared_array_base = multiprocessing.Array(ctypes.c_float,ncell,lock=False)
-    main_nparray = np.frombuffer(shared_array_base, dtype=ctypes.c_float)
-    main_nparray = main_nparray.reshape(cshp[0]*cshp[1],cshp[2])
+    return(shared_array_base)
 
-    assert main_nparray.base.base is shared_array_base
-    return(main_nparray)
+def tonumpyarray(shared_array):
 
-def init_2Darray(cshp):
-    '''Create shared lambda array for smoothing'''
-    ncell = cshp[0] * cshp[1]
-    shared_array_base = multiprocessing.Array(ctypes.c_float,ncell,lock=False)
-    main_nparray = np.frombuffer(shared_array_base, dtype=ctypes.c_float)
+    nparray= np.frombuffer(shared_array,dtype=ctypes.c_float)
+    assert nparray.base is shared_array
+    return nparray
 
-    assert main_nparray.base is shared_array_base
-    return(main_nparray)
+def init_parameters(**kwargs):
+    params = dict(zip(['shared_array','shared_lmbda','nd','l','llas','p','dim'],[None for x in range(7)]))
+
+    for key, value in kwargs.items():
+        params[key] = value
+    return params
+
+def init_worker(shared_array_,parameters_):
+    global shared_array
+    global nd
+    global l
+    global llas
+    global p
+    global dim
+    shared_array = tonumpyarray(shared_array_)
+    nd = parameters_['nd']
+    l = parameters_['l']
+    llas = parameters_['llas']
+    p = parameters_['p']
+    dim = parameters_['dim']
+
+    try:
+        global shared_lmbda
+        shared_lmbda = tonumpyarray(parameters_['shared_lmbda'])
+    except:
+        shared_lmbda = None
 
 
-class Worker:
+def execute_ws2d(ix):
+    #worker function for parallel smoothing using whittaker 2d with fixed lambda
+    arr = tonumpyarray(shared_array)
+    arr.shape = dim
+    for ii in ix:
+        if (arr[ii,] != nd ).any():
+            arr[ii,] = ws2d(y = arr[ii,], lmda = l, w = np.array((arr[ii,] != nd) * 1,dtype='float32'))
 
-    def execute_ws2d(ix):
-        #worker function for parallel smoothing using whittaker 2d with fixed lambda
-        if Worker.wts[ix,...].sum().item() != 0.0:
-            Worker.arr[ix,...] = ws2d(y = Worker.arr[ix,...], lmda = Worker.l, w = Worker.wts[ix,...])
+def execute_ws2d_lgrid(ix):
+    #worker function for parallel smoothing using whittaker 2d with existing lambda grid
+    arr = tonumpyarray(shared_array)
+    lamarr = tonumpyarray(shared_lmbda)
+    arr.shape = dim
 
-    def execute_ws2d_lgrid(ix):
-        #worker function for parallel smoothing using whittaker 2d with existing lambda grid
-        if Worker.wts[ix,...].sum().item() != 0.0:
-            Worker.arr[ix,...] = ws2d(y = Worker.arr[ix,...], lmda = 10**Worker.lamarr[ix,], w = Worker.wts[ix,...])
+    for ii in ix:
+        if (arr[ii,] != nd ).any():
+            arr[ii,] = ws2d(y = arr[ii,], lmda = 10**lamarr[ii], w = np.array((arr[ii,] != nd ) * 1,dtype='float32'))
 
-    def execute_ws2d_vc(ix):
-        #worker function for parallel smoothing using whittaker 2d with v-curve optimization
-        if Worker.wts[ix,...].sum().item() != 0.0:
-            Worker.arr[ix,...], Worker.lamarr[ix,] =  ws2d_vc(y = Worker.arr[ix,...], w = Worker.wts[ix,...], llas = Worker.llas)
+def execute_ws2d_vc(ix):
+    #worker function for parallel smoothing using whittaker 2d with v-curve optimization
+    arr = tonumpyarray(shared_array)
+    lamarr = tonumpyarray(shared_lmbda)
+    arr.shape = dim
 
-    def execute_ws2d_vc_asy(ix):
-        #worker function for parallel asymmetric smoothing using whittaker 2d with v-curve optimization
-        if Worker.wts[ix,...].sum().item() != 0.0:
-            Worker.arr[ix,...], Worker.lamarr[ix,] = ws2d_vc_asy(y = Worker.arr[ix,...], w = Worker.wts[ix,...], llas = Worker.llas, p = Worker.p)
+    for ii in ix:
+        if (arr[ii,] != nd ).any():
+            arr[ii,], lamarr[ii] =  ws2d_vc(y = arr[ii], w = np.array((arr[ii,] != nd ) * 1,dtype='float32'), llas = llas)
+
+def execute_ws2d_vc_asy(ix):
+    #worker function for parallel asymmetric smoothing using whittaker 2d with v-curve optimization
+    arr = tonumpyarray(shared_array)
+    lamarr = tonumpyarray(shared_lmbda)
+    arr.shape = dim
+
+    for ii in ix:
+        if (arr[ii,] != nd ).any():
+            arr[ii,], lamarr[ii] = ws2d_vc_asy(y = arr[ii], w = np.array((arr[ii,] != nd ) * 1,dtype='float32'), llas = llas, p = p)

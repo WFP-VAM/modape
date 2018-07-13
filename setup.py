@@ -44,6 +44,7 @@ setup(
     'downloadMODIS=wsmtk.downloadMODIS:main',
     'processMODIS=wsmtk.processMODIS:main',
     'windowMODIS=wsmtk.windowMODIS:main',
+    'smoothMODIS=wsmtk.smoothMODIS:main',
     'MODproductTable=wsmtk.MODproductTable:main',
         ]
     },

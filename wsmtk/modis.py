@@ -12,16 +12,17 @@ import h5py
 import osr
 from progress.bar import Bar
 from progress.spinner import Spinner
-from .utils import LDOM, dtype_GDNP, SessionWithHeaderRedirection, txx, init_3Darray, init_2Darray, Worker, fromjulian
+from .utils import *
 from .whittaker import ws2d, ws2d_vc, ws2d_vc_asy
-from contextlib import contextmanager
+from contextlib import contextmanager, closing
 import pickle
 import warnings
 import itertools
 import bisect
 import gc
 import array
-import multiprocessing
+import multiprocessing as mp
+import traceback
 try:
     import gdal
 except ImportError:
@@ -221,7 +222,7 @@ class MODISrawh5:
         ref = None
 
         if self.param is 'VIM' and any(['MOD' in os.path.basename(x) for x in files]) and any(['MYD' in os.path.basename(x) for x in files]):
-            self.product = ['MXD']
+            self.product = [re.sub(r'M[O|Y]D','MXD',re.findall(ppatt,self.ref_file_basename)[0])]
             self.temporalresolution = 8
         else:
             self.product = re.findall(ppatt,self.ref_file_basename)
@@ -256,7 +257,6 @@ class MODISrawh5:
         #rst = gdal.Warp('', ref_sds, dstSRS='EPSG:4326', format='VRT',
         #                              outputType=gdal.GDT_Float32, xRes=res, yRes=res)
 
-        ## TODO real raster resolution??
 
         rst = gdal.Open(ref_sds)
 
@@ -266,7 +266,10 @@ class MODISrawh5:
         self.cols = rst.RasterXSize
         self.nodata_value = int(rst.GetMetadataItem('_FillValue'))
 
-        if re.match(r'M.{1}D13\w\d',self.ref_file_basename):
+        if self.rows % self.crow != 0 or self.cols % self.ccol != 0:
+            raise SystemExit('Modulo of processing blocksize and row/column returned non-zero which could have unintended side-effects. Please change size of processing blocks!')
+
+        if re.match(r'M[O|Y]D13\w\d',self.ref_file_basename):
             if not self.temporalresolution:
                 self.numberofdays = 16
                 self.temporalresolution = self.numberofdays
@@ -275,7 +278,7 @@ class MODISrawh5:
                 self.numberofdays = 16
                 totaldays = self.nfiles * self.temporalresolution + self.temporalresolution
 
-        elif re.match(r'M.{1}D11\w\d',self.ref_file_basename):
+        elif re.match(r'M[O|Y]D11\w\d',self.ref_file_basename):
             self.numberofdays = 8
             self.temporalresolution = self.numberofdays
             totaldays = self.nfiles * self.temporalresolution
@@ -301,8 +304,6 @@ class MODISrawh5:
 
             with h5py.File(self.outname,'x',libver='latest') as h5f:
                 dset = h5f.create_dataset('data',shape=(self.rows,self.cols,totaldays),dtype=self.datatype[1],maxshape=(self.rows,self.cols,None),chunks=self.chunks,compression=self.compression)
-                #h5f.create_dataset('Smooth',shape=(self.rows,self.cols,self.nfiles),dtype=self.datatype[1],maxshape=(self.rows,self.cols,None),chunks=self.chunks,compression=self.compression)
-                #h5f.create_dataset('lgrd',shape=(self.rows,self.cols),dtype='float32',maxshape=(self.rows,self.cols),chunks=self.chunks[0:2],compression=self.compression)
                 h5f.create_dataset('dates',shape=(self.nfiles,),maxshape=(None,),dtype='S8',compression=self.compression)
                 dset.attrs['geotransform'] = trans
                 dset.attrs['projection'] = prj
@@ -333,6 +334,7 @@ class MODISrawh5:
                 self.cols = dset.shape[1]
                 self.nodata_value = dset.attrs['nodata']
                 self.numberofdays = dset.attrs['numberofdays']
+                self.temporalresolution = dset.attrs['temporalresolution']
                 self.doyindex = int(self.numberofdays / 2)
                 self.datatype = dtype_GDNP(dset.dtype.name)
                 #res  = dset.attrs['Resolution'] ## comment for original resolution
@@ -349,7 +351,7 @@ class MODISrawh5:
                 [gc.collect() for x in range(3)]
 
                 try:
-                    arr = np.zeros((120,120,16),dtype=self.datatype[1])
+                    arr = np.zeros((self.chunks[0],self.chunks[1],self.numberofdays),dtype=self.datatype[1])
 
                 except MemoryError:
                         print("\n\n Can't allocate arrays for block due to memory restrictions! Make sure enough RAM is availabe, consider using a 64bit PYTHON version or reduce block size.\n\n Traceback:")
@@ -453,8 +455,6 @@ class MODISrawh5:
 
                             flix = dates.index(re.sub(self.dts_regexp,'\\1',fl))
 
-                            ix = [int((fromjulian(dates[flix]) + datetime.timedelta(x)).strftime('%j')) for x in range(16)]
-
                             fl_o = gdal.Open(fl)
 
                             val_sds = [x[0] for x in fl_o.GetSubDatasets() if self.paramdict[self.param] in x[0]][0]
@@ -467,13 +467,13 @@ class MODISrawh5:
 
                                 valarr[...] = val_rst.ReadAsArray(xoff=blk[1],yoff=blk[0],xsize=self.chunks[1],ysize=self.chunks[0])
 
-                                arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.numberofdays:flix*self.numberofdays+self.numberofdays]
+                                arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.temporalresolution:flix*self.temporalresolution+self.numberofdays]
 
                                 arr[arr == 0] = self.nodata_value
 
                                 arr[...,self.doyindex] = np.maximum.reduce([arr[...,self.doyindex],valarr[...]])
 
-                                dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.numberofdays:flix*self.numberofdays+self.numberofdays] = arr[...]
+                                dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.temporalresolution:flix*self.temporalresolution+self.numberofdays] = arr[...]
 
                         except AttributeError:
 
@@ -485,13 +485,13 @@ class MODISrawh5:
 
                             for blk in blks:
 
-                                arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.numberofdays:flix*self.numberofdays+self.numberofdays]
+                                arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.temporalresolution:flix*self.temporalresolution+self.numberofdays]
 
                                 arr[arr == 0] = self.nodata_value
 
                                 arr[...,self.doyindex] = np.maximum.reduce([arr[...,self.doyindex],ndarr])
 
-                                dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.numberofdays:flix*self.numberofdays+self.numberofdays] = arr[...]
+                                dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.temporalresolution:flix*self.temporalresolution+self.numberofdays] = arr[...]
 
                             del ndarr
 
@@ -508,6 +508,7 @@ class MODISrawh5:
 
         except:
             print('Error updating {}! File may be corrupt, consider creating the file from scratch, or closer investigation. \n\nError message: \n'.format(self.outname))
+            traceback.print_exc()
             raise
 
     def __str__(self):
@@ -516,47 +517,23 @@ class MODISrawh5:
 
 class MODISsmth5:
 
-    def __init__(self,rawfile,lmbda=None,llas=None,p=None,tempint=None,targetdir=os.getcwd(),parallel=False):
-
-        if not os.path.isfile(rawfile):
-            raise SystemExit('Raw HDF5 {} not found! Please check path.'.format(rawfile))
+    def __init__(self,rawfile,tempint=None,targetdir=os.getcwd(),parallel=False,ncores=mp.cpu_count()-1):
 
         self.targetdir = targetdir
         self.rawfile = rawfile
         self.parallel = parallel
-        self.p = p
-
-        try:
-            if lmbda:
-                self.lmbda = 10**lmbda
-            else:
-                self.lmbda = 10**0.1
-        except TypeError:
-            print('Error with lambda value. Expected float log10(lambda)! Continuing with default 0.1!')
-            self.lmbda = 10**0.1
-
-
-        try:
-            if llas:
-                self.llas = array.array('f',np.linspace(float(llas[0]),float(llas[1]),float(llas[1])/float(llas[2]) + 1.0))
-            else:
-                self.llas = array.array('f',np.linspace(0.0,4.0,41.0))
-        except (IndexError,TypeError):
-            print('Error with lambda array values. Expected tuple of float log10(lambda) - (lmin,lmax,lstep)! Continuing with default (0.0,4.0,0.1)!')
-            self.llas = array.array('f',np.linspace(0.0,4.0,41.0))
-
-
+        self.ncores = ncores
 
         try:
             txflag = txx(tempint)
         except ValueError:
-            print('Value for temporal interpolation not valid (interger for nday required)! Continuing with native temporal resolution!')
-            txflag = 'n'
+            raise SystemExit('Value for temporal interpolation not valid (interger for number of days required)!')
 
-        self.outname = '{}/{}.tx{}.h5'.format(
+        self.outname = '{}/{}.tx{}.{}.h5'.format(
                                     self.targetdir,
-                                    '.'.join(os.path.basename(rawfile).split('.')[:-1]),
-                                    txflag)
+                                    '.'.join(os.path.basename(rawfile).split('.')[:-2]),
+                                    txflag,
+                                    os.path.basename(rawfile).split('.')[-2:-1][0])
 
         self.exists = os.path.isfile(self.outname)
 
@@ -616,9 +593,7 @@ class MODISsmth5:
         self.exists = True
         print('done.\n')
 
-    def ws2d(self):
-
-        Worker.l = self.lmbda
+    def ws2d(self,l):
 
         with h5py.File(self.rawfile,'r') as rawh5, h5py.File(self.outname,'r+') as smth5:
 
@@ -629,35 +604,53 @@ class MODISsmth5:
             rawchunks = raw_ds.chunks
 
             nodata = raw_ds.attrs['nodata']
-            tres = smt_ds.attrs['temporalresolution']
+            t_resolution = raw_ds.attrs['temporalresolution']
+            t_interval = smt_ds.attrs['temporalresolution']
+
+            barmax = (rawshape[0]/rawchunks[0]) * (rawshape[1]/rawchunks[1])
+            bar = Bar('Processing',fill='=',max=barmax,suffix='%(percent)d%%  ')
+            bar.goto(0)
 
             if self.parallel:
 
-                Worker.arr = init_3Darray((rawchunks[0],rawchunks[1],rawshape[2]))
-                Worker.wts = init_3Darray((rawchunks[0],rawchunks[1],rawshape[2]))
+                params = init_parameters(l=l,nd=nodata,dim=(rawchunks[0]*rawchunks[1],rawshape[2]))
+
+                shared_array = init_shared(rawchunks[0] * rawchunks[1] * rawshape[2])
+
+                arr = tonumpyarray(shared_array)
+
+                arr.shape = (rawchunks[0] * rawchunks[1],rawshape[2])
+
+                arr_helper = arr.view()
+
+                arr_helper.shape = (rawchunks[0],rawchunks[1],rawshape[2])
 
                 blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
 
-                for b in blks:
+                with closing(mp.Pool(processes=self.ncores,initializer = init_worker, initargs = (shared_array,params))) as pool:
 
-                    for ix in range(0,rawshape[2],rawchunks[2]):
+                    for b in blks:
 
-                        Worker.arr[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]].reshape(rawchunks[0]*rawchunks[1],rawchunks[2])
+                        for ix in range(0,rawshape[2],rawchunks[2]):
 
-                    Worker.wts[...] = (Worker.arr != nodata) * 1
+                            arr_helper[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]]
 
-                    del ix
+                        del ix
 
-                    with multiprocessing.Pool() as pool:
-                        pool.map(Worker.execute_ws2d,range(0,Worker.arr.shape[0]))
+                        res = pool.map(execute_ws2d,np.array_split(range(arr.shape[0]),self.ncores))
 
-                    for i,j in enumerate(range(0,rawshape[2],tres)):
-                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = Worker.arr[...,j].reshape(rawchunks[0],rawchunks[1]).round()
+                        for i,j in enumerate(range(0,rawshape[2],t_interval)):
+                            smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
+                        bar.next()
+                    bar.finish()
 
             else:
 
                 arr = np.zeros((rawchunks[0]*rawchunks[1],rawshape[2]),dtype='float32')
-                wts = np.zeros((rawchunks[0]*rawchunks[1],rawshape[2]),dtype='float32')
+                wts = arr.copy()
+
+                arr_helper = arr.view()
+                arr_helper.shape = (rawchunks[0],rawchunks[1],rawshape[2])
 
                 blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
 
@@ -665,16 +658,18 @@ class MODISsmth5:
 
                     for ix in range(0,rawshape[2],rawchunks[2]):
 
-                        arr[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]].reshape(rawchunks[0]*rawchunks[1],rawchunks[2])
+                        arr_helper[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]]
 
                     wts[...] = (arr != nodata) * 1
 
                     for r in range(arr.shape[0]):
                         if wts[r,...].sum().item() != 0.0:
-                            arr[r,...] = ws2d(arr[r,...],lmda = self.lmbda,w = wts[r,...])
+                            arr[r,...] = ws2d(y = arr[r,...],lmda = l, w = wts[r,...])
 
-                    for i,j in enumerate(range(0,rawshape[2],tres)):
-                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr[...,j].reshape(rawchunks[0],rawchunks[1]).round()
+                    for i,j in enumerate(range(0,rawshape[2],t_interval)):
+                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
+                    bar.next()
+                bar.finish()
 
 
     def ws2d_lgrid(self):
@@ -689,39 +684,62 @@ class MODISsmth5:
             rawchunks = raw_ds.chunks
 
             nodata = raw_ds.attrs['nodata']
-            tres = smt_ds.attrs['temporalresolution']
+            t_resolution = raw_ds.attrs['temporalresolution']
+            t_interval = smt_ds.attrs['temporalresolution']
+
+            barmax = (rawshape[0]/rawchunks[0]) * (rawshape[1]/rawchunks[1])
+            print(barmax)
+            bar = Bar('Processing',fill='=',max=barmax,suffix='%(percent)d%%  ')
+            bar.goto(0)
 
             if self.parallel:
 
-                Worker.arr = init_3Darray((rawchunks[0],rawchunks[1],rawshape[2]))
-                Worker.wts = init_3Darray((rawchunks[0],rawchunks[1],rawshape[2]))
-                Worker.lamarr = init_2Darray((rawchunks[0],rawchunks[1]))
+                params = init_parameters(nd=nodata,dim=(rawchunks[0]*rawchunks[1],rawshape[2]))
+
+                shared_array = init_shared(rawchunks[0] * rawchunks[1] * rawshape[2])
+
+                params['shared_lmbda'] = init_shared(rawchunks[0] * rawchunks[1])
+
+                arr = tonumpyarray(shared_array)
+
+                lamarr = tonumpyarray(params['shared_lmbda'])
+
+                arr.shape = (rawchunks[0] * rawchunks[1],rawshape[2])
+                lamarr.shape = (rawchunks[0], rawchunks[1])
+
+                arr_helper = arr.view()
+
+                arr_helper.shape = (rawchunks[0],rawchunks[1],rawshape[2])
 
                 blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
 
-                for b in blks:
+                with closing(mp.Pool(processes=self.ncores,initializer = init_worker, initargs = (shared_array,params))) as pool:
 
-                    for ix in range(0,rawshape[2],rawchunks[2]):
+                    for b in blks:
 
-                        Worker.arr[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]].reshape(rawchunks[0]*rawchunks[1],rawchunks[2])
+                        for ix in range(0,rawshape[2],rawchunks[2]):
 
-                    Worker.wts[...] = (Worker.arr != nodata) * 1
+                            arr_helper[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]]
 
-                    Worker.lamarr[...] = lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]].reshape(rawchunks[0] * rawchunks[1])
+                        lamarr[...] = lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]]
 
-                    del ix
+                        del ix
 
-                    with multiprocessing.Pool() as pool:
-                        pool.map(Worker.execute_ws2d_lgrid,range(0,Worker.arr.shape[0]))
+                        res = pool.map(execute_ws2d_lgrid,np.array_split(range(arr.shape[0]),self.ncores))
 
-                    for i,j in enumerate(range(0,rawshape[2],tres)):
-                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = Worker.arr[...,j].reshape(rawchunks[0],rawchunks[1]).round()
+                        for i,j in enumerate(range(0,rawshape[2],t_interval)):
+                            smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
+                        bar.next()
+                    bar.finish()
 
             else:
 
                 arr = np.zeros((rawchunks[0]*rawchunks[1],rawshape[2]),dtype='float32')
-                wts = np.zeros((rawchunks[0]*rawchunks[1],rawshape[2]),dtype='float32')
+                wts = arr.copy()
                 lamarr = np.zeros((rawchunks[0]*rawchunks[1]),dtype='float32')
+
+                arr_helper = arr.view()
+                arr_helper.shape = (rawchunks[0],rawchunks[1],rawshape[2])
 
                 blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
 
@@ -729,7 +747,7 @@ class MODISsmth5:
 
                     for ix in range(0,rawshape[2],rawchunks[2]):
 
-                        arr[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]].reshape(rawchunks[0]*rawchunks[1],rawchunks[2])
+                        arr_helper[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]]
 
                     wts[...] = (arr != nodata) * 1
 
@@ -737,90 +755,15 @@ class MODISsmth5:
 
                     for r in range(arr.shape[0]):
                         if wts[r,...].sum().item() != 0.0:
-                            arr[r,...] = ws2d(arr[r,...],lmda = 10**lamarr[r,],w = wts[r,...])
+                            arr[r,...] = ws2d(arr[r,...],lmda = 10**lamarr[r],w = wts[r,...])
 
-                    for i,j in enumerate(range(0,rawshape[2],tres)):
-                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr[...,j].reshape(rawchunks[0],rawchunks[1]).round()
+                    for i,j in enumerate(range(0,rawshape[2],t_interval)):
+                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
 
+                    bar.next()
+                bar.finish()
 
-    def ws2d_vc(self):
-
-        Worker.llas = self.llas
-
-        with h5py.File(self.rawfile,'r') as rawh5, h5py.File(self.outname,'r+') as smth5:
-
-            raw_ds = rawh5.get('data')
-            smt_ds = smth5.get('data')
-            lgrid_ds = smth5.get('lgrid')
-
-            rawshape = raw_ds.shape
-            rawchunks = raw_ds.chunks
-
-            nodata = raw_ds.attrs['nodata']
-            tres = smt_ds.attrs['temporalresolution']
-
-            if self.parallel:
-
-                Worker.arr = init_3Darray((rawchunks[0],rawchunks[1],rawshape[2]))
-                Worker.wts = init_3Darray((rawchunks[0],rawchunks[1],rawshape[2]))
-                Worker.lamarr = init_2Darray((rawchunks[0],rawchunks[1]))
-
-                blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
-
-                for b in blks:
-
-                    for ix in range(0,rawshape[2],rawchunks[2]):
-
-                        Worker.arr[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]].reshape(rawchunks[0]*rawchunks[1],rawchunks[2])
-
-                    Worker.wts[...] = (Worker.arr != nodata) * 1
-
-                    Worker.lamarr[...] = 0
-
-                    del ix
-
-                    with multiprocessing.Pool() as pool:
-                        pool.map(Worker.execute_ws2d_vc,range(0,Worker.arr.shape[0]))
-
-
-                    lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = np.log10(Worker.lamarr).reshape(rawchunks[0],rawchunks[1])
-
-                    for i,j in enumerate(range(0,rawshape[2],tres)):
-                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = Worker.arr[...,j].reshape(rawchunks[0],rawchunks[1]).round()
-
-            else:
-
-                arr = np.zeros((rawchunks[0]*rawchunks[1],rawshape[2]),dtype='float32')
-                wts = np.zeros((rawchunks[0]*rawchunks[1],rawshape[2]),dtype='float32')
-                lamarr = np.zeros((rawchunks[0]*rawchunks[1]),dtype='float32')
-
-                blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
-
-                for b in blks:
-
-                    for ix in range(0,rawshape[2],rawchunks[2]):
-
-                        arr[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]].reshape(rawchunks[0]*rawchunks[1],rawchunks[2])
-
-                    wts[...] = (arr != nodata) * 1
-
-                    lamarr[...] = 0
-
-                    for r in range(arr.shape[0]):
-                        if wts[r,...].sum().item() != 0.0:
-                            arr[r,...], lamarr[ix,] = ws2d_vc(arr[r,...],w = wts[r,...],llas = self.llas)
-
-
-
-                    lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = np.log10(lamarr).reshape(rawchunks[0],rawchunks[1])
-
-                    for i,j in enumerate(range(0,rawshape[2],tres)):
-                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr[...,j].reshape(rawchunks[0],rawchunks[1]).round()
-
-    def ws2d_vc_asy(self):
-
-        Worker.llas = self.llas
-        Worker.p = self.p
+    def ws2d_vc(self,llas):
 
         with h5py.File(self.rawfile,'r') as rawh5, h5py.File(self.outname,'r+') as smth5:
 
@@ -832,42 +775,67 @@ class MODISsmth5:
             rawchunks = raw_ds.chunks
 
             nodata = raw_ds.attrs['nodata']
-            tres = smt_ds.attrs['temporalresolution']
+            t_resolution = raw_ds.attrs['temporalresolution']
+            t_interval = smt_ds.attrs['temporalresolution']
+
+            barmax = (rawshape[0]/rawchunks[0]) * (rawshape[1]/rawchunks[1])
+            bar = Bar('Processing',fill='=',max=barmax,suffix='%(percent)d%%  ')
+            bar.goto(0)
 
             if self.parallel:
 
-                Worker.arr = init_3Darray((rawchunks[0],rawchunks[1],rawshape[2]))
-                Worker.wts = init_3Darray((rawchunks[0],rawchunks[1],rawshape[2]))
-                Worker.lamarr = init_2Darray((rawchunks[0],rawchunks[1]))
+                params = init_parameters(nd=nodata,dim=(rawchunks[0]*rawchunks[1],rawshape[2]),llas=llas)
+
+                shared_array = init_shared(rawchunks[0] * rawchunks[1] * rawshape[2])
+
+                params['shared_lmbda'] = init_shared(rawchunks[0] * rawchunks[1])
+
+                arr = tonumpyarray(shared_array)
+
+                lamarr = tonumpyarray(params['shared_lmbda'])
+
+                arr.shape = (rawchunks[0] * rawchunks[1],rawshape[2])
+                lamarr.shape = (rawchunks[0], rawchunks[1])
+
+                arr_helper = arr.view()
+
+                arr_helper.shape = (rawchunks[0],rawchunks[1],rawshape[2])
 
                 blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
 
-                for b in blks:
+                with closing(mp.Pool(processes=self.ncores,initializer = init_worker, initargs = (shared_array,params))) as pool:
 
-                    for ix in range(0,rawshape[2],rawchunks[2]):
+                    for b in blks:
 
-                        Worker.arr[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]].reshape(rawchunks[0]*rawchunks[1],rawchunks[2])
+                        for ix in range(0,rawshape[2],rawchunks[2]):
 
-                    Worker.wts[...] = (Worker.arr != nodata) * 1
+                            arr_helper[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]]
 
-                    Worker.lamarr[...] = 0
+                        del ix
 
-                    del ix
+                        # set lmbdas to zero
+                        lamarr[...] = 0
 
-                    with multiprocessing.Pool() as pool:
-                        pool.map(Worker.execute_ws2d_vc_asy,range(0,Worker.arr.shape[0]))
+                        pool.map(execute_ws2d_vc,np.array_split(range(arr.shape[0]),self.ncores))
 
+                        lamarr[lamarr>0] = np.log10(lamarr[lamarr>0])
 
-                    lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = np.log10(Worker.lamarr).reshape(rawchunks[0],rawchunks[1])
+                        lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = lamarr[...]
 
-                    for i,j in enumerate(range(0,rawshape[2],tres)):
-                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = Worker.arr[...,j].reshape(rawchunks[0],rawchunks[1]).round()
+                        for i,j in enumerate(range(0,rawshape[2],t_interval)):
+                            smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
+
+                        bar.next()
+                    bar.finish()
 
             else:
 
                 arr = np.zeros((rawchunks[0]*rawchunks[1],rawshape[2]),dtype='float32')
-                wts = np.zeros((rawchunks[0]*rawchunks[1],rawshape[2]),dtype='float32')
+                wts = arr.copy()
                 lamarr = np.zeros((rawchunks[0]*rawchunks[1]),dtype='float32')
+
+                arr_helper = arr.view()
+                arr_helper.shape = (rawchunks[0],rawchunks[1],rawshape[2])
 
                 blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
 
@@ -875,7 +843,7 @@ class MODISsmth5:
 
                     for ix in range(0,rawshape[2],rawchunks[2]):
 
-                        arr[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]].reshape(rawchunks[0]*rawchunks[1],rawchunks[2])
+                        arr_helper[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]]
 
                     wts[...] = (arr != nodata) * 1
 
@@ -883,13 +851,117 @@ class MODISsmth5:
 
                     for r in range(arr.shape[0]):
                         if wts[r,...].sum().item() != 0.0:
-                            arr[r,...], lamarr[ix,] = ws2d_vc_asy(arr[r,...],w = wts[r,...],llas = self.llas, p = self.p)
+                            arr[r,...], lamarr[r] = ws2d_vc(arr[r,...],w = wts[r,...],llas = llas)
 
-                    lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = np.log10(lamarr).reshape(rawchunks[0],rawchunks[1])
+                    lamarr[lamarr>0] = np.log10(lamarr[lamarr>0])
 
-                    for i,j in enumerate(range(0,rawshape[2],tres)):
-                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr[...,j].reshape(rawchunks[0],rawchunks[1]).round()
+                    lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = lamarr.reshape(rawchunks[0],rawchunks[1])
 
+                    for i,j in enumerate(range(0,rawshape[2],t_interval)):
+                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
+
+                    bar.next()
+                bar.finish()
+
+    def ws2d_vc_asy(self,llas,p):
+
+        with h5py.File(self.rawfile,'r') as rawh5, h5py.File(self.outname,'r+') as smth5:
+
+            raw_ds = rawh5.get('data')
+            smt_ds = smth5.get('data')
+            lgrid_ds = smth5.get('lgrid')
+
+            rawshape = raw_ds.shape
+            rawchunks = raw_ds.chunks
+
+            nodata = raw_ds.attrs['nodata']
+            t_resolution = raw_ds.attrs['temporalresolution']
+            t_interval = smt_ds.attrs['temporalresolution']
+
+            barmax = (rawshape[0]/rawchunks[0]) * (rawshape[1]/rawchunks[1])
+            bar = Bar('Processing',fill='=',max=barmax,suffix='%(percent)d%%  ')
+            bar.goto(0)
+
+            if self.parallel:
+
+                params = init_parameters(nd=nodata,dim=(rawchunks[0]*rawchunks[1],rawshape[2]),llas=llas,p=p)
+
+                shared_array = init_shared(rawchunks[0] * rawchunks[1] * rawshape[2])
+
+                params['shared_lmbda'] = init_shared(rawchunks[0] * rawchunks[1])
+
+                arr = tonumpyarray(shared_array)
+
+                lamarr = tonumpyarray(params['shared_lmbda'])
+
+                arr.shape = (rawchunks[0] * rawchunks[1],rawshape[2])
+                lamarr.shape = (rawchunks[0], rawchunks[1])
+
+                arr_helper = arr.view()
+
+                arr_helper.shape = (rawchunks[0],rawchunks[1],rawshape[2])
+
+                blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
+
+                with closing(mp.Pool(processes=self.ncores,initializer = init_worker, initargs = (shared_array,params))) as pool:
+
+                    for b in blks:
+
+                        for ix in range(0,rawshape[2],rawchunks[2]):
+
+                            arr_helper[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]]
+
+                        del ix
+
+                        # set lmbdas to zero
+                        lamarr[...] = 0
+
+                        pool.map(execute_ws2d_vc_asy,np.array_split(range(arr.shape[0]),self.ncores))
+
+                        lamarr[lamarr>0] = np.log10(lamarr[lamarr>0])
+
+                        lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = lamarr[...]
+
+                        for i,j in enumerate(range(0,rawshape[2],t_interval)):
+                            smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
+
+                        bar.next()
+                    bar.finish()
+
+            else:
+
+                arr = np.zeros((rawchunks[0]*rawchunks[1],rawshape[2]),dtype='float32')
+                wts = arr.copy()
+                lamarr = np.zeros((rawchunks[0]*rawchunks[1]),dtype='float32')
+
+                arr_helper = arr.view()
+                arr_helper.shape = (rawchunks[0],rawchunks[1],rawshape[2])
+
+                blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
+
+                for b in blks:
+
+                    for ix in range(0,rawshape[2],rawchunks[2]):
+
+                        arr_helper[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]]
+
+                    wts[...] = (arr != nodata) * 1
+
+                    lamarr[...] = 0
+
+                    for r in range(arr.shape[0]):
+                        if wts[r,...].sum().item() != 0.0:
+                            arr[r,...], lamarr[r] = ws2d_vc_asy(arr[r,...],w = wts[r,...],llas = llas,p = p)
+
+                    lamarr[lamarr>0] = np.log10(lamarr[lamarr>0])
+
+                    lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = lamarr.reshape(rawchunks[0],rawchunks[1])
+
+                    for i,j in enumerate(range(0,rawshape[2],t_interval)):
+                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
+
+                    bar.next()
+                bar.finish()
 
 class MODIStiles:
 
@@ -933,8 +1005,10 @@ class MODIStiles:
 
 class MODISmosaic:
 
-    def __init__(self,files,datemin,datemax):
+    def __init__(self,files,datemin,datemax,global_flag):
         tile_re = re.compile('.+(h\d+v\d+).+')
+
+        self.global_flag = global_flag
 
         self.tiles = [re.sub(tile_re,'\\1',os.path.basename(x)) for x in files]
         self.tiles.sort()
@@ -955,14 +1029,20 @@ class MODISmosaic:
                 self.tile_rws = r
                 self.tile_cls = c
                 self.datatype = dset.dtype
-                self.resolution = dset.attrs['Resolution']
-                self.resolution_degrees = self.resolution/112000
-                self.gt = dset.attrs['Geotransform']
-                self.pj = dset.attrs['Projection']
+                self.gt = dset.attrs['geotransform']
+                self.pj = dset.attrs['projection']
+
+                if self.global_flag:
+                    self.resolution_degrees = dset.attrs['resolution']
+                else:
+                    self.resolution = dset.attrs['resolution']
+                    self.resolution_degrees = self.resolution/112000
+
+
                 dset = None
                 self.dates = [x.decode() for x in h5f.get('dates')[...]]
         except Exception as e:
-            print('\nError reading refreferece file {} for mosaic! Error message: {}\n'.format(ref,e))
+            print('\nError reading referece file {} for mosaic! Error message: {}\n'.format(ref,e))
             raise
 
 
@@ -972,9 +1052,9 @@ class MODISmosaic:
 
         self.tempIX = np.flatnonzero(np.array([x >= datemin_p and x <= datemax_p for x in dts_dt]))
 
-    def getArray(self,dataset,ix):
+    def getArray(self,dataset,ix,dt):
 
-        array = np.zeros(((len(self.v_ix) * self.tile_rws),len(self.h_ix) * self.tile_cls),dtype=self.datatype)
+        array = np.zeros(((len(self.v_ix) * self.tile_rws),len(self.h_ix) * self.tile_cls),dtype=dt)
 
         for h5f in self.files:
 
@@ -987,8 +1067,32 @@ class MODISmosaic:
             try:
 
                 with h5py.File(h5f,'r') as h5f_o:
-                    arr = h5f_o.get(dataset)[...,ix]
-                array[yoff:(yoff+self.tile_rws),xoff:(xoff+self.tile_cls)] = arr[...]
+
+                    if dataset == 'lgrid':
+                        array[yoff:(yoff+self.tile_rws),xoff:(xoff+self.tile_cls)] = h5f_o.get(dataset)[...]
+                    else:
+                        array[yoff:(yoff+self.tile_rws),xoff:(xoff+self.tile_cls)] = h5f_o.get(dataset)[...,ix]
+
+            except Exception as e:
+                print('Error reading data from file {} to array! Error message {}:\n'.format(h5f,e))
+                raise
+
+        return(array)
+
+    def getArrayGlobal(self,dataset,ix,dt):
+
+        array = np.zeros((self.tile_rws,self.tile_cls),dtype=dt)
+
+        for h5f in self.files:
+
+            try:
+
+                with h5py.File(h5f,'r') as h5f_o:
+
+                    if dataset == 'lgrid':
+                        array[...] = h5f_o.get(dataset)[...]
+                    else:
+                        array[...] = h5f_o.get(dataset)[...,ix]
 
             except Exception as e:
                 print('Error reading data from file {} to array! Error message {}:\n'.format(h5f,e))
@@ -999,25 +1103,31 @@ class MODISmosaic:
     @contextmanager
     def getRaster(self,dataset,ix):
 
-        array = self.getArray(dataset,ix)
-
-        height, width = array.shape
-
         try:
-            dt_gdal = dtype_GDNP(self.datatype)
+            if dataset == 'lgrid':
+                self.dt_gdal = dtype_GDNP('float32')
+            else:
+                self.dt_gdal = dtype_GDNP(self.datatype.name)
         except IndexError:
             print("\n\n Couldn't read data type from dataset. Using default Int16!\n")
             dt_gdal = (3,'int16')
 
+        if self.global_flag:
+            array = self.getArrayGlobal(dataset,ix,self.dt_gdal[1])
+        else:
+            array = self.getArray(dataset,ix,self.dt_gdal[1])
+
+        height, width = array.shape
+
         driver = gdal.GetDriverByName('GTiff')
 
-        self.raster = driver.Create('/vsimem/inmem.tif', width, height, 1, dt_gdal[0])
+        self.raster = driver.Create('/vsimem/inmem.tif', width, height, 1, self.dt_gdal[0])
+
 
         self.raster.SetGeoTransform(self.gt)
         self.raster.SetProjection(self.pj)
 
         self.raster.GetRasterBand(1).WriteArray(array)
-
         yield self
 
         gdal.Unlink('/vsimem/inmem.tif')
