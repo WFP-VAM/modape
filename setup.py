@@ -46,6 +46,7 @@ setup(
     'windowMODIS=wsmtk.windowMODIS:main',
     'smoothMODIS=wsmtk.smoothMODIS:main',
     'MODproductTable=wsmtk.MODproductTable:main',
+    'smoothCSV=wsmtk.smoothCSV:main',
         ]
     },
     packages=find_packages(),
