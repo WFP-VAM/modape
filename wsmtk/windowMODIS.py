@@ -23,7 +23,7 @@ def main():
     parser.add_argument("-e","--end-date", help='End date (YYYYMM)',default=datetime.date.today().strftime("%Y%m"),metavar='')
     parser.add_argument("--parameter", help='VAM parameter code',metavar='')
     parser.add_argument("-d","--targetdir", help='Target directory for GeoTIFFs (default current directory)',default=os.getcwd(),metavar='')
-    parser.add_argument("--lgrid", help='Extract (mosaic of) lambda grid(s))',action='store_true')
+    parser.add_argument("--sgrid", help='Extract (mosaic of) s value grid(s))',action='store_true')
 
     # fail and print help if no arguments supplied
     if len(sys.argv)==1:
@@ -41,8 +41,8 @@ def main():
     else:
         args.product = ''
 
-    if args.lgrid:
-        dset = 'lgrid'
+    if args.sgrid:
+        dset = 'sgrid'
     else:
         dset = 'data'
 
@@ -108,9 +108,9 @@ def main():
         # get mosaic
         mosaic = MODISmosaic(files=h5files_par,datemin=args.begin_date,datemax=args.end_date,global_flag=global_flag)
 
-        if args.lgrid:
+        if args.sgrid:
 
-            filename = '{}/{}{}_lgrid.tif'.format(args.targetdir,args.region.lower(),par.lower())
+            filename = '{}/{}{}_sgrid.tif'.format(args.targetdir,args.region.lower(),par.lower())
 
             print('Processing file {}'.format(filename))
 

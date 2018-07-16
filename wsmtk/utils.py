@@ -126,7 +126,7 @@ def tonumpyarray(shared_array):
     return nparray
 
 def init_parameters(**kwargs):
-    params = dict(zip(['shared_array','shared_lmbda','nd','l','llas','p','dim'],[None for x in range(7)]))
+    params = dict(zip(['shared_array','shared_sarr','nd','s','srange','p','dim'],[None for x in range(7)]))
 
     for key, value in kwargs.items():
         params[key] = value
@@ -135,22 +135,22 @@ def init_parameters(**kwargs):
 def init_worker(shared_array_,parameters_):
     global shared_array
     global nd
-    global l
-    global llas
+    global s
+    global srange
     global p
     global dim
     shared_array = tonumpyarray(shared_array_)
     nd = parameters_['nd']
-    l = parameters_['l']
-    llas = parameters_['llas']
+    s = parameters_['s']
+    srange = parameters_['srange']
     p = parameters_['p']
     dim = parameters_['dim']
 
     try:
-        global shared_lmbda
-        shared_lmbda = tonumpyarray(parameters_['shared_lmbda'])
+        global shared_sarr
+        shared_sarr = tonumpyarray(parameters_['shared_sarr'])
     except:
-        shared_lmbda = None
+        shared_sarr = None
 
 
 def execute_ws2d(ix):
@@ -159,34 +159,34 @@ def execute_ws2d(ix):
     arr.shape = dim
     for ii in ix:
         if (arr[ii,] != nd ).any():
-            arr[ii,] = ws2d(y = arr[ii,], lmda = l, w = np.array((arr[ii,] != nd) * 1,dtype='float32'))
+            arr[ii,] = ws2d(y = arr[ii,], lmda = s, w = np.array((arr[ii,] != nd) * 1,dtype='float32'))
 
-def execute_ws2d_lgrid(ix):
+def execute_ws2d_sgrid(ix):
     #worker function for parallel smoothing using whittaker 2d with existing lambda grid
     arr = tonumpyarray(shared_array)
-    lamarr = tonumpyarray(shared_lmbda)
+    sarr = tonumpyarray(shared_sarr)
     arr.shape = dim
 
     for ii in ix:
         if (arr[ii,] != nd ).any():
-            arr[ii,] = ws2d(y = arr[ii,], lmda = 10**lamarr[ii], w = np.array((arr[ii,] != nd ) * 1,dtype='float32'))
+            arr[ii,] = ws2d(y = arr[ii,], lmda = 10**sarr[ii], w = np.array((arr[ii,] != nd ) * 1,dtype='float32'))
 
 def execute_ws2d_vc(ix):
     #worker function for parallel smoothing using whittaker 2d with v-curve optimization
     arr = tonumpyarray(shared_array)
-    lamarr = tonumpyarray(shared_lmbda)
+    sarr = tonumpyarray(shared_sarr)
     arr.shape = dim
 
     for ii in ix:
         if (arr[ii,] != nd ).any():
-            arr[ii,], lamarr[ii] =  ws2d_vc(y = arr[ii], w = np.array((arr[ii,] != nd ) * 1,dtype='float32'), llas = llas)
+            arr[ii,], sarr[ii] =  ws2d_vc(y = arr[ii], w = np.array((arr[ii,] != nd) * 1,dtype='float32'), llas = srange)
 
 def execute_ws2d_vc_asy(ix):
     #worker function for parallel asymmetric smoothing using whittaker 2d with v-curve optimization
     arr = tonumpyarray(shared_array)
-    lamarr = tonumpyarray(shared_lmbda)
+    sarr = tonumpyarray(shared_sarr)
     arr.shape = dim
 
     for ii in ix:
         if (arr[ii,] != nd ).any():
-            arr[ii,], lamarr[ii] = ws2d_vc_asy(y = arr[ii], w = np.array((arr[ii,] != nd ) * 1,dtype='float32'), llas = llas, p = p)
+            arr[ii,], sarr[ii] = ws2d_vc_asy(y = arr[ii], w = np.array((arr[ii,] != nd) * 1,dtype='float32'), llas = srange, p = p)

@@ -576,7 +576,7 @@ class MODISsmth5:
         try:
             with h5py.File(self.outname,'x',libver='latest') as h5f:
                 dset = h5f.create_dataset('data',shape=(rows,cols,days),dtype=dt,maxshape=(rows,cols,None),chunks=self.chunks,compression=cmpr,fillvalue=rnd)
-                h5f.create_dataset('lgrid',shape=(rows,cols),dtype='float32',maxshape=(rows,cols),chunks=self.chunks[0:2],compression=cmpr)
+                h5f.create_dataset('sgrid',shape=(rows,cols),dtype='float32',maxshape=(rows,cols),chunks=self.chunks[0:2],compression=cmpr)
                 h5f.create_dataset('dates',shape=(days,),maxshape=(None,),dtype='S8',compression=cmpr,data = [x.encode('ascii','ignore') for x in dates])
                 dset.attrs['geotransform'] = rgt
                 dset.attrs['projection'] = rpj
@@ -593,7 +593,7 @@ class MODISsmth5:
         self.exists = True
         print('done.\n')
 
-    def ws2d(self,l):
+    def ws2d(self,s):
 
         with h5py.File(self.rawfile,'r') as rawh5, h5py.File(self.outname,'r+') as smth5:
 
@@ -613,7 +613,7 @@ class MODISsmth5:
 
             if self.parallel:
 
-                params = init_parameters(l=l,nd=nodata,dim=(rawchunks[0]*rawchunks[1],rawshape[2]))
+                params = init_parameters(s=s,nd=nodata,dim=(rawchunks[0]*rawchunks[1],rawshape[2]))
 
                 shared_array = init_shared(rawchunks[0] * rawchunks[1] * rawshape[2])
 
@@ -664,7 +664,7 @@ class MODISsmth5:
 
                     for r in range(arr.shape[0]):
                         if wts[r,...].sum().item() != 0.0:
-                            arr[r,...] = ws2d(y = arr[r,...],lmda = l, w = wts[r,...])
+                            arr[r,...] = ws2d(y = arr[r,...],lmda = s, w = wts[r,...])
 
                     for i,j in enumerate(range(0,rawshape[2],t_interval)):
                         smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
@@ -672,13 +672,13 @@ class MODISsmth5:
                 bar.finish()
 
 
-    def ws2d_lgrid(self):
+    def ws2d_sgrid(self):
 
         with h5py.File(self.rawfile,'r') as rawh5, h5py.File(self.outname,'r+') as smth5:
 
             raw_ds = rawh5.get('data')
             smt_ds = smth5.get('data')
-            lgrid_ds = smth5.get('lgrid')
+            sgrid_ds = smth5.get('sgrid')
 
             rawshape = raw_ds.shape
             rawchunks = raw_ds.chunks
@@ -688,7 +688,6 @@ class MODISsmth5:
             t_interval = smt_ds.attrs['temporalresolution']
 
             barmax = (rawshape[0]/rawchunks[0]) * (rawshape[1]/rawchunks[1])
-            print(barmax)
             bar = Bar('Processing',fill='=',max=barmax,suffix='%(percent)d%%  ')
             bar.goto(0)
 
@@ -698,14 +697,14 @@ class MODISsmth5:
 
                 shared_array = init_shared(rawchunks[0] * rawchunks[1] * rawshape[2])
 
-                params['shared_lmbda'] = init_shared(rawchunks[0] * rawchunks[1])
+                params['shared_sarr'] = init_shared(rawchunks[0] * rawchunks[1])
 
                 arr = tonumpyarray(shared_array)
 
-                lamarr = tonumpyarray(params['shared_lmbda'])
+                sarr = tonumpyarray(params['shared_sarr'])
 
                 arr.shape = (rawchunks[0] * rawchunks[1],rawshape[2])
-                lamarr.shape = (rawchunks[0], rawchunks[1])
+                sarr.shape = (rawchunks[0], rawchunks[1])
 
                 arr_helper = arr.view()
 
@@ -721,11 +720,11 @@ class MODISsmth5:
 
                             arr_helper[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]]
 
-                        lamarr[...] = lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]]
+                        sarr[...] = sgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]]
 
                         del ix
 
-                        res = pool.map(execute_ws2d_lgrid,np.array_split(range(arr.shape[0]),self.ncores))
+                        res = pool.map(execute_ws2d_sgrid,np.array_split(range(arr.shape[0]),self.ncores))
 
                         for i,j in enumerate(range(0,rawshape[2],t_interval)):
                             smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
@@ -736,7 +735,7 @@ class MODISsmth5:
 
                 arr = np.zeros((rawchunks[0]*rawchunks[1],rawshape[2]),dtype='float32')
                 wts = arr.copy()
-                lamarr = np.zeros((rawchunks[0]*rawchunks[1]),dtype='float32')
+                sarr = np.zeros((rawchunks[0]*rawchunks[1]),dtype='float32')
 
                 arr_helper = arr.view()
                 arr_helper.shape = (rawchunks[0],rawchunks[1],rawshape[2])
@@ -751,11 +750,11 @@ class MODISsmth5:
 
                     wts[...] = (arr != nodata) * 1
 
-                    lamarr[...] = lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]].reshape(rawchunks[0] * rawchunks[1])
+                    sarr[...] = sgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]].reshape(rawchunks[0] * rawchunks[1])
 
                     for r in range(arr.shape[0]):
                         if wts[r,...].sum().item() != 0.0:
-                            arr[r,...] = ws2d(arr[r,...],lmda = 10**lamarr[r],w = wts[r,...])
+                            arr[r,...] = ws2d(arr[r,...],lmda = 10**sarr[r],w = wts[r,...])
 
                     for i,j in enumerate(range(0,rawshape[2],t_interval)):
                         smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
@@ -763,13 +762,13 @@ class MODISsmth5:
                     bar.next()
                 bar.finish()
 
-    def ws2d_vc(self,llas):
+    def ws2d_vc(self,srange):
 
         with h5py.File(self.rawfile,'r') as rawh5, h5py.File(self.outname,'r+') as smth5:
 
             raw_ds = rawh5.get('data')
             smt_ds = smth5.get('data')
-            lgrid_ds = smth5.get('lgrid')
+            sgrid_ds = smth5.get('sgrid')
 
             rawshape = raw_ds.shape
             rawchunks = raw_ds.chunks
@@ -784,18 +783,18 @@ class MODISsmth5:
 
             if self.parallel:
 
-                params = init_parameters(nd=nodata,dim=(rawchunks[0]*rawchunks[1],rawshape[2]),llas=llas)
+                params = init_parameters(nd=nodata,dim=(rawchunks[0]*rawchunks[1],rawshape[2]),srange=srange)
 
                 shared_array = init_shared(rawchunks[0] * rawchunks[1] * rawshape[2])
 
-                params['shared_lmbda'] = init_shared(rawchunks[0] * rawchunks[1])
+                params['shared_sarr'] = init_shared(rawchunks[0] * rawchunks[1])
 
                 arr = tonumpyarray(shared_array)
 
-                lamarr = tonumpyarray(params['shared_lmbda'])
+                sarr = tonumpyarray(params['shared_sarr'])
 
                 arr.shape = (rawchunks[0] * rawchunks[1],rawshape[2])
-                lamarr.shape = (rawchunks[0], rawchunks[1])
+                sarr.shape = (rawchunks[0], rawchunks[1])
 
                 arr_helper = arr.view()
 
@@ -813,14 +812,14 @@ class MODISsmth5:
 
                         del ix
 
-                        # set lmbdas to zero
-                        lamarr[...] = 0
+                        # set s values to zero
+                        sarr[...] = 0
 
                         pool.map(execute_ws2d_vc,np.array_split(range(arr.shape[0]),self.ncores))
 
-                        lamarr[lamarr>0] = np.log10(lamarr[lamarr>0])
+                        sarr[sarr>0] = np.log10(sarr[sarr>0])
 
-                        lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = lamarr[...]
+                        sgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = sarr[...]
 
                         for i,j in enumerate(range(0,rawshape[2],t_interval)):
                             smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
@@ -832,7 +831,7 @@ class MODISsmth5:
 
                 arr = np.zeros((rawchunks[0]*rawchunks[1],rawshape[2]),dtype='float32')
                 wts = arr.copy()
-                lamarr = np.zeros((rawchunks[0]*rawchunks[1]),dtype='float32')
+                sarr = np.zeros((rawchunks[0]*rawchunks[1]),dtype='float32')
 
                 arr_helper = arr.view()
                 arr_helper.shape = (rawchunks[0],rawchunks[1],rawshape[2])
@@ -847,15 +846,15 @@ class MODISsmth5:
 
                     wts[...] = (arr != nodata) * 1
 
-                    lamarr[...] = 0
+                    sarr[...] = 0
 
                     for r in range(arr.shape[0]):
                         if wts[r,...].sum().item() != 0.0:
-                            arr[r,...], lamarr[r] = ws2d_vc(arr[r,...],w = wts[r,...],llas = llas)
+                            arr[r,...], sarr[r] = ws2d_vc(arr[r,...],w = wts[r,...],llas = srange)
 
-                    lamarr[lamarr>0] = np.log10(lamarr[lamarr>0])
+                    sarr[sarr>0] = np.log10(sarr[sarr>0])
 
-                    lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = lamarr.reshape(rawchunks[0],rawchunks[1])
+                    sgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = sarr.reshape(rawchunks[0],rawchunks[1])
 
                     for i,j in enumerate(range(0,rawshape[2],t_interval)):
                         smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
@@ -863,13 +862,13 @@ class MODISsmth5:
                     bar.next()
                 bar.finish()
 
-    def ws2d_vc_asy(self,llas,p):
+    def ws2d_vc_asy(self,srange,p):
 
         with h5py.File(self.rawfile,'r') as rawh5, h5py.File(self.outname,'r+') as smth5:
 
             raw_ds = rawh5.get('data')
             smt_ds = smth5.get('data')
-            lgrid_ds = smth5.get('lgrid')
+            sgrid_ds = smth5.get('sgrid')
 
             rawshape = raw_ds.shape
             rawchunks = raw_ds.chunks
@@ -884,18 +883,18 @@ class MODISsmth5:
 
             if self.parallel:
 
-                params = init_parameters(nd=nodata,dim=(rawchunks[0]*rawchunks[1],rawshape[2]),llas=llas,p=p)
+                params = init_parameters(nd=nodata,dim=(rawchunks[0]*rawchunks[1],rawshape[2]),srange=srange,p=p)
 
                 shared_array = init_shared(rawchunks[0] * rawchunks[1] * rawshape[2])
 
-                params['shared_lmbda'] = init_shared(rawchunks[0] * rawchunks[1])
+                params['shared_sarr'] = init_shared(rawchunks[0] * rawchunks[1])
 
                 arr = tonumpyarray(shared_array)
 
-                lamarr = tonumpyarray(params['shared_lmbda'])
+                sarr = tonumpyarray(params['shared_sarr'])
 
                 arr.shape = (rawchunks[0] * rawchunks[1],rawshape[2])
-                lamarr.shape = (rawchunks[0], rawchunks[1])
+                sarr.shape = (rawchunks[0], rawchunks[1])
 
                 arr_helper = arr.view()
 
@@ -913,14 +912,14 @@ class MODISsmth5:
 
                         del ix
 
-                        # set lmbdas to zero
-                        lamarr[...] = 0
+                        # set s values to zero
+                        sarr[...] = 0
 
                         pool.map(execute_ws2d_vc_asy,np.array_split(range(arr.shape[0]),self.ncores))
 
-                        lamarr[lamarr>0] = np.log10(lamarr[lamarr>0])
+                        sarr[sarr>0] = np.log10(sarr[sarr>0])
 
-                        lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = lamarr[...]
+                        sgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = sarr[...]
 
                         for i,j in enumerate(range(0,rawshape[2],t_interval)):
                             smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
@@ -932,7 +931,7 @@ class MODISsmth5:
 
                 arr = np.zeros((rawchunks[0]*rawchunks[1],rawshape[2]),dtype='float32')
                 wts = arr.copy()
-                lamarr = np.zeros((rawchunks[0]*rawchunks[1]),dtype='float32')
+                sarr = np.zeros((rawchunks[0]*rawchunks[1]),dtype='float32')
 
                 arr_helper = arr.view()
                 arr_helper.shape = (rawchunks[0],rawchunks[1],rawshape[2])
@@ -947,15 +946,15 @@ class MODISsmth5:
 
                     wts[...] = (arr != nodata) * 1
 
-                    lamarr[...] = 0
+                    sarr[...] = 0
 
                     for r in range(arr.shape[0]):
                         if wts[r,...].sum().item() != 0.0:
-                            arr[r,...], lamarr[r] = ws2d_vc_asy(arr[r,...],w = wts[r,...],llas = llas,p = p)
+                            arr[r,...], sarr[r] = ws2d_vc_asy(arr[r,...],w = wts[r,...],llas = srange,p = p)
 
-                    lamarr[lamarr>0] = np.log10(lamarr[lamarr>0])
+                    sarr[sarr>0] = np.log10(sarr[sarr>0])
 
-                    lgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = lamarr.reshape(rawchunks[0],rawchunks[1])
+                    sgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = sarr.reshape(rawchunks[0],rawchunks[1])
 
                     for i,j in enumerate(range(0,rawshape[2],t_interval)):
                         smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
@@ -1068,7 +1067,7 @@ class MODISmosaic:
 
                 with h5py.File(h5f,'r') as h5f_o:
 
-                    if dataset == 'lgrid':
+                    if dataset == 'sgrid':
                         array[yoff:(yoff+self.tile_rws),xoff:(xoff+self.tile_cls)] = h5f_o.get(dataset)[...]
                     else:
                         array[yoff:(yoff+self.tile_rws),xoff:(xoff+self.tile_cls)] = h5f_o.get(dataset)[...,ix]
@@ -1089,7 +1088,7 @@ class MODISmosaic:
 
                 with h5py.File(h5f,'r') as h5f_o:
 
-                    if dataset == 'lgrid':
+                    if dataset == 'sgrid':
                         array[...] = h5f_o.get(dataset)[...]
                     else:
                         array[...] = h5f_o.get(dataset)[...,ix]
@@ -1104,7 +1103,7 @@ class MODISmosaic:
     def getRaster(self,dataset,ix):
 
         try:
-            if dataset == 'lgrid':
+            if dataset == 'sgrid':
                 self.dt_gdal = dtype_GDNP('float32')
             else:
                 self.dt_gdal = dtype_GDNP(self.datatype.name)
