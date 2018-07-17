@@ -273,15 +273,18 @@ class MODISrawh5:
             if not self.temporalresolution:
                 self.numberofdays = 16
                 self.temporalresolution = self.numberofdays
-                totaldays = self.nfiles * self.temporalresolution
+                #totaldays = self.nfiles * self.temporalresolution
             else:
                 self.numberofdays = 16
-                totaldays = self.nfiles * self.temporalresolution + self.temporalresolution
+                #totaldays = self.nfiles * self.temporalresolution + self.temporalresolution
 
         elif re.match(r'M[O|Y]D11\w\d',self.ref_file_basename):
             self.numberofdays = 8
             self.temporalresolution = self.numberofdays
-            totaldays = self.nfiles * self.temporalresolution
+            #totaldays = self.nfiles * self.temporalresolution
+
+        totaldays = ((fromjulian(self.dates[-1]) + datetime.timedelta(self.numberofdays)) - fromjulian(self.dates[0])).days
+
         dt = rst.GetRasterBand(1).DataType
 
         try:
@@ -344,9 +347,11 @@ class MODISrawh5:
 
                 if len(dates) > dts.shape[0]:
                     dts.resize((len(dates),))
-                    dset.resize((dset.shape[0],dset.shape[1],dset.shape[2] + len(dates) * self.numberofdays))
+                    dset.resize((dset.shape[0],dset.shape[1],((fromjulian(dates[-1]) + datetime.timedelta(self.numberofdays)) - fromjulian(dates[0])).days))
 
                 dts[...] = [n.encode("ascii", "ignore") for n in dates]
+
+                dates_daily = [(fromjulian(dates[0]) + datetime.timedelta(x)).strftime('%Y%j') for x in range(dset.shape[2]+1)]
 
                 [gc.collect() for x in range(3)]
 
@@ -372,9 +377,9 @@ class MODISrawh5:
 
                         try:
 
-                            flix = dates.index(re.sub(self.dts_regexp,'\\1',fl))
+                            flix = dates_daily.index(re.sub(self.dts_regexp,'\\1',fl))
 
-                            ix = [int((fromjulian(dates[flix]) + datetime.timedelta(x)).strftime('%j')) for x in range(16)]
+                            ix = [int(fromjulian(x).strftime('%j')) for x in dates_daily[flix:flix+self.numberofdays]]
 
                             fl_o = gdal.Open(fl)
 
@@ -390,7 +395,6 @@ class MODISrawh5:
 
                             for blk in blks:
 
-
                                 valarr[...] = val_rst.ReadAsArray(xoff=blk[1],yoff=blk[0],xsize=self.chunks[1],ysize=self.chunks[0])
 
                                 doyarr[...] = doy_rst.ReadAsArray(xoff=blk[1],yoff=blk[0],xsize=self.chunks[1],ysize=self.chunks[0])
@@ -401,13 +405,13 @@ class MODISrawh5:
                                 doyarr[doyarr < 0] = self.doyindex # set -1 to mid value
                                 doyarr[doyarr > doy_ix] = doy_ix # clip to max doy
 
-                                arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.temporalresolution:flix*self.temporalresolution+self.numberofdays]
+                                arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays]
 
                                 arr[arr == 0] = self.nodata_value
 
                                 arr[I,J,doyarr] = np.maximum.reduce([arr[I,J,doyarr],valarr[...]])
 
-                                dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.temporalresolution:flix*self.temporalresolution+self.numberofdays] = arr[...]
+                                dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays] = arr[...]
 
 
                         except AttributeError:
@@ -420,13 +424,13 @@ class MODISrawh5:
 
                             for blk in blks:
 
-                                arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.temporalresolution:flix*self.temporalresolution+self.numberofdays]
+                                arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays]
 
                                 arr[arr == 0] = self.nodata_value
 
                                 arr[...,self.doyindex] = np.maximum.reduce([arr[...,self.doyindex],ndarr])
 
-                                dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.temporalresolution:flix*self.temporalresolution+self.numberofdays] = arr[...]
+                                dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays] = arr[...]
 
                             del ndarr
 
@@ -453,7 +457,7 @@ class MODISrawh5:
 
                         try:
 
-                            flix = dates.index(re.sub(self.dts_regexp,'\\1',fl))
+                            flix = dates_daily.index(re.sub(self.dts_regexp,'\\1',fl))
 
                             fl_o = gdal.Open(fl)
 
@@ -467,13 +471,13 @@ class MODISrawh5:
 
                                 valarr[...] = val_rst.ReadAsArray(xoff=blk[1],yoff=blk[0],xsize=self.chunks[1],ysize=self.chunks[0])
 
-                                arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.temporalresolution:flix*self.temporalresolution+self.numberofdays]
+                                arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays]
 
                                 arr[arr == 0] = self.nodata_value
 
                                 arr[...,self.doyindex] = np.maximum.reduce([arr[...,self.doyindex],valarr[...]])
 
-                                dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.temporalresolution:flix*self.temporalresolution+self.numberofdays] = arr[...]
+                                dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays] = arr[...]
 
                         except AttributeError:
 
@@ -485,13 +489,13 @@ class MODISrawh5:
 
                             for blk in blks:
 
-                                arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.temporalresolution:flix*self.temporalresolution+self.numberofdays]
+                                arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays]
 
                                 arr[arr == 0] = self.nodata_value
 
                                 arr[...,self.doyindex] = np.maximum.reduce([arr[...,self.doyindex],ndarr])
 
-                                dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.temporalresolution:flix*self.temporalresolution+self.numberofdays] = arr[...]
+                                dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays] = arr[...]
 
                             del ndarr
 
