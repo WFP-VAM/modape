@@ -7,13 +7,14 @@ import glob
 import argparse
 import datetime
 import re
+import traceback
 
 def main():
 
     parser = argparse.ArgumentParser(description="Process downloaded RAW MODIS hdf files")
-    parser.add_argument("srcdir", help='directory with raw MODIS .hdf files',default=os.getcwd(),metavar='DIR')
+    parser.add_argument("srcdir", help='directory with raw MODIS .hdf files',default=os.getcwd(),metavar='srcdir')
     #parser.add_argument("-p","--parameter", help='VAM parameter code',metavar='') ## paramter selection not implemented
-    parser.add_argument("--prcdir", help='Storage directory for PROCESSED MODIS files',default=os.getcwd(),metavar='')
+    parser.add_argument("-d","--targetdir", help='Target directory for PROCESSED MODIS files (default is scrdir)',metavar='')
     parser.add_argument("-c","--compression", help='Compression for HDF5 files',default='gzip',metavar='')
     parser.add_argument("--all-parameters", help='Flag to process all possible VAM parameters',action='store_true')
     parser.add_argument("-b","--blocksize", help='Minimum values for row & columns per processing block (default 120 120)',nargs=2,default=[120,120],type=int,metavar='')
@@ -28,6 +29,8 @@ def main():
     if not os.path.isdir(args.srcdir):
         raise SystemExit('Source directory not a valid path! Please check inputs.targetdir')
 
+    if not args.targetdir:
+        args.targetdir = args.srcdir
 
     files = glob.glob('{}/*.hdf'.format(args.srcdir))
 
@@ -65,13 +68,15 @@ def main():
             for p in allps:
 
                 try:
-                    h5 = MODISrawh5(files_sub,param=p,targetdir=args.prcdir,compression=args.compression,crow=args.blocksize[0],ccol=args.blocksize[1])
+                    h5 = MODISrawh5(files_sub,param=p,targetdir=args.targetdir,compression=args.compression,crow=args.blocksize[0],ccol=args.blocksize[1])
                     if not h5.exists:
                         h5.create()
                     h5.update()
 
                 except Exception as e:
-                    print('\nError processing file group {}, parameter {}. Skipping to next group/parameter!. \n\n (Exception raised: {})\n)'.format(g,p,e))
+                    print('\nError processing file group {}, parameter {}. Skipping to next group/parameter!. \n\n Traceback:\n'.format(g,p))
+                    traceback.print_exc()
+                    print('\n')
                     continue
     else:
 
@@ -83,7 +88,7 @@ def main():
 
             try:
 
-                h5 = MODISrawh5(files_sub,targetdir=args.prcdir,compression=args.compression,crow=args.blocksize[0],ccol=args.blocksize[1])
+                h5 = MODISrawh5(files_sub,targetdir=args.targetdir,compression=args.compression,crow=args.blocksize[0],ccol=args.blocksize[1])
 
                 if not h5.exists:
                     h5.create()
@@ -91,7 +96,9 @@ def main():
                 h5.update()
 
             except Exception as e:
-                print('\nError processing file group {}. Skipping to next group!. \n\n (Exception raised: {})\n)'.format(g,e))
+                print('\nError processing file group {}. Skipping to next group!. \n\n Traceback:\n'.format(g))
+                traceback.print_exc()
+                print('\n')
                 continue
 
 if __name__ == '__main__':
