@@ -399,15 +399,19 @@ class MODISrawh5:
 
                                 doyarr[...] = doy_rst.ReadAsArray(xoff=blk[1],yoff=blk[0],xsize=self.chunks[1],ysize=self.chunks[0])
 
+                                # set negative ndvi and ndvi with doy < 0 to nodata
+                                valarr[valarr < 0] = self.nodata_value
+                                valarr[doyarr < 0] = self.nodata_value
+
                                 for doy_ix, doy in enumerate(ix):
 
                                     doyarr[doyarr == doy] = doy_ix
-                                doyarr[doyarr < 0] = self.doyindex # set -1 to mid value
+                                #doyarr[doyarr < 0] = self.doyindex # set -1 to mid value
                                 doyarr[doyarr > doy_ix] = doy_ix # clip to max doy
 
                                 arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays]
 
-                                arr[arr == 0] = self.nodata_value
+                                #arr[arr == 0] = self.nodata_value
 
                                 arr[I,J,doyarr] = np.maximum.reduce([arr[I,J,doyarr],valarr[...]])
 
@@ -426,7 +430,7 @@ class MODISrawh5:
 
                                 arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays]
 
-                                arr[arr == 0] = self.nodata_value
+                                #arr[arr == 0] = self.nodata_value
 
                                 arr[...,self.doyindex] = np.maximum.reduce([arr[...,self.doyindex],ndarr])
 
@@ -473,7 +477,7 @@ class MODISrawh5:
 
                                 arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays]
 
-                                arr[arr == 0] = self.nodata_value
+                                #arr[arr == 0] = self.nodata_value
 
                                 arr[...,self.doyindex] = np.maximum.reduce([arr[...,self.doyindex],valarr[...]])
 
@@ -491,7 +495,7 @@ class MODISrawh5:
 
                                 arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays]
 
-                                arr[arr == 0] = self.nodata_value
+                                #arr[arr == 0] = self.nodata_value
 
                                 arr[...,self.doyindex] = np.maximum.reduce([arr[...,self.doyindex],ndarr])
 
