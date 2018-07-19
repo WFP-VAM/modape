@@ -351,7 +351,7 @@ class MODISrawh5:
 
                 dts[...] = [n.encode("ascii", "ignore") for n in dates]
 
-                dates_daily = [(fromjulian(dates[0]) + datetime.timedelta(x)).strftime('%Y%j') for x in range(dset.shape[2]+1)]
+                dates_daily = [(fromjulian(dates[0]) + datetime.timedelta(x)).strftime('%Y%j') for x in range(dset.shape[2])]
 
                 [gc.collect() for x in range(3)]
 
