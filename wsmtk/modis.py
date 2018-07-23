@@ -597,7 +597,6 @@ class MODISsmth5:
         if not self.temporalresolution:
             self.temporalresolution = rtres
 
-        #dates = [(firstday + datetime.timedelta(x)).strftime('%Y%j') for x in range(0,rawdays+1,self.temporalresolution)]
         dates = [self.rawdaily[ix] for ix in range(0,len(self.rawdaily),self.temporalresolution)]
         days = len(dates)
 
@@ -638,7 +637,6 @@ class MODISsmth5:
             rawchunks = raw_ds.chunks
 
             nodata = raw_ds.attrs['nodata']
-            t_resolution = raw_ds.attrs['temporalresolution']
             t_interval = smt_ds.attrs['temporalresolution']
 
             # check if file needs to be resized
@@ -752,7 +750,6 @@ class MODISsmth5:
             rawchunks = raw_ds.chunks
 
             nodata = raw_ds.attrs['nodata']
-            t_resolution = raw_ds.attrs['temporalresolution']
             t_interval = smt_ds.attrs['temporalresolution']
 
             # check if file needs to be resized
@@ -874,7 +871,6 @@ class MODISsmth5:
             rawchunks = raw_ds.chunks
 
             nodata = raw_ds.attrs['nodata']
-            t_resolution = raw_ds.attrs['temporalresolution']
             t_interval = smt_ds.attrs['temporalresolution']
 
             # check if file needs to be resized
@@ -1004,7 +1000,6 @@ class MODISsmth5:
             rawchunks = raw_ds.chunks
 
             nodata = raw_ds.attrs['nodata']
-            t_resolution = raw_ds.attrs['temporalresolution']
             t_interval = smt_ds.attrs['temporalresolution']
 
             # check if file needs to be resized
