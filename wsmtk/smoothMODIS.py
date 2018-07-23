@@ -16,6 +16,8 @@ def main():
     parser.add_argument("-s","--svalue", help='S value for smoothing (has to be log10(s)', metavar='', type = float)
     parser.add_argument("-S","--srange", help='S value range for V-curve (float log10(s) values as smin smax sstep - default 0.0 4.0 0.1)',nargs='+',metavar='')
     parser.add_argument("-t","--tempint", help='Value for temporal interpolation (integer required - default is native temporal resolution AKA no interpolation)', metavar='',type = int)
+    parser.add_argument("-n","--nsmooth", help='Number of raw timesteps used for smoothing', metavar='',type = int)
+    parser.add_argument("-u","--nupdate", help='Number of smoothed timesteps to be updated in HDF5 file', metavar='',type = int)
     parser.add_argument("-p","--pvalue", help='Value for asymmetric smoothing (float required)', metavar='', type = float)
     parser.add_argument("-d","--targetdir", help='Target directory for smoothed output',default=os.getcwd(),metavar='')
     parser.add_argument("--soptimize", help='Use V-curve for s value optimization',action='store_true')
@@ -39,7 +41,7 @@ def main():
 
     print('\nInput file: {}\n'.format(args.rawfile))
 
-    smt_h5 = MODISsmth5(rawfile = args.rawfile, tempint = args.tempint, targetdir = args.targetdir, parallel = args.parallel, ncores = args.ncores)
+    smt_h5 = MODISsmth5(rawfile = args.rawfile, tempint = args.tempint, nsmooth = args.nsmooth, nupdate = args.nupdate, targetdir = args.targetdir, parallel = args.parallel, ncores = args.ncores)
 
     if not smt_h5.exists:
         smt_h5.create()
