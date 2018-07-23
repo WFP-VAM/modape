@@ -351,7 +351,9 @@ class MODISrawh5:
 
                 dts[...] = [n.encode("ascii", "ignore") for n in dates]
 
-                dates_daily = [(fromjulian(dates[0]) + datetime.timedelta(x)).strftime('%Y%j') for x in range(dset.shape[2])]
+                # range(dset.shape[2]+1) includes endpoint in range
+
+                dates_daily = [(fromjulian(dates[0]) + datetime.timedelta(x)).strftime('%Y%j') for x in range(dset.shape[2]+1)]
 
                 [gc.collect() for x in range(3)]
 
@@ -525,12 +527,33 @@ class MODISrawh5:
 
 class MODISsmth5:
 
-    def __init__(self,rawfile,tempint=None,targetdir=os.getcwd(),parallel=False,ncores=mp.cpu_count()-1):
+    def __init__(self,rawfile,tempint=None,nsmooth=None,nupdate=None,targetdir=os.getcwd(),parallel=False,ncores=mp.cpu_count()-1):
 
         self.targetdir = targetdir
         self.rawfile = rawfile
         self.parallel = parallel
         self.ncores = ncores
+        self.nupdate = nupdate
+
+        with h5py.File(self.rawfile,'r') as h5f:
+            dset = h5f.get('data')
+            dts = h5f.get('dates')
+            self.numberofdays = int(dset.attrs['numberofdays'])
+            rawshape = dset.shape
+
+            self.rawdaily = [(fromjulian(dts[0].decode()) + datetime.timedelta(x)).strftime('%Y%j') for x in range(rawshape[2]+1)]
+
+            if nsmooth and nupdate:
+                assert nsmooth >= nupdate, "nsmooth >= nupdate!!!!"
+
+            if not nsmooth:
+                firstday = dts[0].decode()
+            else:
+                firstday = dts[-nsmooth].decode()
+
+            self.ndays = ((fromjulian(dts[-1].decode()) + datetime.timedelta(self.numberofdays)) - fromjulian(firstday)).days
+            self.startix = self.rawdaily.index(firstday)
+            self.daily = [(fromjulian(firstday) + datetime.timedelta(x)).strftime('%Y%j') for x in range(self.ndays+1)]
 
         try:
             txflag = txx(tempint)
@@ -574,7 +597,8 @@ class MODISsmth5:
         if not self.temporalresolution:
             self.temporalresolution = rtres
 
-        dates = [(firstday + datetime.timedelta(x)).strftime('%Y%j') for x in range(0,rawdays,self.temporalresolution)]
+        #dates = [(firstday + datetime.timedelta(x)).strftime('%Y%j') for x in range(0,rawdays+1,self.temporalresolution)]
+        dates = [self.rawdaily[ix] for ix in range(0,len(self.rawdaily),self.temporalresolution)]
         days = len(dates)
 
         self.chunks = (rawchunks[0],rawchunks[1],1)
@@ -606,7 +630,9 @@ class MODISsmth5:
         with h5py.File(self.rawfile,'r') as rawh5, h5py.File(self.outname,'r+') as smth5:
 
             raw_ds = rawh5.get('data')
+            raw_dts = rawh5.get('dates')
             smt_ds = smth5.get('data')
+            smt_dts = smth5.get('dates')
 
             rawshape = raw_ds.shape
             rawchunks = raw_ds.chunks
@@ -615,23 +641,45 @@ class MODISsmth5:
             t_resolution = raw_ds.attrs['temporalresolution']
             t_interval = smt_ds.attrs['temporalresolution']
 
+            # check if file needs to be resized
+
+            dates_check = [self.rawdaily[ix] for ix in range(0,len(self.rawdaily),t_interval)]
+
+            if len(dates_check) > smt_dts.shape[0]:
+                smt_dts.resize((len(dates_check),))
+                smt_dts[...] = [x.encode("ascii", "ignore") for x in dates_check]
+                smt_ds.resize(smt_ds.shape[0],smt_ds.shape[1],len(dates_check))
+
+            # calculate update index and offsets
+
+            if not self.nupdate:
+
+                for i,d in enumerate(self.daily):
+                    if d in dates_check:
+                        self.smtoffset = dates_check.index(d)
+                        self.rawoffset = i
+                        break
+            else:
+                self.rawoffset = self.daily.index(dates_check[-self.nupdate])
+                self.smtoffset = len(dates_check[:-self.nupdate])
+
             barmax = (rawshape[0]/rawchunks[0]) * (rawshape[1]/rawchunks[1])
             bar = Bar('Processing',fill='=',max=barmax,suffix='%(percent)d%%  ')
             bar.goto(0)
 
             if self.parallel:
 
-                params = init_parameters(s=s,nd=nodata,dim=(rawchunks[0]*rawchunks[1],rawshape[2]))
+                params = init_parameters(s=s,nd=nodata,dim=(rawchunks[0]*rawchunks[1],self.ndays))
 
-                shared_array = init_shared(rawchunks[0] * rawchunks[1] * rawshape[2])
+                shared_array = init_shared(rawchunks[0] * rawchunks[1] * self.ndays)
 
                 arr = tonumpyarray(shared_array)
 
-                arr.shape = (rawchunks[0] * rawchunks[1],rawshape[2])
+                arr.shape = (rawchunks[0] * rawchunks[1],self.ndays)
 
                 arr_helper = arr.view()
 
-                arr_helper.shape = (rawchunks[0],rawchunks[1],rawshape[2])
+                arr_helper.shape = (rawchunks[0],rawchunks[1],self.ndays)
 
                 blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
 
@@ -639,34 +687,40 @@ class MODISsmth5:
 
                     for b in blks:
 
-                        for ix in range(0,rawshape[2],rawchunks[2]):
+                        for ii in range(0,arr_helper.shape[2],rawchunks[2]):
 
-                            arr_helper[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]]
+                            arr_helper[...,ii:ii+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],self.startix+ii:self.startix+ii+rawchunks[2]]
 
-                        del ix
+                        del ii
 
                         res = pool.map(execute_ws2d,np.array_split(range(arr.shape[0]),self.ncores))
 
-                        for i,j in enumerate(range(0,rawshape[2],t_interval)):
-                            smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
+                        for ii,jj in enumerate(range(self.rawoffset,arr_helper.shape[2],t_interval)):
+
+                            smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],self.smtoffset+ii] = arr_helper[...,jj].round()
+
+                        del ii,jj
+
                         bar.next()
                     bar.finish()
 
             else:
 
-                arr = np.zeros((rawchunks[0]*rawchunks[1],rawshape[2]),dtype='float32')
+                arr = np.zeros((rawchunks[0]*rawchunks[1],self.ndays),dtype='float32')
                 wts = arr.copy()
 
                 arr_helper = arr.view()
-                arr_helper.shape = (rawchunks[0],rawchunks[1],rawshape[2])
+                arr_helper.shape = (rawchunks[0],rawchunks[1],self.ndays)
 
                 blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
 
                 for b in blks:
 
-                    for ix in range(0,rawshape[2],rawchunks[2]):
+                    for ii in range(0,arr_helper.shape[2],rawchunks[2]):
 
-                        arr_helper[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]]
+                        arr_helper[...,ii:ii+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],self.startix+ii:self.startix+ii+rawchunks[2]]
+
+                    del ii
 
                     wts[...] = (arr != nodata) * 1
 
@@ -674,8 +728,12 @@ class MODISsmth5:
                         if wts[r,...].sum().item() != 0.0:
                             arr[r,...] = ws2d(y = arr[r,...],lmda = s, w = wts[r,...])
 
-                    for i,j in enumerate(range(0,rawshape[2],t_interval)):
-                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
+                    for ii,jj in enumerate(range(self.rawoffset,arr_helper.shape[2],t_interval)):
+
+                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],self.smtoffset+ii] = arr_helper[...,jj].round()
+
+                    del ii,jj
+
                     bar.next()
                 bar.finish()
 
@@ -685,7 +743,9 @@ class MODISsmth5:
         with h5py.File(self.rawfile,'r') as rawh5, h5py.File(self.outname,'r+') as smth5:
 
             raw_ds = rawh5.get('data')
+            raw_dts = rawh5.get('dates')
             smt_ds = smth5.get('data')
+            smt_dts = smth5.get('dates')
             sgrid_ds = smth5.get('sgrid')
 
             rawshape = raw_ds.shape
@@ -695,15 +755,38 @@ class MODISsmth5:
             t_resolution = raw_ds.attrs['temporalresolution']
             t_interval = smt_ds.attrs['temporalresolution']
 
+            # check if file needs to be resized
+
+            dates_check = [self.rawdaily[ix] for ix in range(0,len(self.rawdaily),t_interval)]
+
+            if len(dates_check) > smt_dts.shape[0]:
+                smt_dts.resize((len(dates_check),))
+                smt_dts[...] = [x.encode("ascii", "ignore") for x in dates_check]
+                smt_ds.resize(smt_ds.shape[0],smt_ds.shape[1],len(dates_check))
+
+            # calculate update index and offsets
+
+            if not self.nupdate:
+
+                for i,d in enumerate(self.daily):
+                    if d in dates_check:
+                        self.smtoffset = dates_check.index(d)
+                        self.rawoffset = i
+                        break
+            else:
+                self.rawoffset = self.daily.index(dates_check[-self.nupdate])
+                self.smtoffset = len(dates_check[:-self.nupdate])
+
+
             barmax = (rawshape[0]/rawchunks[0]) * (rawshape[1]/rawchunks[1])
             bar = Bar('Processing',fill='=',max=barmax,suffix='%(percent)d%%  ')
             bar.goto(0)
 
             if self.parallel:
 
-                params = init_parameters(nd=nodata,dim=(rawchunks[0]*rawchunks[1],rawshape[2]))
+                params = init_parameters(nd=nodata,dim=(rawchunks[0]*rawchunks[1],self.ndays))
 
-                shared_array = init_shared(rawchunks[0] * rawchunks[1] * rawshape[2])
+                shared_array = init_shared(rawchunks[0] * rawchunks[1] * self.ndays)
 
                 params['shared_sarr'] = init_shared(rawchunks[0] * rawchunks[1])
 
@@ -711,12 +794,12 @@ class MODISsmth5:
 
                 sarr = tonumpyarray(params['shared_sarr'])
 
-                arr.shape = (rawchunks[0] * rawchunks[1],rawshape[2])
+                arr.shape = (rawchunks[0] * rawchunks[1],self.ndays)
                 sarr.shape = (rawchunks[0], rawchunks[1])
 
                 arr_helper = arr.view()
 
-                arr_helper.shape = (rawchunks[0],rawchunks[1],rawshape[2])
+                arr_helper.shape = (rawchunks[0],rawchunks[1],self.ndays)
 
                 blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
 
@@ -724,37 +807,41 @@ class MODISsmth5:
 
                     for b in blks:
 
-                        for ix in range(0,rawshape[2],rawchunks[2]):
+                        for ii in range(0,arr_helper.shape[2],rawchunks[2]):
 
-                            arr_helper[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]]
+                            arr_helper[...,ii:ii+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],self.startix+ii:self.startix+ii+rawchunks[2]]
 
                         sarr[...] = sgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]]
 
-                        del ix
+                        del ii
 
                         res = pool.map(execute_ws2d_sgrid,np.array_split(range(arr.shape[0]),self.ncores))
 
-                        for i,j in enumerate(range(0,rawshape[2],t_interval)):
-                            smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
+                        for ii,jj in enumerate(range(self.rawoffset,arr_helper.shape[2],t_interval)):
+
+                            smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],self.smtoffset+ii] = arr_helper[...,jj].round()
+
+                        del ii,jj
+
                         bar.next()
                     bar.finish()
 
             else:
 
-                arr = np.zeros((rawchunks[0]*rawchunks[1],rawshape[2]),dtype='float32')
+                arr = np.zeros((rawchunks[0]*rawchunks[1],self.ndays),dtype='float32')
                 wts = arr.copy()
                 sarr = np.zeros((rawchunks[0]*rawchunks[1]),dtype='float32')
 
                 arr_helper = arr.view()
-                arr_helper.shape = (rawchunks[0],rawchunks[1],rawshape[2])
+                arr_helper.shape = (rawchunks[0],rawchunks[1],self.ndays)
 
                 blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
 
                 for b in blks:
 
-                    for ix in range(0,rawshape[2],rawchunks[2]):
+                    for ii in range(0,arr_helper.shape[2],rawchunks[2]):
 
-                        arr_helper[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]]
+                        arr_helper[...,ii:ii+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],self.startix+ii:self.startix+ii+rawchunks[2]]
 
                     wts[...] = (arr != nodata) * 1
 
@@ -764,8 +851,11 @@ class MODISsmth5:
                         if wts[r,...].sum().item() != 0.0:
                             arr[r,...] = ws2d(arr[r,...],lmda = 10**sarr[r],w = wts[r,...])
 
-                    for i,j in enumerate(range(0,rawshape[2],t_interval)):
-                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
+                    for ii,jj in enumerate(range(self.rawoffset,arr_helper.shape[2],t_interval)):
+
+                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],self.smtoffset+ii] = arr_helper[...,jj].round()
+
+                    del ii,jj
 
                     bar.next()
                 bar.finish()
@@ -775,7 +865,9 @@ class MODISsmth5:
         with h5py.File(self.rawfile,'r') as rawh5, h5py.File(self.outname,'r+') as smth5:
 
             raw_ds = rawh5.get('data')
+            raw_dts = rawh5.get('dates')
             smt_ds = smth5.get('data')
+            smt_dts = smth5.get('dates')
             sgrid_ds = smth5.get('sgrid')
 
             rawshape = raw_ds.shape
@@ -785,15 +877,37 @@ class MODISsmth5:
             t_resolution = raw_ds.attrs['temporalresolution']
             t_interval = smt_ds.attrs['temporalresolution']
 
+            # check if file needs to be resized
+
+            dates_check = [self.rawdaily[ix] for ix in range(0,len(self.rawdaily),t_interval)]
+
+            if len(dates_check) > smt_dts.shape[0]:
+                smt_dts.resize((len(dates_check),))
+                smt_dts[...] = [x.encode("ascii", "ignore") for x in dates_check]
+                smt_ds.resize(smt_ds.shape[0],smt_ds.shape[1],len(dates_check))
+
+            # calculate update index and offsets
+
+            if not self.nupdate:
+
+                for i,d in enumerate(self.daily):
+                    if d in dates_check:
+                        self.smtoffset = dates_check.index(d)
+                        self.rawoffset = i
+                        break
+            else:
+                self.rawoffset = self.daily.index(dates_check[-self.nupdate])
+                self.smtoffset = len(dates_check[:-self.nupdate])
+
             barmax = (rawshape[0]/rawchunks[0]) * (rawshape[1]/rawchunks[1])
             bar = Bar('Processing',fill='=',max=barmax,suffix='%(percent)d%%  ')
             bar.goto(0)
 
             if self.parallel:
 
-                params = init_parameters(nd=nodata,dim=(rawchunks[0]*rawchunks[1],rawshape[2]),srange=srange)
+                params = init_parameters(nd=nodata,dim=(rawchunks[0]*rawchunks[1],self.ndays),srange=srange)
 
-                shared_array = init_shared(rawchunks[0] * rawchunks[1] * rawshape[2])
+                shared_array = init_shared(rawchunks[0] * rawchunks[1] * self.ndays)
 
                 params['shared_sarr'] = init_shared(rawchunks[0] * rawchunks[1])
 
@@ -801,12 +915,12 @@ class MODISsmth5:
 
                 sarr = tonumpyarray(params['shared_sarr'])
 
-                arr.shape = (rawchunks[0] * rawchunks[1],rawshape[2])
+                arr.shape = (rawchunks[0] * rawchunks[1],self.ndays)
                 sarr.shape = (rawchunks[0], rawchunks[1])
 
                 arr_helper = arr.view()
 
-                arr_helper.shape = (rawchunks[0],rawchunks[1],rawshape[2])
+                arr_helper.shape = (rawchunks[0],rawchunks[1],self.ndays)
 
                 blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
 
@@ -814,11 +928,11 @@ class MODISsmth5:
 
                     for b in blks:
 
-                        for ix in range(0,rawshape[2],rawchunks[2]):
+                        for ii in range(0,arr_helper.shape[2],rawchunks[2]):
 
-                            arr_helper[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]]
+                            arr_helper[...,ii:ii+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],self.startix+ii:self.startix+ii+rawchunks[2]]
 
-                        del ix
+                        del ii
 
                         # set s values to zero
                         sarr[...] = 0
@@ -829,28 +943,31 @@ class MODISsmth5:
 
                         sgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = sarr[...]
 
-                        for i,j in enumerate(range(0,rawshape[2],t_interval)):
-                            smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
+                        for ii,jj in enumerate(range(self.rawoffset,arr_helper.shape[2],t_interval)):
+
+                            smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],self.smtoffset+ii] = arr_helper[...,jj].round()
+
+                        del ii,jj
 
                         bar.next()
                     bar.finish()
 
             else:
 
-                arr = np.zeros((rawchunks[0]*rawchunks[1],rawshape[2]),dtype='float32')
+                arr = np.zeros((rawchunks[0]*rawchunks[1],self.ndays),dtype='float32')
                 wts = arr.copy()
                 sarr = np.zeros((rawchunks[0]*rawchunks[1]),dtype='float32')
 
                 arr_helper = arr.view()
-                arr_helper.shape = (rawchunks[0],rawchunks[1],rawshape[2])
+                arr_helper.shape = (rawchunks[0],rawchunks[1],self.ndays)
 
                 blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
 
                 for b in blks:
 
-                    for ix in range(0,rawshape[2],rawchunks[2]):
+                    for ii in range(0,arr_helper.shape[2],rawchunks[2]):
 
-                        arr_helper[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]]
+                        arr_helper[...,ii:ii+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],self.startix+ii:self.startix+ii+rawchunks[2]]
 
                     wts[...] = (arr != nodata) * 1
 
@@ -864,8 +981,11 @@ class MODISsmth5:
 
                     sgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = sarr.reshape(rawchunks[0],rawchunks[1])
 
-                    for i,j in enumerate(range(0,rawshape[2],t_interval)):
-                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
+                    for ii,jj in enumerate(range(self.rawoffset,arr_helper.shape[2],t_interval)):
+
+                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],self.smtoffset+ii] = arr_helper[...,jj].round()
+
+                    del ii,jj
 
                     bar.next()
                 bar.finish()
@@ -875,7 +995,9 @@ class MODISsmth5:
         with h5py.File(self.rawfile,'r') as rawh5, h5py.File(self.outname,'r+') as smth5:
 
             raw_ds = rawh5.get('data')
+            raw_dts = rawh5.get('dates')
             smt_ds = smth5.get('data')
+            smt_dts = smth5.get('dates')
             sgrid_ds = smth5.get('sgrid')
 
             rawshape = raw_ds.shape
@@ -885,15 +1007,38 @@ class MODISsmth5:
             t_resolution = raw_ds.attrs['temporalresolution']
             t_interval = smt_ds.attrs['temporalresolution']
 
+            # check if file needs to be resized
+
+            dates_check = [self.rawdaily[ix] for ix in range(0,len(self.rawdaily),t_interval)]
+
+            if len(dates_check) > smt_dts.shape[0]:
+                smt_dts.resize((len(dates_check),))
+                smt_dts[...] = [x.encode("ascii", "ignore") for x in dates_check]
+                smt_ds.resize(smt_ds.shape[0],smt_ds.shape[1],len(dates_check))
+
+            # calculate update index and offsets
+
+            if not self.nupdate:
+
+                for i,d in enumerate(self.daily):
+                    if d in dates_check:
+                        self.smtoffset = dates_check.index(d)
+                        self.rawoffset = i
+                        break
+            else:
+                self.rawoffset = self.daily.index(dates_check[-self.nupdate])
+                self.smtoffset = len(dates_check[:-self.nupdate])
+
+
             barmax = (rawshape[0]/rawchunks[0]) * (rawshape[1]/rawchunks[1])
             bar = Bar('Processing',fill='=',max=barmax,suffix='%(percent)d%%  ')
             bar.goto(0)
 
             if self.parallel:
 
-                params = init_parameters(nd=nodata,dim=(rawchunks[0]*rawchunks[1],rawshape[2]),srange=srange,p=p)
+                params = init_parameters(nd=nodata,dim=(rawchunks[0]*rawchunks[1],self.ndays),srange=srange,p=p)
 
-                shared_array = init_shared(rawchunks[0] * rawchunks[1] * rawshape[2])
+                shared_array = init_shared(rawchunks[0] * rawchunks[1] * self.ndays)
 
                 params['shared_sarr'] = init_shared(rawchunks[0] * rawchunks[1])
 
@@ -901,12 +1046,12 @@ class MODISsmth5:
 
                 sarr = tonumpyarray(params['shared_sarr'])
 
-                arr.shape = (rawchunks[0] * rawchunks[1],rawshape[2])
+                arr.shape = (rawchunks[0] * rawchunks[1],self.ndays)
                 sarr.shape = (rawchunks[0], rawchunks[1])
 
                 arr_helper = arr.view()
 
-                arr_helper.shape = (rawchunks[0],rawchunks[1],rawshape[2])
+                arr_helper.shape = (rawchunks[0],rawchunks[1],self.ndays)
 
                 blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
 
@@ -914,11 +1059,11 @@ class MODISsmth5:
 
                     for b in blks:
 
-                        for ix in range(0,rawshape[2],rawchunks[2]):
+                        for ii in range(0,arr_helper.shape[2],rawchunks[2]):
 
-                            arr_helper[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]]
+                            arr_helper[...,ii:ii+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],self.startix+ii:self.startix+ii+rawchunks[2]]
 
-                        del ix
+                        del ii
 
                         # set s values to zero
                         sarr[...] = 0
@@ -929,28 +1074,33 @@ class MODISsmth5:
 
                         sgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = sarr[...]
 
-                        for i,j in enumerate(range(0,rawshape[2],t_interval)):
-                            smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
+                        for ii,jj in enumerate(range(self.rawoffset,arr_helper.shape[2],t_interval)):
+
+                            smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],self.smtoffset+ii] = arr_helper[...,jj].round()
+
+                        del ii,jj
 
                         bar.next()
                     bar.finish()
 
             else:
 
-                arr = np.zeros((rawchunks[0]*rawchunks[1],rawshape[2]),dtype='float32')
+                arr = np.zeros((rawchunks[0]*rawchunks[1],self.ndays),dtype='float32')
                 wts = arr.copy()
                 sarr = np.zeros((rawchunks[0]*rawchunks[1]),dtype='float32')
 
                 arr_helper = arr.view()
-                arr_helper.shape = (rawchunks[0],rawchunks[1],rawshape[2])
+                arr_helper.shape = (rawchunks[0],rawchunks[1],self.ndays)
 
                 blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
 
                 for b in blks:
 
-                    for ix in range(0,rawshape[2],rawchunks[2]):
+                    for ii in range(0,arr_helper.shape[2],rawchunks[2]):
 
-                        arr_helper[...,ix:ix+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],ix:ix+rawchunks[2]]
+                        arr_helper[...,ii:ii+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],self.startix+ii:self.startix+ii+rawchunks[2]]
+
+                    del ii
 
                     wts[...] = (arr != nodata) * 1
 
@@ -964,8 +1114,11 @@ class MODISsmth5:
 
                     sgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = sarr.reshape(rawchunks[0],rawchunks[1])
 
-                    for i,j in enumerate(range(0,rawshape[2],t_interval)):
-                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],i] = arr_helper[...,j].round()
+                    for ii,jj in enumerate(range(self.rawoffset,arr_helper.shape[2],t_interval)):
+
+                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],self.smtoffset+ii] = arr_helper[...,jj].round()
+
+                    del ii,jj
 
                     bar.next()
                 bar.finish()
