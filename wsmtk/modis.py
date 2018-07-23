@@ -335,9 +335,9 @@ class MODISrawh5:
                 self.chunks = dset.chunks
                 self.rows = dset.shape[0]
                 self.cols = dset.shape[1]
-                self.nodata_value = dset.attrs['nodata']
-                self.numberofdays = dset.attrs['numberofdays']
-                self.temporalresolution = dset.attrs['temporalresolution']
+                self.nodata_value = dset.attrs['nodata'].item()
+                self.numberofdays = dset.attrs['numberofdays'].item()
+                self.temporalresolution = dset.attrs['temporalresolution'].item()
                 self.doyindex = int(self.numberofdays / 2)
                 self.datatype = dtype_GDNP(dset.dtype.name)
                 #res  = dset.attrs['Resolution'] ## comment for original resolution
@@ -642,11 +642,11 @@ class MODISsmth5:
             # check if file needs to be resized
 
             dates_check = [self.rawdaily[ix] for ix in range(0,len(self.rawdaily),t_interval)]
-
+            
             if len(dates_check) > smt_dts.shape[0]:
                 smt_dts.resize((len(dates_check),))
                 smt_dts[...] = [x.encode("ascii", "ignore") for x in dates_check]
-                smt_ds.resize(smt_ds.shape[0],smt_ds.shape[1],len(dates_check))
+                smt_ds.resize((smt_ds.shape[0],smt_ds.shape[1],len(dates_check)))
 
             # calculate update index and offsets
 
@@ -759,7 +759,7 @@ class MODISsmth5:
             if len(dates_check) > smt_dts.shape[0]:
                 smt_dts.resize((len(dates_check),))
                 smt_dts[...] = [x.encode("ascii", "ignore") for x in dates_check]
-                smt_ds.resize(smt_ds.shape[0],smt_ds.shape[1],len(dates_check))
+                smt_ds.resize((smt_ds.shape[0],smt_ds.shape[1],len(dates_check)))
 
             # calculate update index and offsets
 
@@ -880,7 +880,7 @@ class MODISsmth5:
             if len(dates_check) > smt_dts.shape[0]:
                 smt_dts.resize((len(dates_check),))
                 smt_dts[...] = [x.encode("ascii", "ignore") for x in dates_check]
-                smt_ds.resize(smt_ds.shape[0],smt_ds.shape[1],len(dates_check))
+                smt_ds.resize((smt_ds.shape[0],smt_ds.shape[1],len(dates_check)))
 
             # calculate update index and offsets
 
@@ -1009,7 +1009,7 @@ class MODISsmth5:
             if len(dates_check) > smt_dts.shape[0]:
                 smt_dts.resize((len(dates_check),))
                 smt_dts[...] = [x.encode("ascii", "ignore") for x in dates_check]
-                smt_ds.resize(smt_ds.shape[0],smt_ds.shape[1],len(dates_check))
+                smt_ds.resize((smt_ds.shape[0],smt_ds.shape[1],len(dates_check)))
 
             # calculate update index and offsets
 
