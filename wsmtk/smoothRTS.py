@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from __future__ import print_function
 from .whittaker import *
+from .utils import dtype_GDNP
 import glob
 import re
 import os
@@ -12,14 +13,21 @@ import numpy as np
 import array
 
 
-def initGDAL(x,p,fn=None):
+def initGDAL(x,p,fn=None,dt=None):
 
     if not fn:
         fn = os.path.basename(x)
 
     ds = gdal.Open(x)
     dr = ds.GetDriver()
-    ds_new = dr.Create(p+fn,ds.RasterXSize,ds.RasterYSize,ds.RasterCount,ds.GetRasterBand(1).DataType)
+
+    if not dt:
+        dt_new = ds.GetRasterBand(1).DataType
+
+    else:
+        dt_new = dtype_GDNP(dt)[0]
+
+    ds_new = dr.Create(p+fn,ds.RasterXSize,ds.RasterYSize,ds.RasterCount,dt_new)
     ds_new.SetGeoTransform(ds.GetGeoTransform())
     ds_new.SetProjection(ds.GetProjection())
     ds = None
@@ -50,12 +58,10 @@ class RTS:
         self.ncols = ds.RasterXSize
         ds = None
 
-        #self.parameters_ = {}
-
         self.targetdir = targetdir
 
 
-        self.outfiles = [self.targtedir + '/' + os.path.basename(x) for x in self.files]
+        self.outfiles = [self.targetdir + '/' + os.path.basename(x) for x in self.files]
 
     def initRasters(self):
 
@@ -87,9 +93,71 @@ class RTS:
 
             wts[...] = (arr != self.nodata) * 1
 
-            for r in range(arr_helper.shape[0]):
+            for r in range(arrW.shape[0]):
                 if wts[r,...].sum().item() != 0.0:
                     arr[r,...] = ws2d(arr[r,...],10**s,wts[r,...])
+
+            for fix in range(self.nfiles):
+
+                ds = gdal.Open(self.outfiles[fix],gdal.GA_Update)
+
+                ds_b = ds.GetRasterBand(1)
+
+                ds_b.WriteArray(arr_helper[...,fix].round(),xo,yo)
+                ds_b.FlushCache()
+
+                ds_b = None
+                ds = None
+
+        with open(self.targetdir + '/filt0_config.txt','w') as thefile:
+
+            thefile.write('Running whittaker smoother with fixed s value\n')
+            thefile.write('\n')
+            thefile.write('Start: {}\n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
+            thefile.write('\n')
+            thefile.write('Sopt: {}\n'.format(10**s))
+            thefile.write('log10(Sopt): {}\n'.format(s))
+            thefile.write('Nodata value: {}\n'.format(self.nodata))
+
+
+
+    def ws2d_vc(self,srange,p=None):
+
+        self.sgrid = self.targetdir + '/sgrid.tif'
+
+        initGDAL(self.ref_file,self.targetdir,'sgrid.tif',dt='float32')
+
+        for yo, ys, xo, xs in iterateBlocks(self.nrows,self.ncols,self.bsize):
+
+            arr = np.zeros((ys*xs,self.nfiles),dtype='float32')
+            wts = arr.copy()
+            sarr = np.zeros((ys*xs),dtype='float32')
+
+            arr_helper = arr.view()
+            arr_helper.shape = (ys,xs,self.nfiles)
+
+            for fix in range(self.nfiles):
+
+                ds = gdal.Open(self.files[fix])
+
+                arr_helper[...,fix] = ds.ReadAsArray(xoff=xo,xsize=xs,yoff=yo,ysize=ys)
+
+                ds = None
+
+            wts[...] = (arr != self.nodata) * 1
+
+            if p:
+
+                for r in range(arr.shape[0]):
+                    if wts[r,...].sum().item() != 0.0:
+                        arr[r,...], sarr[r] = ws2d_vc_asy(arr[r,...],wts[r,...],srange,p)
+
+            else:
+
+
+                for r in range(arr.shape[0]):
+                    if wts[r,...].sum().item() != 0.0:
+                        arr[r,...], sarr[r] = ws2d_vc(arr[r,...],wts[r,...],srange)
 
 
             for fix in range(self.nfiles):
@@ -104,54 +172,53 @@ class RTS:
                 ds_b = None
                 ds = None
 
-            with open(self.targetdir + '/filt0_config.txt') as thefile:
 
-                thefile.write('Running whittaker smoother with fixed s value\n')
+            sarr[sarr>0] = np.log10(sarr[sarr>0])
+
+            ds = gdal.Open(self.sgrid,gdal.GA_Update)
+
+            ds_b = ds.GetRasterBand(1)
+
+            ds_b.WriteArray(sarr.reshape(ys,xs),xo,yo)
+            ds_b.FlushCache()
+
+            ds_b = None
+            ds = None
+
+        with open(self.targetdir + '/filtvc_config.txt','w') as thefile:
+
+            if p:
+
+                thefile.write('Running asymmetric whittaker smoother with v-curve optimization\n')
                 thefile.write('\n')
                 thefile.write('Start: {}\n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
                 thefile.write('\n')
-                thefile.write('Sopt: {}\n'.format(10**s))
-                thefile.write('log10(Sopt): {}\n'.format(s))
+                thefile.write('Sgrid: {}\n'.format(self.sgrid))
+                thefile.write('P value: {}\n'.format(p))
+                thefile.write('Nodata value: {}\n'.format(self.nodata))
 
+            else:
 
-
-
-
-
-
-
-        # create array
-
-        # read and broadcast
-
-        # write with write Band
-
-
-        #loop key in dict
-
-        # write smoothing method, timesteps and params to txt file
-
-
-
-
-
-
-
-
-
+                thefile.write('Running whittaker smoother with v-curve optimization\n')
+                thefile.write('\n')
+                thefile.write('Start: {}\n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
+                thefile.write('\n')
+                thefile.write('Sgrid: {}\n'.format(self.sgrid))
+                thefile.write('Nodata value: {}\n'.format(self.nodata))
 
 
 def main():
 
     parser = argparse.ArgumentParser(description="Extract a window from MODIS products")
-    parser.add_argument("path", help='Path to processed MODIS h5 files')
+    parser.add_argument("path", help='Path cointaining raster files')
     parser.add_argument("-P","--pattern", help='Pattern to filter file names',default = '*' ,metavar='')
     parser.add_argument("-d","--targetdir", help='Target directory for GeoTIFFs (default current directory)',default=os.getcwd(),metavar='')
     parser.add_argument("-s","--svalue", help='S value for smoothing (has to be log10(s)', metavar='', type = float)
     parser.add_argument("-S","--srange", help='S range for V-curve (float log10(s) values as smin smax sstep - default 0.0 4.0 0.1)',nargs='+',metavar='', type=float)
     parser.add_argument("-p","--pvalue", help='Value for asymmetric smoothing (float required)', metavar='', type = float)
+    parser.add_argument("-b","--blocksize", help='Processing block side length (default 256)',default = 256, metavar='', type = int)
+    parser.add_argument("--nodata", help='NoData value', metavar='', type = float)
     parser.add_argument("--soptimize", help='Use V-curve for s value optimization',action='store_true')
-    #parser.add_argument("--sgrid", help='Extract (mosaic of) s value grid(s))',action='store_true')
 
     # fail and print help if no arguments supplied
     if len(sys.argv)==1:
@@ -171,9 +238,9 @@ def main():
     if not len(fls) > 0:
         raise SystemExit('No files found in {} with pattern {}, please check input.'.format(args.path,args.pattern))
 
-    rts = RTS(files=fls,targetdir = args.targetdir)
+    rts = RTS(files=fls,targetdir = args.targetdir,bsize= args.blocksize, nodata=args.nodata)
 
-    if args.soptimize:
+    if args.soptimize or args.srange:
 
         if args.srange:
             try:
@@ -194,7 +261,7 @@ def main():
                 print('Issues creating subdirectory in {}'.fromat(args.path))
                 raise
 
-            #ws2d_vc_asy(srange=srange,p=p)
+            rts.ws2d_vc(srange=srange,p=p)
 
         else:
 
@@ -206,8 +273,7 @@ def main():
                 print('Issues creating subdirectory in {}'.fromat(args.path))
                 raise
 
-
-            #ws2d_vc(srange=srange)
+            rts.ws2d_vc(srange=srange)
 
     else:
 
@@ -220,20 +286,15 @@ def main():
 
         print('\nRunning whittaker smoother with fixed s value ... \n')
 
-
         try:
             os.makedirs(args.targetdir + '/filt0/')
         except:
             print('Issues creating subdirectory in {}'.fromat(args.path))
             raise
 
-        #ws2d(s=s)
-
+        rts.ws2d(s=s)
 
     print('\n[{}]: smoothMODIS.py finished successfully.\n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
-
-
-
 
 
 if __name__=='__main__':
