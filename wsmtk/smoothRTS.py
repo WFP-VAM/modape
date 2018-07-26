@@ -76,9 +76,6 @@ class RTS:
 
         self.targetdir = targetdir
 
-
-        self.outfiles = [self.targetdir + '/' + os.path.basename(x) for x in self.files]
-
     def initRasters(self,tdir):
 
         for f in self.files:
@@ -92,6 +89,8 @@ class RTS:
     def ws2d(self,s):
 
         tdir = self.targetdir + '/filt0/'
+
+        outfiles = [tdir + '/' + os.path.basename(x) for x in self.files]
 
         if not os.path.exists(tdir):
 
@@ -127,7 +126,7 @@ class RTS:
 
             for fix in range(self.nfiles):
 
-                ds = gdal.Open(self.outfiles[fix],gdal.GA_Update)
+                ds = gdal.Open(outfiles[fix],gdal.GA_Update)
 
                 ds_b = ds.GetRasterBand(1)
 
@@ -156,6 +155,8 @@ class RTS:
             tdir = self.targetdir + '/filtvcp/'
         else:
             tdir = self.targetdir + '/filtvc/'
+
+        outfiles = [tdir + '/' + os.path.basename(x) for x in self.files]
 
         if not os.path.exists(tdir):
 
@@ -205,7 +206,7 @@ class RTS:
 
             for fix in range(self.nfiles):
 
-                ds = gdal.Open(self.outfiles[fix],gdal.GA_Update)
+                ds = gdal.Open(outfiles[fix],gdal.GA_Update)
 
                 ds_b = ds.GetRasterBand(1)
 
