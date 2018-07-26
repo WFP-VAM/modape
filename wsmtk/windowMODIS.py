@@ -124,6 +124,8 @@ def main():
                         outputType=mosaic_ropen.dt_gdal[0],
                         xRes=mosaic_ropen.resolution_degrees,
                         yRes=mosaic_ropen.resolution_degrees,
+                        srcNodata = mosaic.nodata,
+                        dstNodata = mosaic.nodata,
                         outputBounds=(args.roi[0],args.roi[3],args.roi[2],args.roi[1]),
                         resampleAlg='near')
 
@@ -136,6 +138,8 @@ def main():
                         outputType=mosaic_ropen.dt_gdal[0],
                         xRes=mosaic_ropen.resolution_degrees,
                         yRes=mosaic_ropen.resolution_degrees,
+                        srcNodata = mosaic.nodata,
+                        dstNodata = mosaic.nodata,
                         resampleAlg='near')
 
                         ds = None
@@ -167,6 +171,8 @@ def main():
                             outputType=mosaic_ropen.dt_gdal[0],
                             xRes=mosaic_ropen.resolution_degrees,
                             yRes=mosaic_ropen.resolution_degrees,
+                            srcNodata = mosaic.nodata,
+                            dstNodata = mosaic.nodata,
                             outputBounds=(args.roi[0],args.roi[3],args.roi[2],args.roi[1]),
                             resampleAlg='near')
 
@@ -179,6 +185,8 @@ def main():
                             outputType=mosaic_ropen.dt_gdal[0],
                             xRes=mosaic_ropen.resolution_degrees,
                             yRes=mosaic_ropen.resolution_degrees,
+                            srcNodata = mosaic.nodata,
+                            dstNodata = mosaic.nodata,
                             resampleAlg='near')
 
                             ds = None

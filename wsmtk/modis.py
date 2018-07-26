@@ -642,7 +642,7 @@ class MODISsmth5:
             # check if file needs to be resized
 
             dates_check = [self.rawdaily[ix] for ix in range(0,len(self.rawdaily),t_interval)]
-            
+
             if len(dates_check) > smt_dts.shape[0]:
                 smt_dts.resize((len(dates_check),))
                 smt_dts[...] = [x.encode("ascii", "ignore") for x in dates_check]
@@ -1186,6 +1186,7 @@ class MODISmosaic:
                 self.datatype = dset.dtype
                 self.gt = dset.attrs['geotransform']
                 self.pj = dset.attrs['projection']
+                self.nodata = dset.attrs['nodata'].item()
 
                 if self.global_flag:
                     self.resolution_degrees = dset.attrs['resolution']
@@ -1282,7 +1283,12 @@ class MODISmosaic:
         self.raster.SetGeoTransform(self.gt)
         self.raster.SetProjection(self.pj)
 
-        self.raster.GetRasterBand(1).WriteArray(array)
+        rb = self.raster.GetRasterBand(1)
+
+        rb.SetNoDataValue(self.nodata)
+
+        rb.WriteArray(array)
+        
         yield self
 
         gdal.Unlink('/vsimem/inmem.tif')

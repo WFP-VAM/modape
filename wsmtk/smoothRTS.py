@@ -43,20 +43,27 @@ def iterateBlocks(rows,cols,n):
 
 class RTS:
 
-    def __init__(self,files,targetdir,bsize=256,nodata=0):
+    def __init__(self,files,targetdir,bsize=256,nodata=None):
 
         self.files = files
         self.files.sort()
         self.ref_file = self.files[0]
         self.nfiles = len(self.files)
         self.bsize = bsize
-        self.nodata = nodata
+
 
         ds = gdal.Open(self.ref_file)
 
         self.nrows = ds.RasterYSize
         self.ncols = ds.RasterXSize
+
+        if not nodata:
+            self.nodata = ds.GetRasterBand(1).GetNoDataValue()
+        else:
+            self.nodata = nodata
+
         ds = None
+
 
         self.targetdir = targetdir
 
