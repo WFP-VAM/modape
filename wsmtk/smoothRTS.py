@@ -277,7 +277,7 @@ def main():
         raise SystemExit('directory PATH does not exist!')
 
 
-    fls = glob.glob('{}/{}'.format(args.path,args.pattern))
+    fls = [x for x in glob.glob('{}/{}'.format(args.path,args.pattern)) if os.path.isfile(x)]
 
     if not len(fls) > 0:
         raise SystemExit('No files found in {} with pattern {}, please check input.'.format(args.path,args.pattern))
