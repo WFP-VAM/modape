@@ -1,7 +1,11 @@
 from numpy.lib.stride_tricks import as_strided as ast
+import numpy as np
 import datetime
 import requests
 import gdal
+import ctypes
+import multiprocessing
+from .whittaker import ws2d, ws2d_vc, ws2d_vc_asy
 
 def dtype_GDNP(dt):
     '''GDAL/NP DataType helper'''
@@ -70,8 +74,6 @@ class SessionWithHeaderRedirection(requests.Session):
         self.auth = (username, password)
 
 
-
-
    # Overrides from the library to keep headers when redirected to or from
 
    # the NASA auth host.
@@ -95,6 +97,96 @@ class SessionWithHeaderRedirection(requests.Session):
             if (original_parsed.hostname != redirect_parsed.hostname) and redirect_parsed.hostname != self.AUTH_HOST and original_parsed.hostname != self.AUTH_HOST:
                 del headers['Authorization']
 
-
-
         return
+
+def txx(x):
+    if x:
+        if int(x) == 5:
+            return 'p'
+        elif int(x) == 10:
+            return 'd'
+        else:
+            return 'c'
+    else:
+        return 'n'
+
+
+def fromjulian(x):
+    return datetime.datetime.strptime(x,'%Y%j').date()
+
+def init_shared(ncell):
+    '''Create shared value array for smoothing'''
+    shared_array_base = multiprocessing.Array(ctypes.c_float,ncell,lock=False)
+    return(shared_array_base)
+
+def tonumpyarray(shared_array):
+
+    nparray= np.frombuffer(shared_array,dtype=ctypes.c_float)
+    assert nparray.base is shared_array
+    return nparray
+
+def init_parameters(**kwargs):
+    params = dict(zip(['shared_array','shared_sarr','nd','s','srange','p','dim'],[None for x in range(7)]))
+
+    for key, value in kwargs.items():
+        params[key] = value
+    return params
+
+def init_worker(shared_array_,parameters_):
+    global shared_array
+    global nd
+    global s
+    global srange
+    global p
+    global dim
+    shared_array = tonumpyarray(shared_array_)
+    nd = parameters_['nd']
+    s = parameters_['s']
+    srange = parameters_['srange']
+    p = parameters_['p']
+    dim = parameters_['dim']
+
+    try:
+        global shared_sarr
+        shared_sarr = tonumpyarray(parameters_['shared_sarr'])
+    except:
+        shared_sarr = None
+
+
+def execute_ws2d(ix):
+    #worker function for parallel smoothing using whittaker 2d with fixed lambda
+    arr = tonumpyarray(shared_array)
+    arr.shape = dim
+    for ii in ix:
+        if (arr[ii,] != nd ).any():
+            arr[ii,] = ws2d(y = arr[ii,], lmda = s, w = np.array((arr[ii,] != nd) * 1,dtype='float32'))
+
+def execute_ws2d_sgrid(ix):
+    #worker function for parallel smoothing using whittaker 2d with existing lambda grid
+    arr = tonumpyarray(shared_array)
+    sarr = tonumpyarray(shared_sarr)
+    arr.shape = dim
+
+    for ii in ix:
+        if (arr[ii,] != nd ).any():
+            arr[ii,] = ws2d(y = arr[ii,], lmda = 10**sarr[ii], w = np.array((arr[ii,] != nd ) * 1,dtype='float32'))
+
+def execute_ws2d_vc(ix):
+    #worker function for parallel smoothing using whittaker 2d with v-curve optimization
+    arr = tonumpyarray(shared_array)
+    sarr = tonumpyarray(shared_sarr)
+    arr.shape = dim
+
+    for ii in ix:
+        if (arr[ii,] != nd ).any():
+            arr[ii,], sarr[ii] =  ws2d_vc(y = arr[ii], w = np.array((arr[ii,] != nd) * 1,dtype='float32'), llas = srange)
+
+def execute_ws2d_vc_asy(ix):
+    #worker function for parallel asymmetric smoothing using whittaker 2d with v-curve optimization
+    arr = tonumpyarray(shared_array)
+    sarr = tonumpyarray(shared_sarr)
+    arr.shape = dim
+
+    for ii in ix:
+        if (arr[ii,] != nd ).any():
+            arr[ii,], sarr[ii] = ws2d_vc_asy(y = arr[ii], w = np.array((arr[ii,] != nd) * 1,dtype='float32'), llas = srange, p = p)

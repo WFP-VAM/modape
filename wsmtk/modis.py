@@ -12,13 +12,17 @@ import h5py
 import osr
 from progress.bar import Bar
 from progress.spinner import Spinner
-from .utils import LDOM, dtype_GDNP, SessionWithHeaderRedirection
-from contextlib import contextmanager
+from .utils import *
+from .whittaker import ws2d, ws2d_vc, ws2d_vc_asy
+from contextlib import contextmanager, closing
 import pickle
 import warnings
 import itertools
 import bisect
 import gc
+import array
+import multiprocessing as mp
+import traceback
 try:
     import gdal
 except ImportError:
@@ -177,7 +181,7 @@ class MODISquery:
 
 
 
-class MODIShdf5:
+class MODISrawh5:
 
     def __init__(self,files,param=None,targetdir=os.getcwd(),compression='gzip',crow=120,ccol=120):
 
@@ -218,11 +222,13 @@ class MODIShdf5:
         ref = None
 
         if self.param is 'VIM' and any(['MOD' in os.path.basename(x) for x in files]) and any(['MYD' in os.path.basename(x) for x in files]):
-            self.product = ['MXD']
+            self.product = [re.sub(r'M[O|Y]D','MXD',re.findall(ppatt,self.ref_file_basename)[0])]
+            self.temporalresolution = 8
         else:
             self.product = re.findall(ppatt,self.ref_file_basename)
+            self.temporalresolution = None
 
-        self.outname = '{}/{}/{}_{}.h5'.format(
+        self.outname = '{}/{}/{}.{}.h5'.format(
                                     self.targetdir,
                                     self.param,
                                     '.'.join(self.product + re.findall(tpatt,self.ref_file_basename) + [re.sub(vpatt,'\\1',self.ref_file_basename)]),
@@ -233,7 +239,7 @@ class MODIShdf5:
 
 
     def create(self):
-        print('\nCreating file: %s ... ' % self.outname, end='')
+        print('\nCreating file: {} ... '.format(self.outname), end='')
 
         ref = gdal.Open(self.ref_file)
         ref_sds = [x[0] for x in ref.GetSubDatasets() if self.paramdict[self.param] in x[0]][0]
@@ -251,7 +257,6 @@ class MODIShdf5:
         #rst = gdal.Warp('', ref_sds, dstSRS='EPSG:4326', format='VRT',
         #                              outputType=gdal.GDT_Float32, xRes=res, yRes=res)
 
-        ## TODO real raster resolution??
 
         rst = gdal.Open(ref_sds)
 
@@ -261,10 +266,25 @@ class MODIShdf5:
         self.cols = rst.RasterXSize
         self.nodata_value = int(rst.GetMetadataItem('_FillValue'))
 
-        if re.match(r'M.{1}D13\w\d',self.ref_file_basename):
-            self.numberofdays = 16
-        elif re.match(r'M.{1}D11\w\d',self.ref_file_basename):
+        if self.rows % self.crow != 0 or self.cols % self.ccol != 0:
+            raise SystemExit('Modulo of processing blocksize and row/column returned non-zero which could have unintended side-effects. Please change size of processing blocks!')
+
+        if re.match(r'M[O|Y]D13\w\d',self.ref_file_basename):
+            if not self.temporalresolution:
+                self.numberofdays = 16
+                self.temporalresolution = self.numberofdays
+                #totaldays = self.nfiles * self.temporalresolution
+            else:
+                self.numberofdays = 16
+                #totaldays = self.nfiles * self.temporalresolution + self.temporalresolution
+
+        elif re.match(r'M[O|Y]D11\w\d',self.ref_file_basename):
             self.numberofdays = 8
+            self.temporalresolution = self.numberofdays
+            #totaldays = self.nfiles * self.temporalresolution
+
+        totaldays = ((fromjulian(self.dates[-1]) + datetime.timedelta(self.numberofdays)) - fromjulian(self.dates[0])).days
+
         dt = rst.GetRasterBand(1).DataType
 
         try:
@@ -273,7 +293,7 @@ class MODIShdf5:
             print("\n\n Couldn't read data type from dataset. Using default Int16!\n")
             self.datatype = (3,'int16')
 
-        self.chunks = (self.crow,self.ccol,self.numberofdays)
+        self.chunks = (self.crow,self.ccol,self.temporalresolution)
 
         trans = rst.GetGeoTransform()
         prj = rst.GetProjection()
@@ -286,16 +306,15 @@ class MODIShdf5:
         try:
 
             with h5py.File(self.outname,'x',libver='latest') as h5f:
-                dset = h5f.create_dataset('Raw',shape=(self.rows,self.cols,self.nfiles * self.numberofdays),dtype=self.datatype[1],maxshape=(self.rows,self.cols,None),chunks=self.chunks,compression=self.compression)
-                #h5f.create_dataset('Smooth',shape=(self.rows,self.cols,self.nfiles),dtype=self.datatype[1],maxshape=(self.rows,self.cols,None),chunks=self.chunks,compression=self.compression)
-                #h5f.create_dataset('lgrd',shape=(self.rows,self.cols),dtype='float32',maxshape=(self.rows,self.cols),chunks=self.chunks[0:2],compression=self.compression)
-                h5f.create_dataset('Dates',shape=(self.nfiles,),maxshape=(None,),dtype='S8',compression=self.compression)
-                dset.attrs['Geotransform'] = trans
-                dset.attrs['Projection'] = prj
-                dset.attrs['Resolution'] = trans[1] # res ## commented for original resolution
+                dset = h5f.create_dataset('data',shape=(self.rows,self.cols,totaldays),dtype=self.datatype[1],maxshape=(self.rows,self.cols,None),chunks=self.chunks,compression=self.compression,fillvalue=self.nodata_value)
+                h5f.create_dataset('dates',shape=(self.nfiles,),maxshape=(None,),dtype='S8',compression=self.compression)
+                dset.attrs['geotransform'] = trans
+                dset.attrs['projection'] = prj
+                dset.attrs['resolution'] = trans[1] # res ## commented for original resolution
                 dset.attrs['doyflag'] = doyflag
                 dset.attrs['nodata'] = self.nodata_value
                 dset.attrs['numberofdays'] = self.numberofdays
+                dset.attrs['temporalresolution'] = self.temporalresolution
 
             self.exists = True
             print('done.\n')
@@ -311,13 +330,14 @@ class MODIShdf5:
         try:
 
             with h5py.File(self.outname,'r+',libver='latest') as h5f:
-                dset = h5f.get('Raw')
-                dts  = h5f.get('Dates')
+                dset = h5f.get('data')
+                dts  = h5f.get('dates')
                 self.chunks = dset.chunks
                 self.rows = dset.shape[0]
                 self.cols = dset.shape[1]
-                self.nodata_value = dset.attrs['nodata']
-                self.numberofdays = dset.attrs['numberofdays']
+                self.nodata_value = dset.attrs['nodata'].item()
+                self.numberofdays = dset.attrs['numberofdays'].item()
+                self.temporalresolution = dset.attrs['temporalresolution'].item()
                 self.doyindex = int(self.numberofdays / 2)
                 self.datatype = dtype_GDNP(dset.dtype.name)
                 #res  = dset.attrs['Resolution'] ## comment for original resolution
@@ -327,14 +347,18 @@ class MODIShdf5:
 
                 if len(dates) > dts.shape[0]:
                     dts.resize((len(dates),))
-                    dset.resize((dset.shape[0],dset.shape[1],dset.shape[2] + len(dates) * self.numberofdays))
+                    dset.resize((dset.shape[0],dset.shape[1],((fromjulian(dates[-1]) + datetime.timedelta(self.numberofdays)) - fromjulian(dates[0])).days))
 
                 dts[...] = [n.encode("ascii", "ignore") for n in dates]
+
+                # range(dset.shape[2]+1) includes endpoint in range
+
+                dates_daily = [(fromjulian(dates[0]) + datetime.timedelta(x)).strftime('%Y%j') for x in range(dset.shape[2]+1)]
 
                 [gc.collect() for x in range(3)]
 
                 try:
-                    arr = np.zeros(self.chunks,dtype=self.datatype[1])
+                    arr = np.zeros((self.chunks[0],self.chunks[1],self.numberofdays),dtype=self.datatype[1])
 
                 except MemoryError:
                         print("\n\n Can't allocate arrays for block due to memory restrictions! Make sure enough RAM is availabe, consider using a 64bit PYTHON version or reduce block size.\n\n Traceback:")
@@ -355,9 +379,9 @@ class MODIShdf5:
 
                         try:
 
-                            flix = dates.index(re.sub(self.dts_regexp,'\\1',fl))
+                            flix = dates_daily.index(re.sub(self.dts_regexp,'\\1',fl))
 
-                            ix = [int((datetime.datetime.strptime(dates[flix],'%Y%j').date() + datetime.timedelta(x)).strftime('%j')) for x in range(16)]
+                            ix = [int(fromjulian(x).strftime('%j')) for x in dates_daily[flix:flix+self.numberofdays]]
 
                             fl_o = gdal.Open(fl)
 
@@ -377,19 +401,23 @@ class MODIShdf5:
 
                                 doyarr[...] = doy_rst.ReadAsArray(xoff=blk[1],yoff=blk[0],xsize=self.chunks[1],ysize=self.chunks[0])
 
+                                # set negative ndvi and ndvi with doy < 0 to nodata
+                                valarr[valarr < 0] = self.nodata_value
+                                valarr[doyarr < 0] = self.nodata_value
+
                                 for doy_ix, doy in enumerate(ix):
 
                                     doyarr[doyarr == doy] = doy_ix
-                                doyarr[doyarr < 0] = self.doyindex # set -1 to mid value
+                                #doyarr[doyarr < 0] = self.doyindex # set -1 to mid value
                                 doyarr[doyarr > doy_ix] = doy_ix # clip to max doy
 
-                                arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.numberofdays:flix*self.numberofdays+self.numberofdays]
+                                arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays]
 
-                                arr[arr == 0] = self.nodata_value
+                                #arr[arr == 0] = self.nodata_value
 
                                 arr[I,J,doyarr] = np.maximum.reduce([arr[I,J,doyarr],valarr[...]])
 
-                                dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.numberofdays:flix*self.numberofdays+self.numberofdays] = arr[...]
+                                dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays] = arr[...]
 
 
                         except AttributeError:
@@ -402,14 +430,13 @@ class MODIShdf5:
 
                             for blk in blks:
 
+                                arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays]
 
-                                arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.numberofdays:flix*self.numberofdays+self.numberofdays]
-
-                                arr[arr == 0] = self.nodata_value
+                                #arr[arr == 0] = self.nodata_value
 
                                 arr[...,self.doyindex] = np.maximum.reduce([arr[...,self.doyindex],ndarr])
 
-                                dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.numberofdays:flix*self.numberofdays+self.numberofdays] = arr[...]
+                                dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays] = arr[...]
 
                             del ndarr
 
@@ -436,9 +463,7 @@ class MODIShdf5:
 
                         try:
 
-                            flix = dates.index(re.sub(self.dts_regexp,'\\1',fl))
-
-                            ix = [int((datetime.datetime.strptime(dates[flix],'%Y%j').date() + datetime.timedelta(x)).strftime('%j')) for x in range(16)]
+                            flix = dates_daily.index(re.sub(self.dts_regexp,'\\1',fl))
 
                             fl_o = gdal.Open(fl)
 
@@ -452,13 +477,13 @@ class MODIShdf5:
 
                                 valarr[...] = val_rst.ReadAsArray(xoff=blk[1],yoff=blk[0],xsize=self.chunks[1],ysize=self.chunks[0])
 
-                                arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.numberofdays:flix*self.numberofdays+self.numberofdays]
+                                arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays]
 
-                                arr[arr == 0] = self.nodata_value
+                                #arr[arr == 0] = self.nodata_value
 
                                 arr[...,self.doyindex] = np.maximum.reduce([arr[...,self.doyindex],valarr[...]])
 
-                                dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.numberofdays:flix*self.numberofdays+self.numberofdays] = arr[...]
+                                dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays] = arr[...]
 
                         except AttributeError:
 
@@ -470,13 +495,13 @@ class MODIShdf5:
 
                             for blk in blks:
 
-                                arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.numberofdays:flix*self.numberofdays+self.numberofdays]
+                                arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays]
 
-                                arr[arr == 0] = self.nodata_value
+                                #arr[arr == 0] = self.nodata_value
 
                                 arr[...,self.doyindex] = np.maximum.reduce([arr[...,self.doyindex],ndarr])
 
-                                dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix*self.numberofdays:flix*self.numberofdays+self.numberofdays] = arr[...]
+                                dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays] = arr[...]
 
                             del ndarr
 
@@ -493,12 +518,605 @@ class MODIShdf5:
 
         except:
             print('Error updating {}! File may be corrupt, consider creating the file from scratch, or closer investigation. \n\nError message: \n'.format(self.outname))
+            traceback.print_exc()
             raise
 
     def __str__(self):
-        return("MODIShdf5 object: %s - %s files - exists on disk: %s" % (self.outname, self.nfiles, self.exists))
+        return("MODISrawh5 object: %s - %s files - exists on disk: %s" % (self.outname, self.nfiles, self.exists))
 
 
+class MODISsmth5:
+
+    def __init__(self,rawfile,tempint=None,nsmooth=None,nupdate=None,targetdir=os.getcwd(),parallel=False,ncores=mp.cpu_count()-1):
+
+        self.targetdir = targetdir
+        self.rawfile = rawfile
+        self.parallel = parallel
+        self.ncores = ncores
+        self.nupdate = nupdate
+
+        with h5py.File(self.rawfile,'r') as h5f:
+            dset = h5f.get('data')
+            dts = h5f.get('dates')
+            self.numberofdays = int(dset.attrs['numberofdays'])
+            rawshape = dset.shape
+
+            self.rawdaily = [(fromjulian(dts[0].decode()) + datetime.timedelta(x)).strftime('%Y%j') for x in range(rawshape[2]+1)]
+
+            if nsmooth and nupdate:
+                assert nsmooth >= nupdate, "nsmooth >= nupdate!!!!"
+
+            if not nsmooth:
+                firstday = dts[0].decode()
+            else:
+                firstday = dts[-nsmooth].decode()
+
+            self.ndays = ((fromjulian(dts[-1].decode()) + datetime.timedelta(self.numberofdays)) - fromjulian(firstday)).days
+            self.startix = self.rawdaily.index(firstday)
+            self.daily = [(fromjulian(firstday) + datetime.timedelta(x)).strftime('%Y%j') for x in range(self.ndays+1)]
+
+        try:
+            txflag = txx(tempint)
+        except ValueError:
+            raise SystemExit('Value for temporal interpolation not valid (interger for number of days required)!')
+
+        self.outname = '{}/{}.tx{}.{}.h5'.format(
+                                    self.targetdir,
+                                    '.'.join(os.path.basename(rawfile).split('.')[:-2]),
+                                    txflag,
+                                    os.path.basename(rawfile).split('.')[-2:-1][0])
+
+        self.exists = os.path.isfile(self.outname)
+
+        if txflag == 'n':
+            self.temporalresolution = None
+        else:
+            self.temporalresolution = tempint
+
+
+    def create(self):
+
+        try:
+            with h5py.File(self.rawfile,'r') as h5f:
+                dset = h5f.get('data')
+                dts = h5f.get('dates')
+                dt = dset.dtype.name
+                cmpr = dset.compression
+                rows,cols,rawdays = dset.shape
+                rawchunks = dset.chunks
+                rgt = dset.attrs['geotransform']
+                rpj = dset.attrs['projection']
+                rres = dset.attrs['resolution']
+                rnd = dset.attrs['nodata']
+                rtres = dset.attrs['temporalresolution']
+                firstday = fromjulian(dts[0].decode())
+
+        except Exception as e:
+            raise SystemExit('Error reading rawfile {}. File may be corrupt. \n\n Error message: \n\n {}'.format(self.rawfile,e))
+
+        if not self.temporalresolution:
+            self.temporalresolution = rtres
+
+        dates = [self.rawdaily[ix] for ix in range(0,len(self.rawdaily),self.temporalresolution)]
+        days = len(dates)
+
+        self.chunks = (rawchunks[0],rawchunks[1],1)
+
+        print('\nCreating file: {} ... '.format(self.outname), end='')
+
+        try:
+            with h5py.File(self.outname,'x',libver='latest') as h5f:
+                dset = h5f.create_dataset('data',shape=(rows,cols,days),dtype=dt,maxshape=(rows,cols,None),chunks=self.chunks,compression=cmpr,fillvalue=rnd)
+                h5f.create_dataset('sgrid',shape=(rows,cols),dtype='float32',maxshape=(rows,cols),chunks=self.chunks[0:2],compression=cmpr)
+                h5f.create_dataset('dates',shape=(days,),maxshape=(None,),dtype='S8',compression=cmpr,data = [x.encode('ascii','ignore') for x in dates])
+                dset.attrs['geotransform'] = rgt
+                dset.attrs['projection'] = rpj
+                dset.attrs['resolution'] = rres
+                dset.attrs['nodata'] = rnd
+                dset.attrs['temporalresolution'] = self.temporalresolution
+
+        except:
+            print('\n\nError creating {}! Check input parameters (especially if compression/filter is available) and try again. Corrupt file will be removed now. \n\nError message: \n'.format(self.outname))
+            os.remove(self.outname)
+            raise
+
+
+        self.exists = True
+        print('done.\n')
+
+    def ws2d(self,s):
+
+        with h5py.File(self.rawfile,'r') as rawh5, h5py.File(self.outname,'r+') as smth5:
+
+            raw_ds = rawh5.get('data')
+            raw_dts = rawh5.get('dates')
+            smt_ds = smth5.get('data')
+            smt_dts = smth5.get('dates')
+
+            rawshape = raw_ds.shape
+            rawchunks = raw_ds.chunks
+
+            nodata = raw_ds.attrs['nodata']
+            t_interval = smt_ds.attrs['temporalresolution']
+
+            # check if file needs to be resized
+
+            dates_check = [self.rawdaily[ix] for ix in range(0,len(self.rawdaily),t_interval)]
+
+            if len(dates_check) > smt_dts.shape[0]:
+                smt_dts.resize((len(dates_check),))
+                smt_dts[...] = [x.encode("ascii", "ignore") for x in dates_check]
+                smt_ds.resize((smt_ds.shape[0],smt_ds.shape[1],len(dates_check)))
+
+            # calculate update index and offsets
+
+            if not self.nupdate:
+
+                for i,d in enumerate(self.daily):
+                    if d in dates_check:
+                        self.smtoffset = dates_check.index(d)
+                        self.rawoffset = i
+                        break
+            else:
+                self.rawoffset = self.daily.index(dates_check[-self.nupdate])
+                self.smtoffset = len(dates_check[:-self.nupdate])
+
+            barmax = (rawshape[0]/rawchunks[0]) * (rawshape[1]/rawchunks[1])
+            bar = Bar('Processing',fill='=',max=barmax,suffix='%(percent)d%%  ')
+            bar.goto(0)
+
+            if self.parallel:
+
+                params = init_parameters(s=s,nd=nodata,dim=(rawchunks[0]*rawchunks[1],self.ndays))
+
+                shared_array = init_shared(rawchunks[0] * rawchunks[1] * self.ndays)
+
+                arr = tonumpyarray(shared_array)
+
+                arr.shape = (rawchunks[0] * rawchunks[1],self.ndays)
+
+                arr_helper = arr.view()
+
+                arr_helper.shape = (rawchunks[0],rawchunks[1],self.ndays)
+
+                blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
+
+                with closing(mp.Pool(processes=self.ncores,initializer = init_worker, initargs = (shared_array,params))) as pool:
+
+                    for b in blks:
+
+                        for ii in range(0,arr_helper.shape[2],rawchunks[2]):
+
+                            arr_helper[...,ii:ii+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],self.startix+ii:self.startix+ii+rawchunks[2]]
+
+                        del ii
+
+                        res = pool.map(execute_ws2d,np.array_split(range(arr.shape[0]),self.ncores))
+
+                        for ii,jj in enumerate(range(self.rawoffset,arr_helper.shape[2],t_interval)):
+
+                            smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],self.smtoffset+ii] = arr_helper[...,jj].round()
+
+                        del ii,jj
+
+                        bar.next()
+                    bar.finish()
+
+            else:
+
+                arr = np.zeros((rawchunks[0]*rawchunks[1],self.ndays),dtype='float32')
+                wts = arr.copy()
+
+                arr_helper = arr.view()
+                arr_helper.shape = (rawchunks[0],rawchunks[1],self.ndays)
+
+                blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
+
+                for b in blks:
+
+                    for ii in range(0,arr_helper.shape[2],rawchunks[2]):
+
+                        arr_helper[...,ii:ii+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],self.startix+ii:self.startix+ii+rawchunks[2]]
+
+                    del ii
+
+                    wts[...] = (arr != nodata) * 1
+
+                    for r in range(arr.shape[0]):
+                        if wts[r,...].sum().item() != 0.0:
+                            arr[r,...] = ws2d(y = arr[r,...],lmda = s, w = wts[r,...])
+
+                    for ii,jj in enumerate(range(self.rawoffset,arr_helper.shape[2],t_interval)):
+
+                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],self.smtoffset+ii] = arr_helper[...,jj].round()
+
+                    del ii,jj
+
+                    bar.next()
+                bar.finish()
+
+
+    def ws2d_sgrid(self):
+
+        with h5py.File(self.rawfile,'r') as rawh5, h5py.File(self.outname,'r+') as smth5:
+
+            raw_ds = rawh5.get('data')
+            raw_dts = rawh5.get('dates')
+            smt_ds = smth5.get('data')
+            smt_dts = smth5.get('dates')
+            sgrid_ds = smth5.get('sgrid')
+
+            rawshape = raw_ds.shape
+            rawchunks = raw_ds.chunks
+
+            nodata = raw_ds.attrs['nodata']
+            t_interval = smt_ds.attrs['temporalresolution']
+
+            # check if file needs to be resized
+
+            dates_check = [self.rawdaily[ix] for ix in range(0,len(self.rawdaily),t_interval)]
+
+            if len(dates_check) > smt_dts.shape[0]:
+                smt_dts.resize((len(dates_check),))
+                smt_dts[...] = [x.encode("ascii", "ignore") for x in dates_check]
+                smt_ds.resize((smt_ds.shape[0],smt_ds.shape[1],len(dates_check)))
+
+            # calculate update index and offsets
+
+            if not self.nupdate:
+
+                for i,d in enumerate(self.daily):
+                    if d in dates_check:
+                        self.smtoffset = dates_check.index(d)
+                        self.rawoffset = i
+                        break
+            else:
+                self.rawoffset = self.daily.index(dates_check[-self.nupdate])
+                self.smtoffset = len(dates_check[:-self.nupdate])
+
+
+            barmax = (rawshape[0]/rawchunks[0]) * (rawshape[1]/rawchunks[1])
+            bar = Bar('Processing',fill='=',max=barmax,suffix='%(percent)d%%  ')
+            bar.goto(0)
+
+            if self.parallel:
+
+                params = init_parameters(nd=nodata,dim=(rawchunks[0]*rawchunks[1],self.ndays))
+
+                shared_array = init_shared(rawchunks[0] * rawchunks[1] * self.ndays)
+
+                params['shared_sarr'] = init_shared(rawchunks[0] * rawchunks[1])
+
+                arr = tonumpyarray(shared_array)
+
+                sarr = tonumpyarray(params['shared_sarr'])
+
+                arr.shape = (rawchunks[0] * rawchunks[1],self.ndays)
+                sarr.shape = (rawchunks[0], rawchunks[1])
+
+                arr_helper = arr.view()
+
+                arr_helper.shape = (rawchunks[0],rawchunks[1],self.ndays)
+
+                blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
+
+                with closing(mp.Pool(processes=self.ncores,initializer = init_worker, initargs = (shared_array,params))) as pool:
+
+                    for b in blks:
+
+                        for ii in range(0,arr_helper.shape[2],rawchunks[2]):
+
+                            arr_helper[...,ii:ii+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],self.startix+ii:self.startix+ii+rawchunks[2]]
+
+                        sarr[...] = sgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]]
+
+                        del ii
+
+                        res = pool.map(execute_ws2d_sgrid,np.array_split(range(arr.shape[0]),self.ncores))
+
+                        for ii,jj in enumerate(range(self.rawoffset,arr_helper.shape[2],t_interval)):
+
+                            smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],self.smtoffset+ii] = arr_helper[...,jj].round()
+
+                        del ii,jj
+
+                        bar.next()
+                    bar.finish()
+
+            else:
+
+                arr = np.zeros((rawchunks[0]*rawchunks[1],self.ndays),dtype='float32')
+                wts = arr.copy()
+                sarr = np.zeros((rawchunks[0]*rawchunks[1]),dtype='float32')
+
+                arr_helper = arr.view()
+                arr_helper.shape = (rawchunks[0],rawchunks[1],self.ndays)
+
+                blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
+
+                for b in blks:
+
+                    for ii in range(0,arr_helper.shape[2],rawchunks[2]):
+
+                        arr_helper[...,ii:ii+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],self.startix+ii:self.startix+ii+rawchunks[2]]
+
+                    wts[...] = (arr != nodata) * 1
+
+                    sarr[...] = sgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]].reshape(rawchunks[0] * rawchunks[1])
+
+                    for r in range(arr.shape[0]):
+                        if wts[r,...].sum().item() != 0.0:
+                            arr[r,...] = ws2d(arr[r,...],lmda = 10**sarr[r],w = wts[r,...])
+
+                    for ii,jj in enumerate(range(self.rawoffset,arr_helper.shape[2],t_interval)):
+
+                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],self.smtoffset+ii] = arr_helper[...,jj].round()
+
+                    del ii,jj
+
+                    bar.next()
+                bar.finish()
+
+    def ws2d_vc(self,srange):
+
+        with h5py.File(self.rawfile,'r') as rawh5, h5py.File(self.outname,'r+') as smth5:
+
+            raw_ds = rawh5.get('data')
+            raw_dts = rawh5.get('dates')
+            smt_ds = smth5.get('data')
+            smt_dts = smth5.get('dates')
+            sgrid_ds = smth5.get('sgrid')
+
+            rawshape = raw_ds.shape
+            rawchunks = raw_ds.chunks
+
+            nodata = raw_ds.attrs['nodata']
+            t_interval = smt_ds.attrs['temporalresolution']
+
+            # check if file needs to be resized
+
+            dates_check = [self.rawdaily[ix] for ix in range(0,len(self.rawdaily),t_interval)]
+
+            if len(dates_check) > smt_dts.shape[0]:
+                smt_dts.resize((len(dates_check),))
+                smt_dts[...] = [x.encode("ascii", "ignore") for x in dates_check]
+                smt_ds.resize((smt_ds.shape[0],smt_ds.shape[1],len(dates_check)))
+
+            # calculate update index and offsets
+
+            if not self.nupdate:
+
+                for i,d in enumerate(self.daily):
+                    if d in dates_check:
+                        self.smtoffset = dates_check.index(d)
+                        self.rawoffset = i
+                        break
+            else:
+                self.rawoffset = self.daily.index(dates_check[-self.nupdate])
+                self.smtoffset = len(dates_check[:-self.nupdate])
+
+            barmax = (rawshape[0]/rawchunks[0]) * (rawshape[1]/rawchunks[1])
+            bar = Bar('Processing',fill='=',max=barmax,suffix='%(percent)d%%  ')
+            bar.goto(0)
+
+            if self.parallel:
+
+                params = init_parameters(nd=nodata,dim=(rawchunks[0]*rawchunks[1],self.ndays),srange=srange)
+
+                shared_array = init_shared(rawchunks[0] * rawchunks[1] * self.ndays)
+
+                params['shared_sarr'] = init_shared(rawchunks[0] * rawchunks[1])
+
+                arr = tonumpyarray(shared_array)
+
+                sarr = tonumpyarray(params['shared_sarr'])
+
+                arr.shape = (rawchunks[0] * rawchunks[1],self.ndays)
+                sarr.shape = (rawchunks[0], rawchunks[1])
+
+                arr_helper = arr.view()
+
+                arr_helper.shape = (rawchunks[0],rawchunks[1],self.ndays)
+
+                blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
+
+                with closing(mp.Pool(processes=self.ncores,initializer = init_worker, initargs = (shared_array,params))) as pool:
+
+                    for b in blks:
+
+                        for ii in range(0,arr_helper.shape[2],rawchunks[2]):
+
+                            arr_helper[...,ii:ii+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],self.startix+ii:self.startix+ii+rawchunks[2]]
+
+                        del ii
+
+                        # set s values to zero
+                        sarr[...] = 0
+
+                        pool.map(execute_ws2d_vc,np.array_split(range(arr.shape[0]),self.ncores))
+
+                        sarr[sarr>0] = np.log10(sarr[sarr>0])
+
+                        sgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = sarr[...]
+
+                        for ii,jj in enumerate(range(self.rawoffset,arr_helper.shape[2],t_interval)):
+
+                            smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],self.smtoffset+ii] = arr_helper[...,jj].round()
+
+                        del ii,jj
+
+                        bar.next()
+                    bar.finish()
+
+            else:
+
+                arr = np.zeros((rawchunks[0]*rawchunks[1],self.ndays),dtype='float32')
+                wts = arr.copy()
+                sarr = np.zeros((rawchunks[0]*rawchunks[1]),dtype='float32')
+
+                arr_helper = arr.view()
+                arr_helper.shape = (rawchunks[0],rawchunks[1],self.ndays)
+
+                blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
+
+                for b in blks:
+
+                    for ii in range(0,arr_helper.shape[2],rawchunks[2]):
+
+                        arr_helper[...,ii:ii+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],self.startix+ii:self.startix+ii+rawchunks[2]]
+
+                    wts[...] = (arr != nodata) * 1
+
+                    sarr[...] = 0
+
+                    for r in range(arr.shape[0]):
+                        if wts[r,...].sum().item() != 0.0:
+                            arr[r,...], sarr[r] = ws2d_vc(arr[r,...],w = wts[r,...],llas = srange)
+
+                    sarr[sarr>0] = np.log10(sarr[sarr>0])
+
+                    sgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = sarr.reshape(rawchunks[0],rawchunks[1])
+
+                    for ii,jj in enumerate(range(self.rawoffset,arr_helper.shape[2],t_interval)):
+
+                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],self.smtoffset+ii] = arr_helper[...,jj].round()
+
+                    del ii,jj
+
+                    bar.next()
+                bar.finish()
+
+    def ws2d_vc_asy(self,srange,p):
+
+        with h5py.File(self.rawfile,'r') as rawh5, h5py.File(self.outname,'r+') as smth5:
+
+            raw_ds = rawh5.get('data')
+            raw_dts = rawh5.get('dates')
+            smt_ds = smth5.get('data')
+            smt_dts = smth5.get('dates')
+            sgrid_ds = smth5.get('sgrid')
+
+            rawshape = raw_ds.shape
+            rawchunks = raw_ds.chunks
+
+            nodata = raw_ds.attrs['nodata']
+            t_interval = smt_ds.attrs['temporalresolution']
+
+            # check if file needs to be resized
+
+            dates_check = [self.rawdaily[ix] for ix in range(0,len(self.rawdaily),t_interval)]
+
+            if len(dates_check) > smt_dts.shape[0]:
+                smt_dts.resize((len(dates_check),))
+                smt_dts[...] = [x.encode("ascii", "ignore") for x in dates_check]
+                smt_ds.resize((smt_ds.shape[0],smt_ds.shape[1],len(dates_check)))
+
+            # calculate update index and offsets
+
+            if not self.nupdate:
+
+                for i,d in enumerate(self.daily):
+                    if d in dates_check:
+                        self.smtoffset = dates_check.index(d)
+                        self.rawoffset = i
+                        break
+            else:
+                self.rawoffset = self.daily.index(dates_check[-self.nupdate])
+                self.smtoffset = len(dates_check[:-self.nupdate])
+
+
+            barmax = (rawshape[0]/rawchunks[0]) * (rawshape[1]/rawchunks[1])
+            bar = Bar('Processing',fill='=',max=barmax,suffix='%(percent)d%%  ')
+            bar.goto(0)
+
+            if self.parallel:
+
+                params = init_parameters(nd=nodata,dim=(rawchunks[0]*rawchunks[1],self.ndays),srange=srange,p=p)
+
+                shared_array = init_shared(rawchunks[0] * rawchunks[1] * self.ndays)
+
+                params['shared_sarr'] = init_shared(rawchunks[0] * rawchunks[1])
+
+                arr = tonumpyarray(shared_array)
+
+                sarr = tonumpyarray(params['shared_sarr'])
+
+                arr.shape = (rawchunks[0] * rawchunks[1],self.ndays)
+                sarr.shape = (rawchunks[0], rawchunks[1])
+
+                arr_helper = arr.view()
+
+                arr_helper.shape = (rawchunks[0],rawchunks[1],self.ndays)
+
+                blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
+
+                with closing(mp.Pool(processes=self.ncores,initializer = init_worker, initargs = (shared_array,params))) as pool:
+
+                    for b in blks:
+
+                        for ii in range(0,arr_helper.shape[2],rawchunks[2]):
+
+                            arr_helper[...,ii:ii+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],self.startix+ii:self.startix+ii+rawchunks[2]]
+
+                        del ii
+
+                        # set s values to zero
+                        sarr[...] = 0
+
+                        pool.map(execute_ws2d_vc_asy,np.array_split(range(arr.shape[0]),self.ncores))
+
+                        sarr[sarr>0] = np.log10(sarr[sarr>0])
+
+                        sgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = sarr[...]
+
+                        for ii,jj in enumerate(range(self.rawoffset,arr_helper.shape[2],t_interval)):
+
+                            smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],self.smtoffset+ii] = arr_helper[...,jj].round()
+
+                        del ii,jj
+
+                        bar.next()
+                    bar.finish()
+
+            else:
+
+                arr = np.zeros((rawchunks[0]*rawchunks[1],self.ndays),dtype='float32')
+                wts = arr.copy()
+                sarr = np.zeros((rawchunks[0]*rawchunks[1]),dtype='float32')
+
+                arr_helper = arr.view()
+                arr_helper.shape = (rawchunks[0],rawchunks[1],self.ndays)
+
+                blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
+
+                for b in blks:
+
+                    for ii in range(0,arr_helper.shape[2],rawchunks[2]):
+
+                        arr_helper[...,ii:ii+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],self.startix+ii:self.startix+ii+rawchunks[2]]
+
+                    del ii
+
+                    wts[...] = (arr != nodata) * 1
+
+                    sarr[...] = 0
+
+                    for r in range(arr.shape[0]):
+                        if wts[r,...].sum().item() != 0.0:
+                            arr[r,...], sarr[r] = ws2d_vc_asy(arr[r,...],w = wts[r,...],llas = srange,p = p)
+
+                    sarr[sarr>0] = np.log10(sarr[sarr>0])
+
+                    sgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]] = sarr.reshape(rawchunks[0],rawchunks[1])
+
+                    for ii,jj in enumerate(range(self.rawoffset,arr_helper.shape[2],t_interval)):
+
+                        smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],self.smtoffset+ii] = arr_helper[...,jj].round()
+
+                    del ii,jj
+
+                    bar.next()
+                bar.finish()
 
 class MODIStiles:
 
@@ -542,8 +1160,10 @@ class MODIStiles:
 
 class MODISmosaic:
 
-    def __init__(self,files,datemin,datemax):
+    def __init__(self,files,datemin,datemax,global_flag):
         tile_re = re.compile('.+(h\d+v\d+).+')
+
+        self.global_flag = global_flag
 
         self.tiles = [re.sub(tile_re,'\\1',os.path.basename(x)) for x in files]
         self.tiles.sort()
@@ -559,31 +1179,38 @@ class MODISmosaic:
         try:
 
             with h5py.File(ref,'r') as h5f:
-                dset = h5f.get('Raw')
+                dset = h5f.get('data')
                 r,c,t = dset.shape
                 self.tile_rws = r
                 self.tile_cls = c
                 self.datatype = dset.dtype
-                self.resolution = dset.attrs['Resolution']
-                self.resolution_degrees = self.resolution/112000
-                self.gt = dset.attrs['Geotransform']
-                self.pj = dset.attrs['Projection']
+                self.gt = dset.attrs['geotransform']
+                self.pj = dset.attrs['projection']
+                self.nodata = dset.attrs['nodata'].item()
+
+                if self.global_flag:
+                    self.resolution_degrees = dset.attrs['resolution']
+                else:
+                    self.resolution = dset.attrs['resolution']
+                    self.resolution_degrees = self.resolution/112000
+
+
                 dset = None
-                self.dates = [x.decode() for x in h5f.get('Dates')[...]]
+                self.dates = [x.decode() for x in h5f.get('dates')[...]]
         except Exception as e:
-            print('\nError reading refreferece file {} for mosaic! Error message: {}\n'.format(ref,e))
+            print('\nError reading referece file {} for mosaic! Error message: {}\n'.format(ref,e))
             raise
 
 
-        dts_dt = [datetime.datetime.strptime(x,'%Y%j').date() for x in self.dates]
+        dts_dt = [fromjulian(x) for x in self.dates]
         datemin_p = datetime.datetime.strptime(datemin,'%Y%m').date()
         datemax_p = datetime.datetime.strptime(datemax,'%Y%m').date()
 
         self.tempIX = np.flatnonzero(np.array([x >= datemin_p and x <= datemax_p for x in dts_dt]))
 
-    def getArray(self,dataset,ix):
+    def getArray(self,dataset,ix,dt):
 
-        array = np.zeros(((len(self.v_ix) * self.tile_rws),len(self.h_ix) * self.tile_cls),dtype=self.datatype)
+        array = np.zeros(((len(self.v_ix) * self.tile_rws),len(self.h_ix) * self.tile_cls),dtype=dt)
 
         for h5f in self.files:
 
@@ -596,8 +1223,32 @@ class MODISmosaic:
             try:
 
                 with h5py.File(h5f,'r') as h5f_o:
-                    arr = h5f_o.get(dataset)[...,ix]
-                array[yoff:(yoff+self.tile_rws),xoff:(xoff+self.tile_cls)] = arr[...]
+
+                    if dataset == 'sgrid':
+                        array[yoff:(yoff+self.tile_rws),xoff:(xoff+self.tile_cls)] = h5f_o.get(dataset)[...]
+                    else:
+                        array[yoff:(yoff+self.tile_rws),xoff:(xoff+self.tile_cls)] = h5f_o.get(dataset)[...,ix]
+
+            except Exception as e:
+                print('Error reading data from file {} to array! Error message {}:\n'.format(h5f,e))
+                raise
+
+        return(array)
+
+    def getArrayGlobal(self,dataset,ix,dt):
+
+        array = np.zeros((self.tile_rws,self.tile_cls),dtype=dt)
+
+        for h5f in self.files:
+
+            try:
+
+                with h5py.File(h5f,'r') as h5f_o:
+
+                    if dataset == 'sgrid':
+                        array[...] = h5f_o.get(dataset)[...]
+                    else:
+                        array[...] = h5f_o.get(dataset)[...,ix]
 
             except Exception as e:
                 print('Error reading data from file {} to array! Error message {}:\n'.format(h5f,e))
@@ -608,25 +1259,36 @@ class MODISmosaic:
     @contextmanager
     def getRaster(self,dataset,ix):
 
-        array = self.getArray(dataset,ix)
-
-        height, width = array.shape
-
         try:
-            dt_gdal = dtype_GDNP(self.datatype)
+            if dataset == 'sgrid':
+                self.dt_gdal = dtype_GDNP('float32')
+            else:
+                self.dt_gdal = dtype_GDNP(self.datatype.name)
         except IndexError:
             print("\n\n Couldn't read data type from dataset. Using default Int16!\n")
             dt_gdal = (3,'int16')
 
+        if self.global_flag:
+            array = self.getArrayGlobal(dataset,ix,self.dt_gdal[1])
+        else:
+            array = self.getArray(dataset,ix,self.dt_gdal[1])
+
+        height, width = array.shape
+
         driver = gdal.GetDriverByName('GTiff')
 
-        self.raster = driver.Create('/vsimem/inmem.tif', width, height, 1, dt_gdal[0])
+        self.raster = driver.Create('/vsimem/inmem.tif', width, height, 1, self.dt_gdal[0])
+
 
         self.raster.SetGeoTransform(self.gt)
         self.raster.SetProjection(self.pj)
 
-        self.raster.GetRasterBand(1).WriteArray(array)
+        rb = self.raster.GetRasterBand(1)
 
+        rb.SetNoDataValue(self.nodata)
+
+        rb.WriteArray(array)
+        
         yield self
 
         gdal.Unlink('/vsimem/inmem.tif')

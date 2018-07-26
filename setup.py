@@ -44,8 +44,11 @@ setup(
     'downloadMODIS=wsmtk.downloadMODIS:main',
     'processMODIS=wsmtk.processMODIS:main',
     'windowMODIS=wsmtk.windowMODIS:main',
+    'smoothMODIS=wsmtk.smoothMODIS:main',
     'productinfoMODIS=wsmtk.productinfoMODIS:main',
-        ]
+    'smoothCSV=wsmtk.smoothCSV:main',
+    'smoothRTS=wsmtk.smoothRTS:main',
+    ]
     },
     packages=find_packages(),
     cmdclass = cmdclass,
