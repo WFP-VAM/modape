@@ -282,7 +282,7 @@ def main():
                     raise
 
             rts.initRasters(tdir)
-            rts.ws2d_vc(srange=srange,p=p)
+            rts.ws2d_vc(srange=srange,p=args.pvalue)
 
         else:
 
