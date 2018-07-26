@@ -140,11 +140,12 @@ class RTS:
 
             thefile.write('Running whittaker smoother with fixed s value\n')
             thefile.write('\n')
-            thefile.write('Start: {}\n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
+            thefile.write('Timestamp: {}\n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
             thefile.write('\n')
             thefile.write('Sopt: {}\n'.format(10**s))
             thefile.write('log10(Sopt): {}\n'.format(s))
             thefile.write('Nodata value: {}\n'.format(self.nodata))
+            thefile.write('\n')
 
 
 
@@ -235,20 +236,22 @@ class RTS:
 
                 thefile.write('Running asymmetric whittaker smoother with v-curve optimization\n')
                 thefile.write('\n')
-                thefile.write('Start: {}\n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
+                thefile.write('Timestamp: {}\n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
                 thefile.write('\n')
                 thefile.write('Sgrid: {}\n'.format(self.sgrid))
                 thefile.write('P value: {}\n'.format(p))
                 thefile.write('Nodata value: {}\n'.format(self.nodata))
+                thefile.write('\n')
 
             else:
 
                 thefile.write('Running whittaker smoother with v-curve optimization\n')
                 thefile.write('\n')
-                thefile.write('Start: {}\n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
+                thefile.write('Timestamp: {}\n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
                 thefile.write('\n')
                 thefile.write('Sgrid: {}\n'.format(self.sgrid))
                 thefile.write('Nodata value: {}\n'.format(self.nodata))
+                thefile.write('\n')
 
 
 def main():
