@@ -91,6 +91,18 @@ class RTS:
 
     def ws2d(self,s):
 
+        tdir = self.targetdir + '/filt0/'
+
+        if not os.path.exists(tdir):
+
+            try:
+                os.makedirs(tdir)
+            except:
+                print('Issues creating subdirectory {}'.format(tdir))
+                raise
+
+        self.initRasters(tdir)
+
         for yo, ys, xo, xs in iterateBlocks(self.nrows,self.ncols,self.bsize):
 
             arr = np.zeros((ys*xs,self.nfiles),dtype='float32')
@@ -125,7 +137,7 @@ class RTS:
                 ds_b = None
                 ds = None
 
-        with open(self.targetdir + '/filt0_config.txt','w') as thefile:
+        with open(tdir + 'filt0_config.txt','w') as thefile:
 
             thefile.write('Running whittaker smoother with fixed s value\n')
             thefile.write('\n')
@@ -139,9 +151,24 @@ class RTS:
 
     def ws2d_vc(self,srange,p=None):
 
-        self.sgrid = self.targetdir + '/sgrid.tif'
 
-        initGDAL(self.ref_file,self.targetdir,'sgrid.tif',dt='float32')
+        if p:
+            tdir = self.targetdir + '/filtvcp/'
+        else:
+            tdir = self.targetdir + '/filtvc/'
+
+        if not os.path.exists(tdir):
+
+            try:
+                os.makedirs(tdir)
+            except:
+                print('Issues creating subdirectory {}'.format(tdir))
+                raise
+
+        self.sgrid = tdir + 'sgrid.tif'
+
+        self.initRasters(tdir)
+        initGDAL(self.ref_file,tdir,'sgrid.tif',dt='float32')
 
         for yo, ys, xo, xs in iterateBlocks(self.nrows,self.ncols,self.bsize):
 
@@ -201,7 +228,7 @@ class RTS:
             ds_b = None
             ds = None
 
-        with open(self.targetdir + '/filtvc_config.txt','w') as thefile:
+        with open(tdir + '/filtvc_config.txt','w') as thefile:
 
             if p:
 
@@ -271,34 +298,12 @@ def main():
 
             print('\nRunning asymmetric whittaker smoother with v-curve optimization ... \n')
 
-            tdir = args.targetdir + '/filtvcp/'
-
-            if not os.path.exists(tdir):
-
-                try:
-                    os.makedirs(tdir)
-                except:
-                    print('Issues creating subdirectory in {}'.format(args.path))
-                    raise
-
-            rts.initRasters(tdir)
             rts.ws2d_vc(srange=srange,p=args.pvalue)
 
         else:
 
             print('\nRunning whittaker smoother with v-curve optimization ... \n')
 
-            tdir = args.targetdir + '/filtvc/'
-
-            if not os.path.exists(tdir):
-
-                try:
-                    os.makedirs(tdir)
-                except:
-                    print('Issues creating subdirectory in {}'.format(args.path))
-                    raise
-
-            rts.initRasters(tdir)
             rts.ws2d_vc(srange=srange)
 
     else:
@@ -312,17 +317,6 @@ def main():
 
         print('\nRunning whittaker smoother with fixed s value ... \n')
 
-        tdir = args.targetdir + '/filt0/'
-
-        if not os.path.exists(tdir):
-
-            try:
-                os.makedirs(tdir)
-            except:
-                print('Issues creating subdirectory in {}'.format(args.path))
-                raise
-
-        rts.initRasters(tdir)
         rts.ws2d(s=s)
 
     print('\n[{}]: smoothMODIS.py finished successfully.\n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
