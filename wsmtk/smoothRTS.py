@@ -93,7 +93,7 @@ class RTS:
 
             wts[...] = (arr != self.nodata) * 1
 
-            for r in range(arrW.shape[0]):
+            for r in range(arr.shape[0]):
                 if wts[r,...].sum().item() != 0.0:
                     arr[r,...] = ws2d(arr[r,...],10**s,wts[r,...])
 
@@ -255,11 +255,13 @@ def main():
 
             print('\nRunning asymmetric whittaker smoother with v-curve optimization ... \n')
 
-            try:
-                os.makedirs(args.targetdir + '/filtvcp/')
-            except:
-                print('Issues creating subdirectory in {}'.fromat(args.path))
-                raise
+            if not os.path.exists(args.targetdir + '/filtvcp/'):
+
+                try:
+                    os.makedirs(args.targetdir + '/filtvcp/')
+                except:
+                    print('Issues creating subdirectory in {}'.format(args.path))
+                    raise
 
             rts.ws2d_vc(srange=srange,p=p)
 
@@ -267,11 +269,13 @@ def main():
 
             print('\nRunning whittaker smoother with v-curve optimization ... \n')
 
-            try:
-                os.makedirs(args.targetdir + '/filtvc/')
-            except:
-                print('Issues creating subdirectory in {}'.fromat(args.path))
-                raise
+            if not os.path.exists(args.targetdir + '/filtvc/'):
+
+                try:
+                    os.makedirs(args.targetdir + '/filtvc/')
+                except:
+                    print('Issues creating subdirectory in {}'.format(args.path))
+                    raise
 
             rts.ws2d_vc(srange=srange)
 
@@ -286,11 +290,13 @@ def main():
 
         print('\nRunning whittaker smoother with fixed s value ... \n')
 
-        try:
-            os.makedirs(args.targetdir + '/filt0/')
-        except:
-            print('Issues creating subdirectory in {}'.fromat(args.path))
-            raise
+        if not os.path.exists(args.targetdir + '/filt0/'):
+
+            try:
+                os.makedirs(args.targetdir + '/filt0/')
+            except:
+                print('Issues creating subdirectory in {}'.format(args.path))
+                raise
 
         rts.ws2d(s=s)
 
