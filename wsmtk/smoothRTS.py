@@ -70,11 +70,11 @@ class RTS:
 
         self.outfiles = [self.targetdir + '/' + os.path.basename(x) for x in self.files]
 
-    def initRasters(self):
+    def initRasters(self,tdir):
 
         for f in self.files:
             try:
-                initGDAL(f,self.targetdir)
+                initGDAL(f,tdir)
             except AttributeError:
                 print("Error initializing {}! Please check data".format(f))
                 raise
@@ -262,28 +262,34 @@ def main():
 
             print('\nRunning asymmetric whittaker smoother with v-curve optimization ... \n')
 
-            if not os.path.exists(args.targetdir + '/filtvcp/'):
+            tdir = args.targetdir + '/filtvcp/'
+
+            if not os.path.exists(tdir):
 
                 try:
-                    os.makedirs(args.targetdir + '/filtvcp/')
+                    os.makedirs(tdir)
                 except:
                     print('Issues creating subdirectory in {}'.format(args.path))
                     raise
 
+            rts.initRasters(tdir)
             rts.ws2d_vc(srange=srange,p=p)
 
         else:
 
             print('\nRunning whittaker smoother with v-curve optimization ... \n')
 
-            if not os.path.exists(args.targetdir + '/filtvc/'):
+            tdir = args.targetdir + '/filtvc/'
+
+            if not os.path.exists(tdir):
 
                 try:
-                    os.makedirs(args.targetdir + '/filtvc/')
+                    os.makedirs(tdir)
                 except:
                     print('Issues creating subdirectory in {}'.format(args.path))
                     raise
 
+            rts.initRasters(tdir)
             rts.ws2d_vc(srange=srange)
 
     else:
@@ -297,14 +303,17 @@ def main():
 
         print('\nRunning whittaker smoother with fixed s value ... \n')
 
-        if not os.path.exists(args.targetdir + '/filt0/'):
+        tdir = args.targetdir + '/filt0/'
+
+        if not os.path.exists(tdir):
 
             try:
-                os.makedirs(args.targetdir + '/filt0/')
+                os.makedirs(tdir)
             except:
                 print('Issues creating subdirectory in {}'.format(args.path))
                 raise
 
+        rts.initRasters(tdir)
         rts.ws2d(s=s)
 
     print('\n[{}]: smoothMODIS.py finished successfully.\n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
