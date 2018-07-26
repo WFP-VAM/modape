@@ -30,6 +30,7 @@ def initGDAL(x,p,fn=None,dt=None):
     ds_new = dr.Create(p+fn,ds.RasterXSize,ds.RasterYSize,ds.RasterCount,dt_new)
     ds_new.SetGeoTransform(ds.GetGeoTransform())
     ds_new.SetProjection(ds.GetProjection())
+    ds_new.GetRasterBand(1).SetNoDataValue(ds.GetRasterBand(1).GetNoDataValue())
     ds = None
     dr = None
     ds_new = None
@@ -57,10 +58,18 @@ class RTS:
         self.nrows = ds.RasterYSize
         self.ncols = ds.RasterXSize
 
-        if not nodata:
-            self.nodata = ds.GetRasterBand(1).GetNoDataValue()
-        else:
+        if nodata:
+
             self.nodata = nodata
+
+        else:
+
+            self.nodata = ds.GetRasterBand(1).GetNoDataValue()
+
+            if not self.nodata:
+
+                self.nodata = 0
+                print('Failed to read NoData value from files. NoData set to 0.')
 
         ds = None
 
