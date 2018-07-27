@@ -608,15 +608,27 @@ class MODISrawh5:
 
 
 class MODISsmth5:
+    '''Class object for smoothed MODIS data collected into HDF5 file.'''
 
-    def __init__(self,rawfile,tempint=None,nsmooth=None,nupdate=None,targetdir=os.getcwd(),parallel=False,ncores=mp.cpu_count()-1):
+    def __init__(self,rawfile,tempint=None,nsmooth=None,nupdate=None,targetdir=os.getcwd(),parallel=False,nworkers=mp.cpu_count()-1):
+        '''Create MODISsmth5 object.
 
+        Args:
+            rawfile (str): Full path to a MODISrawh5 file
+            tempint (int): Integer specifying temporal interpolation (default is None, so native temporal resolution)
+            nsmooth (int): Number of raw timesteps used for smoothing (default is all)
+            nupdate (int): Number of smoothed timesteps to be updated (default is all)
+            targetdir (str): Path to target directory for smoothed HDF5 file
+            parallel (bool): Flag for use of parallel processing (default is False)
+            nworkers (int): Number of worker processes used in parallel (requres parallel to be True)
+        '''
         self.targetdir = targetdir
         self.rawfile = rawfile
         self.parallel = parallel
-        self.ncores = ncores
+        self.nworkers = nworkers
         self.nupdate = nupdate
 
+        # Get info from raw HDF5
         with h5py.File(self.rawfile,'r') as h5f:
             dset = h5f.get('data')
             dts = h5f.get('dates')
@@ -625,9 +637,11 @@ class MODISsmth5:
 
             self.rawdaily = [(fromjulian(dts[0].decode()) + datetime.timedelta(x)).strftime('%Y%j') for x in range(rawshape[2]+1)]
 
+            # Number of timesteps for smoothing must be bigger than for updating
             if nsmooth and nupdate:
                 assert nsmooth >= nupdate, "nsmooth >= nupdate!!!!"
 
+            # If no nsmooth set, take all available timesteps
             if not nsmooth:
                 firstday = dts[0].decode()
             else:
@@ -637,11 +651,13 @@ class MODISsmth5:
             self.startix = self.rawdaily.index(firstday)
             self.daily = [(fromjulian(firstday) + datetime.timedelta(x)).strftime('%Y%j') for x in range(self.ndays+1)]
 
+        # Parse tempint to get flag for filename
         try:
             txflag = txx(tempint)
         except ValueError:
             raise SystemExit('Value for temporal interpolation not valid (interger for number of days required)!')
 
+        # Filename for smoothed HDF5
         self.outname = '{}/{}.tx{}.{}.h5'.format(
                                     self.targetdir,
                                     '.'.join(os.path.basename(rawfile).split('.')[:-2]),
@@ -650,6 +666,7 @@ class MODISsmth5:
 
         self.exists = os.path.isfile(self.outname)
 
+        # If txtflag == 'n', then native resolution will be used
         if txflag == 'n':
             self.temporalresolution = None
         else:
@@ -657,7 +674,9 @@ class MODISsmth5:
 
 
     def create(self):
+        '''Creates smoothed HDF5 file on disk.'''
 
+        # Try reading info from raw HDF5
         try:
             with h5py.File(self.rawfile,'r') as h5f:
                 dset = h5f.get('data')
@@ -676,9 +695,11 @@ class MODISsmth5:
         except Exception as e:
             raise SystemExit('Error reading rawfile {}. File may be corrupt. \n\n Error message: \n\n {}'.format(self.rawfile,e))
 
+        # Read native temporal resolution if no user input was supplied
         if not self.temporalresolution:
             self.temporalresolution = rtres
 
+        # Create date list for smoothed timesteps
         dates = [self.rawdaily[ix] for ix in range(0,len(self.rawdaily),self.temporalresolution)]
         days = len(dates)
 
@@ -707,6 +728,11 @@ class MODISsmth5:
         print('done.\n')
 
     def ws2d(self,s):
+        '''Apply whittaker smoother with fixed s-value to data.
+
+        Args:
+            s (float): log10 value of s
+        '''
 
         with h5py.File(self.rawfile,'r') as rawh5, h5py.File(self.outname,'r+') as smth5:
 
@@ -721,23 +747,22 @@ class MODISsmth5:
             nodata = raw_ds.attrs['nodata']
             t_interval = smt_ds.attrs['temporalresolution']
 
-            # store run parameters for infotool
-
+            # Store run parameters for infotool
             smt_ds.attrs['processingtimestamp'] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
             smt_ds.attrs['lastrun'] = "fixed s: log10(sopt) = {}".format(s)
             smt_ds.attrs['log10sopt'] = s
 
-            # check if file needs to be resized
 
+            # Check if file needs to be resized
             dates_check = [self.rawdaily[ix] for ix in range(0,len(self.rawdaily),t_interval)]
 
+            # Resize if date list is bigger than shape of smoothed data
             if len(dates_check) > smt_dts.shape[0]:
                 smt_dts.resize((len(dates_check),))
                 smt_dts[...] = [x.encode("ascii", "ignore") for x in dates_check]
                 smt_ds.resize((smt_ds.shape[0],smt_ds.shape[1],len(dates_check)))
 
-            # calculate update index and offsets
-
+            # Calculate update index and offsets
             if not self.nupdate:
 
                 for i,d in enumerate(self.daily):
@@ -753,34 +778,44 @@ class MODISsmth5:
             bar = Bar('Processing',fill='=',max=barmax,suffix='%(percent)d%%  ')
             bar.goto(0)
 
+            # Process in parallel
             if self.parallel:
 
+                # Initialize parameters for workers
                 params = init_parameters(s=s,nd=nodata,dim=(rawchunks[0]*rawchunks[1],self.ndays))
 
+                # Create shared memory array
                 shared_array = init_shared(rawchunks[0] * rawchunks[1] * self.ndays)
 
+                # Create numpy array from shared memory
                 arr = tonumpyarray(shared_array)
 
                 arr.shape = (rawchunks[0] * rawchunks[1],self.ndays)
 
+                # 3d helper for read/write
                 arr_helper = arr.view()
 
                 arr_helper.shape = (rawchunks[0],rawchunks[1],self.ndays)
 
                 blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
 
-                with closing(mp.Pool(processes=self.ncores,initializer = init_worker, initargs = (shared_array,params))) as pool:
+                # Create worker pool
+                with closing(mp.Pool(processes=self.nworkers,initializer = init_worker, initargs = (shared_array,params))) as pool:
 
+                    # Iterate blocks
                     for b in blks:
 
+                        # Read data in raw chunks
                         for ii in range(0,arr_helper.shape[2],rawchunks[2]):
 
                             arr_helper[...,ii:ii+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],self.startix+ii:self.startix+ii+rawchunks[2]]
 
                         del ii
 
-                        res = pool.map(execute_ws2d,np.array_split(range(arr.shape[0]),self.ncores))
+                        # Execute smoother in parallel, split indices by number of workers
+                        res = pool.map(execute_ws2d,np.array_split(range(arr.shape[0]),self.nworkers))
 
+                        # Write back data, float is rounded to INT
                         for ii,jj in enumerate(range(self.rawoffset,arr_helper.shape[2],t_interval)):
 
                             smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],self.smtoffset+ii] = arr_helper[...,jj].round()
@@ -790,9 +825,12 @@ class MODISsmth5:
                         bar.next()
                     bar.finish()
 
+            # Serial processing
             else:
 
                 arr = np.zeros((rawchunks[0]*rawchunks[1],self.ndays),dtype='float32')
+
+                # Create weights array
                 wts = arr.copy()
 
                 arr_helper = arr.view()
@@ -808,12 +846,15 @@ class MODISsmth5:
 
                     del ii
 
+                    # All ovbservations which are not nodata get weight 1, others 0
                     wts[...] = (arr != nodata) * 1
 
+                    # Iterate pixels, skip pixels with only nodata
                     for r in range(arr.shape[0]):
                         if wts[r,...].sum().item() != 0.0:
                             arr[r,...] = ws2d(y = arr[r,...],lmda = s, w = wts[r,...])
 
+                    # Write back data
                     for ii,jj in enumerate(range(self.rawoffset,arr_helper.shape[2],t_interval)):
 
                         smt_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],self.smtoffset+ii] = arr_helper[...,jj].round()
@@ -825,6 +866,11 @@ class MODISsmth5:
 
 
     def ws2d_sgrid(self):
+        '''Apply whittaker smootehr with fixed s to data.
+
+        This fixed s version reads a pixel based s value from file, so it needs
+        a previous run of v-curve s-optimization.
+        '''
 
         with h5py.File(self.rawfile,'r') as rawh5, h5py.File(self.outname,'r+') as smth5:
 
@@ -840,13 +886,11 @@ class MODISsmth5:
             nodata = raw_ds.attrs['nodata']
             t_interval = smt_ds.attrs['temporalresolution']
 
-            # store run parameters for infotool
-
+            # Store run parameters for infotool
             smt_ds.attrs['processingtimestamp'] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
             smt_ds.attrs['lastrun'] = "fixed s from grid"
 
-            # check if file needs to be resized
-
+            # Check if file needs to be resized
             dates_check = [self.rawdaily[ix] for ix in range(0,len(self.rawdaily),t_interval)]
 
             if len(dates_check) > smt_dts.shape[0]:
@@ -854,8 +898,7 @@ class MODISsmth5:
                 smt_dts[...] = [x.encode("ascii", "ignore") for x in dates_check]
                 smt_ds.resize((smt_ds.shape[0],smt_ds.shape[1],len(dates_check)))
 
-            # calculate update index and offsets
-
+            # Calculate update index and offsets
             if not self.nupdate:
 
                 for i,d in enumerate(self.daily):
@@ -878,6 +921,7 @@ class MODISsmth5:
 
                 shared_array = init_shared(rawchunks[0] * rawchunks[1] * self.ndays)
 
+                # Add shared memory array for sgrid
                 params['shared_sarr'] = init_shared(rawchunks[0] * rawchunks[1])
 
                 arr = tonumpyarray(shared_array)
@@ -893,7 +937,7 @@ class MODISsmth5:
 
                 blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
 
-                with closing(mp.Pool(processes=self.ncores,initializer = init_worker, initargs = (shared_array,params))) as pool:
+                with closing(mp.Pool(processes=self.nworkers,initializer = init_worker, initargs = (shared_array,params))) as pool:
 
                     for b in blks:
 
@@ -901,11 +945,12 @@ class MODISsmth5:
 
                             arr_helper[...,ii:ii+rawchunks[2]] = raw_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1],self.startix+ii:self.startix+ii+rawchunks[2]]
 
+                        # Read s values
                         sarr[...] = sgrid_ds[b[0]:b[0]+rawchunks[0],b[1]:b[1]+rawchunks[1]]
 
                         del ii
 
-                        res = pool.map(execute_ws2d_sgrid,np.array_split(range(arr.shape[0]),self.ncores))
+                        res = pool.map(execute_ws2d_sgrid,np.array_split(range(arr.shape[0]),self.nworkers))
 
                         for ii,jj in enumerate(range(self.rawoffset,arr_helper.shape[2],t_interval)):
 
@@ -951,6 +996,11 @@ class MODISsmth5:
                 bar.finish()
 
     def ws2d_vc(self,srange):
+        '''Apply whittaker smoother with v-curve optimization of s to data.
+
+        Args:
+            srange (arr): Float32 array of s-values to apply
+        '''
 
         with h5py.File(self.rawfile,'r') as rawh5, h5py.File(self.outname,'r+') as smth5:
 
@@ -966,12 +1016,12 @@ class MODISsmth5:
             nodata = raw_ds.attrs['nodata']
             t_interval = smt_ds.attrs['temporalresolution']
 
-            # store run parameters for infotool
+            # Store run parameters for infotool
 
             smt_ds.attrs['processingtimestamp'] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
             smt_ds.attrs['lastrun'] = "v-curve optimization of s"
 
-            # check if file needs to be resized
+            # Check if file needs to be resized
 
             dates_check = [self.rawdaily[ix] for ix in range(0,len(self.rawdaily),t_interval)]
 
@@ -980,7 +1030,7 @@ class MODISsmth5:
                 smt_dts[...] = [x.encode("ascii", "ignore") for x in dates_check]
                 smt_ds.resize((smt_ds.shape[0],smt_ds.shape[1],len(dates_check)))
 
-            # calculate update index and offsets
+            # Calculate update index and offsets
 
             if not self.nupdate:
 
@@ -1018,7 +1068,7 @@ class MODISsmth5:
 
                 blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
 
-                with closing(mp.Pool(processes=self.ncores,initializer = init_worker, initargs = (shared_array,params))) as pool:
+                with closing(mp.Pool(processes=self.nworkers,initializer = init_worker, initargs = (shared_array,params))) as pool:
 
                     for b in blks:
 
@@ -1028,10 +1078,10 @@ class MODISsmth5:
 
                         del ii
 
-                        # set s values to zero
+                        # Set s values to zero
                         sarr[...] = 0
 
-                        pool.map(execute_ws2d_vc,np.array_split(range(arr.shape[0]),self.ncores))
+                        pool.map(execute_ws2d_vc,np.array_split(range(arr.shape[0]),self.nworkers))
 
                         sarr[sarr>0] = np.log10(sarr[sarr>0])
 
@@ -1085,6 +1135,12 @@ class MODISsmth5:
                 bar.finish()
 
     def ws2d_vc_asy(self,srange,p):
+        '''Apply asymmetric whittaker smoother with v-curve optimization of s to data.
+
+        Args:
+            srange (arr): Float32 array of s-values to apply
+            p (float): Percentile value
+        '''
 
         with h5py.File(self.rawfile,'r') as rawh5, h5py.File(self.outname,'r+') as smth5:
 
@@ -1100,13 +1156,13 @@ class MODISsmth5:
             nodata = raw_ds.attrs['nodata']
             t_interval = smt_ds.attrs['temporalresolution']
 
-            # store run parameters for infotool
+            # Store run parameters for infotool
 
             smt_ds.attrs['processingtimestamp'] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
             smt_ds.attrs['lastrun'] = "asymmetric v-curve optimization of s - p = {}".format(p)
             smt_ds.attrs['pvalue'] = p
 
-            # check if file needs to be resized
+            # Check if file needs to be resized
 
             dates_check = [self.rawdaily[ix] for ix in range(0,len(self.rawdaily),t_interval)]
 
@@ -1115,7 +1171,7 @@ class MODISsmth5:
                 smt_dts[...] = [x.encode("ascii", "ignore") for x in dates_check]
                 smt_ds.resize((smt_ds.shape[0],smt_ds.shape[1],len(dates_check)))
 
-            # calculate update index and offsets
+            # Calculate update index and offsets
 
             if not self.nupdate:
 
@@ -1154,7 +1210,7 @@ class MODISsmth5:
 
                 blks = itertools.product(range(0,rawshape[0],rawchunks[0]),range(0,rawshape[1],rawchunks[1]))
 
-                with closing(mp.Pool(processes=self.ncores,initializer = init_worker, initargs = (shared_array,params))) as pool:
+                with closing(mp.Pool(processes=self.nworkers,initializer = init_worker, initargs = (shared_array,params))) as pool:
 
                     for b in blks:
 
@@ -1164,10 +1220,10 @@ class MODISsmth5:
 
                         del ii
 
-                        # set s values to zero
+                        # Set s values to zero
                         sarr[...] = 0
 
-                        pool.map(execute_ws2d_vc_asy,np.array_split(range(arr.shape[0]),self.ncores))
+                        pool.map(execute_ws2d_vc_asy,np.array_split(range(arr.shape[0]),self.nworkers))
 
                         sarr[sarr>0] = np.log10(sarr[sarr>0])
 
