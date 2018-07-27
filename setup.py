@@ -45,7 +45,8 @@ setup(
     'processMODIS=wsmtk.processMODIS:main',
     'windowMODIS=wsmtk.windowMODIS:main',
     'smoothMODIS=wsmtk.smoothMODIS:main',
-    'productinfoMODIS=wsmtk.productinfoMODIS:main',
+    'infoMODIS=wsmtk.infoMODIS:main',
+    'producttableMODIS=wsmtk.producttableMODIS:main',
     'smoothCSV=wsmtk.smoothCSV:main',
     'smoothRTS=wsmtk.smoothRTS:main',
     ]
