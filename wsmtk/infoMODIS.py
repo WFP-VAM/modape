@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from __future__ import print_function
 import h5py
-import os
+import sys,os
 import time
 import argparse
 
@@ -42,56 +42,66 @@ def main():
                 lr = dset.attrs['lastrun']
             except KeyError:
                 lr = None
+    except:
+        raise SystemExit('Error reading file information.')
 
-        if lr:
+    if lr:
 
-            msg = '''
-            File: MODIS smoothed HDF5\n
+        msg = '''
+File: {}
 
-            Dimensions:
+Type: MODIS smoothed HDF5
 
-                - {} rows
-                - {} columns
-                - {} temporal units
+Dimensions:
 
-            Start date: {}
+    - {} rows
 
-            End date: {}
+    - {} columns
 
-            Temporal resolution: {}
+    - {} temporal units
 
-            NoData value: {}
+Start date: {}
 
-            Last modified: {}
+End date: {}
 
-            Last smoothing run: Whittaker smoother with {}\n'''.format(dim[0],dim[1],dim[2],startdate,enddate,temporalresolution,nodata_value,ptstmp,lr)
+Temporal resolution: {} daily
 
+NoData value: {}
 
-        else:
+Last modified: {}
 
-            msg = '''
-            File: MODIS raw daily HDF5\n
-
-            Dimensions:
-
-            - {} rows
-            - {} columns
-            - {} temporal units
-
-            Start date: {}
-
-            End date: {}
-
-            Temporal resolution: {}
-
-            NoData value: {}
-
-            Last modified: {}\n'''.format(dim[0],dim[1],dim[2],startdate,enddate,temporalresolution,nodata_value,ptstmp)
+Last smoothing run: Whittaker smoother with {}\n'''.format(args.file,dim[0],dim[1],dim[2],startdate,enddate,temporalresolution,nodata_value,ptstmp,lr)
 
 
+    else:
 
-        print(' ',msg_head.center(os.get_terminal_size().columns),' ',sep='\n')
-        print(msg)
+        msg = '''
+File: {}
+
+Type: MODIS raw daily HDF5
+
+Dimensions:
+
+    - {} rows
+
+    - {} columns
+
+    - {} temporal units
+
+Start date: {}
+
+End date: {}
+
+Temporal resolution: {} daily
+
+NoData value: {}
+
+Last modified: {}\n'''.format(args.file,dim[0],dim[1],dim[2],startdate,enddate,temporalresolution,nodata_value,ptstmp)
+
+
+
+    print(' ',msg_head.center(os.get_terminal_size().columns),' ',sep='\n')
+    print(msg)
 
 
 
