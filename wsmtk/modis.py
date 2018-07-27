@@ -32,13 +32,26 @@ except ImportError:
 warnings.filterwarnings("ignore", category=UserWarning, module='bs4')
 
 class MODISquery:
+    '''Class object for querying and downloading MODIS data.'''
 
-    def __init__(self,url,begindate,enddate,username=None,password=None,rawdir=os.getcwd(),global_flag=None,wget=False):
+    def __init__(self,url,begindate,enddate,username=None,password=None,targetdir=os.getcwd(),global_flag=None,wget=False):
+        '''Creates a MODISquery object.
+
+        Args:
+            url (str): Query URL as created by downloadMODIS.py
+            begindate (str): Begin of period for query as ISO 8601 date string (YYYY-MM-DD)
+            enddate (str): End of period for query as ISO 8601 date string (YYYY-MM-DD)
+            username (str): Earthdata username (only required for download)
+            password (str): Earthdata password (only required for download)
+            targetdir (str): Path to target directory for downloaded files (default cwd)
+            global_flag (bool):Flag indictaing queried product si global file instead of tiled product
+            wget (bool): Use wget for downloading rather then python's requests
+        '''
 
         self.queryURL = url
         self.username = username
         self.password = password
-        self.rawdir = rawdir
+        self.targetdir = targetdir
         self.files = []
         self.modisURLs = []
         self.begin = datetime.datetime.strptime(begindate,'%Y-%m-%d').date()
@@ -46,6 +59,7 @@ class MODISquery:
         self.global_flag = global_flag
         self.wget = wget
 
+        # query for products using session object
         with requests.Session() as sess:
 
             print('Checking for MODIS products ...',end='')
@@ -60,6 +74,7 @@ class MODISquery:
 
             soup = BeautifulSoup(response.content)
 
+            # results for global products are date directories on server, so need to query separately
             if self.global_flag:
 
                 dates = np.array([x.getText() for x in soup.findAll('a',href=True) if re.match('\d{4}\.\d{2}\.\d{2}',x.getText())])
@@ -80,6 +95,7 @@ class MODISquery:
         self.results = len(self.modisURLs)
         print('... done.\n')
 
+        # check for results
         if self.results > 0:
             print('{} results found.\n'.format(self.results))
         else:
@@ -87,40 +103,59 @@ class MODISquery:
 
 
     def setCredentials(self,username,password):
+        '''Set Earthdata credentials.
+
+        Sets Earthdata username and password in created MODISquery object.
+
+        Args:
+            username (str): Earthdata username
+            password (str): Earthdata password
+        '''
+
         self.username=username
         self.password=password
 
     def download(self):
+        '''Downloads MODIS products.
+
+        Download of files found through query, Earthdata username and password required!
+        '''
 
         if self.username is None or self.password is None:
             raise SystemExit('No credentials found. Please run .setCredentials(username,password)!')
 
-        print('[%s]: Downloading products to %s ...\n' % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),self.rawdir))
+        print('[%s]: Downloading products to %s ...\n' % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),self.targetdir))
 
+        # download using WGET if True
         if self.wget:
 
+            # fail if WGET not installed
             try:
                 temp = check_output(['wget', '--version'])
             except:
                 raise SystemExit("WGET download needs WGET to be available in PATH! Please make sure it's installed and available in PATH!")
 
-            with open(self.rawdir + '/MODIS_filelist.txt','w') as flist:
+            # write URLs of query resuls to disk for WGET
+            with open(self.targetdir + '/MODIS_filelist.txt','w') as flist:
                 for item in self.modisURLs:
                     flist.write("%s\n" % item)
 
-            args = ['wget','-q','-nd','-nc','-np','-r','-l1','-A','hdf','--show-progress','--progress=bar:force','--no-check-certificate','--user',self.username,'--password',self.password,'-P',self.rawdir]
+            args = ['wget','-q','-nd','-nc','-np','-r','-l1','-A','hdf','--show-progress','--progress=bar:force','--no-check-certificate','--user',self.username,'--password',self.password,'-P',self.targetdir]
 
-            p = Popen(args + ['-i','{}/MODIS_filelist.txt'.format(self.rawdir)])
+            # execute subprocess
+            p = Popen(args + ['-i','{}/MODIS_filelist.txt'.format(self.targetdir)])
             p.wait()
+
+            # remove filelist.txt if all downloads are successful
             if p.returncode is not 0:
                 print("Error occured during download, please check files against MODIS_filelist.txt!")
             else:
-                os.remove(self.rawdir + '/MODIS_filelist.txt')
+                os.remove(self.targetdir + '/MODIS_filelist.txt')
 
 
-            self.files = [self.rawdir + os.path.basename(x) for x in self.modisURLs]
+            self.files = [self.targetdir + os.path.basename(x) for x in self.modisURLs]
 
-
+        # download with requests
         else:
 
             r = re.compile('.*.hdf$')
@@ -130,6 +165,7 @@ class MODISquery:
             for ix,u in enumerate(self.modisURLs):
                 print('%s of %s' %(ix+1,self.results))
 
+                # for global files, URLs of HDF files have to be parsed for each date before download
                 if self.global_flag:
 
                     try:
@@ -155,8 +191,8 @@ class MODISquery:
 
                 fname = u[u.rfind('/')+1:]
 
-                if os.path.exists('{}/{}'.format(self.rawdir,fname)):
-                    print('\nSkipping {} - {} already exists in {}!\n'.format(u,fname,self.rawdir))
+                if os.path.exists('{}/{}'.format(self.targetdir,fname)):
+                    print('\nSkipping {} - {} already exists in {}!\n'.format(u,fname,self.targetdir))
                     continue
 
 
@@ -171,7 +207,7 @@ class MODISquery:
                             fopen.write(chunk)
                             spinner.next()
 
-                    self.files = self.files + [self.rawdir + fname]
+                    self.files = self.files + [self.targetdir + fname]
                     print(' done.\n')
                 except requests.exceptions.HTTPError as e:
                     print('Error downloading {} - skipping. Error message: {}'.format(u,e))
