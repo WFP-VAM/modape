@@ -218,8 +218,23 @@ class MODISquery:
 
 
 class MODISrawh5:
+    '''Class object for raw MODIS data collected into HDF5 file, ready for smoothing.
+
+    Raw modis hdf files are converted into "daily" arrays.
+    For MOD/MYD 13 products, MOD and MYD are interleaved into a combined MXD.
+    '''
 
     def __init__(self,files,param=None,targetdir=os.getcwd(),compression='gzip',crow=120,ccol=120):
+        '''Create a MODISrawh5 class
+
+        Args:
+            files ([str]): A list of absolute paths to MODIS raw hdf files to be processed
+            param (str): VAM parameter to be processed (default VIM/LTD)
+            targetdir (str): Target directory for raw MODIS HDF5 file
+            compression (str): Compression method to be used (default = gzip)
+            crow (int): number of rows for chunksize
+            ccol (int): number of columns for chunksize
+        '''
 
         self.targetdir = targetdir
         #self.resdict = dict(zip(['250m','500m','1km','0.05_Deg'],[x/112000 for x in [250,500,1000,5600]])) ## commented for original resolution
@@ -236,16 +251,19 @@ class MODISrawh5:
         self.ref_file = self.files[0]
         self.ref_file_basename = os.path.basename(self.ref_file)
 
-
+        # class works only for M.D11 and M.D13 products
         if not re.match(r'M.D13\w\d',self.ref_file_basename) and not re.match(r'M.D11\w\d',self.ref_file_basename):
             raise SystemExit("Processing only implemented for M*D11 or M*13 products!")
 
+        # Patterns for string extraction
         ppatt = re.compile(r'M\w{6}')
         vpatt = re.compile('.+\.(\d{3})\..+')
         tpatt = re.compile(r'h\d+v\d+')
 
+        # Open reference file
         ref = gdal.Open(self.ref_file)
 
+        # When no parameter is selected, the default is VIM and LTD
         if not param:
             ref_sds = ref_sds = [x[0] for x in ref.GetSubDatasets() if self.paramdict['VIM'] in x[0] or self.paramdict['LTD'] in x[0]][0]
             self.param = [key for key, value in self.paramdict.items() if value in ref_sds][0]
@@ -257,6 +275,7 @@ class MODISrawh5:
 
         ref = None
 
+        # check for MOD/MYD interleaving
         if self.param is 'VIM' and any(['MOD' in os.path.basename(x) for x in files]) and any(['MYD' in os.path.basename(x) for x in files]):
             self.product = [re.sub(r'M[O|Y]D','MXD',re.findall(ppatt,self.ref_file_basename)[0])]
             self.temporalresolution = 8
@@ -264,6 +283,7 @@ class MODISrawh5:
             self.product = re.findall(ppatt,self.ref_file_basename)
             self.temporalresolution = None
 
+        # Name of file to be created/updated
         self.outname = '{}/{}/{}.{}.h5'.format(
                                     self.targetdir,
                                     self.param,
@@ -275,25 +295,28 @@ class MODISrawh5:
 
 
     def create(self):
+        '''Creates the HDF5 file.'''
+
         print('\nCreating file: {} ... '.format(self.outname), end='')
 
         ref = gdal.Open(self.ref_file)
         ref_sds = [x[0] for x in ref.GetSubDatasets() if self.paramdict[self.param] in x[0]][0]
 
+        # Doyflag for products that use the actual DOY for converting into daily data
         try:
             ref_doy = [x[0] for x in ref.GetSubDatasets() if 'day of the year' in x[0]][0]
             doyflag = True
         except IndexError:
             doyflag = False
 
-
+        ## to be removed
         #res = [value for key, value in self.resdict.items() if key in ref_sds][0] ## commented for original resolution
 
         ## commented for original resolution
         #rst = gdal.Warp('', ref_sds, dstSRS='EPSG:4326', format='VRT',
         #                              outputType=gdal.GDT_Float32, xRes=res, yRes=res)
 
-
+        # reference raster
         rst = gdal.Open(ref_sds)
 
         ref_sds = None
@@ -319,10 +342,13 @@ class MODISrawh5:
             self.temporalresolution = self.numberofdays
             #totaldays = self.nfiles * self.temporalresolution
 
+        # Number of days of all files combined - this will be the number of temporal dimension
         totaldays = ((fromjulian(self.dates[-1]) + datetime.timedelta(self.numberofdays)) - fromjulian(self.dates[0])).days
 
+        # Read datatype
         dt = rst.GetRasterBand(1).DataType
 
+        # Parse datatype - on error use default Int16
         try:
             self.datatype = dtype_GDNP(dt)
         except IndexError:
@@ -336,9 +362,11 @@ class MODISrawh5:
 
         rst = None
 
+        # Create directory if necessary
         if not os.path.exists(os.path.dirname(self.outname)):
             os.makedirs(os.path.dirname(self.outname))
 
+        # Create HDF5 file
         try:
 
             with h5py.File(self.outname,'x',libver='latest') as h5f:
@@ -361,6 +389,11 @@ class MODISrawh5:
             raise
 
     def update(self):
+        '''Ingest raw data into MODIS raw HDF5 file.
+
+        When a new HDF5 file is created, uodate will also handle the first data ingest.
+        '''
+
         print('Processing MODIS files ...\n')
 
         try:
@@ -379,21 +412,25 @@ class MODISrawh5:
                 #res  = dset.attrs['Resolution'] ## comment for original resolution
                 dset.attrs['processingtimestamp'] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
+                # Insert new dates into existing date list
                 dates = [x.decode() for x in dts[...] if len(x) > 0]
                 [bisect.insort_left(dates,x) for x in self.dates if x not in dates]
 
+                # if date list is bigger after insert, datasets need to be resized for additional data
                 if len(dates) > dts.shape[0]:
                     dts.resize((len(dates),))
                     dset.resize((dset.shape[0],dset.shape[1],((fromjulian(dates[-1]) + datetime.timedelta(self.numberofdays)) - fromjulian(dates[0])).days))
 
+                # Write back date list
                 dts[...] = [n.encode("ascii", "ignore") for n in dates]
 
-                # range(dset.shape[2]+1) includes endpoint in range
-
+                # Create daily date list - range(dset.shape[2]+1) includes endpoint in range
                 dates_daily = [(fromjulian(dates[0]) + datetime.timedelta(x)).strftime('%Y%j') for x in range(dset.shape[2]+1)]
 
+                # Manual garbage collect to prevent out of memory
                 [gc.collect() for x in range(3)]
 
+                # Create array and catch MemoryError
                 try:
                     arr = np.zeros((self.chunks[0],self.chunks[1],self.numberofdays),dtype=self.datatype[1])
 
@@ -401,8 +438,10 @@ class MODISrawh5:
                         print("\n\n Can't allocate arrays for block due to memory restrictions! Make sure enough RAM is availabe, consider using a 64bit PYTHON version or reduce block size.\n\n Traceback:")
                         raise
 
+                # If true, actual DOYs are used to create daily data
                 if dset.attrs['doyflag']:
 
+                    # Arrays for values and DOYs
                     valarr = np.zeros(self.chunks[0:2],dtype=self.datatype[1])
                     doyarr = np.zeros(self.chunks[0:2],dtype=self.datatype[1])
 
@@ -412,12 +451,15 @@ class MODISrawh5:
                     bar = Bar('Processing',fill='=',max=self.nfiles,suffix='%(percent)d%%  ')
                     bar.goto(0)
 
+                    # Iterate over files
                     for fl in self.files:
 
                         try:
 
+                            # Get file index
                             flix = dates_daily.index(re.sub(self.dts_regexp,'\\1',fl))
 
+                            # Get index list for DOYs
                             ix = [int(fromjulian(x).strftime('%j')) for x in dates_daily[flix:flix+self.numberofdays]]
 
                             fl_o = gdal.Open(fl)
@@ -426,37 +468,41 @@ class MODISrawh5:
 
                             doy_sds = [x[0] for x in fl_o.GetSubDatasets() if 'day of the year' in x[0]][0]
 
+                            # Create blocks for iteration
                             blks = itertools.product(range(0,self.rows,self.chunks[0]),range(0,self.cols,self.chunks[1]))
 
                             val_rst = gdal.Open(val_sds)
 
                             doy_rst = gdal.Open(doy_sds)
 
+                            # Iterate over blocks
                             for blk in blks:
 
+                                # Read data
                                 valarr[...] = val_rst.ReadAsArray(xoff=blk[1],yoff=blk[0],xsize=self.chunks[1],ysize=self.chunks[0])
 
                                 doyarr[...] = doy_rst.ReadAsArray(xoff=blk[1],yoff=blk[0],xsize=self.chunks[1],ysize=self.chunks[0])
 
-                                # set negative ndvi and ndvi with doy < 0 to nodata
+                                # Set negative ndvi and ndvi with doy < 0 to nodata
                                 valarr[valarr < 0] = self.nodata_value
                                 valarr[doyarr < 0] = self.nodata_value
 
+                                # Reclassify DOYs to array indices
                                 for doy_ix, doy in enumerate(ix):
 
                                     doyarr[doyarr == doy] = doy_ix
-                                #doyarr[doyarr < 0] = self.doyindex # set -1 to mid value
-                                doyarr[doyarr > doy_ix] = doy_ix # clip to max doy
+                                doyarr[doyarr > doy_ix] = doy_ix # Clip to max doy
 
+                                # Read data from HDF5
                                 arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays]
 
-                                #arr[arr == 0] = self.nodata_value
-
+                                # Maximum in case there's overlap between raw files
                                 arr[I,J,doyarr] = np.maximum.reduce([arr[I,J,doyarr],valarr[...]])
 
+                                # Write back to HDF5
                                 dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays] = arr[...]
 
-
+                        # In case of AttributeException, use NoData for this timestep
                         except AttributeError:
 
                             print('Error reading {} ... using NoData value {}.'.format(fl,self.nodata_value))
@@ -489,6 +535,7 @@ class MODISrawh5:
                         bar.next()
                     bar.finish()
 
+                # Processing for products which don't use the DOY
                 else:
 
                     valarr = np.zeros(self.chunks[0:2],dtype=self.datatype[1])
@@ -516,8 +563,7 @@ class MODISrawh5:
 
                                 arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays]
 
-                                #arr[arr == 0] = self.nodata_value
-
+                                # Doyindex is a previosly defiend point, by default the temporal midpoint
                                 arr[...,self.doyindex] = np.maximum.reduce([arr[...,self.doyindex],valarr[...]])
 
                                 dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays] = arr[...]
@@ -533,8 +579,6 @@ class MODISrawh5:
                             for blk in blks:
 
                                 arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays]
-
-                                #arr[arr == 0] = self.nodata_value
 
                                 arr[...,self.doyindex] = np.maximum.reduce([arr[...,self.doyindex],ndarr])
 
@@ -559,6 +603,7 @@ class MODISrawh5:
             raise
 
     def __str__(self):
+        '''String to be displayed wen printing an instance of the class object'''
         return("MODISrawh5 object: %s - %s files - exists on disk: %s" % (self.outname, self.nfiles, self.exists))
 
 
