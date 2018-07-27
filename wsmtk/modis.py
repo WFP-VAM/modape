@@ -341,6 +341,7 @@ class MODISrawh5:
                 self.doyindex = int(self.numberofdays / 2)
                 self.datatype = dtype_GDNP(dset.dtype.name)
                 #res  = dset.attrs['Resolution'] ## comment for original resolution
+                dset.attrs['processingtimestamp'] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
                 dates = [x.decode() for x in dts[...] if len(x) > 0]
                 [bisect.insort_left(dates,x) for x in self.dates if x not in dates]
@@ -639,6 +640,12 @@ class MODISsmth5:
             nodata = raw_ds.attrs['nodata']
             t_interval = smt_ds.attrs['temporalresolution']
 
+            # store run parameters for infotool
+
+            smt_ds.attrs['processingtimestamp'] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+            smt_ds.attrs['lastrun'] = "fixed s: log10(sopt) = {}".format(s)
+            smt_ds.attrs['log10sopt'] = s
+
             # check if file needs to be resized
 
             dates_check = [self.rawdaily[ix] for ix in range(0,len(self.rawdaily),t_interval)]
@@ -751,6 +758,11 @@ class MODISsmth5:
 
             nodata = raw_ds.attrs['nodata']
             t_interval = smt_ds.attrs['temporalresolution']
+
+            # store run parameters for infotool
+
+            smt_ds.attrs['processingtimestamp'] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+            smt_ds.attrs['lastrun'] = "fixed s from grid"
 
             # check if file needs to be resized
 
@@ -872,6 +884,11 @@ class MODISsmth5:
 
             nodata = raw_ds.attrs['nodata']
             t_interval = smt_ds.attrs['temporalresolution']
+
+            # store run parameters for infotool
+
+            smt_ds.attrs['processingtimestamp'] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+            smt_ds.attrs['lastrun'] = "v-curve optimization of s"
 
             # check if file needs to be resized
 
@@ -1001,6 +1018,12 @@ class MODISsmth5:
 
             nodata = raw_ds.attrs['nodata']
             t_interval = smt_ds.attrs['temporalresolution']
+
+            # store run parameters for infotool
+
+            smt_ds.attrs['processingtimestamp'] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+            smt_ds.attrs['lastrun'] = "asymmetric v-curve optimization of s - p = {}".format(p)
+            smt_ds.attrs['pvalue'] = p
 
             # check if file needs to be resized
 
@@ -1288,7 +1311,7 @@ class MODISmosaic:
         rb.SetNoDataValue(self.nodata)
 
         rb.WriteArray(array)
-        
+
         yield self
 
         gdal.Unlink('/vsimem/inmem.tif')
