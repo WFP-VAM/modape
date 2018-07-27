@@ -22,7 +22,7 @@ def main():
     parser.add_argument("-d","--targetdir", help='Target directory for smoothed output',default=os.getcwd(),metavar='')
     parser.add_argument("--soptimize", help='Use V-curve for s value optimization',action='store_true')
     parser.add_argument("--parallel", help='Parallel processing',action='store_true')
-    parser.add_argument("--ncores", help='Number of cores used for parallel processing (default is number available minus 1)',default=mp.cpu_count()-1, metavar='', type = int)
+    parser.add_argument("--nworkers", help='Number of cores used for parallel processing (default is number available minus 1)',default=mp.cpu_count()-1, metavar='', type = int)
 
 
     # fail and print help if no arguments supplied
@@ -41,7 +41,7 @@ def main():
 
     print('\nInput file: {}\n'.format(args.rawfile))
 
-    smt_h5 = MODISsmth5(rawfile = args.rawfile, tempint = args.tempint, nsmooth = args.nsmooth, nupdate = args.nupdate, targetdir = args.targetdir, parallel = args.parallel, ncores = args.ncores)
+    smt_h5 = MODISsmth5(rawfile = args.rawfile, tempint = args.tempint, nsmooth = args.nsmooth, nupdate = args.nupdate, targetdir = args.targetdir, parallel = args.parallel, nworkers = args.nworkers)
 
     if not smt_h5.exists:
         smt_h5.create()
