@@ -32,7 +32,7 @@ except ImportError:
 warnings.filterwarnings("ignore", category=UserWarning, module='bs4')
 
 class MODISquery:
-    '''Class object for querying and downloading MODIS data.'''
+    '''Class for querying and downloading MODIS data.'''
 
     def __init__(self,url,begindate,enddate,username=None,password=None,targetdir=os.getcwd(),global_flag=None,wget=False):
         '''Creates a MODISquery object.
@@ -218,7 +218,7 @@ class MODISquery:
 
 
 class MODISrawh5:
-    '''Class object for raw MODIS data collected into HDF5 file, ready for smoothing.
+    '''Class for raw MODIS data collected into HDF5 file, ready for smoothing.
 
     Raw modis hdf files are converted into "daily" arrays.
     For MOD/MYD 13 products, MOD and MYD are interleaved into a combined MXD.
@@ -608,7 +608,7 @@ class MODISrawh5:
 
 
 class MODISsmth5:
-    '''Class object for smoothed MODIS data collected into HDF5 file.'''
+    '''Class for smoothed MODIS data collected into HDF5 file.'''
 
     def __init__(self,rawfile,tempint=None,nsmooth=None,nupdate=None,targetdir=os.getcwd(),parallel=False,nworkers=mp.cpu_count()-1):
         '''Create MODISsmth5 object.
@@ -1279,7 +1279,7 @@ class MODISsmth5:
                 bar.finish()
 
 class MODIStiles:
-    '''Class object for MODIS tiles.
+    '''Class for MODIS tiles.
 
     Converts AOI coordinates to MODIS tile numbers by extracting values from MODIS_TILES.tif.
     '''
