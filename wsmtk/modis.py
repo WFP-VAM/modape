@@ -1279,21 +1279,33 @@ class MODISsmth5:
                 bar.finish()
 
 class MODIStiles:
+    '''Class object for MODIS tiles.
+
+    Converts AOI coordinates to MODIS tile numbers by extracting values from MODIS_TILES.tif.
+    '''
 
     def __init__(self,aoi):
+        '''Creates MODIStiles object.
+
+        Args:
+            aoi (str): AOI coordinates, eiher LAT LON or XMIN, YMAX, XMAX, YMIN
+        '''
+
 
         self.aoi = aoi
 
+        # Load MODIS_TILES.tif from data directory
         this_dir, this_filename = os.path.split(__file__)
         ds = gdal.Open(os.path.join(this_dir, "data", "MODIS_TILES.tif"))
 
+        # Try to except TIFF issues
         try:
             gt = ds.GetGeoTransform()
 
         except AttributeError:
             raise SystemExit("Could not find 'MODIS_TILES.tif' index raster. Try reinstalling the package.")
 
-
+        # Indices fpr point AOI
         if len(self.aoi) is 2:
 
             xo = int(round((self.aoi[1]-gt[0])/gt[1]))
@@ -1302,6 +1314,7 @@ class MODIStiles:
             xd = 1
             yd = 1
 
+        # Indices for bounding box AOI
         elif len(self.aoi) is 4:
 
             xo = int(round((self.aoi[0]-gt[0])/gt[1]))
@@ -1310,8 +1323,11 @@ class MODIStiles:
             xd = int(round((self.aoi[2] - self.aoi[0])/gt[1]))
             yd = int(round((self.aoi[1] - self.aoi[3])/gt[1]))
 
+        # Read
         tile_extract = ds.ReadAsArray(xo,yo,xd,yd)
         ds = None
+
+        # Tile IDs are stored as H*100+V
         tile_tmp = np.unique(tile_extract/100)
         tiles = ["{:05.2f}".format(x) for x in tile_tmp[tile_tmp != 0]]
 
