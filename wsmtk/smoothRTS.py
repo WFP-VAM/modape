@@ -14,19 +14,31 @@ import array
 
 
 def initGDAL(x,p,fn=None,dt=None):
+    '''Initializes empty GeoTIFF based on template.
 
+    Args:
+        x (str): Path to template
+        p (str): Target directory
+        fn (str): Output filename (optional)
+        dt (str): Output datatype (optional)
+    '''
+
+    # Use same filename if none is supplied
     if not fn:
         fn = os.path.basename(x)
 
     ds = gdal.Open(x)
     dr = ds.GetDriver()
 
+    # Use same datatype if none is supplied
     if not dt:
         dt_new = ds.GetRasterBand(1).DataType
 
     else:
+        # Parse datatype
         dt_new = dtype_GDNP(dt)[0]
 
+    # Create empty copy
     ds_new = dr.Create(p+fn,ds.RasterXSize,ds.RasterYSize,ds.RasterCount,dt_new)
     ds_new.SetGeoTransform(ds.GetGeoTransform())
     ds_new.SetProjection(ds.GetProjection())
@@ -37,15 +49,44 @@ def initGDAL(x,p,fn=None,dt=None):
 
 
 def iterateBlocks(rows,cols,n):
+    '''Generator for blockwise iteration over array.
+
+    Args:
+        rows (int): Number of rows
+        cols (int): Number of columns
+        n (int): Side length of block
+
+    Yields:
+        Tuple with values
+            - Start row
+            - Number of rows
+            - Start column
+            - Number of columns
+    '''
+
+    # Iterate over rows then columns
     for ri in range(0,rows,n):
         for ci in range(0,cols,n):
             yield (ri,min(n,rows-ri),ci,min(n,cols-ci))
 
 
 class RTS:
+    '''Class for raster timeseries for smoothing.'''
 
     def __init__(self,files,targetdir,bsize=256,nodata=None):
+        '''Creates instance of raster timeseries class.
 
+        The metadata for the timeseries is extracted from the first file in
+        the directoryself.
+
+        Args:
+            files ([str]): List or filepaths to process
+            targetdir (str): Target directory for smoothed files
+            bsize (int): Side length of processing blocks (default = 256)
+            nodata (int): Nodata value (default is read from reference file)
+        '''
+
+        # Select reference file and sort
         self.files = files
         self.files.sort()
         self.ref_file = self.files[0]
@@ -55,6 +96,7 @@ class RTS:
 
         ds = gdal.Open(self.ref_file)
 
+        # Rows and columns size
         self.nrows = ds.RasterYSize
         self.ncols = ds.RasterXSize
 
@@ -63,9 +105,10 @@ class RTS:
             self.nodata = nodata
 
         else:
-
+            # Read nodata from file
             self.nodata = ds.GetRasterBand(1).GetNoDataValue()
 
+            # Set to 0 if read fails
             if not self.nodata:
 
                 self.nodata = 0
@@ -77,9 +120,16 @@ class RTS:
         self.targetdir = targetdir
 
     def initRasters(self,tdir):
+        '''Intitialize empty rasters for smoothed data.
 
+        Args:
+            tdir (str): Target directory
+        '''
+
+        # Iterate over files
         for f in self.files:
             try:
+                # Initialize empty copy
                 initGDAL(f,tdir)
             except AttributeError:
                 print("Error initializing {}! Please check data".format(f))
@@ -87,11 +137,19 @@ class RTS:
 
 
     def ws2d(self,s):
+        '''Apply whittaker smoother with fixed s-value to data.
 
+        Args:
+            s (float): log10 value of s
+        '''
+
+        # Add subdirectory to targetdir
         tdir = self.targetdir + '/filt0/'
 
+        # Create full path filenames for smoothed rasters
         outfiles = [tdir + '/' + os.path.basename(x) for x in self.files]
 
+        # Create targetdir if it doesn't exist
         if not os.path.exists(tdir):
 
             try:
@@ -100,16 +158,21 @@ class RTS:
                 print('Issues creating subdirectory {}'.format(tdir))
                 raise
 
+        # Initialize rasters
         self.initRasters(tdir)
 
+        # Iterate over blocks
         for yo, ys, xo, xs in iterateBlocks(self.nrows,self.ncols,self.bsize):
 
+            # Create value and weight arrays
             arr = np.zeros((ys*xs,self.nfiles),dtype='float32')
             wts = arr.copy()
 
+            # Helper view
             arr_helper = arr.view()
             arr_helper.shape = (ys,xs,self.nfiles)
 
+            # Iterate files to read data
             for fix in range(self.nfiles):
 
                 ds = gdal.Open(self.files[fix])
@@ -118,12 +181,15 @@ class RTS:
 
                 ds = None
 
+            # Data which is not nodata gets weight 1, others 0
             wts[...] = (arr != self.nodata) * 1
 
+            # iterate pixels
             for r in range(arr.shape[0]):
                 if wts[r,...].sum().item() != 0.0:
                     arr[r,...] = ws2d(arr[r,...],10**s,wts[r,...])
 
+            # Write smoothed data to disk
             for fix in range(self.nfiles):
 
                 ds = gdal.Open(outfiles[fix],gdal.GA_Update)
@@ -136,6 +202,7 @@ class RTS:
                 ds_b = None
                 ds = None
 
+        # Write config text file to disk with processing parameters and info
         with open(tdir + 'filt0_config.txt','w') as thefile:
 
             thefile.write('Running whittaker smoother with fixed s value\n')
@@ -150,8 +217,17 @@ class RTS:
 
 
     def ws2d_vc(self,srange,p=None):
+        '''Apply whittaker smoother with v-curve optimization of s to data.
 
+        If a p-value is supplied, the asymmetric whittaker smoother will be
+        applied.
 
+        Args:
+            srange (arr): Float32 array of s-values to apply
+            p (float): P-value for percentile
+        '''
+
+        # modify target directory based on asymmetric or normal whittaker
         if p:
             tdir = self.targetdir + '/filtvcp/'
         else:
@@ -167,9 +243,12 @@ class RTS:
                 print('Issues creating subdirectory {}'.format(tdir))
                 raise
 
+        # Path to s-grid
         self.sgrid = tdir + 'sgrid.tif'
 
         self.initRasters(tdir)
+
+        # S-grid needs to be initialized separately
         initGDAL(self.ref_file,tdir,'sgrid.tif',dt='float32')
 
         for yo, ys, xo, xs in iterateBlocks(self.nrows,self.ncols,self.bsize):
@@ -218,8 +297,10 @@ class RTS:
                 ds = None
 
 
+            # Convert s values in grid to log10(s)
             sarr[sarr>0] = np.log10(sarr[sarr>0])
 
+            # Write s-values to grid
             ds = gdal.Open(self.sgrid,gdal.GA_Update)
 
             ds_b = ds.GetRasterBand(1)
@@ -255,6 +336,15 @@ class RTS:
 
 
 def main():
+    '''Apply whittaker smoother to a timeseries of local raster files.
+
+    Raster files in path are combined to a timeseries and smoothed using the whittaker smoother,
+    optionally with V-curve optimization of s.
+
+    The user needs to make sure the raster files to be smoothed are identical in dimensions and type.
+
+    Parallel processing is currently not implemented, so big timeseries might take some time!
+    '''
 
     parser = argparse.ArgumentParser(description="Extract a window from MODIS products")
     parser.add_argument("path", help='Path cointaining raster files')
@@ -276,19 +366,23 @@ def main():
 
     print('\n[{}]: Starting smoothRTS.py ... \n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
 
+    # Check if path exists
     if not os.path.exists(args.path):
         raise SystemExit('directory PATH does not exist!')
 
-
+    # Find files in path
     fls = [x for x in glob.glob('{}/{}'.format(args.path,args.pattern)) if os.path.isfile(x)]
 
     if not len(fls) > 0:
         raise SystemExit('No files found in {} with pattern {}, please check input.'.format(args.path,args.pattern))
 
+    # Create raster timeseries object
     rts = RTS(files=fls,targetdir = args.targetdir,bsize= args.blocksize, nodata=args.nodata)
 
+    # V-curve optimization is triggered by either supplying the soptimize flag or a s-range
     if args.soptimize or args.srange:
 
+        # Parse s-range or use default
         if args.srange:
             try:
                 assert len(args.srange) == 3
@@ -302,18 +396,21 @@ def main():
 
             print('\nRunning asymmetric whittaker smoother with v-curve optimization ... \n')
 
+            # Execute asymmetric whittaker with V-curve optimization
             rts.ws2d_vc(srange=srange,p=args.pvalue)
 
         else:
 
             print('\nRunning whittaker smoother with v-curve optimization ... \n')
 
+            # Execute whittaker with V-curve optimization
             rts.ws2d_vc(srange=srange)
 
     else:
 
         ## insert if-clause for s value if grid option is needed (see smoothMODIS)
 
+        # Convert s value from log10(s)
         try:
             s = 10**float(args.svalue)
         except:
@@ -321,6 +418,7 @@ def main():
 
         print('\nRunning whittaker smoother with fixed s value ... \n')
 
+        # Execute whittaker with fixed s value
         rts.ws2d(s=s)
 
     print('\n[{}]: smoothMODIS.py finished successfully.\n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
