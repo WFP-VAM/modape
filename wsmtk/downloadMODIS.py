@@ -9,6 +9,14 @@ import pickle
 import re
 
 def main():
+    '''Query and download MODIS products.
+
+    This function allows for querying and downloading MODIS products in bulk. Multiple products can be queried and downloaded with one
+    function call. For downloading data, valid earthdata credentials are required (to register, visit https://urs.earthdata.nasa.gov/users/new).
+    Data download can be performed with python's request module or with external WGET (needs to be available in PATH) if --wget flag is added.
+
+    To query for both MODIS AQUA and TERRA, replace MOD/MYD with M?D. Product IDs also accepted in lowercase.
+    '''
 
     parser = argparse.ArgumentParser(description="Query and download MODIS products (earthdata accound required for download)")
     parser.add_argument("product", help='MODIS product ID(s)',nargs='+')
@@ -30,18 +38,20 @@ def main():
 
     args = parser.parse_args()
 
+    # Check for credentials if download is True
     if args.download & (not args.username or not args.password):
         raise SystemExit('Downloading requires username and password!')
 
     args.product = [x.upper() for x in args.product]
 
+    # Load product table
     this_dir, this_filename = os.path.split(__file__)
-
     with open(os.path.join(this_dir, "data", "MODIS_V6_PT.pkl"),'rb') as table_raw:
         product_table = pickle.load(table_raw)
 
     for p in args.product:
 
+        # Handle ? wildcard
         if '?' in p:
             patt = re.compile(p.replace('?','.{1,2}') + '$')
             p = [x for x in product_table if re.match(patt,x)]
@@ -50,6 +60,7 @@ def main():
 
         for p2 in p:
 
+            # Load product info from table
             try:
                 product_table_sub = product_table[p2]
 
@@ -61,8 +72,10 @@ def main():
                 else:
                     raise SystemExit('Product {} not recognized!'.format(p2))
 
+            # If resolution is bigger than 1km, the product is global
             global_flag = int(product_table_sub['pixel_size']) > 1000
 
+            # If global, select corresponding base URL
             if global_flag:
 
                 if 'MOD' in p2:
@@ -78,6 +91,7 @@ def main():
 
                 query = []
 
+                # Construct query URL
                 try:
 
                     if len(args.roi) is 2:
@@ -97,10 +111,12 @@ def main():
                 queryURL = 'https://lpdaacsvc.cr.usgs.gov/services/inventory?product={}&{}'.format(p2,'&'.join(query))
 
 
+            # Run query
             print('\nPRODUCT: {}\n'.format(p2))
 
             res = MODISquery(queryURL,rawdir=args.dest,begindate=args.begin_date,enddate=args.end_date,global_flag=global_flag,wget=args.wget)
 
+            # If download is True and at least one result, download data
             if args.download and res.results > 0:
                 res.setCredentials(args.username,args.password)
                 res.download()
