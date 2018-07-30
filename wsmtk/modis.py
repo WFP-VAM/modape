@@ -1335,8 +1335,22 @@ class MODIStiles:
 
 
 class MODISmosaic:
+    '''Class for mosaic of MODIS tiles.
+
+    Moisaics tiles per Product, parameter and timestep. Enables extraction as GeoTiff.
+    '''
 
     def __init__(self,files,datemin,datemax,global_flag):
+        ''' Creates MODISmosaic object.
+
+        Args:
+            files ([str]): List of paths to files used for creating the mosaic
+            datemin (str): Datestring for date of earliest mosaic (format YYYYMM)
+            datemax (str): Datestring for date of latest mosaic (format YYYYMM)
+            global_flag (bool): Flag if mosaic is global product
+        '''
+
+        # Regular expression for tile ID
         tile_re = re.compile('.+(h\d+v\d+).+')
 
         self.global_flag = global_flag
@@ -1344,6 +1358,8 @@ class MODISmosaic:
         self.tiles = [re.sub(tile_re,'\\1',os.path.basename(x)) for x in files]
         self.tiles.sort()
         self.files = files
+
+        # Extract tile IDs
         self.h_ix = list(set([re.sub('(h\d+)(v\d+)','\\1',x) for x in self.tiles]))
         self.h_ix.sort()
         self.v_ix = list(set([re.sub('(h\d+)(v\d+)','\\2',x) for x in self.tiles]))
@@ -1352,6 +1368,7 @@ class MODISmosaic:
         # reference tile is top left
         ref = [x for x in self.files if self.tiles[0] in x][0]
 
+        # Read metadata from HDF5
         try:
 
             with h5py.File(ref,'r') as h5f:
@@ -1364,6 +1381,7 @@ class MODISmosaic:
                 self.pj = dset.attrs['projection']
                 self.nodata = dset.attrs['nodata'].item()
 
+                # If file is global, resolution is already in degrees, otherwhise it's resolution divided with 112000
                 if self.global_flag:
                     self.resolution_degrees = dset.attrs['resolution']
                 else:
@@ -1377,7 +1395,7 @@ class MODISmosaic:
             print('\nError reading referece file {} for mosaic! Error message: {}\n'.format(ref,e))
             raise
 
-
+        # Create temporal index from dates available and min max input
         dts_dt = [fromjulian(x) for x in self.dates]
         datemin_p = datetime.datetime.strptime(datemin,'%Y%m').date()
         datemax_p = datetime.datetime.strptime(datemax,'%Y%m').date()
@@ -1385,14 +1403,28 @@ class MODISmosaic:
         self.tempIX = np.flatnonzero(np.array([x >= datemin_p and x <= datemax_p for x in dts_dt]))
 
     def getArray(self,dataset,ix,dt):
+        '''Reads values for mosaic into array.
 
+        Args:
+            dataset (str): Defines dataset to be read from HDF5 file (default is 'data')
+            ix (int): Temporal index
+            dt (str): Datatype (default will be read from file)
+
+        Returns
+            Array for mosaic
+        '''
+
+        # Initialize array
         array = np.zeros(((len(self.v_ix) * self.tile_rws),len(self.h_ix) * self.tile_cls),dtype=dt)
 
+        # read data from intersecting HDF5 files
         for h5f in self.files:
 
+            # Extract tile ID from filename
             t_h = re.sub('.+(h\d+)(v\d+).+','\\1',os.path.basename(h5f))
             t_v = re.sub('.+(h\d+)(v\d+).+','\\2',os.path.basename(h5f))
 
+            # Caluclate row/column offset
             xoff = self.h_ix.index(t_h) * self.tile_cls
             yoff = self.v_ix.index(t_v) * self.tile_rws
 
@@ -1400,6 +1432,7 @@ class MODISmosaic:
 
                 with h5py.File(h5f,'r') as h5f_o:
 
+                    # Dataset 'sgrid' is 2D, so no idex needed
                     if dataset == 'sgrid':
                         array[yoff:(yoff+self.tile_rws),xoff:(xoff+self.tile_cls)] = h5f_o.get(dataset)[...]
                     else:
@@ -1412,6 +1445,18 @@ class MODISmosaic:
         return(array)
 
     def getArrayGlobal(self,dataset,ix,dt):
+        '''Reads values for global mosaic into array.
+
+        Since files are global, the array will be a spatial and temporal subset rather than a mosaic.
+
+        Args:
+            dataset (str): Defines dataset to be read from HDF5 file (default is 'data')
+            ix (int): Temporal index
+            dt (str): Datatype (default will be read from file)
+
+        Returns
+            Array for mosaic
+        '''
 
         array = np.zeros((self.tile_rws,self.tile_cls),dtype=dt)
 
@@ -1434,7 +1479,16 @@ class MODISmosaic:
 
     @contextmanager
     def getRaster(self,dataset,ix):
+        '''Generator for mosaic raster.
 
+        This generator can be used within a context manager and will yield an in-memory raster.
+
+        Args:
+            dataset (str): Defines dataset to be read from HDF5 file (default is 'data')
+            ix (int): Temporal index
+        '''
+
+        # The datatype for sgrid is set to float32
         try:
             if dataset == 'sgrid':
                 self.dt_gdal = dtype_GDNP('float32')
@@ -1444,6 +1498,7 @@ class MODISmosaic:
             print("\n\n Couldn't read data type from dataset. Using default Int16!\n")
             dt_gdal = (3,'int16')
 
+        # Use the corresponding getArray function if global_flag
         if self.global_flag:
             array = self.getArrayGlobal(dataset,ix,self.dt_gdal[1])
         else:
@@ -1453,9 +1508,10 @@ class MODISmosaic:
 
         driver = gdal.GetDriverByName('GTiff')
 
+        # Create in-memory dataset with virtual filename driver
         self.raster = driver.Create('/vsimem/inmem.tif', width, height, 1, self.dt_gdal[0])
 
-
+        # Set metadata
         self.raster.SetGeoTransform(self.gt)
         self.raster.SetProjection(self.pj)
 
@@ -1463,10 +1519,12 @@ class MODISmosaic:
 
         rb.SetNoDataValue(self.nodata)
 
+        # Write array
         rb.WriteArray(array)
 
         yield self
 
+        # Cleanup to be exectuted when context manager closes after yield
         gdal.Unlink('/vsimem/inmem.tif')
         self.raster = None
         driver = None
