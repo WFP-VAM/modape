@@ -25,7 +25,7 @@ def main():
 
     outname = '{}/{}'.format(os.path.dirname(args.file),os.path.basename(args.file)[0:3])
 
-    df = pd.read_csv('test.csv',header=1)
+    df = pd.read_csv(args.file,header=1)
 
     resdf = pd.DataFrame(index=range(len(df)+2))
 
