@@ -173,7 +173,7 @@ class MODISquery:
                         print('Error accessing {} - skipping.'.format(u))
                         continue
 
-                    soup_temp = BeautifulSoup(resp_temp.content)
+                    soup_temp = BeautifulSoup(resp_temp.content,'html5lib')
 
                     hrefs = soup_temp.find_all('a',href=True)
 
