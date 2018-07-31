@@ -69,7 +69,7 @@ class MODISquery:
                 print(e)
                 sys.exit(1)
 
-            soup = BeautifulSoup(response.content,'html5lib')
+            soup = BeautifulSoup(response.content,features="html.parser")
 
             # results for global products are date directories on server, so need to query separately
             if self.global_flag:
@@ -173,7 +173,7 @@ class MODISquery:
                         print('Error accessing {} - skipping.'.format(u))
                         continue
 
-                    soup_temp = BeautifulSoup(resp_temp.content,'html5lib')
+                    soup_temp = BeautifulSoup(resp_temp.content,features="html.parser")
 
                     hrefs = soup_temp.find_all('a',href=True)
 
