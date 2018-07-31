@@ -217,7 +217,7 @@ class RTS:
 
 
     def ws2d_vc(self,srange,p=None):
-        '''Apply whittaker smoother with v-curve optimization of s to data.
+        '''Apply whittaker smoother with V-curve optimization of s to data.
 
         If a p-value is supplied, the asymmetric whittaker smoother will be
         applied.
@@ -315,7 +315,7 @@ class RTS:
 
             if p:
 
-                thefile.write('Running asymmetric whittaker smoother with v-curve optimization\n')
+                thefile.write('Running asymmetric whittaker smoother with V-curve optimization\n')
                 thefile.write('\n')
                 thefile.write('Timestamp: {}\n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
                 thefile.write('\n')
@@ -326,7 +326,7 @@ class RTS:
 
             else:
 
-                thefile.write('Running whittaker smoother with v-curve optimization\n')
+                thefile.write('Running whittaker smoother with V-curve optimization\n')
                 thefile.write('\n')
                 thefile.write('Timestamp: {}\n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
                 thefile.write('\n')
@@ -394,14 +394,14 @@ def main():
 
         if args.pvalue:
 
-            print('\nRunning asymmetric whittaker smoother with v-curve optimization ... \n')
+            print('\nRunning asymmetric whittaker smoother with V-curve optimization ... \n')
 
             # Execute asymmetric whittaker with V-curve optimization
             rts.ws2d_vc(srange=srange,p=args.pvalue)
 
         else:
 
-            print('\nRunning whittaker smoother with v-curve optimization ... \n')
+            print('\nRunning whittaker smoother with V-curve optimization ... \n')
 
             # Execute whittaker with V-curve optimization
             rts.ws2d_vc(srange=srange)

@@ -869,7 +869,7 @@ class MODISsmth5:
         '''Apply whittaker smootehr with fixed s to data.
 
         This fixed s version reads a pixel based s value from file, so it needs
-        a previous run of v-curve s-optimization.
+        a previous run of V-curve s-optimization.
         '''
 
         with h5py.File(self.rawfile,'r') as rawh5, h5py.File(self.outname,'r+') as smth5:
@@ -996,7 +996,7 @@ class MODISsmth5:
                 bar.finish()
 
     def ws2d_vc(self,srange):
-        '''Apply whittaker smoother with v-curve optimization of s to data.
+        '''Apply whittaker smoother with V-curve optimization of s to data.
 
         Args:
             srange (arr): Float32 array of s-values to apply
@@ -1019,7 +1019,7 @@ class MODISsmth5:
             # Store run parameters for infotool
 
             smt_ds.attrs['processingtimestamp'] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-            smt_ds.attrs['lastrun'] = "v-curve optimization of s"
+            smt_ds.attrs['lastrun'] = "V-curve optimization of s"
 
             # Check if file needs to be resized
 
@@ -1135,7 +1135,7 @@ class MODISsmth5:
                 bar.finish()
 
     def ws2d_vc_asy(self,srange,p):
-        '''Apply asymmetric whittaker smoother with v-curve optimization of s to data.
+        '''Apply asymmetric whittaker smoother with V-curve optimization of s to data.
 
         Args:
             srange (arr): Float32 array of s-values to apply
@@ -1159,7 +1159,7 @@ class MODISsmth5:
             # Store run parameters for infotool
 
             smt_ds.attrs['processingtimestamp'] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-            smt_ds.attrs['lastrun'] = "asymmetric v-curve optimization of s - p = {}".format(p)
+            smt_ds.attrs['lastrun'] = "asymmetric V-curve optimization of s - p = {}".format(p)
             smt_ds.attrs['pvalue'] = p
 
             # Check if file needs to be resized

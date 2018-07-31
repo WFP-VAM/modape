@@ -65,7 +65,7 @@ def main():
     if not smt_h5.exists:
         smt_h5.create()
 
-    # Check if v-curve optimization is true
+    # Check if V-curve optimization is true
     if args.soptimize:
 
         # Parse s-range or use default
@@ -87,14 +87,14 @@ def main():
             except ValueError:
                 raise SystemExit('Error using p-value ... expected float, got {}.'.format(type(args.pvalue)))
 
-            print('\nRunning asymmetric whittaker smoother with v-curve optimization ... \n')
+            print('\nRunning asymmetric whittaker smoother with V-curve optimization ... \n')
 
             # Execute asymmetric whittaker smoother with V-curve optimization
             smt_h5.ws2d_vc_asy(srange=srange,p=p)
 
         else:
 
-            print('\nRunning whittaker smoother with v-curve optimization ... \n')
+            print('\nRunning whittaker smoother with V-curve optimization ... \n')
 
             # Execute whittaker smoother with V-curve optimization
             smt_h5.ws2d_vc(srange=srange)

@@ -21,8 +21,8 @@ def main():
     In addition to the region code, the output filename contains a suffix which indicates the smoothing method used:
 
         - fixed s: filt0.csv
-        - v-curve: filtvc.csv
-        - asymmetric v-curve: filtvcp.csv
+        - V-curve: filtvc.csv
+        - asymmetric V-curve: filtvcp.csv
 
     The resulting CSV is created in the directory the input file is located.
     '''
@@ -80,7 +80,7 @@ def main():
 
     else:
 
-        # If v-curve
+        # If V-curve
         if args.srange:
 
             assert len(args.srange) == 3, 'Expected 3 inputs for S range: smin smax step!'
@@ -94,14 +94,14 @@ def main():
             srange = array.array('f',np.linspace(0.0,4.0,41))
             args.srange = [0.0,4.0,0.1]
 
-        # If asymmetric v-curve
+        # If asymmetric V-curve
         if args.pvalue:
 
             outname = outname + 'filtvcp.csv'
 
             resdf = pd.DataFrame(resdf['ID'].append(pd.Series('pvalue'),ignore_index=True),columns=['ID'])
 
-            print('\nSmoothing using asymmetric v-curve optimization with smin:{}, smax:{}, sstep:{} and pvalue:{}.\n\nWriting to file: {}\n'
+            print('\nSmoothing using asymmetric V-curve optimization with smin:{}, smax:{}, sstep:{} and pvalue:{}.\n\nWriting to file: {}\n'
             .format(args.srange[0],args.srange[1],args.srange[2],args.pvalue,outname))
 
             for c in df.columns[1:]:
@@ -117,7 +117,7 @@ def main():
 
             outname = outname + 'filtvc.csv'
 
-            print('\nSmoothing using v-curve optimization with smin:{}, smax:{}, sstep:{}.\n\nWriting to file: {}\n'
+            print('\nSmoothing using V-curve optimization with smin:{}, smax:{}, sstep:{}.\n\nWriting to file: {}\n'
             .format(args.srange[0],args.srange[1],args.srange[2],outname))
 
             for c in df.columns[1:]:
