@@ -1,4 +1,3 @@
-from numpy.lib.stride_tricks import as_strided as ast
 import numpy as np
 import datetime
 import requests
@@ -32,16 +31,6 @@ def dtype_GDNP(dt):
     dt_tuple = [(k,v) for k,v in dt_dict.items() if k == dt or v == dt]
     return(dt_tuple[0])
 
-
-def block_view(A, block= (3, 3)):
-    ## Credit to http://stackoverflow.com/a/5078155/1828289
-    """Provide a 2D block view to 2D array. No error checking made.
-    Therefore meaningful (as implemented) only for blocks strictly
-    compatible with the shape of A."""
-    shape= (A.shape[0]// block[0], A.shape[1]// block[1])+ block
-    strides= (block[0]* A.strides[0], block[1]* A.strides[1])+ A.strides
-    return ast(A, shape= shape, strides= strides)
-
 def LDOM(x):
     '''Get last day of month.
 
@@ -61,22 +50,6 @@ def LDOM(x):
     else:
         mn += 1
     return(datetime.date(yr,mn,1) - datetime.timedelta(days=1))
-
-
-def aoi2ix(ref,aoi,res):
-    '''Extract indices for intersection over reference.'''
-
-    isect = [max(ref[0],aoi[0]),min(ref[1],aoi[1]),min(ref[2],aoi[2]),max(ref[3],aoi[3])]
-
-    xoff = int(round((isect[0] - ref[0])/res))
-    yoff = int(round((ref[1] - isect[1])/res))
-
-    xd = int(round((isect[2] - isect[0])/res))#+1
-    yd = int(round((isect[1] - isect[3])/res))#+1
-
-    return((xoff,xd,yoff,yd))
-
-
 
 class SessionWithHeaderRedirection(requests.Session):
     ''' Session class for MODIS query.
