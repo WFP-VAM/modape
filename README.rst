@@ -5,9 +5,9 @@ The **w**\ hittaker **sm**\ oothing **t**\ ool\ **k**\ it combines a state-of-th
 
 The sub-module ``wsmtk.whittaker`` includes the following variations of the whittaker smoother with 2nd order differences:
 
-- Whittaker with fixed smoothing parameter (s)
-- Whittaker with V-curve optimization of the smoothing parameter (s)
-- Whittaker with V-curve optimization of the smoothing parameter (s) and expectile smoothing using asymmetric weights
+- Whittaker with fixed smoothing parameter (``s``)
+- Whittaker with V-curve optimization of the smoothing parameter (``s``)
+- Whittaker with V-curve optimization of the smoothing parameter (``s``) and expectile smoothing using asymmetric weights
 
 The MODIS processing chain consists of the following executables, which can be called through commandline:
 
