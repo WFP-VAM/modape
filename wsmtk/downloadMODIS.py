@@ -26,7 +26,7 @@ def main():
     parser.add_argument("-e","--end-date", help='End date (YYYY-MM-DD)',default=datetime.date.today().strftime("%Y-%m-%d"),metavar='')
     parser.add_argument("--username", help='Earthdata username (required for download)',metavar='')
     parser.add_argument("--password", help='Earthdata password (required for download)',metavar='')
-    parser.add_argument("-d","--dest", help='Destination directory',default=os.getcwd(),metavar='')
+    parser.add_argument("-d","--targetdir", help='Destination directory',default=os.getcwd(),metavar='')
     parser.add_argument("-v","--verbose", help='Verbosity',action='store_true')
     parser.add_argument("--download", help='Download data',action='store_true')
     parser.add_argument("--wget", help='Use WGET for downloading',action='store_true')
@@ -114,7 +114,7 @@ def main():
             # Run query
             print('\nPRODUCT: {}\n'.format(p2))
 
-            res = MODISquery(queryURL,rawdir=args.dest,begindate=args.begin_date,enddate=args.end_date,global_flag=global_flag,wget=args.wget)
+            res = MODISquery(queryURL,targetdir=args.targetdir,begindate=args.begin_date,enddate=args.end_date,global_flag=global_flag,wget=args.wget)
 
             # If download is True and at least one result, download data
             if args.download and res.results > 0:
