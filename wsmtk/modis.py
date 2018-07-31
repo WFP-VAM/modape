@@ -72,7 +72,7 @@ class MODISquery:
                 print(e)
                 sys.exit(1)
 
-            soup = BeautifulSoup(response.content)
+            soup = BeautifulSoup(response.content,'html5lib')
 
             # results for global products are date directories on server, so need to query separately
             if self.global_flag:
