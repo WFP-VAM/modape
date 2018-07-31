@@ -12,7 +12,6 @@ import time
 import numpy as np
 import array
 
-
 def initGDAL(x,p,fn=None,dt=None):
     '''Initializes empty GeoTIFF based on template.
 
