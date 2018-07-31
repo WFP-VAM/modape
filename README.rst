@@ -1,106 +1,59 @@
 wsmtk
 =====
 
-The **w**\ hittaker **sm**\ oothing **t**\ ool\ **k**\ it
+The **w**\ hittaker **sm**\ oothing **t**\ ool\ **k**\ it combines a state-of-the art whittaker smoother, implemented as fast C-extension through Cython and including a V-curve optimization of the smoothing parameter, with a HDF5 based processing chain optimized for MODIS data.
 
-Implemented functions are:
+The sub-module ``wsmtk.whittaker`` includes the following variations of the whittaker smoother with 2nd order differences:
 
--  Download MODIS data (earthdata account required)
--  Process downloaded data
+- Whittaker with fixed smoothing parameter (``s``)
+- Whittaker with V-curve optimization of the smoothing parameter (``s``)
+- Whittaker with V-curve optimization of the smoothing parameter (``s``) and expectile smoothing using asymmetric weights
 
-   -  Extract subdatasets
-   -  Store data in HDF5 files
+The MODIS processing chain consists of the following executables, which can be called through commandline:
 
--  Extract windows over one or more tiles, reproject to WGS1984 and save
-   as GeoTIFF
+- ``downloadMODIS``: Query and download raw MODIS products (requires Earthdata credentials)
+- ``processMODIS``: Collect raw MODIS data into daily datacubes stored in an HDF5 file
+- ``smoothMODIS``: Smooth, gapfill and interpolate raw MODIS data using the implemented whittaker smoother
+- ``windowMODIS``: Extract mosaic(s) of multiple MODIS tiles, or subset(s) of a global/tiled MODIS product and export it as GeoTIFF raster in WGS1984 coordinate system
 
-These functions can be called from command-line, outside of the python
-interpreter.
+Additional executables:
+
+- ``smoothCSV``: Smooth timeseries stored within a CSV file
+- ``smoothRTS``: Smooth a series of raster files stored in a local directory
 
 Installation
 ------------
+**Dependencies:**
 
-You can install wsmtk from github with:
+wsmtk depends on these packages:
+
+- numpy
+- gdal
+- h5py
+- beautifulsoup4
+- requests
+- progress
+- pandas
+
+Some of these packages (eg. GDAL) can be difficult to build, especially on windows machines. In the latter case it's advisable to download an unofficial binary wheel from `Christoph Gohlke's Unofficial Windows Binaries for Python Extension Packages <https://www.lfd.uci.edu/~gohlke/pythonlibs/>`_ and install it locally with ``pip install`` before installing wsmtk.
+
+**Installation from github:**
 
 .. code:: bash
 
     $ git clone https://github.com/WFP-VAM/wsmtk
     $ cd wsmtk
-    $ python setup.py install
+    $ pip install .
 
-Usage
+**Installation from PyPi:**
+
+.. code:: bash
+
+    $ pip install wsmtk
+
+Usage tutorial
 -----
 
-The following example show exemplary usage of the wsmtk functionality:
+All executables can be called with a ``-h`` flag for detailed usage.
 
-
-
-Get help
-^^^^^^^^
-
-All command-line functions can be called with a ``-h`` flag to view the
-usage:
-
-::
-
-    $ downloadMODIS -h
-
-    usage: downloadMODIS [-h] --roi ROI [ROI ...] [-c] [-b] [-e] [--username] [--password] [-d] [-v] [--download]
-                         product [product ...]
-
-    Query and download MODIS products (earthdata accound required for download)
-
-    positional arguments:
-      product              MODIS product ID(s)
-
-    optional arguments:
-      -h, --help           show this help message and exit
-      --roi ROI [ROI ...]  Region of interest. Can be LAT/LON point or bounding box in format llx,lly,urx,ury
-      -c , --collection    MODIS collection
-      -b , --begin-date    Start date (YYYY-MM-DD)
-      -e , --end-date      End date (YYYY-MM-DD)
-      --username           Earthdata username (required for download)
-      --password           Earthdata password (required for download)
-      -d , --dest          Destination directory
-      -v, --verbose        Destination directory
-      --download           Download data
-
-Download Data
-^^^^^^^^^^^^^
-
-.. code:: bash
-
-    # query number of products available
-
-    $ downloadMODIS MOD13A2 --roi 31.6931 10.869 34.093 12.562 --begin-date 2010-01-01
-
-    Checking for MODIS products ...... done.
-    190 results found.
-
-    # downloading to destination directory (earthdata credentials required)
-
-    $ downloadMODIS MOD13A2 --roi 31.6931 10.869 34.093 12.562 --begin-date 2010-01-01 --dest /data/modis/ --username user --password pass --download
-
-
-
-Process Data
-^^^^^^^^^^^^
-
-.. code:: bash
-
-    # Raw data downloaded to /data/modis/
-
-    $ processMODIS /data/modis/ --prcdir /data/modis/processed/
-
-
-
-Extract (sub-)windows from processed data as GeoTIFF
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-.. code:: bash
-
-    # bounding box for South Africa
-
-    $ windowMODIS MOD13A2 --roi -2.746470 7.897562 7.610793 12.939542 --reg SAF --dataset Smooth --prcdir /data/modis/processed/ --targetdir /data/modis/tiff_extract/
-
-    # output naming-convention is: regparYYYjDOY.tif (reg = region, par = VAM parameter)
+For a more detailed tutorial on how to use the executables, please visit `WFP-VAM.github.io/wsmtk <http://WFP-VAM.github.io/wsmtk>`_.
