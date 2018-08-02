@@ -27,7 +27,7 @@ def main():
     parser.add_argument("--username", help='Earthdata username (required for download)',metavar='')
     parser.add_argument("--password", help='Earthdata password (required for download)',metavar='')
     parser.add_argument("-d","--targetdir", help='Destination directory',default=os.getcwd(),metavar='')
-    parser.add_argument("-v","--verbose", help='Verbosity',action='store_true')
+    #parser.add_argument("-v","--verbose", help='Verbosity',action='store_true')
     parser.add_argument("--download", help='Download data',action='store_true')
     parser.add_argument("--wget", help='Use WGET for downloading',action='store_true')
 
