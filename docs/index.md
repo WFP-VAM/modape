@@ -433,16 +433,15 @@ All columns starting number two are considere separate pixel timeseries, where e
 
 Example:
 
-| -                |  -         | -     | -  |
-| -------------    |---         |       |
-|ID    |Location 1 | Location2  | Location n |
-|Lon   | 25.65        | 26.75           | ...        |      
-|Lat   | 7.92         |  7.78          | ...        |  
-|date 1| 0.62         | 0.62           | ...        |
-|date 2| 0.62         | 0.58           | ...        |
-|date 3| 0.65         | 0.5           | ...        |
-| ...  | ...          | ...           | ...        |
-
+| -      	| -          	| -          	| -          	|
+|--------	|------------	|------------	|------------	|
+| ID     	| Location 1 	| Location 2 	| Location n 	|
+| Lon    	| 25.65      	| 26.75      	| ...        	|
+| Lat    	| 7.92       	| 7.78       	| ...        	|
+| Date 1 	| 0.62       	| 0.62       	| ...        	|
+| Date 2 	| 0.62       	| 0.56       	| ...        	|
+| Date 3 	| 0.65       	| 0.5        	| ...        	|
+| ...    	| ...        	| ...        	| ...        	|
 
 The output is saved to CSV in the same directory as the input.
 
