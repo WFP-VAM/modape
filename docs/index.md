@@ -259,7 +259,7 @@ where REGION should be a three letter code for the region (can be defined with `
 **windowMODIS help:**
 
 ```
-windowMODIS -h
+$ windowMODIS -h
 
 usage: windowMODIS [-h] [-p] [--roi ROI [ROI ...]] [--region] [-b] [-e]
                    [--parameter] [-d] [--sgrid]
@@ -287,6 +287,44 @@ optional arguments:
 
 ![windowMODIS]
 
+
+### infoMODIS
+
+**Description:**
+
+Retrieves and displays metadata for raw/smooth MODIS HDF5 files.
+
+Information includes:
+
+- Dimensions
+- Type
+- Startdate
+- Enddate
+- NoData value
+- Temporal resolution
+- Spatial resolution
+- Last modified
+- Last smoothing run and parameters
+
+**infoMODIS help:**
+
+```
+$ infoMODIS -h
+
+usage: infoMODIS [-h] file
+
+Get MODIS raw/smooth file info
+
+positional arguments:
+  file        Full path to MODIS h5 file
+
+optional arguments:
+  -h, --help  show this help message and exit
+
+```
+**Usage example:**
+
+![infoMODIS]
 
 [downloadMODIS]: img/download.gif
 [processMODIS]: img/process.gif
