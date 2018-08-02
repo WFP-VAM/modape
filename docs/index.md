@@ -326,6 +326,32 @@ optional arguments:
 
 ![infoMODIS]
 
+### producttableMODIS
+
+**Description:**
+
+Display the MODIS product table, optionally filter by product, resolution and parameter.
+
+**producttableMODIS help:**
+
+```
+$ producttableMODIS -h
+
+usage: producttableMODIS [-h] [--product] [--resolution] [--parameter]
+
+MODIS product table
+
+optional arguments:
+  -h, --help     show this help message and exit
+  --product      MODIS product ID
+  --resolution   Filter for pixel size
+  --parameter    Filter for VAM parameter
+
+```
+**Usage example:**
+
+![producttableMODIS]
+
 [downloadMODIS]: img/download.gif
 [processMODIS]: img/process.gif
 [smoothMODIS]: img/smooth.gif
