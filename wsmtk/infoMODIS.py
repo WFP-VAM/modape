@@ -42,6 +42,7 @@ def main():
             startdate = dts[0].decode()
             enddate = dts[-1].decode()
             temporalresolution = dset.attrs['temporalresolution']
+            resolution = dset.attrs['resolution']
             nodata_value = dset.attrs['nodata']
             ptstmp = dset.attrs['processingtimestamp']
 
@@ -75,11 +76,13 @@ End date: {}
 
 Temporal resolution: {} daily
 
+Spatial resolution: {} m
+
 NoData value: {}
 
 Last modified: {}
 
-Last smoothing run: Whittaker smoother with {}\n'''.format(args.file,dim[0],dim[1],dim[2],startdate,enddate,temporalresolution,nodata_value,ptstmp,lr)
+Last smoothing run: Whittaker smoother with {}\n'''.format(args.file,dim[0],dim[1],dim[2],startdate,enddate,temporalresolution,resolution,nodata_value,ptstmp,lr)
 
 
     else:
@@ -103,9 +106,11 @@ End date: {}
 
 Temporal resolution: {} daily
 
+Spatial resolution: {} m
+
 NoData value: {}
 
-Last modified: {}\n'''.format(args.file,dim[0],dim[1],dim[2],startdate,enddate,temporalresolution,nodata_value,ptstmp)
+Last modified: {}\n'''.format(args.file,dim[0],dim[1],dim[2],startdate,enddate,temporalresolution,resolution,nodata_value,ptstmp)
 
 
     # Print message - header is centered
