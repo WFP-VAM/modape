@@ -80,7 +80,6 @@ References:
 
 P. H. C. Eilers, V. Pesendorfer and R. Bonifacio, "Automatic smoothing of remote sensing data," 2017 9th International Workshop on the Analysis of Multitemporal Remote Sensing Images (MultiTemp), Brugge, 2017, pp. 1-3.
 doi: 10.1109/Multi-Temp.2017.8076705
-
 URL: http://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=8076705&isnumber=8035194
 
 Core Whittaker function adapted from ``whit2`` function from `R` package `ptw <https://cran.r-project.org/package=ptw>`_:
