@@ -133,7 +133,7 @@ Currently processing is implemented for MODIS vegetation and MODIS LST products.
 The default blocksize for processing is set to 120 by 120. When specifying a custom blocksize, make sure the number of rows and columns divides evenly by the respective blocksize!
 
 
-**downloadMODIS help:**
+**processMODIS help:**
 
 ```
 $ processMODIS -h
@@ -192,7 +192,7 @@ The temporal flag can have the following values:
 - txd: dekadal (10 daily) data
 - txc: custom interpolation (user input)
 
-**downloadMODIS help:**
+**smoothMODIS help:**
 
 ```
 $ smoothMODIS -h
@@ -228,6 +228,63 @@ optional arguments:
 **Usage example:**
 
 ![smoothMODIS]
+
+### windowMODIS
+
+**Description:**
+
+Create mosaics (or subsets) from smoothed MODIS HDF5 files.
+
+Given a directory containing smoothed MODIS HDF5 files `path`, this tool creates mosaics or subsets of smoothed data, depending on the input.
+
+The desired product can be specified with the `-p, --product flag`.
+
+For tile-based products, specifying a region of interest is mandatory. If a point location is specified, the entire intersecting tile will be used as window. If a bounding box is specified, multiple tiles of the same product will be mosaicked. If the bounding box is smaller than one tile, a subset of the intersecting tile will be created.
+
+For global MODIS products, no region of interest is required. If a bounding box is specified, a subset of the global product is returned as window.
+
+The time range required can be controlled with `-b, --begin-date` and `-e, --end-date` where the input should be a date in the format YYYYMM (e.g. 201808).
+
+Adding the `--sgrid` flag will extract or mosaic the s-grid rather than the smoothed data.
+
+All mosaics/subsets will be saved to the target directory (default current working directory) as GeoTIFF files, in a geographic coordinate system (EPSG:4326 - WGS84) with the naming convetion:
+
+REGION PARAMETER yyyyjddd
+
+where REGION should be a three letter code for the region (can be defined with `--region`, default is "reg"), PARAMETER is the VAM parameter code and yyyyjddd is the julian date of the image.
+
+
+**windowMODIS help:**
+
+```
+windowMODIS -h
+
+usage: windowMODIS [-h] [-p] [--roi ROI [ROI ...]] [--region] [-b] [-e]
+                   [--parameter] [-d] [--sgrid]
+                   path
+
+Extract a window from MODIS products
+
+positional arguments:
+  path                 Path to processed MODIS h5 files
+
+optional arguments:
+  -h, --help           show this help message and exit
+  -p , --product       MODIS product ID (can be parial match with *)
+  --roi ROI [ROI ...]  Region of interest. Can be LAT/LON point or bounding
+                       box in format llx lly urx ury
+  --region             region 3 letter region code (default is "reg")
+  -b , --begin-date    Start date (YYYYMM)
+  -e , --end-date      End date (YYYYMM)
+  --parameter          VAM parameter code
+  -d , --targetdir     Target directory for GeoTIFFs (default current
+                       directory)
+  --sgrid              Extract (mosaic of) s value grid(s))
+```
+**Usage example:**
+
+![windowMODIS]
+
 
 [downloadMODIS]: img/download.gif
 [processMODIS]: img/process.gif
