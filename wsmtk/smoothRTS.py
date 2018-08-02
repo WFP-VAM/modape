@@ -346,7 +346,7 @@ def main():
     '''
 
     parser = argparse.ArgumentParser(description="Extract a window from MODIS products")
-    parser.add_argument("path", help='Path cointaining raster files')
+    parser.add_argument("path", help='Path containing raster files')
     parser.add_argument("-P","--pattern", help='Pattern to filter file names',default = '*' ,metavar='')
     parser.add_argument("-d","--targetdir", help='Target directory for GeoTIFFs (default current directory)',default=os.getcwd(),metavar='')
     parser.add_argument("-s","--svalue", help='S value for smoothing (has to be log10(s)', metavar='', type = float)
