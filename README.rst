@@ -59,7 +59,7 @@ All executables can be called with a ``-h`` flag for detailed usage.
 For a more detailed tutorial on how to use the executables, please visit `WFP-VAM.github.io/wsmtk <http://WFP-VAM.github.io/wsmtk>`_.
 
 
-Changelog
+CHANGES
 -----
 
 TBD: Initial release
