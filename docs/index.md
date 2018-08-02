@@ -414,6 +414,73 @@ optional arguments:
 
 ![smoothRTS]
 
+
+### smoothCSV
+
+**Description:**
+
+Smooth pixel-timeseries from a CSV file.
+
+The CSV file for `file` is expected to have a specific naming convention and structure:
+
+The first three letters of the filename are expected to be the region code and will be included in the output name.
+
+The first row is skipped by default.
+
+The first column is reserved for metadata, the first 3 rows of the first columns are "ID", "Lon", "Lat".
+
+All columns starting number two are considere separate pixel timeseries, where each timeseries should start with an ID, and with the 2 coordinates lon and lat.
+
+Example:
+
+| -                |  -         | -     | -  |
+| -------------    |---         |       |
+|ID    |Location 1 | Location2  | Location n |
+|Lon   | 25.65        | 26.75           | ...        |      
+|Lat   | 7.92         |  7.78          | ...        |  
+|date 1| 0.62         | 0.62           | ...        |
+|date 2| 0.62         | 0.58           | ...        |
+|date 3| 0.65         | 0.5           | ...        |
+| ...  | ...          | ...           | ...        |
+
+
+The output is saved to CSV in the same directory as the input.
+
+The filename of the output is combined of region code (first three letters) and smoothing method:
+
+- _filt0.csv_ : for fixed s
+- _filtvc.csv_ : for s-optimized
+- _filtvcp.csv_ : for s-optimized with expectile
+
+The optimal s (sopt) and log10(sopt) are appended to each column, if a fixed s is chosen, it's assumed to be sopt.
+
+If expectile smoothing is chosen, the p value is also be appended.
+
+**smoothCSV help:**
+
+```
+$ smooothCSV -h
+
+usage: smoothCSV [-h] [-s] [-S  [...]] [-p] file
+
+Smooth CSV file
+
+positional arguments:
+  file                  CSV file
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -s , --svalue         S value for smoothing (has to be log10(s)
+  -S  [ ...], --srange  [ ...]
+                        S range for V-curve (float log10(s) values as smin
+                        smax sstep - default 0.0 4.0 0.1)
+  -p , --pvalue         Value for asymmetric smoothing (float required)
+```
+**Usage example:**
+
+
+![smoothCSV]
+
 [downloadMODIS]: img/download.gif
 [processMODIS]: img/process.gif
 [smoothMODIS]: img/smooth.gif
