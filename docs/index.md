@@ -249,7 +249,9 @@ Adding the `--sgrid` flag will extract or mosaic the s-grid rather than the smoo
 
 All mosaics/subsets will be saved to the target directory (default current working directory) as GeoTIFF files, in a geographic coordinate system (EPSG:4326 - WGS84) with the naming convetion:
 
-REGION PARAMETER yyyyjddd
+_REGION PARAMETER yyyyjddd_
+
+e.g. regvim2018j169.tif
 
 where REGION should be a three letter code for the region (can be defined with `--region`, default is "reg"), PARAMETER is the VAM parameter code and yyyyjddd is the julian date of the image.
 
