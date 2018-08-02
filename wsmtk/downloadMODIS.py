@@ -18,7 +18,7 @@ def main():
     To query for both MODIS AQUA and TERRA, replace MOD/MYD with M?D. Product IDs also accepted in lowercase.
     '''
 
-    parser = argparse.ArgumentParser(description="Query and download MODIS products (earthdata accound required for download)")
+    parser = argparse.ArgumentParser(description="Query and download MODIS products (Earthdata account required for download)")
     parser.add_argument("product", help='MODIS product ID(s)',nargs='+')
     parser.add_argument("--roi", help='Region of interest. Can be LAT/LON point or bounding box in format llx,lly,urx,ury',nargs='+',required=False)
     parser.add_argument("-c","--collection", help='MODIS collection',default=6,metavar='')
