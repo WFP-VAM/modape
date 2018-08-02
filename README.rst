@@ -55,7 +55,7 @@ Some of these packages (eg. GDAL) can be difficult to build, especially on windo
 Bugs, typos & feature requests
 -----
 
-If you find a bug, see a typo, have some kind of troubles running the module or just simply want to have a feature added, please [submit an issue!](https://github.com/WFP-VAM/wsmtk/issues/new)
+If you find a bug, see a typo, have some kind of troubles running the module or just simply want to have a feature added, please `submit an issue! <https://github.com/WFP-VAM/wsmtk/issues/new>`_
 
 
 Usage tutorial
