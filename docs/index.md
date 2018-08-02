@@ -481,6 +481,15 @@ optional arguments:
 
 ![smoothCSV]
 
+---
+
+created by:
+
+Valentin Pesendorfer, 2018
+valentin.pesendofer@wfp.org
+
+
+
 [downloadMODIS]: img/download.gif
 [processMODIS]: img/process.gif
 [smoothMODIS]: img/smooth.gif
