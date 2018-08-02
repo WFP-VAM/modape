@@ -110,5 +110,54 @@ optional arguments:
 
 ![downloadMODIS]
 
+### processMODIS
+
+**Description:**
+
+Collect raw MODIS hdf files into raw daily HDF5 files for further processing.
+
+After downloading raw MODIS files, they need to be collected into an HDF5 file for smoothing.
+
+During this step, the composite files are converted back to daily data. If information about the compositing day-of-the-year (DOY) is available (e.g. MOD/MYD13A2, the observation is inserted at the respective position. If such information is not availabe, the observation is set to the mitpoint of the compositing period.
+
+For MODIS vegetation products, 16-day TERRA (MOD) and AQUA (MYD) products are interleaved to a combined 8-day product (MXD).
+
+For continuous processing chain, the target directory should remain constant. If the processed HDF5 file already exists, the new raw data is ingested at the correct place, otherwise a new file is created.
+
+The HDF5 files are created in a subdirectory of the target directory (default current working directory), VIM and LTD for vegetation indices and land surface temperature, respectively.
+
+The only mandatory input is ```srcdir```, the directory containing the raw hdf files to be processed.
+
+Currently processing is implemented for MODIS vegetation and MODIS LST products. By default, NDVI and LST_Day will be extracted and processed from the raw hdf files. Additionally all parameters (EVI, LST_Night) can be extracted too by adding ```--all-parameters```.
+
+The default blocksize for processing is set to 120 by 120. When specifying a custom blocksize, make sure the nubmer of rows and colunms divides evenly by the respective blocksize!
+
+
+**downloadMODIS help:**
+
+```
+$ processMODIS -h
+
+usage: processMODIS [-h] [-d] [-c] [--all-parameters] [-b ] srcdir
+
+Process downloaded RAW MODIS hdf files
+
+positional arguments:
+  srcdir               directory with raw MODIS .hdf files
+
+optional arguments:
+  -h, --help           show this help message and exit
+  -d , --targetdir     Target directory for PROCESSED MODIS files (default is
+                       scrdir)
+  -c , --compression   Compression for HDF5 files
+  --all-parameters     Flag to process all possible VAM parameters
+  -b  , --blocksize    Minimum values for row & columns per processing block
+                       (default 120 120)
+```
+**Usage example:**
+
+![processMODIS]
+
 
 [downloadMODIS]: img/download.gif
+[processMODIS]: img/process.gif
