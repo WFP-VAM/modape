@@ -6,7 +6,7 @@ title: Document Center
 
 The Whittaker smoothing toolkit (wsmtk) is a python based smoothing engine for EO-data, combining a state-of-the art Whittaker smoother with a fast processing chain for handling MODIS data.
 
-### Main features
+## Main features
 
 
 Whittaker smoother:
@@ -26,7 +26,7 @@ MODIS processing chain:
 - Fast smoothing, gapfilling and temporal interpolation
 - Extraction of mosaics and subsets from smoothed data as GeoTIFFs in GCS WGS1984
 
-### Installation
+## Installation
 
 Dependencies:
 
@@ -57,11 +57,11 @@ Some of these packages (eg. GDAL) can be difficult to build, especially on windo
     $ pip install wsmtk
 
 
-### Executables
+## Executables
 
 The wsmtk package features some executables, which are mainly for handling and smoothing MODIS data, as well as smoothing arbitrary raster timeseries and pixel timeseries inside CSV files.
 
-#### downloadMODIS
+### downloadMODIS
 
 **Description:**
 
@@ -111,4 +111,4 @@ optional arguments:
 ![downloadMODIS]
 
 
-[downloadMODIS]: img\download.gif
+[downloadMODIS]: img/download.gif
