@@ -352,9 +352,73 @@ optional arguments:
 
 ![producttableMODIS]
 
+### smoothRTS
+
+**Description:**
+
+Smooth and gapfill local raster timeseries which is located in `path`.
+
+If no `-P, --pattern` is specified, the function assumes that only rasters beloging to the timeseries are in the `path` directory.
+
+The user has to make sure that the rasters, which define the timeseries, have a file naming that puts them in the right order when applying a simple sort to the filenames.
+
+If `-S, --srange` or `--soptimize` is specified, the whittaker filter with V-curve will be used. If no s-range value is supplied, the default range 0 to 4 with 0.1 step will be applied.
+
+Nodata values can be specified using the `--nodata` flag. If none is specified, the function will try to read it from input. If that fails, nodata is assumed to be 0.
+
+The resulting smoothed raster files have the same naming as the input files, and will be saved to disk in a subfolder corresponding to the smoothing method applied, in the target directory (default is current working directory).
+
+Additionaly, a config.txt file os saved to disk with the smoothing parameters.
+
+If s-optimization is selected, the resulting s-grid is also saved to disk.
+
+The subdirectories are:
+
+- _./filt0_ for fixed s
+- _./filtvc_ for s-optimization
+- _./filtvcp_ for s-optimization and expectile smoothing
+
+The smoothing currently only runs sequential, so big timeseries or big raster datasets can take some time!
+
+**smoothRTS help:**
+
+```
+$ smoothRTS -h
+
+usage: smoothRTS [-h] [-P] [-d] [-s] [-S  [...]] [-p] [-b] [--nodata]
+                 [--soptimize]
+                 path
+
+Extract a window from MODIS products
+
+positional arguments:
+  path                  Path containing raster files
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -P , --pattern        Pattern to filter file names
+  -d , --targetdir      Target directory for GeoTIFFs (default current
+                        directory)
+  -s , --svalue         S value for smoothing (has to be log10(s)
+  -S  [ ...], --srange  [ ...]
+                        S range for V-curve (float log10(s) values as smin
+                        smax sstep - default 0.0 4.0 0.1)
+  -p , --pvalue         Value for asymmetric smoothing (float required)
+  -b , --blocksize      Processing block side length (default 256)
+  --nodata              NoData value
+  --soptimize           Use V-curve for s value optimization
+
+```
+
+**Usage example:**
+
+![smoothRTS]
+
 [downloadMODIS]: img/download.gif
 [processMODIS]: img/process.gif
 [smoothMODIS]: img/smooth.gif
 [windowMODIS]: img/window.gif
 [infoMODIS]: img/info.gif
 [producttableMODIS]: img/ptable.gif
+[smoothRTS]: img/smoothRTS.gif
+[smoothCSV]: img/smoothCSV.gif
