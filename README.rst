@@ -88,6 +88,7 @@ Bloemberg, T. G. et al. (2010) "Improved Parametric Time Warping for Proteomics"
 Wehrens, R. et al. (2015) "Fast parametric warping of peak lists", Bioinformatics, in press.
 
 -----
+
 Author & maintainer:
 
 Valentin Pesendorfer
