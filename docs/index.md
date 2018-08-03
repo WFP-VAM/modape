@@ -484,12 +484,13 @@ optional arguments:
 
 Last updated on 2018-08-03
 
-
+Terminal recordings created with [asciinema](https://github.com/asciinema/asciinema/blob/develop/LICENSE)
 
 created by:
 
 Valentin Pesendorfer, 2018  
 valentin.pesendofer@wfp.org
+
 
 
 
