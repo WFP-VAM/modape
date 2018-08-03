@@ -247,7 +247,7 @@ The time range required can be controlled with `-b, --begin-date` and `-e, --end
 
 Adding the `--sgrid` flag will extract or mosaic the s-grid rather than the smoothed data.
 
-All mosaics/subsets will be saved to the target directory (default current working directory) as GeoTIFF files, in a geographic coordinate system (EPSG:4326 - WGS84) with the naming convetion:
+All mosaics/subsets will be saved to the target directory (default current working directory) as GeoTIFF files, in a geographic coordinate system (EPSG:4326 - WGS84) with the naming convention:
 
 _REGION PARAMETER yyyyjddd_
 
@@ -368,7 +368,7 @@ Nodata values can be specified using the `--nodata` flag. If none is specified, 
 
 The resulting smoothed raster files have the same naming as the input files, and will be saved to disk in a subfolder corresponding to the smoothing method applied, in the target directory (default is current working directory).
 
-Additionaly, a config.txt file os saved to disk with the smoothing parameters.
+Additionally, a config.txt file is saved to disk with the smoothing parameters.
 
 If s-optimization is selected, the resulting s-grid is also saved to disk.
 
@@ -429,7 +429,7 @@ The first row is skipped by default.
 
 The first column is reserved for metadata, the first 3 rows of the first columns are "ID", "Lon", "Lat".
 
-All columns starting number two are considere separate pixel timeseries, where each timeseries should start with an ID, and with the 2 coordinates lon and lat.
+All columns starting number two are considered separate pixel timeseries, where each timeseries should start with an ID, and with the 2 coordinates lon and lat.
 
 Example:
 
