@@ -57,7 +57,7 @@ setup(
     include_package_data=True,
     classifiers=[
     'Development Status :: 3 - Alpha',
-    'Programming Language :: Python :: 2',
+    'Programming Language :: Python :: 2.7',
     'Programming Language :: Python :: 3',
 ],
     install_requires=['numpy','gdal','h5py','beautifulsoup4','requests','progress','pandas'],
