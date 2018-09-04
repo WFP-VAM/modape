@@ -7,6 +7,7 @@ import argparse
 import datetime
 import pickle
 import re
+import ogr
 
 def main():
     '''Query and download MODIS products.
@@ -94,7 +95,39 @@ def main():
                 # Construct query URL
                 try:
 
-                    if len(args.roi) is 2:
+                    if len(args.roi) == 1:
+
+                        assert args.roi[0][-3:] == 'shp'
+
+                        try:
+
+                            ds = ogr.Open(args.roi[0])
+                            lyr = ds.GetLayer(0)
+
+                            assert lyr.GetFeatureCount() == 1, 'Only single feature SHP files allowed!'
+
+                            feat = lyr.GetFeature(0)
+                            geom = feat.GetGeometryRef()
+                            ring = geom.GetGeometryRef(0)
+                            points = ring.GetPointCount()
+
+                            crds = []
+
+                            for pt in range(points):
+                                lat, lon, z = ring.GetPoint(pt)
+                                crds.append('{},{}'.format(lon,lat))
+
+                            query.append('polygon=' + ','.join(crds))
+
+                            ds = None
+                            lyr = None
+
+                        except:
+                            print('\nError reading polygon file. Traceback:\n\n')
+                            raise
+
+
+                    elif len(args.roi) is 2:
                         query.append('latitude={}&longitude={}'.format(*args.roi))
                     elif len(args.roi) is 4:
                         query.append('bbox={},{},{},{}'.format(*args.roi))
@@ -105,6 +138,7 @@ def main():
                     raise SystemExit('Download of tiled MODIS products requires ROI!')
 
 
+
                 query.append('version={}'.format(args.collection))
                 query.append('date={}/{}'.format(args.begin_date,args.end_date))
 
@@ -112,6 +146,7 @@ def main():
 
 
             # Run query
+            
             print('\nPRODUCT: {}\n'.format(p2))
 
             res = MODISquery(queryURL,targetdir=args.targetdir,begindate=args.begin_date,enddate=args.end_date,global_flag=global_flag,wget=args.wget)
