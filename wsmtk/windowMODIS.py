@@ -140,28 +140,39 @@ def main():
                 # Subset if bbox was supplied
                 try:
                     if args.roi and len(args.roi) > 2:
-                        ds = gdal.Warp(filename,mosaic_ropen.raster,
+
+                        wopt = gdal.WarpOptions(
                         dstSRS='EPSG:4326',
                         outputType=mosaic_ropen.dt_gdal[0],
-                        xRes=mosaic_ropen.resolution_degrees,
-                        yRes=mosaic_ropen.resolution_degrees,
-                        srcNodata = mosaic.nodata,
-                        dstNodata = mosaic.nodata,
+                        xRes = mosaic_ropen.resolution_degrees,
+                        yRes = mosaic_ropen.resolution_degrees,
+                        srcNodata=mosaic.nodata,
+                        dstNodata=mosaic.nodata,
                         outputBounds=(args.roi[0],args.roi[3],args.roi[2],args.roi[1]),
-                        resampleAlg='near')
+                        resampleAlg='near',
+                        multithread=True,
+                        creationOptions=['COMPRESS=LZW','PREDICTOR=2'])
+
+                        ds = gdal.Warp(filename,mosaic_ropen.raster,
+                        options=wopt)
 
                         ds = None
 
                     else:
 
-                        ds = gdal.Warp(filename,mosaic_ropen.raster,
+                        wopt = gdal.WarpOptions(
                         dstSRS='EPSG:4326',
                         outputType=mosaic_ropen.dt_gdal[0],
-                        xRes=mosaic_ropen.resolution_degrees,
-                        yRes=mosaic_ropen.resolution_degrees,
-                        srcNodata = mosaic.nodata,
-                        dstNodata = mosaic.nodata,
-                        resampleAlg='near')
+                        xRes = mosaic_ropen.resolution_degrees,
+                        yRes = mosaic_ropen.resolution_degrees,
+                        srcNodata=mosaic.nodata,
+                        dstNodata=mosaic.nodata,
+                        resampleAlg='near',
+                        multithread=True,
+                        creationOptions=['COMPRESS=LZW','PREDICTOR=2'])
+
+                        ds = gdal.Warp(filename,mosaic_ropen.raster,
+                        options=wopt)
 
                         ds = None
 
@@ -187,28 +198,38 @@ def main():
 
                         if args.roi and len(args.roi) > 2:
 
-                            ds = gdal.Warp(filename,mosaic_ropen.raster,
+                            wopt = gdal.WarpOptions(
                             dstSRS='EPSG:4326',
                             outputType=mosaic_ropen.dt_gdal[0],
-                            xRes=mosaic_ropen.resolution_degrees,
-                            yRes=mosaic_ropen.resolution_degrees,
-                            srcNodata = mosaic.nodata,
-                            dstNodata = mosaic.nodata,
+                            xRes = mosaic_ropen.resolution_degrees,
+                            yRes = mosaic_ropen.resolution_degrees,
+                            srcNodata=mosaic.nodata,
+                            dstNodata=mosaic.nodata,
                             outputBounds=(args.roi[0],args.roi[3],args.roi[2],args.roi[1]),
-                            resampleAlg='near')
+                            resampleAlg='near',
+                            multithread=True,
+                            creationOptions=['COMPRESS=LZW','PREDICTOR=2'])
+
+                            ds = gdal.Warp(filename,mosaic_ropen.raster,
+                            options=wopt)
 
                             ds = None
 
                         else:
 
-                            ds = gdal.Warp(filename,mosaic_ropen.raster,
+                            wopt = gdal.WarpOptions(
                             dstSRS='EPSG:4326',
                             outputType=mosaic_ropen.dt_gdal[0],
-                            xRes=mosaic_ropen.resolution_degrees,
-                            yRes=mosaic_ropen.resolution_degrees,
-                            srcNodata = mosaic.nodata,
-                            dstNodata = mosaic.nodata,
-                            resampleAlg='near')
+                            xRes = mosaic_ropen.resolution_degrees,
+                            yRes = mosaic_ropen.resolution_degrees,
+                            srcNodata=mosaic.nodata,
+                            dstNodata=mosaic.nodata,
+                            resampleAlg='near',
+                            multithread=True,
+                            creationOptions=['COMPRESS=LZW','PREDICTOR=2'])
+
+                            ds = gdal.Warp(filename,mosaic_ropen.raster,
+                            options=wopt)
 
                             ds = None
 
