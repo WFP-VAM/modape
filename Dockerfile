@@ -8,7 +8,7 @@ ENV CPL_ZIP_ENCODING UTF-8
 
 RUN conda install -y python=3.5
 
-RUN apt-get update && apt-get install -y vim gcc
+RUN apt-get update && apt-get install -y vim gcc build-essential
 
 RUN useradd -m worker
 
