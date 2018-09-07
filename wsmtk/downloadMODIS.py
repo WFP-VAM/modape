@@ -114,7 +114,7 @@ def main():
                             crds = []
 
                             for pt in range(points):
-                                lat, lon, z = ring.GetPoint(pt)
+                                lon, lat, z = ring.GetPoint(pt)
                                 crds.append('{},{}'.format(lon,lat))
 
                             query.append('polygon=' + ','.join(crds))
@@ -146,7 +146,7 @@ def main():
 
 
             # Run query
-            
+
             print('\nPRODUCT: {}\n'.format(p2))
 
             res = MODISquery(queryURL,targetdir=args.targetdir,begindate=args.begin_date,enddate=args.end_date,global_flag=global_flag,wget=args.wget)
