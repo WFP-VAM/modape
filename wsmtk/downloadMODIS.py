@@ -95,9 +95,7 @@ def main():
                 # Construct query URL
                 try:
 
-                    if len(args.roi) == 1:
-
-                        assert args.roi[0][-3:] == 'shp'
+                    if len(args.roi) == 1 & os.path.isfile(args.roi):
 
                         try:
 
