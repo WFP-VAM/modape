@@ -1362,8 +1362,14 @@ class MODISmosaic:
         self.v_ix = list(set([re.sub('(h\d+)(v\d+)','\\2',x) for x in self.tiles]))
         self.v_ix.sort()
 
-        # reference tile is top left
-        ref = [x for x in self.files if self.tiles[0] in x][0]
+        # get referece tile identifiers
+
+        ref_tile_h = min([x for x in self.tiles if min(self.h_ix) in x])
+        ref_tile_v = min([x for x in self.tiles if min(self.v_ix) in x])
+
+
+        # vertical reference tile is top (left)
+        ref = [x for x in self.files if ref_tile_v in x][0]
 
         # Read metadata from HDF5
         try:
@@ -1374,7 +1380,7 @@ class MODISmosaic:
                 self.tile_rws = r
                 self.tile_cls = c
                 self.datatype = dset.dtype
-                self.gt = dset.attrs['geotransform']
+                gt_temp_v = dset.attrs['geotransform']
                 self.pj = dset.attrs['projection']
                 self.nodata = dset.attrs['nodata'].item()
 
@@ -1388,6 +1394,21 @@ class MODISmosaic:
 
                 dset = None
                 self.dates = [x.decode() for x in h5f.get('dates')[...]]
+
+
+            # checking referece tile for h
+
+            ref = [x for x in self.files if ref_tile_h in x][0]
+
+            with h5py.File(ref,'r') as h5f:
+                dset = h5f.get('data')
+                gt_temp_h = dset.attrs['geotransform']
+                dset = None
+
+
+            self.gt = [y for x in [gt_temp_h[0:3],gt_temp_v[3:6]] for y in x]
+
+
         except Exception as e:
             print('\nError reading referece file {} for mosaic! Error message: {}\n'.format(ref,e))
             raise
