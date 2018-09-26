@@ -21,7 +21,7 @@ def main():
 
     parser = argparse.ArgumentParser(description="Query and download MODIS products (Earthdata account required for download)")
     parser.add_argument("product", help='MODIS product ID(s)',nargs='+')
-    parser.add_argument("--roi", help='Region of interest. Can be LAT/LON point or bounding box in format llx,lly,urx,ury',nargs='+',required=False)
+    parser.add_argument("--roi", help='Region of interest. Can be LAT/LON point, bounding box in format llx,lly,urx,ury or OGR file (shp, geojson - convex hull will be used)',nargs='+',required=False)
     parser.add_argument("-c","--collection", help='MODIS collection',default=6,metavar='')
     parser.add_argument("-b","--begin-date", help='Start date (YYYY-MM-DD)',default='2000-01-01',metavar='')
     parser.add_argument("-e","--end-date", help='End date (YYYY-MM-DD)',default=datetime.date.today().strftime("%Y-%m-%d"),metavar='')
@@ -95,24 +95,26 @@ def main():
                 # Construct query URL
                 try:
 
-                    if len(args.roi) == 1 & os.path.isfile(args.roi):
+                    if len(args.roi) == 1 & os.path.isfile(args.roi[0]):
 
                         try:
 
                             ds = ogr.Open(args.roi[0])
-                            lyr = ds.GetLayer(0)
+                            lyr = ds.GetLayer()
 
-                            assert lyr.GetFeatureCount() == 1, 'Only single feature SHP files allowed!'
+                            geomcol = ogr.Geometry(ogr.wkbGeometryCollection)
 
-                            feat = lyr.GetFeature(0)
-                            geom = feat.GetGeometryRef()
-                            ring = geom.GetGeometryRef(0)
-                            points = ring.GetPointCount()
+                            for feature in lyr:
+                                geomcol.AddGeometry(feature.GetGeometryRef())
+
+                            hull = geomcol.ConvexHull()
+                            geom = hull.GetGeometryRef(0)
+                            pointcount = geom.GetPointCount()
 
                             crds = []
 
-                            for pt in range(points):
-                                lon, lat, z = ring.GetPoint(pt)
+                            for pt in range(pointcount):
+                                lat, lon, z = geom.GetPoint(pt)
                                 crds.append('{},{}'.format(lon,lat))
 
                             query.append('polygon=' + ','.join(crds))
