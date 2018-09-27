@@ -75,7 +75,7 @@ If both MOD and MYD products are required, using M?D will query/download both MO
 
 Multiple product IDs can be queried and downloaded at the same time. They need to be separated by space (e.g. MOD13A2 MOD11A1)
 
-Downloading data requires valid Earthdata user credentials (register at https://urs.earthdata.nasa.gov/users/new). The download can be performed with Python's request module (default), or with WGET by adding `--wget` (WGET must be available in PATH - this option can be better for global or a big number of products).
+Downloading data requires valid Earthdata user credentials (register at https://urs.earthdata.nasa.gov/users/new). The download can be performed with Python's request module (default), or with ARIA2 by adding `--aria2` (ARIA2 must be available in PATH - this option can be faster for global or a big number of products).
 
 The products are downloaded by default to the current working directory, if no target directory has been supplied by specifying `-d, --targetdir`.
 
@@ -85,7 +85,7 @@ The products are downloaded by default to the current working directory, if no t
 $ downloadMODIS -h
 
 usage: downloadMODIS [-h] [--roi ROI [ROI ...]] [-c] [-b] [-e] [--username]
-                     [--password] [-d] [--download] [--wget]
+                     [--password] [-d] [--download] [--aria2]
                      product [product ...]
 
 Query and download MODIS products (Earthdata account required for download)
@@ -104,7 +104,7 @@ optional arguments:
   --password           Earthdata password (required for download)
   -d , --targetdir     Destination directory
   --download           Download data
-  --wget               Use WGET for downloading
+  --aria2               Use ARIA2 for downloading
 ```
 **Usage example:**
 

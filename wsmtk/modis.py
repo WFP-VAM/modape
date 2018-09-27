@@ -31,7 +31,7 @@ warnings.filterwarnings("ignore", category=UserWarning, module='bs4')
 class MODISquery:
     '''Class for querying and downloading MODIS data.'''
 
-    def __init__(self,url,begindate,enddate,username=None,password=None,targetdir=os.getcwd(),global_flag=None,wget=False):
+    def __init__(self,url,begindate,enddate,username=None,password=None,targetdir=os.getcwd(),global_flag=None,aria2=False):
         '''Creates a MODISquery object.
 
         Args:
@@ -42,7 +42,7 @@ class MODISquery:
             password (str): Earthdata password (only required for download)
             targetdir (str): Path to target directory for downloaded files (default cwd)
             global_flag (bool):Flag indictaing queried product si global file instead of tiled product
-            wget (bool): Use wget for downloading rather then python's requests
+            aria2 (bool): Use aria2 for downloading rather then python's requests
         '''
 
         self.queryURL = url
@@ -54,7 +54,7 @@ class MODISquery:
         self.begin = datetime.datetime.strptime(begindate,'%Y-%m-%d').date()
         self.end = datetime.datetime.strptime(enddate,'%Y-%m-%d').date()
         self.global_flag = global_flag
-        self.wget = wget
+        self.aria2 = aria2
 
         # query for products using session object
         with requests.Session() as sess:
@@ -124,20 +124,20 @@ class MODISquery:
         print('[%s]: Downloading products to %s ...\n' % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),self.targetdir))
 
         # download using WGET if True
-        if self.wget:
+        if self.aria2:
 
             # fail if WGET not installed
             try:
-                temp = check_output(['wget', '--version'])
+                temp = check_output(['aria2c', '--version'])
             except:
-                raise SystemExit("WGET download needs WGET to be available in PATH! Please make sure it's installed and available in PATH!")
+                raise SystemExit("ARIA2 download needs ARIA2 to be available in PATH! Please make sure it's installed and available in PATH!")
 
             # write URLs of query resuls to disk for WGET
             with open(self.targetdir + '/MODIS_filelist.txt','w') as flist:
                 for item in self.modisURLs:
                     flist.write("%s\n" % item)
 
-            args = ['wget','-q','-nd','-nc','-np','-r','-l1','-A','hdf','--show-progress','--progress=bar:force','--no-check-certificate','--user',self.username,'--password',self.password,'-P',self.targetdir]
+            args = ['aria2c','--file-allocation=none','-c','-x','10','-s','10','--http-user',self.username,'--http-passwd',self.password,'-d',self.targetdir]
 
             # execute subprocess
             p = Popen(args + ['-i','{}/MODIS_filelist.txt'.format(self.targetdir)])

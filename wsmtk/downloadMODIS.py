@@ -14,7 +14,7 @@ def main():
 
     This function allows for querying and downloading MODIS products in bulk. Multiple products can be queried and downloaded with one
     function call. For downloading data, valid earthdata credentials are required (to register, visit https://urs.earthdata.nasa.gov/users/new).
-    Data download can be performed with python's request module or with external WGET (needs to be available in PATH) if --wget flag is added.
+    Data download can be performed with python's request module or with external ARIA2 (needs to be available in PATH) if --aria2 flag is added.
 
     To query for both MODIS AQUA and TERRA, replace MOD/MYD with M?D. Product IDs also accepted in lowercase.
     '''
@@ -30,7 +30,7 @@ def main():
     parser.add_argument("-d","--targetdir", help='Destination directory',default=os.getcwd(),metavar='')
     #parser.add_argument("-v","--verbose", help='Verbosity',action='store_true')
     parser.add_argument("--download", help='Download data',action='store_true')
-    parser.add_argument("--wget", help='Use WGET for downloading',action='store_true')
+    parser.add_argument("--aria2", help='Use ARIA2 for downloading',action='store_true')
 
     # fail and print help if no arguments supplied
     if len(sys.argv)==1:
@@ -149,7 +149,7 @@ def main():
 
             print('\nPRODUCT: {}\n'.format(p2))
 
-            res = MODISquery(queryURL,targetdir=args.targetdir,begindate=args.begin_date,enddate=args.end_date,global_flag=global_flag,wget=args.wget)
+            res = MODISquery(queryURL,targetdir=args.targetdir,begindate=args.begin_date,enddate=args.end_date,global_flag=global_flag,aria2=args.aria2)
 
             # If download is True and at least one result, download data
             if args.download and res.results > 0:
