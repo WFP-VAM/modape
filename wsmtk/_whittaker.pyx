@@ -222,12 +222,15 @@ cpdef ws2d_vc_asy(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[float] lla
 
           znew[0:m] = ws2d_internal(y,l,ww)
 
-          z_tmp = abs(znew.data.as_floats- z.data.as_floats)
+          z_tmp = 0.0
+          j = 0
+          for j in range(m):
+            z_tmp += abs(znew.data.as_floats[j] - z.data.as_floats[j])
 
           if z_tmp == 0.0:
             break
 
-          z = znew
+          z [0:m]= znew[0:m]
 
         for i in range(m):
             w_tmp = w[i]
