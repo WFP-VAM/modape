@@ -230,7 +230,7 @@ cpdef ws2d_vc_asy(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[float] lla
           if z_tmp == 0.0:
             break
 
-          z [0:m]= znew[0:m]
+          z[0:m]= znew[0:m]
 
         for i in range(m):
             w_tmp = w[i]
