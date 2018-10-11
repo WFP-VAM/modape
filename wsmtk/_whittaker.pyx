@@ -1,4 +1,4 @@
-#cython: boundscheck=False
+#cython: boundscheck=True
 #cython: wraparound=False
 #cython: cdivision=True
 from cpython.array cimport array, clone
