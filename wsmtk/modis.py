@@ -217,11 +217,10 @@ class MODISquery:
 class MODISrawh5:
     '''Class for raw MODIS data collected into HDF5 file, ready for smoothing.
 
-    Raw modis hdf files are converted into "daily" arrays.
     For MOD/MYD 13 products, MOD and MYD are interleaved into a combined MXD.
     '''
 
-    def __init__(self,files,param=None,targetdir=os.getcwd(),compression='gzip',crow=120,ccol=120):
+    def __init__(self,files,param=None,targetdir=os.getcwd(),compression='gzip',chunk=120*120):
         '''Create a MODISrawh5 class
 
         Args:
@@ -229,19 +228,15 @@ class MODISrawh5:
             param (str): VAM parameter to be processed (default VIM/LTD)
             targetdir (str): Target directory for raw MODIS HDF5 file
             compression (str): Compression method to be used (default = gzip)
-            crow (int): number of rows for chunksize
-            ccol (int): number of columns for chunksize
         '''
 
         self.targetdir = targetdir
         #self.resdict = dict(zip(['250m','500m','1km','0.05_Deg'],[x/112000 for x in [250,500,1000,5600]])) ## commented for original resolution
-        self.paramdict = dict(zip(['VIM','VEM','LTD','LTN'],['NDVI','EVI','LST_Day','LST_Night']))
+        self.paramdict = dict(zip(['VIM', 'VEM', 'LTD', 'LTN'], ['NDVI', 'EVI', 'LST_Day', 'LST_Night']))
         self.compression = compression
-        self.crow = crow
-        self.ccol = ccol
         self.dts_regexp = re.compile(r'.+A(\d{7}).+')
         self.dates = [re.findall(self.dts_regexp,x)[0] for x in files]
-
+        self.chunk = chunk
         self.files = [x for (y,x) in sorted(zip(self.dates,files))]
         self.dates.sort()
         self.nfiles = len(self.files)
@@ -299,13 +294,6 @@ class MODISrawh5:
         ref = gdal.Open(self.ref_file)
         ref_sds = [x[0] for x in ref.GetSubDatasets() if self.paramdict[self.param] in x[0]][0]
 
-        # Doyflag for products that use the actual DOY for converting into daily data
-        try:
-            ref_doy = [x[0] for x in ref.GetSubDatasets() if 'day of the year' in x[0]][0]
-            doyflag = True
-        except IndexError:
-            doyflag = False
-
         ## to be removed
         #res = [value for key, value in self.resdict.items() if key in ref_sds][0] ## commented for original resolution
 
@@ -322,25 +310,17 @@ class MODISrawh5:
         self.cols = rst.RasterXSize
         self.nodata_value = int(rst.GetMetadataItem('_FillValue'))
 
-        if self.rows % self.crow != 0 or self.cols % self.ccol != 0:
-            raise SystemExit('Modulo of processing blocksize and row/column returned non-zero which could have unintended side-effects. Please change size of processing blocks!')
-
         if re.match(r'M[O|Y]D13\w\d',self.ref_file_basename):
             if not self.temporalresolution:
                 self.numberofdays = 16
                 self.temporalresolution = self.numberofdays
-                #totaldays = self.nfiles * self.temporalresolution
+
             else:
                 self.numberofdays = 16
-                #totaldays = self.nfiles * self.temporalresolution + self.temporalresolution
 
         elif re.match(r'M[O|Y]D11\w\d',self.ref_file_basename):
             self.numberofdays = 8
             self.temporalresolution = self.numberofdays
-            #totaldays = self.nfiles * self.temporalresolution
-
-        # Number of days of all files combined - this will be the number of temporal dimension
-        totaldays = ((fromjulian(self.dates[-1]) + datetime.timedelta(self.numberofdays)) - fromjulian(self.dates[0])).days
 
         # Read datatype
         dt = rst.GetRasterBand(1).DataType
@@ -352,7 +332,7 @@ class MODISrawh5:
             print("\n\n Couldn't read data type from dataset. Using default Int16!\n")
             self.datatype = (3,'int16')
 
-        self.chunks = (self.crow,self.ccol,self.temporalresolution)
+        self.chunks = (self.chunk,1)
 
         trans = rst.GetGeoTransform()
         prj = rst.GetProjection()
@@ -367,12 +347,11 @@ class MODISrawh5:
         try:
 
             with h5py.File(self.outname,'x',libver='latest') as h5f:
-                dset = h5f.create_dataset('data',shape=(self.rows,self.cols,totaldays),dtype=self.datatype[1],maxshape=(self.rows,self.cols,None),chunks=self.chunks,compression=self.compression,fillvalue=self.nodata_value)
+                dset = h5f.create_dataset('data',shape=(self.rows*self.cols,self.nfiles),dtype=self.datatype[1],maxshape=(self.rows*self.cols,None),chunks=self.chunks,compression=self.compression,fillvalue=self.nodata_value)
                 h5f.create_dataset('dates',shape=(self.nfiles,),maxshape=(None,),dtype='S8',compression=self.compression)
                 dset.attrs['geotransform'] = trans
                 dset.attrs['projection'] = prj
                 dset.attrs['resolution'] = trans[1] # res ## commented for original resolution
-                dset.attrs['doyflag'] = doyflag
                 dset.attrs['nodata'] = self.nodata_value
                 dset.attrs['numberofdays'] = self.numberofdays
                 dset.attrs['temporalresolution'] = self.temporalresolution
@@ -404,7 +383,6 @@ class MODISrawh5:
                 self.nodata_value = dset.attrs['nodata'].item()
                 self.numberofdays = dset.attrs['numberofdays'].item()
                 self.temporalresolution = dset.attrs['temporalresolution'].item()
-                self.doyindex = int(self.numberofdays / 2)
                 self.datatype = dtype_GDNP(dset.dtype.name)
                 #res  = dset.attrs['Resolution'] ## comment for original resolution
                 dset.attrs['processingtimestamp'] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
@@ -415,184 +393,85 @@ class MODISrawh5:
 
                 # if date list is bigger after insert, datasets need to be resized for additional data
                 if len(dates) > dts.shape[0]:
+                    diff = len(dts) - dts.shape[0]
                     dts.resize((len(dates),))
-                    dset.resize((dset.shape[0],dset.shape[1],((fromjulian(dates[-1]) + datetime.timedelta(self.numberofdays)) - fromjulian(dates[0])).days))
+                    dset.resize((dset.shape[0],len(dates))
 
                 # Write back date list
                 dts[...] = [n.encode("ascii", "ignore") for n in dates]
 
-                # Create daily date list - range(dset.shape[2]+1) includes endpoint in range
-                dates_daily = [(fromjulian(dates[0]) + datetime.timedelta(x)).strftime('%Y%j') for x in range(dset.shape[2]+1)]
-
                 # Manual garbage collect to prevent out of memory
                 [gc.collect() for x in range(3)]
 
+                ### DIFF -> insert after read and then discard the DIFF!
+
                 # Create array and catch MemoryError
                 try:
-                    arr = np.zeros((self.chunks[0],self.chunks[1],self.numberofdays),dtype=self.datatype[1])
+                    arr = np.zeros((self.chunks[0],self.chunks[1]),dtype=self.datatype[1])
 
                 except MemoryError:
-                        print("\n\n Can't allocate arrays for block due to memory restrictions! Make sure enough RAM is availabe, consider using a 64bit PYTHON version or reduce block size.\n\n Traceback:")
+                        print("\n\n Can't allocate arrays for block due to memory restrictions! Make sure enough RAM is availabe or consider using a 64bit PYTHON version.\n\n Traceback:")
                         raise
 
-                # If true, actual DOYs are used to create daily data
-                if dset.attrs['doyflag']:
 
-                    # Arrays for values and DOYs
-                    valarr = np.zeros(self.chunks[0:2],dtype=self.datatype[1])
-                    doyarr = np.zeros(self.chunks[0:2],dtype=self.datatype[1])
+                valarr = np.zeros(self.chunks[0:2],dtype=self.datatype[1])
 
+                bar = Bar('Processing',fill='=',max=self.nfiles,suffix='%(percent)d%%  ')
+                bar.goto(0)
 
-                    I,J = np.ogrid[:self.chunks[0],:self.chunks[1]]
+                for fl in self.files:
 
-                    bar = Bar('Processing',fill='=',max=self.nfiles,suffix='%(percent)d%%  ')
-                    bar.goto(0)
+                    try:
 
-                    # Iterate over files
-                    for fl in self.files:
+                        flix = dates_daily.index(re.sub(self.dts_regexp,'\\1',fl))
 
-                        try:
+                        fl_o = gdal.Open(fl)
 
-                            # Get file index
-                            flix = dates_daily.index(re.sub(self.dts_regexp,'\\1',fl))
+                        val_sds = [x[0] for x in fl_o.GetSubDatasets() if self.paramdict[self.param] in x[0]][0]
 
-                            # Get index list for DOYs
-                            ix = [int(fromjulian(x).strftime('%j')) for x in dates_daily[flix:flix+self.numberofdays]]
+                        blks = itertools.product(range(0,self.rows,self.chunks[0]),range(0,self.cols,self.chunks[1]))
 
-                            fl_o = gdal.Open(fl)
+                        val_rst = gdal.Open(val_sds)
 
-                            val_sds = [x[0] for x in fl_o.GetSubDatasets() if self.paramdict[self.param] in x[0]][0]
+                        for blk in blks:
 
-                            doy_sds = [x[0] for x in fl_o.GetSubDatasets() if 'day of the year' in x[0]][0]
+                            valarr[...] = val_rst.ReadAsArray(xoff=blk[1],yoff=blk[0],xsize=self.chunks[1],ysize=self.chunks[0])
 
-                            # Create blocks for iteration
-                            blks = itertools.product(range(0,self.rows,self.chunks[0]),range(0,self.cols,self.chunks[1]))
+                            arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays]
 
-                            val_rst = gdal.Open(val_sds)
+                            # Doyindex is a previosly defiend point, by default the temporal midpoint
+                            arr[...,self.doyindex] = np.maximum.reduce([arr[...,self.doyindex],valarr[...]])
 
-                            doy_rst = gdal.Open(doy_sds)
+                            dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays] = arr[...]
 
-                            # Iterate over blocks
-                            for blk in blks:
+                    except AttributeError:
 
-                                # Read data
-                                valarr[...] = val_rst.ReadAsArray(xoff=blk[1],yoff=blk[0],xsize=self.chunks[1],ysize=self.chunks[0])
+                        print('Error reading {} ... using NoData value {}.'.format(fl,self.nodata_value))
 
-                                doyarr[...] = doy_rst.ReadAsArray(xoff=blk[1],yoff=blk[0],xsize=self.chunks[1],ysize=self.chunks[0])
+                        blks = itertools.product(range(0,self.rows,self.chunks[0]),range(0,self.cols,self.chunks[1]))
 
-                                # Set negative ndvi and ndvi with doy < 0 to nodata
-                                valarr[valarr < 0] = self.nodata_value
-                                valarr[doyarr < 0] = self.nodata_value
+                        ndarr = np.full((self.chunks[0],self.chunks[1]),self.nodata_value,dtype=self.datatype[1])
 
-                                # Reclassify DOYs to array indices
-                                for doy_ix, doy in enumerate(ix):
+                        for blk in blks:
 
-                                    doyarr[doyarr == doy] = doy_ix
-                                doyarr[doyarr > doy_ix] = doy_ix # Clip to max doy
+                            arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays]
 
-                                # Read data from HDF5
-                                arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays]
+                            arr[...,self.doyindex] = np.maximum.reduce([arr[...,self.doyindex],ndarr])
 
-                                # Maximum in case there's overlap between raw files
-                                arr[I,J,doyarr] = np.maximum.reduce([arr[I,J,doyarr],valarr[...]])
+                            dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays] = arr[...]
 
-                                # Write back to HDF5
-                                dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays] = arr[...]
+                        del ndarr
 
-                        # In case of AttributeException, use NoData for this timestep
-                        except AttributeError:
+                    fl_o = None
+                    val_sds = None
+                    val_rst = None
 
-                            print('Error reading {} ... using NoData value {}.'.format(fl,self.nodata_value))
+                    del fl_o, val_sds, val_rst
 
-                            blks = itertools.product(range(0,self.rows,self.chunks[0]),range(0,self.cols,self.chunks[1]))
+                    bar.next()
+                bar.finish()
 
-                            ndarr = np.full((self.chunks[0],self.chunks[1]),self.nodata_value,dtype=self.datatype[1])
-
-                            for blk in blks:
-
-                                arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays]
-
-                                #arr[arr == 0] = self.nodata_value
-
-                                arr[...,self.doyindex] = np.maximum.reduce([arr[...,self.doyindex],ndarr])
-
-                                dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays] = arr[...]
-
-                            del ndarr
-
-
-                        fl_o = None
-                        val_sds = None
-                        doy_sds = None
-                        val_rst = None
-                        doy_rst = None
-
-                        del fl_o, val_sds, val_rst, doy_sds, doy_rst
-
-                        bar.next()
-                    bar.finish()
-
-                # Processing for products which don't use the DOY
-                else:
-
-                    valarr = np.zeros(self.chunks[0:2],dtype=self.datatype[1])
-
-                    bar = Bar('Processing',fill='=',max=self.nfiles,suffix='%(percent)d%%  ')
-                    bar.goto(0)
-
-                    for fl in self.files:
-
-                        try:
-
-                            flix = dates_daily.index(re.sub(self.dts_regexp,'\\1',fl))
-
-                            fl_o = gdal.Open(fl)
-
-                            val_sds = [x[0] for x in fl_o.GetSubDatasets() if self.paramdict[self.param] in x[0]][0]
-
-                            blks = itertools.product(range(0,self.rows,self.chunks[0]),range(0,self.cols,self.chunks[1]))
-
-                            val_rst = gdal.Open(val_sds)
-
-                            for blk in blks:
-
-                                valarr[...] = val_rst.ReadAsArray(xoff=blk[1],yoff=blk[0],xsize=self.chunks[1],ysize=self.chunks[0])
-
-                                arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays]
-
-                                # Doyindex is a previosly defiend point, by default the temporal midpoint
-                                arr[...,self.doyindex] = np.maximum.reduce([arr[...,self.doyindex],valarr[...]])
-
-                                dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays] = arr[...]
-
-                        except AttributeError:
-
-                            print('Error reading {} ... using NoData value {}.'.format(fl,self.nodata_value))
-
-                            blks = itertools.product(range(0,self.rows,self.chunks[0]),range(0,self.cols,self.chunks[1]))
-
-                            ndarr = np.full((self.chunks[0],self.chunks[1]),self.nodata_value,dtype=self.datatype[1])
-
-                            for blk in blks:
-
-                                arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays]
-
-                                arr[...,self.doyindex] = np.maximum.reduce([arr[...,self.doyindex],ndarr])
-
-                                dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays] = arr[...]
-
-                            del ndarr
-
-                        fl_o = None
-                        val_sds = None
-                        val_rst = None
-
-                        del fl_o, val_sds, val_rst
-
-                        bar.next()
-                    bar.finish()
-
-                print('\ndone.\n')
+            print('\ndone.\n')
 
         except:
             print('Error updating {}! File may be corrupt, consider creating the file from scratch, or closer investigation. \n\nError message: \n'.format(self.outname))
