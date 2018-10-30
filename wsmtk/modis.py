@@ -273,10 +273,10 @@ class MODISrawh5:
             self.temporalresolution = 8
         else:
             self.product = re.findall(ppatt,self.ref_file_basename)
-            if re.match(r'M[O|Y]D13\w\d',self.product):
+            if re.match(r'M[O|Y]D13\w\d',self.product[0]):
                 self.temporalresolution = 16
 
-            elif re.match(r'M[O|Y]D11\w\d',self.product):
+            elif re.match(r'M[O|Y]D11\w\d',self.product[0]):
                 self.temporalresolution = 8
 
         # Name of file to be created/updated
@@ -335,8 +335,9 @@ class MODISrawh5:
                 dset.attrs['projection'] = prj
                 dset.attrs['resolution'] = trans[1] # res ## commented for original resolution
                 dset.attrs['nodata'] = self.nodata_value
-                dset.attrs['numberofdays'] = self.numberofdays
                 dset.attrs['temporalresolution'] = self.temporalresolution
+                dset.attrs['RasterXSize'] = ncols
+                dset.attrs['RasterYSize'] = nrows
 
             self.exists = True
             print('done.\n')
@@ -361,20 +362,21 @@ class MODISrawh5:
                 dts  = h5f.get('dates')
                 self.chunks = dset.chunks
                 self.nodata_value = dset.attrs['nodata'].item()
+                self.ncols = dset.attrs['RasterXSize'].item()
+                self.nrows = dset.attrs['RasterYSize'].item()
                 self.datatype = dtype_GDNP(dset.dtype.name)
                 dset.attrs['processingtimestamp'] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
-                # Load any existing dates
-                dates_h5 = [x.decode() for x in dts[...] if len(x) > 0 and x.decode() not in self.rawdates]
+                # Load any existing dates and combine with new dates
+                dates_combined = [x.decode() for x in dts[...] if len(x) > 0 and x.decode() not in self.rawdates]
 
-                # Combine with new dates
-                dates_combined = np.concatenate([dates_h5,self.rawdates])
+                [dates_combined.append(x) for x in self.rawdates]
 
                 # New total temporal length
                 n = len(dates_combined)
 
                 # if new total temporal length is bigger than dataset, datasets need to be resized for additional data
-                if n > dts.shape[1]:
+                if n > dset.shape[1]:
                     dts.resize((n,))
                     dset.resize((dset.shape[0],n))
 
@@ -398,11 +400,11 @@ class MODISrawh5:
 
                 handler.open()
 
-                ysize = self.chunks[0]//self.rows
+                ysize = self.chunks[0]//self.nrows
 
                 for b in range(0, dset.shape[0], self.chunks[0]):
 
-                     yoff = b//self.rows
+                    yoff = b//self.nrows
 
                     for b1 in range(0, n, self.chunks[1]):
 
@@ -412,7 +414,9 @@ class MODISrawh5:
 
                     for fix,f in enumerate(self.files):
 
-                        arr[...,dates_combined.index(self.rawdates[fix])] = handler.handles[fix].ReadAsArray(xoff=0,yoff=yoff,xsize=self.rows,ysize=ysize).flatten()
+                        arr[...,dates_combined.index(self.rawdates[fix])] = handler.handles[fix].ReadAsArray(xoff=0,yoff=yoff,xsize=self.ncols,ysize=ysize).flatten()
+
+                    arr = arr[...,sort_ix]
 
                     for b1 in range(0, n, self.chunks[1]):
 
