@@ -93,6 +93,51 @@ class SessionWithHeaderRedirection(requests.Session):
 
         return
 
+class FileHandler:
+    ''' Filehandler class to handle GDAL file references'''
+
+    def __init__(self, files, sds):
+        ''' Create handler instance
+
+        Args:
+            files (list): List of total file paths
+            sds (str): Subdataset to extract
+        '''
+
+        self.files = files
+        self.sds = sds
+
+    def open(self):
+        '''Open the files and store handle'''
+
+        self.handles = []
+
+        for ix, f in enumerate(self.files):
+
+            # try statement to catch problem with reading file
+
+            try:
+
+                fl_o = gdal.Open(f)
+
+                val_sds = [x[0] for x in fl_o.GetSubDatasets() if self.sds in x[0]][0]
+
+                self.handles.append(gdal.Open(val_sds))
+
+                fl_o = None
+
+
+            except AttributeError:
+
+                self.handles.append(None)
+
+    def close(self):
+        '''Open the files'''
+
+        for ii in range(len(self.handles)):
+            self.handles[ii] = None
+
+
 def txx(x):
     '''Converts tempint integer to flag.'''
 
