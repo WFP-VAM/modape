@@ -235,10 +235,10 @@ class MODISrawh5:
         self.paramdict = dict(zip(['VIM', 'VEM', 'LTD', 'LTN'], ['NDVI', 'EVI', 'LST_Day', 'LST_Night']))
         self.compression = compression
         self.dts_regexp = re.compile(r'.+A(\d{7}).+')
-        self.dates = [re.findall(self.dts_regexp,x)[0] for x in files]
-        self.chunk = chunk
-        self.files = [x for (y,x) in sorted(zip(self.dates,files))]
-        self.dates.sort()
+        self.rawdates = [re.findall(self.dts_regexp,x)[0] for x in files]
+        self.chunks = (chunk,10) # rows and cols, where cols represent temporal steps
+        self.files = [x for (y,x) in sorted(zip(self.rawdates,files))]
+        self.rawdates.sort()
         self.nfiles = len(self.files)
         self.ref_file = self.files[0]
         self.ref_file_basename = os.path.basename(self.ref_file)
@@ -273,7 +273,11 @@ class MODISrawh5:
             self.temporalresolution = 8
         else:
             self.product = re.findall(ppatt,self.ref_file_basename)
-            self.temporalresolution = None
+            if re.match(r'M[O|Y]D13\w\d',self.product):
+                self.temporalresolution = 16
+
+            elif re.match(r'M[O|Y]D11\w\d',self.product):
+                self.temporalresolution = 8
 
         # Name of file to be created/updated
         self.outname = '{}/{}/{}.{}.h5'.format(
@@ -294,33 +298,13 @@ class MODISrawh5:
         ref = gdal.Open(self.ref_file)
         ref_sds = [x[0] for x in ref.GetSubDatasets() if self.paramdict[self.param] in x[0]][0]
 
-        ## to be removed
-        #res = [value for key, value in self.resdict.items() if key in ref_sds][0] ## commented for original resolution
-
-        ## commented for original resolution
-        #rst = gdal.Warp('', ref_sds, dstSRS='EPSG:4326', format='VRT',
-        #                              outputType=gdal.GDT_Float32, xRes=res, yRes=res)
-
         # reference raster
         rst = gdal.Open(ref_sds)
-
         ref_sds = None
 
-        self.rows = rst.RasterYSize
-        self.cols = rst.RasterXSize
+        nrows = rst.RasterYSize
+        ncols = rst.RasterXSize
         self.nodata_value = int(rst.GetMetadataItem('_FillValue'))
-
-        if re.match(r'M[O|Y]D13\w\d',self.ref_file_basename):
-            if not self.temporalresolution:
-                self.numberofdays = 16
-                self.temporalresolution = self.numberofdays
-
-            else:
-                self.numberofdays = 16
-
-        elif re.match(r'M[O|Y]D11\w\d',self.ref_file_basename):
-            self.numberofdays = 8
-            self.temporalresolution = self.numberofdays
 
         # Read datatype
         dt = rst.GetRasterBand(1).DataType
@@ -331,8 +315,6 @@ class MODISrawh5:
         except IndexError:
             print("\n\n Couldn't read data type from dataset. Using default Int16!\n")
             self.datatype = (3,'int16')
-
-        self.chunks = (self.chunk,1)
 
         trans = rst.GetGeoTransform()
         prj = rst.GetProjection()
@@ -347,7 +329,7 @@ class MODISrawh5:
         try:
 
             with h5py.File(self.outname,'x',libver='latest') as h5f:
-                dset = h5f.create_dataset('data',shape=(self.rows*self.cols,self.nfiles),dtype=self.datatype[1],maxshape=(self.rows*self.cols,None),chunks=self.chunks,compression=self.compression,fillvalue=self.nodata_value)
+                dset = h5f.create_dataset('data',shape=(nrows*ncols,self.nfiles),dtype=self.datatype[1],maxshape=(nrows*ncols,None),chunks=self.chunks,compression=self.compression,fillvalue=self.nodata_value)
                 h5f.create_dataset('dates',shape=(self.nfiles,),maxshape=(None,),dtype='S8',compression=self.compression)
                 dset.attrs['geotransform'] = trans
                 dset.attrs['projection'] = prj
@@ -378,100 +360,71 @@ class MODISrawh5:
                 dset = h5f.get('data')
                 dts  = h5f.get('dates')
                 self.chunks = dset.chunks
-                self.rows = dset.shape[0]
-                self.cols = dset.shape[1]
                 self.nodata_value = dset.attrs['nodata'].item()
-                self.numberofdays = dset.attrs['numberofdays'].item()
-                self.temporalresolution = dset.attrs['temporalresolution'].item()
                 self.datatype = dtype_GDNP(dset.dtype.name)
-                #res  = dset.attrs['Resolution'] ## comment for original resolution
                 dset.attrs['processingtimestamp'] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
-                # Insert new dates into existing date list
-                dates = [x.decode() for x in dts[...] if len(x) > 0]
-                [bisect.insort_left(dates,x) for x in self.dates if x not in dates]
+                # Load any existing dates
+                dates_h5 = [x.decode() for x in dts[...] if len(x) > 0 and x.decode() not in self.rawdates]
 
-                # if date list is bigger after insert, datasets need to be resized for additional data
-                if len(dates) > dts.shape[0]:
-                    diff = len(dts) - dts.shape[0]
-                    dts.resize((len(dates),))
-                    dset.resize((dset.shape[0],len(dates))
+                # Combine with new dates
+                dates_combined = np.concatenate([dates_h5,self.rawdates])
 
-                # Write back date list
-                dts[...] = [n.encode("ascii", "ignore") for n in dates]
+                # New total temporal length
+                n = len(dates_combined)
+
+                # if new total temporal length is bigger than dataset, datasets need to be resized for additional data
+                if n > dts.shape[1]:
+                    dts.resize((n,))
+                    dset.resize((dset.shape[0],n))
+
+                # Sorting index to ensure temporal continuity
+                sort_ix = np.argsort(dates_combined)
 
                 # Manual garbage collect to prevent out of memory
                 [gc.collect() for x in range(3)]
 
-                ### DIFF -> insert after read and then discard the DIFF!
 
-                # Create array and catch MemoryError
-                try:
-                    arr = np.zeros((self.chunks[0],self.chunks[1]),dtype=self.datatype[1])
+                # preallocate array
+                arr = np.zeros((self.chunks[0],n),dtype=self.datatype[1])
 
-                except MemoryError:
-                        print("\n\n Can't allocate arrays for block due to memory restrictions! Make sure enough RAM is availabe or consider using a 64bit PYTHON version.\n\n Traceback:")
-                        raise
+                #bar = Bar('Processing',fill='=',max=self.nfiles,suffix='%(percent)d%%  ')
 
+                #bar.goto(0)
 
-                valarr = np.zeros(self.chunks[0:2],dtype=self.datatype[1])
+                # Open all files and keep reference in handler
 
-                bar = Bar('Processing',fill='=',max=self.nfiles,suffix='%(percent)d%%  ')
-                bar.goto(0)
+                handler = FileHandler(self.files,self.paramdict[self.param])
 
-                for fl in self.files:
+                handler.open()
 
-                    try:
+                ysize = self.chunks[0]//self.rows
 
-                        flix = dates_daily.index(re.sub(self.dts_regexp,'\\1',fl))
+                for b in range(0, dset.shape[0], self.chunks[0]):
 
-                        fl_o = gdal.Open(fl)
+                     yoff = b//self.rows
 
-                        val_sds = [x[0] for x in fl_o.GetSubDatasets() if self.paramdict[self.param] in x[0]][0]
+                    for b1 in range(0, n, self.chunks[1]):
 
-                        blks = itertools.product(range(0,self.rows,self.chunks[0]),range(0,self.cols,self.chunks[1]))
+                        arr[..., b1:b1+self.chunks[1]] = dset[b:b+self.chunks[0], b1:b1+self.chunks[1]]
 
-                        val_rst = gdal.Open(val_sds)
+                    del b1
 
-                        for blk in blks:
+                    for fix,f in enumerate(self.files):
 
-                            valarr[...] = val_rst.ReadAsArray(xoff=blk[1],yoff=blk[0],xsize=self.chunks[1],ysize=self.chunks[0])
+                        arr[...,dates_combined.index(self.rawdates[fix])] = handler.handles[fix].ReadAsArray(xoff=0,yoff=yoff,xsize=self.rows,ysize=ysize).flatten()
 
-                            arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays]
+                    for b1 in range(0, n, self.chunks[1]):
 
-                            # Doyindex is a previosly defiend point, by default the temporal midpoint
-                            arr[...,self.doyindex] = np.maximum.reduce([arr[...,self.doyindex],valarr[...]])
+                        dset[b:b+self.chunks[0], b1:b1+self.chunks[1]] = arr[..., b1:b1+self.chunks[1]]
 
-                            dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays] = arr[...]
+                handler.close()
 
-                    except AttributeError:
+                # Write back date list
+                dates_combined.sort()
+                dts[...] = [n.encode("ascii", "ignore") for n in dates_combined]
 
-                        print('Error reading {} ... using NoData value {}.'.format(fl,self.nodata_value))
-
-                        blks = itertools.product(range(0,self.rows,self.chunks[0]),range(0,self.cols,self.chunks[1]))
-
-                        ndarr = np.full((self.chunks[0],self.chunks[1]),self.nodata_value,dtype=self.datatype[1])
-
-                        for blk in blks:
-
-                            arr[...] =  dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays]
-
-                            arr[...,self.doyindex] = np.maximum.reduce([arr[...,self.doyindex],ndarr])
-
-                            dset[blk[0]:(blk[0]+self.chunks[0]),blk[1]:(blk[1]+self.chunks[1]),flix:flix+self.numberofdays] = arr[...]
-
-                        del ndarr
-
-                    fl_o = None
-                    val_sds = None
-                    val_rst = None
-
-                    del fl_o, val_sds, val_rst
-
-                    bar.next()
-                bar.finish()
-
-            print('\ndone.\n')
+            #print('\ndone.\n')
 
         except:
             print('Error updating {}! File may be corrupt, consider creating the file from scratch, or closer investigation. \n\nError message: \n'.format(self.outname))
