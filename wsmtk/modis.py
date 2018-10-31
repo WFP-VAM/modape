@@ -228,6 +228,7 @@ class MODISrawh5:
             param (str): VAM parameter to be processed (default VIM/LTD)
             targetdir (str): Target directory for raw MODIS HDF5 file
             compression (str): Compression method to be used (default = gzip)
+            chunk: Number of pixels per chunk (needs to define equal sized chunks!)
         '''
 
         self.targetdir = targetdir
