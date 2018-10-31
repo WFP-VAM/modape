@@ -301,9 +301,20 @@ class MODISrawh5:
         # reference raster
         rst = gdal.Open(ref_sds)
         ref_sds = None
+        ref = None
 
         nrows = rst.RasterYSize
         ncols = rst.RasterXSize
+
+        # Check if chunksize is OK
+        try:
+            assert ((nrows*ncols)/self.chunks[0]).is_integer(), "Number of chunks not equal!"
+        except AssertionError:
+            print('\n\nChunksize must result in equal number of chunks. Please adjust chunksize!')
+            rst = None
+            raise
+
+
         self.nodata_value = int(rst.GetMetadataItem('_FillValue'))
 
         # Read datatype
