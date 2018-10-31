@@ -220,24 +220,20 @@ class MODISrawh5:
     For MOD/MYD 13 products, MOD and MYD are interleaved into a combined MXD.
     '''
 
-    def __init__(self,files,param=None,targetdir=os.getcwd(),compression='gzip',chunk=120*120):
+    def __init__(self,files,param=None,targetdir=os.getcwd()):
         '''Create a MODISrawh5 class
 
         Args:
             files ([str]): A list of absolute paths to MODIS raw hdf files to be processed
             param (str): VAM parameter to be processed (default VIM/LTD)
             targetdir (str): Target directory for raw MODIS HDF5 file
-            compression (str): Compression method to be used (default = gzip)
-            chunk: Number of pixels per chunk (needs to define equal sized chunks!)
         '''
 
         self.targetdir = targetdir
         #self.resdict = dict(zip(['250m','500m','1km','0.05_Deg'],[x/112000 for x in [250,500,1000,5600]])) ## commented for original resolution
         self.paramdict = dict(zip(['VIM', 'VEM', 'LTD', 'LTN'], ['NDVI', 'EVI', 'LST_Day', 'LST_Night']))
-        self.compression = compression
         self.dts_regexp = re.compile(r'.+A(\d{7}).+')
         self.rawdates = [re.findall(self.dts_regexp,x)[0] for x in files]
-        self.chunks = (chunk,10) # rows and cols, where cols represent temporal steps
         self.files = [x for (y,x) in sorted(zip(self.rawdates,files))]
         self.rawdates.sort()
         self.nfiles = len(self.files)
@@ -291,8 +287,13 @@ class MODISrawh5:
         ref = None
 
 
-    def create(self):
-        '''Creates the HDF5 file.'''
+    def create(self,compression='gzip',chunk=None):
+        '''Creates the HDF5 file.
+
+        Args:
+            compression (str): Compression method to be used (default = gzip)
+            chunk (int): Number of pixels per chunk (needs to define equal sized chunks!)
+        '''
 
         print('\nCreating file: {} ... '.format(self.outname), end='')
 
@@ -306,6 +307,12 @@ class MODISrawh5:
 
         nrows = rst.RasterYSize
         ncols = rst.RasterXSize
+
+        if not chunk:
+            # default chunksize (nrows, cols)
+            self.chunks = ((nrows*ncols)//25,10)
+        else:
+            self.chunks = (chunk,10)
 
         # Check if chunksize is OK
         try:
@@ -341,8 +348,8 @@ class MODISrawh5:
         try:
 
             with h5py.File(self.outname,'x',libver='latest') as h5f:
-                dset = h5f.create_dataset('data',shape=(nrows*ncols,self.nfiles),dtype=self.datatype[1],maxshape=(nrows*ncols,None),chunks=self.chunks,compression=self.compression,fillvalue=self.nodata_value)
-                h5f.create_dataset('dates',shape=(self.nfiles,),maxshape=(None,),dtype='S8',compression=self.compression)
+                dset = h5f.create_dataset('data',shape=(nrows*ncols,self.nfiles),dtype=self.datatype[1],maxshape=(nrows*ncols,None),chunks=self.chunks,compression=compression,fillvalue=self.nodata_value)
+                h5f.create_dataset('dates',shape=(self.nfiles,),maxshape=(None,),dtype='S8',compression=compression)
                 dset.attrs['geotransform'] = trans
                 dset.attrs['projection'] = prj
                 dset.attrs['resolution'] = trans[1] # res ## commented for original resolution
