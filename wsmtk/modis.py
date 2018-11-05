@@ -419,11 +419,11 @@ class MODISrawh5:
 
                 handler.open()
 
-                ysize = self.chunks[0]//self.nrows
+                ysize = self.chunks[0]//self.ncols
 
                 for b in range(0, dset.shape[0], self.chunks[0]):
 
-                    yoff = b//self.nrows
+                    yoff = b//self.ncols
 
                     for b1 in range(0, n, self.chunks[1]):
 
