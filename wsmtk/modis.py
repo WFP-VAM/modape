@@ -295,7 +295,7 @@ class MODISrawh5:
             chunk (int): Number of pixels per chunk (needs to define equal sized chunks!)
         '''
 
-        print('\nCreating file: {} ... '.format(self.outname), end='')
+        #print('\nCreating file: {} ... '.format(self.outname), end='')
 
         ref = gdal.Open(self.ref_file)
         ref_sds = [x[0] for x in ref.GetSubDatasets() if self.paramdict[self.param] in x[0]][0]
@@ -359,7 +359,7 @@ class MODISrawh5:
                 dset.attrs['RasterYSize'] = nrows
 
             self.exists = True
-            print('done.\n')
+            #print('done.\n')
 
         except:
             print('\n\nError creating {}! Check input parameters (especially if compression/filter is available) and try again. Corrupt file will be removed now. \n\nError message: \n'.format(self.outname))
@@ -372,7 +372,7 @@ class MODISrawh5:
         When a new HDF5 file is created, uodate will also handle the first data ingest.
         '''
 
-        print('Processing MODIS files ...\n')
+        #print('Processing MODIS files ...\n')
 
         try:
 

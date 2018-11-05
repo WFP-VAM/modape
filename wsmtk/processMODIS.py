@@ -8,6 +8,8 @@ import argparse
 import datetime
 import re
 import traceback
+from progress.bar import Bar
+import time
 from contextlib import contextmanager, closing
 import multiprocessing as mp
 
@@ -58,6 +60,7 @@ def main():
     parser.add_argument("--all-parameters", help='Flag to process all possible VAM parameters',action='store_true')
     parser.add_argument("-c","--chunksize", help='Number of pixels per block (value needs to result in integer number of blocks)',type=int,metavar='')
     parser.add_argument("--parallel-tiles", help='Number of tiles processed in parallel (default = None)',default=1,type=int,metavar='')
+    parser.add_argument("--quiet", help='Be quiet',action='store_true')
 
     # Fail and print help if no arguments supplied
     if len(sys.argv)==1:
@@ -135,6 +138,9 @@ def main():
 
     if args.parallel_tiles > 1:
 
+        if not args.quiet:
+            print('\n\n[{}]: Start processing - {} tiles in parallel ...'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),args.parallel_tiles))
+
         with closing(mp.Pool(processes=args.parallel_tiles)) as pool:
 
             res = pool.map(execute_process,[processing_dict[g] for g in groups])
@@ -142,13 +148,27 @@ def main():
         pool.close()
         pool.join()
 
+        if not args.quiet:
+            print('[{}]: Done.'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
+
     else:
+
+        if not args.quiet:
+            print('\n\n[{}]: Start processing ... \n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
+
+            bar = Bar('Processing',fill='=',max=len(groups),suffix='%(percent)d%%  ')
+            bar.goto(0)
 
         for g in groups:
 
             execute_process(processing_dict[g])
 
+            if not args.quiet:
+                bar.next()
 
+        if not args.quiet:
+            bar.finish()
+            print('\n[{}]: Done.'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
 
 if __name__ == '__main__':
     main()
