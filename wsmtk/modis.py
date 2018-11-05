@@ -433,7 +433,15 @@ class MODISrawh5:
 
                     for fix,f in enumerate(self.files):
 
-                        arr[...,dates_combined.index(self.rawdates[fix])] = handler.handles[fix].ReadAsArray(xoff=0,yoff=yoff,xsize=self.ncols,ysize=ysize).flatten()
+                        try:
+
+                            arr[...,dates_combined.index(self.rawdates[fix])] = handler.handles[fix].ReadAsArray(xoff=0,yoff=yoff,xsize=self.ncols,ysize=ysize).flatten()
+
+                        except AttributeError:
+
+                            print('Error reading from {}. Using nodata ({}) value.'.format(f,self.nodata_value))
+
+                            arr[...,dates_combined.index(self.rawdates[fix])] = self.nodata_value
 
                     arr = arr[...,sort_ix]
 
