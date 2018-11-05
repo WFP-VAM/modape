@@ -36,7 +36,7 @@ def execute_process(pdict):
 
             print('\nError processing product {}, parameter {}. \n\n Traceback:\n'.format(rh5.product,par))
 
-        traceback.print_exc()
+            traceback.print_exc()
         print('\n')
 
 
