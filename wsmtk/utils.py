@@ -238,7 +238,7 @@ def execute_ws2d(ix):
     Args:
         ix ([int]): List of indices as integer
     '''
-    arr = tonumpyarray(shared_array)
+
     arr.shape = dim
     for ii in ix:
         if (arr[ii,] != nd ).any():
@@ -246,8 +246,7 @@ def execute_ws2d(ix):
 
 def execute_ws2d_sgrid(ix):
     '''Execute whittaker smoother with s from grid in worker.'''
-    arr = tonumpyarray(shared_array)
-    sarr = tonumpyarray(shared_sarr)
+
     arr.shape = dim
 
     for ii in ix:
@@ -256,8 +255,7 @@ def execute_ws2d_sgrid(ix):
 
 def execute_ws2d_vc(ix):
     '''Execute whittaker smoother with V-curve optimization of s in worker.'''
-    arr = tonumpyarray(shared_array)
-    sarr = tonumpyarray(shared_sarr)
+
     arr.shape = dim
 
     for ii in ix:
@@ -266,8 +264,7 @@ def execute_ws2d_vc(ix):
 
 def execute_ws2d_vc_asy(ix):
     '''Execute asymmetric whittaker smoother with V-curve optimization of s in worker.'''
-    arr = tonumpyarray(shared_array)
-    sarr = tonumpyarray(shared_sarr)
+
     arr.shape = dim
 
     for ii in ix:
