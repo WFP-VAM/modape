@@ -157,6 +157,33 @@ def fromjulian(x):
 
     return datetime.datetime.strptime(x,'%Y%j').date()
 
+def tvec(yr,step):
+    '''Create MODIS-like date vector with given timestep.'''
+
+    start = fromjulian('{}001'.format(yr)) + datetime.timedelta()
+    tdiff = fromjulian('{}001'.format(yr+1)) - start
+    tv = [(start + datetime.timedelta(x)).strftime('%Y%j') for x in range(0,tdiff.days,step)]
+    return(tv)
+
+def pentvec(yr):
+    '''Create pentadal date vector for given year with fixed days.'''
+
+    t = []
+
+    for m in range(1,13):
+        for d in ['05','10','15','20','25','30']:
+            try:
+                t.append(datetime.datetime.strptime('{}{:02d}{}'.format(yr,m,d),'%Y%m%d').date().strftime('%Y%j'))
+            except ValueError:
+                pass
+    return(t)
+
+def dekvec(yr):
+    '''Create dekadal date vector for given year with fixed days.'''
+
+    return([datetime.datetime.strptime(str(yr)+y+x,'%Y%m%d').date().strftime('%Y%j') for x in ['05','15','25'] for y in [str(z).zfill(2) for z in range(1,13)]])
+
+
 def init_shared(ncell):
     '''Create shared value array for smoothing.'''
     shared_array_base = multiprocessing.Array(ctypes.c_float,ncell,lock=False)
