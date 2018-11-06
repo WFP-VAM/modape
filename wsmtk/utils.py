@@ -212,24 +212,36 @@ def init_worker(shared_array_,parameters_):
         parameters_: Dictionary returned by init_parameters
     '''
 
-    global shared_array
-    global nd
-    global s
-    global srange
-    global p
-    global dim
-    shared_array = tonumpyarray(shared_array_)
-    nd = parameters_['nd']
-    s = parameters_['s']
-    srange = parameters_['srange']
-    p = parameters_['p']
-    dim = parameters_['dim']
+    parameters = parameters_
+
+    #global shared_array
+    #global nd
+    #global s
+    #global srange
+    #global p
+    #global dim
+
+    #nd = parameters_['nd']
+    #s = parameters_['s']
+    #srange = parameters_['srange']
+    #p = parameters_['p']
+    #dim = parameters_['dim']
+
+    arr_raw = tonumpyarray(shared_array_)
+    arr_raw.shape = parameters['rdim']
 
     try:
-        global shared_sarr
-        shared_sarr = tonumpyarray(parameters_['shared_sarr'])
-    except:
-        shared_sarr = None
+         arr_sgrid = tonumparray(parameters['shared_array_sgrid'])
+    except KeyError:
+         arr_sgrid = None
+
+    try:
+         arr_smooth = tonumparray(parameters['shared_array_smooth'])
+         arr_smooth.shape = parameters['sdim']
+    except AttributeError:
+         arr_smooth = None
+
+
 
 
 def execute_ws2d(ix):
@@ -239,34 +251,47 @@ def execute_ws2d(ix):
         ix ([int]): List of indices as integer
     '''
 
-    arr.shape = dim
-    for ii in ix:
-        if (arr[ii,] != nd ).any():
-            arr[ii,] = ws2d(y = arr[ii,], lmda = s, w = np.array((arr[ii,] != nd) * 1,dtype='float32'))
+    arr_raw[ix,:] = ws2d(y = arr_raw[ix,:], lmda = parameters['s'], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1, dtype='float32'))
+
+    if arr_smooth:
+
+        z2 = parameters['vec_dly'].copy()
+        z2[ z2 != parameters['nd'] ] = arr_raw[ix,:]
+        z2[...] = ws2d(y = z2, lmda = 0.0001, w = np.array((z2 != parameters['nd']) * 1,dtype='float32'))
+        arr_smt[ii,:] = z2[parameters['dix']]
 
 def execute_ws2d_sgrid(ix):
     '''Execute whittaker smoother with s from grid in worker.'''
 
     arr.shape = dim
+    shared_sarr = tonumparray(parameters['shared_sarr'])
+    nd = parameters['nd']
 
     for ii in ix:
-        if (arr[ii,] != nd ).any():
-            arr[ii,] = ws2d(y = arr[ii,], lmda = 10**sarr[ii], w = np.array((arr[ii,] != nd ) * 1,dtype='float32'))
+        if (arr_raw[ii,] != nd ).any():
+            arr_raw[ii,] = ws2d(y = arr_raw[ii,], lmda = 10**arr_sgrid[ii], w = np.array((arr_raw[ii,] != nd ) * 1,dtype='float32'))
 
 def execute_ws2d_vc(ix):
     '''Execute whittaker smoother with V-curve optimization of s in worker.'''
 
     arr.shape = dim
+    shared_sarr = tonumparray(parameters['shared_sarr'])
+    nd = parameters['nd']
+    srange = parameters['srange']
 
     for ii in ix:
-        if (arr[ii,] != nd ).any():
-            arr[ii,], sarr[ii] =  ws2d_vc(y = arr[ii], w = np.array((arr[ii,] != nd) * 1,dtype='float32'), llas = srange)
+        if (arr_raw[ii,] != nd ).any():
+            arr_raw[ii,], arr_sgrid[ii] =  ws2d_vc(y = arr_raw[ii], w = np.array((arr_raw[ii,] != nd) * 1,dtype='float32'), llas = srange)
 
 def execute_ws2d_vc_asy(ix):
     '''Execute asymmetric whittaker smoother with V-curve optimization of s in worker.'''
 
     arr.shape = dim
+    shared_sarr = tonumparray(parameters['shared_sarr'])
+    nd = parameters['nd']
+    srange = parameters['srange']
+    p = parameters['p']
 
     for ii in ix:
-        if (arr[ii,] != nd ).any():
-            arr[ii,], sarr[ii] = ws2d_vc_asy(y = arr[ii], w = np.array((arr[ii,] != nd) * 1,dtype='float32'), llas = srange, p = p)
+        if (arr_raw[ii,] != nd ).any():
+            arr_raw[ii,], arr_sgrid[ii] = ws2d_vc_asy(y = arr_raw[ii], w = np.array((arr_raw[ii,] != nd) * 1,dtype='float32'), llas = srange, p = p)
