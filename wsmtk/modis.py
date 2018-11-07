@@ -638,7 +638,7 @@ class MODISsmth5:
 
             dates = DateHelper(rawdates=self.rawdates, rtres=rtres,stres=self.temporalresolution,tshift=tshift)
 
-            if not selt.tinterpolate:
+            if not self.tinterpolate:
                 dates.target = self.rawdates
 
             dix = dates.getDIX()
@@ -665,11 +665,11 @@ class MODISsmth5:
                     arr_smooth.shape = (smoothchunks[0],smoothshape[1])
 
 
-                    vec_dly = np.full(len(dts_dly),-3000,dtype='float32')
+                    vec_dly = dates.getDV(nodata)
 
                     # Only for shift?
                     for d in self.rawdates:
-                        vec_dly[dts_dly.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = 0
+                        vec_dly[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = 0
 
                 else:
                     vec_dly = None
