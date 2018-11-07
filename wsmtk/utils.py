@@ -6,51 +6,6 @@ import ctypes
 import multiprocessing
 from .whittaker import ws2d, ws2d_vc, ws2d_vc_asy
 
-def dtype_GDNP(dt):
-    '''GDAL/NP DataType helper.
-
-    Parses datatype in str or GDAL int.
-
-    Agrs:
-        dt (str/int): DataType
-
-    Returns:
-        Tuple with DataType as GDAL integer and string
-    '''
-
-    dt_dict={
-    1: 'uint8',
-    2: 'uint16',
-    3: 'int16',
-    4: 'uint32',
-    5: 'int32',
-    6: 'float32',
-    7: 'float64'
-    }
-
-    dt_tuple = [(k,v) for k,v in dt_dict.items() if k == dt or v == dt]
-    return(dt_tuple[0])
-
-def LDOM(x):
-    '''Get last day of month.
-
-    Args:
-        x (datetime): Input date
-
-    Returns:
-        Datetime object
-    '''
-
-
-    yr = x.year
-    mn = x.month
-    if mn is 12:
-        mn = 1
-        yr +=1
-    else:
-        mn += 1
-    return(datetime.date(yr,mn,1) - datetime.timedelta(days=1))
-
 class SessionWithHeaderRedirection(requests.Session):
     ''' Session class for MODIS query.
 
@@ -138,6 +93,101 @@ class FileHandler:
             self.handles[ii] = None
 
 
+class DateHelper:
+
+    def __init__(self,rawdates,rtres,stres,tshift):
+
+        yrmin = int(min([x[:4] for x in rawdates]))
+        yrmax = int(max([x[:4] for x in rawdates]))
+
+        daily_tmp = [y for x in range(yrmin,yrmax+1,1) for y in tvec(x,1)]
+
+        stop = (fromjulian(rawdates[-1]) + datetime.timedelta(rtres)).strftime('%Y%j')
+
+        self.daily = daily_tmp[daily_tmp.index(rawdates[0]):daily_tmp.index(stop)+1]
+
+        if stres == 5:
+
+            target_temp = [y for x in range(yrmin,yrmax+1,1) for y in pentvec(x)]
+
+        elif stres == 10:
+
+            target_temp = [y for x in range(yrmin,yrmax+1,1) for y in dekvec(x)]
+
+        else:
+
+            target_temp = [y for x in range(yrmin,yrmax+1,1) for y in tvec(x,stres)]
+
+        target_temp.sort()
+
+        for sd in self.daily:
+            if sd in target_temp:
+                start_target = sd
+                del sd
+                break
+
+        for sd in reversed(self.daily):
+            if sd in target_temp:
+                stop_target = sd
+                del sd
+                break
+
+
+        self.target = target_temp[target_temp.index(start_target):target_temp.index(stop_target)+1]
+
+    def getDV(self,nd):
+
+        return(np.full(len(self.daily),nd,dtype='float32'))
+
+    def getDIX(self):
+        return([self.daily.index(x) for x in self.target])
+
+def dtype_GDNP(dt):
+    '''GDAL/NP DataType helper.
+
+    Parses datatype in str or GDAL int.
+
+    Agrs:
+        dt (str/int): DataType
+
+    Returns:
+        Tuple with DataType as GDAL integer and string
+    '''
+
+    dt_dict={
+    1: 'uint8',
+    2: 'uint16',
+    3: 'int16',
+    4: 'uint32',
+    5: 'int32',
+    6: 'float32',
+    7: 'float64'
+    }
+
+    dt_tuple = [(k,v) for k,v in dt_dict.items() if k == dt or v == dt]
+    return(dt_tuple[0])
+
+def LDOM(x):
+    '''Get last day of month.
+
+    Args:
+        x (datetime): Input date
+
+    Returns:
+        Datetime object
+    '''
+
+
+    yr = x.year
+    mn = x.month
+    if mn is 12:
+        mn = 1
+        yr +=1
+    else:
+        mn += 1
+    return(datetime.date(yr,mn,1) - datetime.timedelta(days=1))
+
+
 def txx(x):
     '''Converts tempint integer to flag.'''
 
@@ -212,36 +262,26 @@ def init_worker(shared_array_,parameters_):
         parameters_: Dictionary returned by init_parameters
     '''
 
-    parameters = parameters_
-
-    #global shared_array
-    #global nd
-    #global s
-    #global srange
-    #global p
-    #global dim
-
-    #nd = parameters_['nd']
-    #s = parameters_['s']
-    #srange = parameters_['srange']
-    #p = parameters_['p']
-    #dim = parameters_['dim']
+    global arr_raw
+    global arr_smooth
+    global arr_sgrid
+    global parameters
 
     arr_raw = tonumpyarray(shared_array_)
+    parameters = parameters_
     arr_raw.shape = parameters['rdim']
 
+
     try:
-         arr_sgrid = tonumparray(parameters['shared_array_sgrid'])
+         arr_sgrid = tonumpyarray(parameters['shared_array_sgrid'])
     except KeyError:
          arr_sgrid = None
 
     try:
-         arr_smooth = tonumparray(parameters['shared_array_smooth'])
+         arr_smooth = tonumpyarray(parameters['shared_array_smooth'])
          arr_smooth.shape = parameters['sdim']
     except AttributeError:
          arr_smooth = None
-
-
 
 
 def execute_ws2d(ix):
@@ -251,47 +291,47 @@ def execute_ws2d(ix):
         ix ([int]): List of indices as integer
     '''
 
-    arr_raw[ix,:] = ws2d(y = arr_raw[ix,:], lmda = parameters['s'], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1, dtype='float32'))
+    arr_raw[ix,:] = ws2d(y = arr_raw[ix,:], lmda = 10**parameters['s'], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1, dtype='float32'))
 
-    if arr_smooth:
+    if parameters['shared_array_smooth']:
 
         z2 = parameters['vec_dly'].copy()
         z2[ z2 != parameters['nd'] ] = arr_raw[ix,:]
         z2[...] = ws2d(y = z2, lmda = 0.0001, w = np.array((z2 != parameters['nd']) * 1,dtype='float32'))
-        arr_smt[ii,:] = z2[parameters['dix']]
+        arr_smooth[ix,:] = z2[parameters['dix']]
 
 def execute_ws2d_sgrid(ix):
     '''Execute whittaker smoother with s from grid in worker.'''
 
-    arr.shape = dim
-    shared_sarr = tonumparray(parameters['shared_sarr'])
-    nd = parameters['nd']
+    arr_raw[ix,:] = ws2d(y = arr_raw[ix,:], lmda = 10**arr_sgrid[ix], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1,dtype='float32'))
 
-    for ii in ix:
-        if (arr_raw[ii,] != nd ).any():
-            arr_raw[ii,] = ws2d(y = arr_raw[ii,], lmda = 10**arr_sgrid[ii], w = np.array((arr_raw[ii,] != nd ) * 1,dtype='float32'))
+    if parameters['shared_array_smooth']:
+
+        z2 = parameters['vec_dly'].copy()
+        z2[ z2 != parameters['nd'] ] = arr_raw[ix,:]
+        z2[...] = ws2d(y = z2, lmda = 0.0001, w = np.array((z2 != parameters['nd']) * 1,dtype='float32'))
+        arr_smooth[ix,:] = z2[parameters['dix']]
 
 def execute_ws2d_vc(ix):
     '''Execute whittaker smoother with V-curve optimization of s in worker.'''
 
-    arr.shape = dim
-    shared_sarr = tonumparray(parameters['shared_sarr'])
-    nd = parameters['nd']
-    srange = parameters['srange']
+    arr_raw[ix,:], arr_sgrid[ix] =  ws2d_vc(y = arr_raw[ix,:], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1,dtype='float32'), llas = parameters['srange'])
 
-    for ii in ix:
-        if (arr_raw[ii,] != nd ).any():
-            arr_raw[ii,], arr_sgrid[ii] =  ws2d_vc(y = arr_raw[ii], w = np.array((arr_raw[ii,] != nd) * 1,dtype='float32'), llas = srange)
+    if parameters['shared_array_smooth']:
+
+        z2 = parameters['vec_dly'].copy()
+        z2[ z2 != parameters['nd'] ] = arr_raw[ix,:]
+        z2[...] = ws2d(y = z2, lmda = 0.0001, w = np.array((z2 != parameters['nd']) * 1,dtype='float32'))
+        arr_smooth[ix,:] = z2[parameters['dix']]
 
 def execute_ws2d_vc_asy(ix):
     '''Execute asymmetric whittaker smoother with V-curve optimization of s in worker.'''
 
-    arr.shape = dim
-    shared_sarr = tonumparray(parameters['shared_sarr'])
-    nd = parameters['nd']
-    srange = parameters['srange']
-    p = parameters['p']
+    arr_raw[ix,:], arr_sgrid[ix] = ws2d_vc_asy(y = arr_raw[ix,:], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1,dtype='float32'), llas = parameters['range'], p = parameters['p'])
 
-    for ii in ix:
-        if (arr_raw[ii,] != nd ).any():
-            arr_raw[ii,], arr_sgrid[ii] = ws2d_vc_asy(y = arr_raw[ii], w = np.array((arr_raw[ii,] != nd) * 1,dtype='float32'), llas = srange, p = p)
+    if parameters['shared_array_smooth']:
+
+        z2 = parameters['vec_dly'].copy()
+        z2[ z2 != parameters['nd'] ] = arr_raw[ix,:]
+        z2[...] = ws2d(y = z2, lmda = 0.0001, w = np.array((z2 != parameters['nd']) * 1,dtype='float32'))
+        arr_smooth[ix,:] = z2[parameters['dix']]
