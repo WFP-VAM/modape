@@ -95,7 +95,7 @@ class FileHandler:
 
 class DateHelper:
 
-    def __init__(self,rawdates,rtres,stres,tshift):
+    def __init__(self,rawdates,rtres,stres,tshift,nsmooth=0):
 
         yrmin = int(min([x[:4] for x in rawdates]))
         yrmax = int(max([x[:4] for x in rawdates]))
@@ -104,7 +104,7 @@ class DateHelper:
 
         stop = (fromjulian(rawdates[-1]) + datetime.timedelta(rtres)).strftime('%Y%j')
 
-        self.daily = daily_tmp[daily_tmp.index(rawdates[0]):daily_tmp.index(stop)+1]
+        self.daily = daily_tmp[daily_tmp.index(rawdates[-nsmooth]):daily_tmp.index(stop)+1]
 
         if stres == 5:
 
