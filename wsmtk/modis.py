@@ -690,7 +690,7 @@ class MODISsmth5:
                             for bc in range(0,len(dates.target),smoothchunks[1]):
                                 bco = bc + smoothoffset
 
-                                smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]].round()
+                                smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]]
 
                                 arr_smooth[...] = nodata
 
@@ -699,7 +699,7 @@ class MODISsmth5:
                             for bc in range(0,len(dates.target),smoothchunks[1]):
                                 bco = bc + smoothoffset
 
-                                smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]].round()
+                                smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]]
 
             else:
 
@@ -761,14 +761,14 @@ class MODISsmth5:
                         for bc in range(0,len(dates.target),smoothchunks[1]):
                             bco = bc + smoothoffset
 
-                            smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]].round()
+                            smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]]
 
                     else:
 
                         for bc in range(0,len(dates.target),smoothchunks[1]):
                             bco = bc + smoothoffset
 
-                            smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]].round()
+                            smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]]
 
 class MODIStiles:
     '''Class for MODIS tiles.
