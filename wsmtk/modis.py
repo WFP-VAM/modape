@@ -485,11 +485,14 @@ class MODISsmth5:
             targetdir (str): Path to target directory for smoothed HDF5 file
             nworkers (int): Number of worker processes used in parallel
         '''
+        if nsmooth and nupdate:
+            assert nsmooth >= nupdate, "nsmooth >= nupdate!!!!"
+
         self.targetdir = targetdir
         self.rawfile = rawfile
         self.nworkers = nworkers
         self.nupdate = nupdate
-        self.nsmooth = nupdate
+        self.nsmooth = nsmooth
 
         # Get info from raw HDF5
         with h5py.File(self.rawfile,'r') as h5f:
@@ -498,21 +501,9 @@ class MODISsmth5:
 
             rawshape = dset.shape
 
-            self.rawdates = [x.decode() for x in dts[...]]
+            self.rawdates = [x.decode() for x in dts[-self.nsmooth:]]
 
             # Number of timesteps for smoothing must be bigger than for updating
-            if nsmooth and nupdate:
-                assert nsmooth >= nupdate, "nsmooth >= nupdate!!!!"
-
-            # # If no nsmooth set, take all available timesteps
-            # if not nsmooth:
-            #     firstday = rawdates[0]
-            # else:
-            #     firstday = rawdates[-nsmooth]
-            #
-            # self.ndays = ((fromjulian(dts[-1].decode()) + datetime.timedelta(self.numberofdays)) - fromjulian(firstday)).days
-            # self.startix = self.rawdaily.index(firstday)
-            # self.daily = [(fromjulian(firstday) + datetime.timedelta(x)).strftime('%Y%j') for x in range(self.ndays+1)]
 
         # Parse tempint to get flag for filename
         try:
@@ -522,8 +513,10 @@ class MODISsmth5:
 
         if txflag != 'n':
             self.tinterpolate = True
+            self.temporalresolution = tempint
         else:
             self.tinterpolate = False
+            self.temporalresolution = None
 
         # Filename for smoothed HDF5
         self.outname = '{}/{}.tx{}.{}.h5'.format(
@@ -533,13 +526,6 @@ class MODISsmth5:
                                     os.path.basename(rawfile).split('.')[-2:-1][0])
 
         self.exists = os.path.isfile(self.outname)
-
-        # If txtflag == 'n', then native resolution will be used
-        if txflag == 'n':
-            self.temporalresolution = None
-        else:
-            self.temporalresolution = tempint
-
 
     def create(self):
         '''Creates smoothed HDF5 file on disk.'''
@@ -568,17 +554,14 @@ class MODISsmth5:
 
         # Read native temporal resolution if no user input was supplied
         if not self.temporalresolution:
-
             self.temporalresolution = rtres
-            n = len(self.rawdates)
 
-        ## shift dates?
+        dates = DateHelper(rawdates=self.rawdates, rtres=rtres,stres=self.temporalresolution,tshift=tshift,nupdate=self.nupdate)
 
-        else:
+        if not self.tinterpolate:
+            dates.target = self.rawdates
 
-            dates = DateHelper(rawdates=self.rawdates, rtres=rtres,stres=self.temporalresolution,tshift=tshift)
-
-            n = len(dates.target)
+        n = len(dates.target)
 
         #print('\nCreating file: {} ... '.format(self.outname), end='')
 
@@ -586,7 +569,7 @@ class MODISsmth5:
             with h5py.File(self.outname,'x',libver='latest') as h5f:
                 dset = h5f.create_dataset('data',shape=(rawshape[0],n),dtype=dt,maxshape=(rawshape[0],None),chunks=rawchunks,compression=cmpr,fillvalue=rnd)
                 h5f.create_dataset('sgrid',shape=(nrows*ncols,),dtype='float32',maxshape=(nrows*ncols,),chunks=(rawchunks[0],),compression=cmpr)
-                h5f.create_dataset('dates',shape=(n,),maxshape=(None,),dtype='S8',compression=cmpr)#,data = [x.encode('ascii','ignore') for x in dates.target)
+                h5f.create_dataset('dates',shape=(n,),maxshape=(None,),dtype='S8',compression=cmpr,data = [x.encode('ascii','ignore') for x in dates.target])
                 dset.attrs['geotransform'] = rgt
                 dset.attrs['projection'] = rpj
                 dset.attrs['resolution'] = rres
@@ -636,7 +619,7 @@ class MODISsmth5:
             smt_ds.attrs['lastrun'] = "fixed s: log10(sopt) = {}".format(s)
             smt_ds.attrs['log10sopt'] = s
 
-            dates = DateHelper(rawdates=self.rawdates, rtres=rtres,stres=self.temporalresolution,tshift=tshift)
+            dates = DateHelper(rawdates=self.rawdates, rtres=rtres,stres=self.temporalresolution,tshift=tshift,nupdate=self.nupdate)
 
             if not self.tinterpolate:
                 dates.target = self.rawdates
@@ -647,11 +630,14 @@ class MODISsmth5:
             if len(dates.target) > smoothshape[0]:
                 smt_dts.resize((len(dates.target),))
                 smt_ds.resize((smoothshape[0],len(dates.target)))
+                smt_dts[...] = [x.encode("ascii", "ignore") for x in dates.target]
 
-            smt_dts[...] = [x.encode("ascii", "ignore") for x in dates.target]
+            # calculate offsets
+
+             rawoffset = [x.decode() for x in raw_dts[...]].index(self.rawdates[0])
+             smoothoffset = [x.decode() for x in smt_dts[...]].index(dates.target[0])
 
             if self.nworkers > 1:
-
 
                 # parallel processing
 
@@ -660,9 +646,9 @@ class MODISsmth5:
                 # for temporal interpolation:
                 if self.tinterpolate:
 
-                    shared_array_smooth = init_shared(smoothchunks[0] * smoothshape[1])
+                    shared_array_smooth = init_shared(smoothchunks[0] * len(dates.target))
                     arr_smooth = tonumpyarray(shared_array_smooth)
-                    arr_smooth.shape = (smoothchunks[0],smoothshape[1])
+                    arr_smooth.shape = (smoothchunks[0],len(dates.target))
 
 
                     vec_dly = dates.getDV(nodata)
@@ -676,21 +662,22 @@ class MODISsmth5:
                     shared_array_smooth = None
                     arr_smooth = None
 
-                shared_array_raw = init_shared(rawchunks[0] * rawshape[1])
-                parameters = init_parameters(rdim=(rawchunks[0], rawshape[1]),sdim=(smoothchunks[0], smoothshape[1]), nd=nodata, s=s, shared_array_smooth=shared_array_smooth, vec_dly=vec_dly, dix=dix)
+                shared_array_raw = init_shared(rawchunks[0] * len(self.rawdates))
+                parameters = init_parameters(rdim=(rawchunks[0], len(self.rawdates)),sdim=(smoothchunks[0], len(dates.target)), nd=nodata, s=s, shared_array_smooth=shared_array_smooth, vec_dly=vec_dly, dix=dix)
 
                 arr_raw = tonumpyarray(shared_array_raw)
 
-                arr_raw.shape = (rawchunks[0], rawshape[1])
+                arr_raw.shape = (rawchunks[0], len(self.rawdates))
 
                 with closing(mp.Pool(processes=self.nworkers,initializer = init_worker, initargs = (shared_array_raw,parameters))) as pool:
 
                     # load raw data
                     for br in range(0,rawshape[0],rawchunks[0]):
 
-                        for bc in range(0,rawshape[1],rawchunks[1]):
+                        for bc in range(0,len(self.rawdates),rawchunks[1]):
+                            bco = bc+self.nsmooth
 
-                            arr_raw[:, bc:bc+rawchunks[1]] = raw_ds[br:br+rawchunks[0], bc:bc+rawchunks[1]]
+                            arr_raw[:, bc:bc+rawchunks[1]] = raw_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]]
 
                         ndix = np.sum(arr_raw!=-3000,1)>0 #70
                         mapIX = np.where(ndix)[0]
@@ -704,15 +691,17 @@ class MODISsmth5:
                         # write back data
                         if self.tinterpolate:
 
-                            for bc in range(0,smoothshape[1],smoothchunks[1]):
+                            for bc in range(0,len(dates.target),smoothchunks[1]):
+                                bco = bc + self.nupdate
 
-                                smt_ds[br:br+rawchunks[0], bc:bc+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]]
+                                smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]]
 
                         else:
 
-                            for bc in range(0,smoothshape[1],smoothchunks[1]):
+                            for bc in range(0,len(dates.target),smoothchunks[1]):
+                                bco = bc + self.nupdate
 
-                                smt_ds[br:br+rawchunks[0], bc:bc+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]]
+                                smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]]
 
             else:
 
