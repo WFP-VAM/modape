@@ -692,6 +692,8 @@ class MODISsmth5:
 
                                 smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]].round()
 
+                                arr_smooth[...] = nodata
+
                         else:
 
                             for bc in range(0,len(dates.target),smoothchunks[1]):
@@ -701,14 +703,14 @@ class MODISsmth5:
 
             else:
 
-                arr_raw = np.zeros((rawchunks[0] * len(self.rawdates)))
+                arr_raw = np.zeros((rawchunks[0], len(self.rawdates)),dtype='float32')
 
                 # Create weights array
                 wts = arr_raw.copy()
 
-                if self.tinperolate:
+                if self.tinterpolate:
 
-                    arr_smooth = np.full((smoothchunks[0],len(dates.target)),nodata,dtype='float32')
+                    arr_smooth = np.zeros((smoothchunks[0],len(dates.target)),dtype='float32')
 
                     vec_dly = dates.getDV(nodata)
 
@@ -719,63 +721,54 @@ class MODISsmth5:
                 else:
                     arr_smooth = None
 
+                for br in range(0,rawshape[0],rawchunks[0]):
 
-                for bc in range(0,len(self.rawdates),rawchunks[1]):
-                    bco = bc + rawoffset
+                    arr_smooth[...] = nodata
+                    wts[...] = 0
 
-                    arr_raw[:, bc:bc+rawchunks[1]] = raw_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]]
+                    for bc in range(0,len(self.rawdates),rawchunks[1]):
+                        bco = bc + rawoffset
 
-                wts[...] = (arr != nodata) * 1
+                        arr_raw[:, bc:bc+rawchunks[1]] = raw_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]]
 
-                ndix = np.sum(wts,1)>0 #70
-                mapIX = np.where(ndix)[0]
+                    wts[...] = (arr_raw != nodata) * 1
 
-                if len(mapIX) == 0:
-                    #no data points, skipping to next block
-                    continue
+                    ndix = np.sum(wts,1)>0 #70
+                    mapIX = np.where(ndix)[0]
 
-                for r in mapIX:
+                    if len(mapIX) == 0:
+                        #no data points, skipping to next block
+                        continue
 
-                    arr[r,:] = ws2d(y = arr[r,:],lmda = 10**s, w = wts[r,:])
+                    for r in mapIX:
 
+                        arr_raw[r,:] = ws2d(y = arr_raw[r,:],lmda = 10**s, w = wts[r,:])
+
+                        if self.tinterpolate:
+
+                            z2 = vec_dly.copy()
+                            z2[z2 != nodata] = arr_raw[r,:]
+                            z2[...] = ws2d(y = z2, lmda = 0.0001, w = np.array((z2 != nodata) * 1,dtype='float32'))
+                            arr_smooth[r,:] = z2[dix]
+
+                        else:
+                            pass
+
+
+                    # write back data
                     if self.tinterpolate:
 
-                        z2 = vec_dly.copy()
-                        z2[z2 != nodata] = arr_raw[r,:]
-                        z2[...] = ws2d(y = z2, lmda = 0.0001, w = np.array((z2 != nodata) * 1,dtype='float32'))
-                        arr_smooth[r,:] = z2[dix]
+                        for bc in range(0,len(dates.target),smoothchunks[1]):
+                            bco = bc + smoothoffset
+
+                            smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]].round()
 
                     else:
-                        pass
 
+                        for bc in range(0,len(dates.target),smoothchunks[1]):
+                            bco = bc + smoothoffset
 
-                # write back data
-                if self.tinterpolate:
-
-                    for bc in range(0,len(dates.target),smoothchunks[1]):
-                        bco = bc + smoothoffset
-
-                        smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]].round()
-
-                else:
-
-                    for bc in range(0,len(dates.target),smoothchunks[1]):
-                        bco = bc + smoothoffset
-
-                        smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]].round()
-
-
-
-
-
-
-
-
-
-
-
-
-
+                            smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]].round()
 
 class MODIStiles:
     '''Class for MODIS tiles.
