@@ -639,16 +639,12 @@ class MODISsmth5:
 
             if self.nworkers > 1:
 
-                # parallel processing
-
-                # initialize array and parameters
-
-                # for temporal interpolation:
                 if self.tinterpolate:
 
                     shared_array_smooth = init_shared(smoothchunks[0] * len(dates.target))
                     arr_smooth = tonumpyarray(shared_array_smooth)
                     arr_smooth.shape = (smoothchunks[0],len(dates.target))
+                    arr_smooth[...] = nodata
 
 
                     vec_dly = dates.getDV(nodata)
@@ -675,7 +671,7 @@ class MODISsmth5:
                     for br in range(0,rawshape[0],rawchunks[0]):
 
                         for bc in range(0,len(self.rawdates),rawchunks[1]):
-                            bco = bc+self.nsmooth
+                            bco = bc + rawoffset
 
                             arr_raw[:, bc:bc+rawchunks[1]] = raw_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]]
 
@@ -692,20 +688,93 @@ class MODISsmth5:
                         if self.tinterpolate:
 
                             for bc in range(0,len(dates.target),smoothchunks[1]):
-                                bco = bc + self.nupdate
+                                bco = bc + smoothoffset
 
-                                smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]]
+                                smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]].round()
 
                         else:
 
                             for bc in range(0,len(dates.target),smoothchunks[1]):
-                                bco = bc + self.nupdate
+                                bco = bc + smoothoffset
 
-                                smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]]
+                                smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]].round()
 
             else:
 
-                pass
+                arr_raw = np.zeros((rawchunks[0] * len(self.rawdates)))
+
+                # Create weights array
+                wts = arr_raw.copy()
+
+                if self.tinperolate:
+
+                    arr_smooth = np.full((smoothchunks[0],len(dates.target)),nodata,dtype='float32')
+
+                    vec_dly = dates.getDV(nodata)
+
+                    # Only for shift?
+                    for d in self.rawdates:
+                        vec_dly[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = 0
+
+                else:
+                    arr_smooth = None
+
+
+                for bc in range(0,len(self.rawdates),rawchunks[1]):
+                    bco = bc + rawoffset
+
+                    arr_raw[:, bc:bc+rawchunks[1]] = raw_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]]
+
+                wts[...] = (arr != nodata) * 1
+
+                ndix = np.sum(wts,1)>0 #70
+                mapIX = np.where(ndix)[0]
+
+                if len(mapIX) == 0:
+                    #no data points, skipping to next block
+                    continue
+
+                for r in mapIX:
+
+                    arr[r,:] = ws2d(y = arr[r,:],lmda = 10**s, w = wts[r,:])
+
+                    if self.tinterpolate:
+
+                        z2 = vec_dly.copy()
+                        z2[z2 != nodata] = arr_raw[r,:]
+                        z2[...] = ws2d(y = z2, lmda = 0.0001, w = np.array((z2 != nodata) * 1,dtype='float32'))
+                        arr_smooth[r,:] = z2[dix]
+
+                    else:
+                        pass
+
+
+                # write back data
+                if self.tinterpolate:
+
+                    for bc in range(0,len(dates.target),smoothchunks[1]):
+                        bco = bc + smoothoffset
+
+                        smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]].round()
+
+                else:
+
+                    for bc in range(0,len(dates.target),smoothchunks[1]):
+                        bco = bc + smoothoffset
+
+                        smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]].round()
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 class MODIStiles:
