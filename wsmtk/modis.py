@@ -474,7 +474,7 @@ class MODISrawh5:
 class MODISsmth5:
     '''Class for smoothed MODIS data collected into HDF5 file.'''
 
-    def __init__(self,rawfile,tempint=None,nsmooth=None,nupdate=None,targetdir=os.getcwd(),nworkers=1):
+    def __init__(self,rawfile,tempint=None,nsmooth=0,nupdate=0,targetdir=os.getcwd(),nworkers=1):
         '''Create MODISsmth5 object.
 
         Args:
