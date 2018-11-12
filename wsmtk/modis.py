@@ -1045,7 +1045,7 @@ class MODISsmth5:
                     arr_smooth = None
 
                 shared_array_raw = init_shared(rawchunks[0] * len(self.rawdates))
-                parameters = init_parameters(rdim=(rawchunks[0], len(self.rawdates)),sdim=(smoothchunks[0], len(dates.target)), nd=nodata, p=p, shared_array_smooth=shared_array_smooth, vec_dly=vec_dly, dix=dix)
+                parameters = init_parameters(rdim=(rawchunks[0], len(self.rawdates)),sdim=(smoothchunks[0], len(dates.target)), nd=nodata, p=p, shared_array_smooth=shared_array_smooth, vec_dly=vec_dly, dix=dix, srange=srange)
 
                 parameters['shared_array_sgrid'] = init_shared(rawchunks[0])
 
@@ -1075,7 +1075,7 @@ class MODISsmth5:
                         res = pool.map(execute_ws2d_vOpt,mapIX)
 
                         # write back data
-                        smt_sgrid[br:br+rawchunks] = arr_sgrid[...]
+                        smt_sgrid[br:br+rawchunks[0]] = arr_sgrid[...]
                         arr_sgrid[...] = 0
 
                         if self.tinterpolate:
@@ -1159,7 +1159,7 @@ class MODISsmth5:
                             pass
 
                     # write back data
-                    smt_sgrid[br:br+rawchunks] = arr_sgrid[...]
+                    smt_sgrid[br:br+rawchunks[0]] = arr_sgrid[...]
                     arr_sgrid[...] = 0
 
                     if self.tinterpolate:
