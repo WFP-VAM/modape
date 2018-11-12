@@ -249,6 +249,8 @@ def tonumpyarray(shared_array):
 def init_parameters(**kwargs):
     '''Initialize parameters for smoothing in workers.'''
 
+    params = {}
+
     for key, value in kwargs.items():
         params[key] = value
     return params
