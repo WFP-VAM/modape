@@ -5,7 +5,6 @@ import os
 import sys
 import glob
 import argparse
-import datetime
 import re
 import traceback
 from progress.bar import Bar
