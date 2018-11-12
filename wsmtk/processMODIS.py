@@ -13,7 +13,7 @@ from contextlib import contextmanager, closing
 import multiprocessing as mp
 
 
-def execute_process(pdict):
+def run_process(pdict):
     '''Execute processing into raw HDF5 file
 
     Little wrapper to execute the processing into a raw HDF5 file. This enables multi-process concurrency.
@@ -142,7 +142,7 @@ def main():
 
         with closing(mp.Pool(processes=args.parallel_tiles)) as pool:
 
-            res = pool.map(execute_process,[processing_dict[g] for g in groups])
+            res = pool.map(run_process,[processing_dict[g] for g in groups])
 
         pool.close()
         pool.join()
@@ -160,7 +160,7 @@ def main():
 
         for g in groups:
 
-            execute_process(processing_dict[g])
+            run_process(processing_dict[g])
 
             if not args.quiet:
                 bar.next()
