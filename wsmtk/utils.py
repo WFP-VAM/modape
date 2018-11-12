@@ -249,8 +249,6 @@ def tonumpyarray(shared_array):
 def init_parameters(**kwargs):
     '''Initialize parameters for smoothing in workers.'''
 
-    params = dict(zip(['shared_array','shared_sarr','nd','s','srange','p','dim'],[None for x in range(7)]))
-
     for key, value in kwargs.items():
         params[key] = value
     return params
@@ -275,13 +273,13 @@ def init_worker(shared_array_,parameters_):
 
     try:
          arr_sgrid = tonumpyarray(parameters['shared_array_sgrid'])
-    except KeyError:
+    except (KeyError, AttributeError):
          arr_sgrid = None
 
     try:
          arr_smooth = tonumpyarray(parameters['shared_array_smooth'])
          arr_smooth.shape = parameters['sdim']
-    except AttributeError:
+    except (KeyError, AttributeError):
          arr_smooth = None
 
 
