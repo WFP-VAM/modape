@@ -313,22 +313,22 @@ def execute_ws2d_sgrid(ix):
         z2[...] = ws2d(y = z2, lmda = 0.0001, w = np.array((z2 != parameters['nd']) * 1,dtype='float32'))
         arr_smooth[ix,:] = z2[parameters['dix']]
 
-def execute_ws2d_vc(ix):
+def execute_ws2d_vOpt(ix):
     '''Execute whittaker smoother with V-curve optimization of s in worker.'''
 
-    arr_raw[ix,:], arr_sgrid[ix] =  ws2d_vc(y = arr_raw[ix,:], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1,dtype='float32'), llas = parameters['srange'])
+    z, lopt =  ws2d_vc(y = arr_raw[ix,:], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1,dtype='float32'), llas = array.array('f',parameters['srange']))
 
-    if parameters['shared_array_smooth']:
+    srange_lim = parameters['srange'][parameters['srange'] <= np.log10(lopt)]
 
-        z2 = parameters['vec_dly'].copy()
-        z2[ z2 != parameters['nd'] ] = arr_raw[ix,:]
-        z2[...] = ws2d(y = z2, lmda = 0.0001, w = np.array((z2 != parameters['nd']) * 1,dtype='float32'))
-        arr_smooth[ix,:] = z2[parameters['dix']]
+    if len(srange_lim)==1:
+        srange_lim = np.concatenate([srange_lim-0.2,srange_lim])
 
-def execute_ws2d_vc_asy(ix):
-    '''Execute asymmetric whittaker smoother with V-curve optimization of s in worker.'''
+    if parameters['p']:
 
-    arr_raw[ix,:], arr_sgrid[ix] = ws2d_vc_asy(y = arr_raw[ix,:], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1,dtype='float32'), llas = parameters['range'], p = parameters['p'])
+        arr_raw[ix,:], arr_sgrid[ix] = ws2d_vc_asy(y = arr_raw[ix,:], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1,dtype='float32'), llas = array.array('f',srange_lim), p = parameters['p'])
+    else:
+
+        arr_raw[ix,:], arr_sgrid[ix] = ws2d_vc(y = arr_raw[ix,:], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1,dtype='float32'), llas = array.array('f',srange_lim))
 
     if parameters['shared_array_smooth']:
 
