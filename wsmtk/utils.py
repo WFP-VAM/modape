@@ -4,6 +4,7 @@ import requests
 import gdal
 import ctypes
 import multiprocessing
+import array
 from .whittaker import ws2d, ws2d_vc, ws2d_vc_asy
 
 class SessionWithHeaderRedirection(requests.Session):
