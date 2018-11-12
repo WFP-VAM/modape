@@ -156,7 +156,13 @@ def main():
         # Check if V-curve optimization is true
         if args.soptimize:
 
-            processing_dict['srange'] = args.srange
+            if not args.srange:
+
+                processing_dict['srange'] = np.linspance(-1.0,2.0,16.0)
+
+            else:
+
+                processing_dict['srange'] = args.srange
 
             processing_dict['pvalue'] = args.pvalue
 
