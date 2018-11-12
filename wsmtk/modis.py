@@ -1136,19 +1136,19 @@ class MODISsmth5:
 
                     for r in mapIX:
 
-                        z , lopt = ws2d_vc(y = arr[r,:], w = np.array((arr[r,:] != nodata) * 1,dtype='float32'), llas = array.array('f',srange))
+                        z , lopt = ws2d_vc(y = arr_raw[r,:], w = np.array((arr_raw[r,:] != nodata) * 1,dtype='float32'), llas = array.array('f',srange))
 
                         srange_lim = srange[srange <= np.log10(lopt)]
 
                         if len(srange_lim)==1:
                             srange_lim = np.concatenate([srange_lim-0.2,srange_lim])
 
-                        if self.tinterpolate:
+                        if p:
+                            arr_raw[r,:] , arr_sgrid[r] = ws2d_vc_asy(y = arr_raw[r,:], w = np.array((arr_raw[r,:] != nodata) * 1,dtype='float32'), llas = array.array('f',srange_lim),p=p)
+                        else:
+                            arr_raw[r,:] , arr_sgrid[r] = ws2d_vc(y = arr_raw[r,:], w = np.array((arr_raw[r,:] != nodata) * 1,dtype='float32'), llas = array.array('f',srange_lim))
 
-                            if p:
-                                z , sarr[r] = ws2d_vc_asy(y = arr[r,:], w = np.array((arr[r,:] != nodata) * 1,dtype='float32'), llas = array.array('f',srange_lim),p=p)
-                            else:
-                                z , sarr[r] = ws2d_vc(y = arr[r,:], w = np.array((arr[r,:] != nodata) * 1,dtype='float32'), llas = array.array('f',srange_lim))
+                        if self.tinterpolate:
 
                             z2 = vec_dly.copy()
                             z2[z2 != nodata] = arr_raw[r,:]
@@ -1157,7 +1157,6 @@ class MODISsmth5:
 
                         else:
                             pass
-
 
                     # write back data
                     smt_sgrid[br:br+rawchunks] = arr_sgrid[...]
