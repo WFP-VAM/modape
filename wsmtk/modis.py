@@ -634,8 +634,8 @@ class MODISsmth5:
 
             # calculate offsets
 
-             rawoffset = [x.decode() for x in raw_dts[...]].index(self.rawdates[0])
-             smoothoffset = [x.decode() for x in smt_dts[...]].index(dates.target[0])
+            rawoffset = [x.decode() for x in raw_dts[...]].index(self.rawdates[0])
+            smoothoffset = [x.decode() for x in smt_dts[...]].index(dates.target[0])
 
             if self.nworkers > 1:
 
@@ -817,8 +817,8 @@ class MODISsmth5:
 
             # calculate offsets
 
-             rawoffset = [x.decode() for x in raw_dts[...]].index(self.rawdates[0])
-             smoothoffset = [x.decode() for x in smt_dts[...]].index(dates.target[0])
+            rawoffset = [x.decode() for x in raw_dts[...]].index(self.rawdates[0])
+            smoothoffset = [x.decode() for x in smt_dts[...]].index(dates.target[0])
 
             if self.nworkers > 1:
 
@@ -1020,8 +1020,8 @@ class MODISsmth5:
 
             # calculate offsets
 
-             rawoffset = [x.decode() for x in raw_dts[...]].index(self.rawdates[0])
-             smoothoffset = [x.decode() for x in smt_dts[...]].index(dates.target[0])
+            rawoffset = [x.decode() for x in raw_dts[...]].index(self.rawdates[0])
+            smoothoffset = [x.decode() for x in smt_dts[...]].index(dates.target[0])
 
             if self.nworkers > 1:
 

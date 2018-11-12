@@ -14,7 +14,7 @@ from progress.bar import Bar
 
 def initfun(pdict_):
     '''Initfun for worker'''
-    
+
     global pdict
     pdict = pdict_
 
@@ -60,11 +60,11 @@ def run_ws2d_sgrid(h5):
 
 
 def run_ws2d_vOpt(h5):
-        '''Run smoother with V-curve optimization of s
+    '''Run smoother with V-curve optimization of s
 
-        Args:
-            pdict: dictionary with processing parameters for tile
-        '''
+    Args:
+        pdict: dictionary with processing parameters for tile
+    '''
     if not os.path.isfile(h5):
 
         print('Raw HDF5 {} not found! Please check path.'.format(h5))
