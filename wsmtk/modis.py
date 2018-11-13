@@ -611,7 +611,7 @@ class MODISsmth5:
 
             nodata = raw_ds.attrs['nodata'].item()
 
-            t_interval = smt_ds.attrs['temporalresolution'].item()
+            self.temporalresolution = smt_ds.attrs['temporalresolution'].item()
             tshift = raw_ds.attrs['tshift'].item()
 
             # Store run parameters for infotool
@@ -620,7 +620,6 @@ class MODISsmth5:
             smt_ds.attrs['log10sopt'] = s
 
             dates = DateHelper(rawdates=self.rawdates, rtres=rtres,stres=self.temporalresolution,tshift=tshift,nupdate=self.nupdate)
-
             if not self.tinterpolate:
                 dates.target = self.rawdates
 
@@ -795,7 +794,7 @@ class MODISsmth5:
 
             nodata = raw_ds.attrs['nodata'].item()
 
-            t_interval = smt_ds.attrs['temporalresolution'].item()
+            self.temporalresolution = smt_ds.attrs['temporalresolution'].item()
             tshift = raw_ds.attrs['tshift'].item()
 
             # Store run parameters for infotool
@@ -929,7 +928,7 @@ class MODISsmth5:
                         #no data points, skipping to next block
                         continue
 
-                    arr_sgrid[...] = smt_sgrids[br:br+rawchunks[0]]
+                    arr_sgrid[...] = smt_sgrid[br:br+rawchunks[0]]
 
                     for r in mapIX:
 
@@ -993,15 +992,15 @@ class MODISsmth5:
 
             nodata = raw_ds.attrs['nodata'].item()
 
-            t_interval = smt_ds.attrs['temporalresolution'].item()
+            self.temporalresolution = smt_ds.attrs['temporalresolution'].item()
             tshift = raw_ds.attrs['tshift'].item()
 
             # Store run parameters for infotool
             smt_ds.attrs['processingtimestamp'] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-            smt_ds.attrs['pvalue'] = p
 
             if p:
                 smt_ds.attrs['lastrun'] = "V-curve optimization of s with p = {}".format(p)
+                smt_ds.attrs['pvalue'] = p
             else:
                 smt_ds.attrs['lastrun'] = "V-curve optimization of s"
 
@@ -1070,7 +1069,6 @@ class MODISsmth5:
                         if len(mapIX) == 0:
                             #no data points, skipping to next block
                             continue
-
 
                         res = pool.map(execute_ws2d_vOpt,mapIX)
 

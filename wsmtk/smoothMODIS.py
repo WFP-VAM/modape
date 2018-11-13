@@ -11,6 +11,7 @@ import multiprocessing as mp
 import numpy as np
 import time
 from progress.bar import Bar
+from contextlib import contextmanager, closing
 
 def initfun(pdict_):
     '''Initfun for worker'''
@@ -99,12 +100,12 @@ def main():
     '''
 
     parser = argparse.ArgumentParser(description="Smooth, gapfill and interpolate processed raw MODIS HDF5 files")
-    parser.add_argument("input", help='Smoothing input - either one or more raw MODIS HDF5 file(s) or path containing raw MODIS HDF5 file(s)',metavar='input')
-    parser.add_argument("-s","--svalue", help='S value for smoothing (has to be log10(s)', metavar='', type = float)
+    parser.add_argument("input", help='Smoothing input - either one or more raw MODIS HDF5 file(s) or path containing raw MODIS HDF5 file(s)',nargs='+',metavar='input')
+    parser.add_argument("-s","--svalue", help='S value for smoothing (has to be log10(s))', metavar='', type = float)
     parser.add_argument("-S","--srange", help='S value range for V-curve (float log10(s) values as smin smax sstep - default -1.0 2.0 0.2)',nargs='+',metavar='')
     parser.add_argument("-t","--tempint", help='Value for temporal interpolation (integer required - default is native temporal resolution AKA no interpolation)', metavar='',type = int)
-    parser.add_argument("-n","--nsmooth", help='Number of raw timesteps used for smoothing', metavar='',type = int)
-    parser.add_argument("-u","--nupdate", help='Number of smoothed timesteps to be updated in HDF5 file', metavar='',type = int)
+    parser.add_argument("-n","--nsmooth", help='Number of raw timesteps used for smoothing',default=0, metavar='',type = int)
+    parser.add_argument("-u","--nupdate", help='Number of smoothed timesteps to be updated in HDF5 file',default=0, metavar='',type = int)
     parser.add_argument("-p","--pvalue", help='Value for asymmetric smoothing (float required)', metavar='', type = float)
     parser.add_argument("-d","--targetdir", help='Target directory for smoothed output',default=os.getcwd(),metavar='')
     parser.add_argument("--soptimize", help='Use V-curve for s value optimization',action='store_true')
@@ -140,13 +141,13 @@ def main():
 
     if args.svalue:
         try:
-            processing_dict['s'] = 10**float(args.svalue)
+            args.svalue = 10**float(args.svalue)
         except:
             raise SystemExit('Error with s value. Expected float log10(s)!')
 
     # prepare processing dict
 
-    processing_dict = init_parameters(tempint=args.tempint,nsmooth=args.nsmooth,nupdate=nupdate,targetdir=agrs.targetdir,nworkers=args.nworkers)
+    processing_dict = init_parameters(tempint=args.tempint,nsmooth=args.nsmooth,nupdate=args.nupdate,targetdir=args.targetdir,nworkers=args.nworkers)
 
     if not args.quiet:
         print('\n[{}]: Starting smoothMODIS.py ... \n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
@@ -157,11 +158,8 @@ def main():
         if args.soptimize:
 
             if not args.srange:
-
-                processing_dict['srange'] = np.linspance(-1.0,2.0,16.0)
-
+                processing_dict['srange'] = np.linspace(-1.0,2.0,16.0)
             else:
-
                 processing_dict['srange'] = args.srange
 
             processing_dict['pvalue'] = args.pvalue
@@ -215,6 +213,9 @@ def main():
 
         if args.soptimize:
 
+            if not args.srange:
+                args.srange = np.linspace(-1.0,2.0,16.0)
+
             if not args.quiet:
                 print('\nRunning whittaker smoother V-curve optimization ... \n')
                 bar = Bar('Processing',fill='=',max=len(files),suffix='%(percent)d%%  ')
@@ -231,7 +232,7 @@ def main():
                 if not smt_h5.exists:
                     smt_h5.create()
 
-                smt_h5.ws2d_vOpt(args.sgrid,args.pvalue)
+                smt_h5.ws2d_vOpt(args.srange,args.pvalue)
 
                 if not args.quiet:
                     bar.next()
