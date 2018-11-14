@@ -45,6 +45,8 @@ def main():
             resolution = dset.attrs['resolution']
             nodata_value = dset.attrs['nodata']
             ptstmp = dset.attrs['processingtimestamp']
+            ncols = dset.attrs['RasterXSize'].item()
+            nrows = dset.attrs['RasterYSize'].item()
 
             # If reading lastrun fails, it's assumed the product is a raw HDF5 file
             try:
@@ -82,7 +84,7 @@ NoData value: {}
 
 Last modified: {}
 
-Last smoothing run: Whittaker smoother with {}\n'''.format(args.file,dim[0],dim[1],dim[2],startdate,enddate,temporalresolution,resolution,nodata_value,ptstmp,lr)
+Last smoothing run: Whittaker smoother with {}\n'''.format(args.file,nrows,ncols,dim[1],startdate,enddate,temporalresolution,resolution,nodata_value,ptstmp,lr)
 
 
     else:
@@ -110,7 +112,7 @@ Spatial resolution: {} m
 
 NoData value: {}
 
-Last modified: {}\n'''.format(args.file,dim[0],dim[1],dim[2],startdate,enddate,temporalresolution,resolution,nodata_value,ptstmp)
+Last modified: {}\n'''.format(args.file,nrows,ncols,dim[1],startdate,enddate,temporalresolution,resolution,nodata_value,ptstmp)
 
 
     # Print message - header is centered
