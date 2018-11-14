@@ -1162,7 +1162,7 @@ class MODISsmth5:
                     # write back data
 
                     arr_sgrid[arr_sgrid>0] = np.log10(arr_sgrid[arr_sgrid>0])
-                    
+
                     smt_sgrid[br:br+rawchunks[0]] = arr_sgrid[...]
                     arr_sgrid[...] = 0
 
@@ -1282,9 +1282,8 @@ class MODISmosaic:
 
             with h5py.File(ref,'r') as h5f:
                 dset = h5f.get('data')
-                r,c,t = dset.shape
-                self.tile_rws = r
-                self.tile_cls = c
+                self.tile_rws = dset.attrs['RasterYSize'].item()
+                self.tile_cls = dset.attrs['RasterXSize'].item()
                 self.datatype = dset.dtype
                 gt_temp_v = dset.attrs['geotransform']
                 self.pj = dset.attrs['projection']
@@ -1358,9 +1357,9 @@ class MODISmosaic:
 
                     # Dataset 'sgrid' is 2D, so no idex needed
                     if dataset == 'sgrid':
-                        array[yoff:(yoff+self.tile_rws),xoff:(xoff+self.tile_cls)] = h5f_o.get(dataset)[...]
+                        array[yoff:(yoff+self.tile_rws),xoff:(xoff+self.tile_cls)] = h5f_o.get(dataset)[...].reshape(self.tile_rws,self.tile_cls)
                     else:
-                        array[yoff:(yoff+self.tile_rws),xoff:(xoff+self.tile_cls)] = h5f_o.get(dataset)[...,ix]
+                        array[yoff:(yoff+self.tile_rws),xoff:(xoff+self.tile_cls)] = h5f_o.get(dataset)[...,ix].reshape(self.tile_rws,self.tile_cls)
 
             except Exception as e:
                 print('Error reading data from file {} to array! Error message {}:\n'.format(h5f,e))
@@ -1391,9 +1390,9 @@ class MODISmosaic:
                 with h5py.File(h5f,'r') as h5f_o:
 
                     if dataset == 'sgrid':
-                        array[...] = h5f_o.get(dataset)[...]
+                        array[...] = h5f_o.get(dataset)[...].reshape(self.tile_rws,self.tile_cls)
                     else:
-                        array[...] = h5f_o.get(dataset)[...,ix]
+                        array[...] = h5f_o.get(dataset)[...,ix].reshape(self.tile_rws,self.tile_cls)
 
             except Exception as e:
                 print('Error reading data from file {} to array! Error message {}:\n'.format(h5f,e))
