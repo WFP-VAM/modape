@@ -1073,6 +1073,9 @@ class MODISsmth5:
                         res = pool.map(execute_ws2d_vOpt,mapIX)
 
                         # write back data
+
+                        arr_sgrid[arr_sgrid>0] = np.log10(arr_sgrid[arr_sgrid>0])
+
                         smt_sgrid[br:br+rawchunks[0]] = arr_sgrid[...]
                         arr_sgrid[...] = 0
 
@@ -1157,6 +1160,9 @@ class MODISsmth5:
                             pass
 
                     # write back data
+
+                    arr_sgrid[arr_sgrid>0] = np.log10(arr_sgrid[arr_sgrid>0])
+                    
                     smt_sgrid[br:br+rawchunks[0]] = arr_sgrid[...]
                     arr_sgrid[...] = 0
 
