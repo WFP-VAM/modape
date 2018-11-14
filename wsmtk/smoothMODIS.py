@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 from __future__ import print_function
 from wsmtk.modis import MODISsmth5
-from wsmtk.utils import init_parameters
+from wsmtk.utils import init_parameters, Pool
 import shutil
 import os
 import sys
 import glob
 import argparse
-import multiprocessing as mp
+import multiprocessing
 import numpy as np
 import time
 from progress.bar import Bar
@@ -167,7 +167,7 @@ def main():
             if not args.quiet:
                 print('\nRunning whittaker smoother V-curve optimization ... \n')
 
-            with closing(mp.Pool(processes=args.parallel_tiles,initializer = initfun, initargs = (processing_dict,))) as pool:
+            with closing(Pool(processes=args.parallel_tiles,initializer = initfun, initargs = (processing_dict,))) as pool:
 
                 res = pool.map(run_ws2d_vOpt,files)
 
@@ -184,7 +184,7 @@ def main():
             if not args.quiet:
                 print('\nRunning whittaker smoother with fixed s value ... \n')
 
-            with closing(mp.Pool(processes=args.parallel_tiles,initializer = initfun, initargs = (processing_dict,))) as pool:
+            with closing(Pool(processes=args.parallel_tiles,initializer = initfun, initargs = (processing_dict,))) as pool:
 
                 res = pool.map(run_ws2d,files)
 
@@ -199,7 +199,7 @@ def main():
             if not args.quiet:
                 print('\nRunning whittaker smoother with s value from grid ... \n')
 
-            with closing(mp.Pool(processes=args.parallel_tiles,initializer = initfun, initargs = (processing_dict,))) as pool:
+            with closing(Pool(processes=args.parallel_tiles,initializer = initfun, initargs = (processing_dict,))) as pool:
 
                 res = pool.map(run_ws2d_sgrid,files)
 
@@ -298,5 +298,5 @@ def main():
     print('\n[{}]: smoothMODIS.py finished successfully.\n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
 
 if __name__ == '__main__':
-    mp.freeze_support()
+    multiprocessing.freeze_support()
     main()

@@ -4,6 +4,7 @@ import requests
 import gdal
 import ctypes
 import multiprocessing
+import multiprocessing.pool
 import array
 from .whittaker import ws2d, ws2d_vc, ws2d_vc_asy
 
@@ -92,6 +93,21 @@ class FileHandler:
 
         for ii in range(len(self.handles)):
             self.handles[ii] = None
+
+# adapted from https://stackoverflow.com/questions/17223301/python-multiprocessing-is-it-possible-to-have-a-pool-inside-of-a-pool/17229030#17229030
+
+class NoDaemonProcess(multiprocessing.Process):
+    # make 'daemon' attribute always return False
+    def _get_daemon(self):
+        return False
+    def _set_daemon(self, value):
+        pass
+    daemon = property(_get_daemon, _set_daemon)
+
+# We sub-class multiprocessing.pool.Pool instead of multiprocessing.Pool
+# because the latter is only a wrapper function, not a proper class.
+class Pool(multiprocessing.pool.Pool):
+    Process = NoDaemonProcess
 
 
 class DateHelper:
