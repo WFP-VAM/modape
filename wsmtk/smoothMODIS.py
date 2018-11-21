@@ -102,7 +102,7 @@ def main():
     parser = argparse.ArgumentParser(description="Smooth, gapfill and interpolate processed raw MODIS HDF5 files")
     parser.add_argument("input", help='Smoothing input - either one or more raw MODIS HDF5 file(s) or path containing raw MODIS HDF5 file(s)',nargs='+',metavar='input')
     parser.add_argument("-s","--svalue", help='S value for smoothing (has to be log10(s))', metavar='', type = float)
-    parser.add_argument("-S","--srange", help='S value range for V-curve (float log10(s) values as smin smax sstep - default -1.0 2.0 0.2)',nargs='+',metavar='')
+    parser.add_argument("-S","--srange", help='S value range for V-curve (float log10(s) values as smin smax sstep - default -1.0 1.0 0.2)',nargs='+',metavar='')
     parser.add_argument("-t","--tempint", help='Value for temporal interpolation (integer required - default is native temporal resolution AKA no interpolation)', metavar='',type = int)
     parser.add_argument("-n","--nsmooth", help='Number of raw timesteps used for smoothing',default=0, metavar='',type = int)
     parser.add_argument("-u","--nupdate", help='Number of smoothed timesteps to be updated in HDF5 file',default=0, metavar='',type = int)
@@ -135,7 +135,7 @@ def main():
     if args.srange:
         try:
             assert len(args.srange) == 3
-            args.srange = np.linspace(float(args.srange[0]),float(args.srange[1]),float(args.srange[1])/float(args.srange[2]) + 1.0)
+            args.srange = np.linspace(float(args.srange[0]),float(args.srange[1]),abs((args.srange[0]-args.srange[1]))/float(args.srange[2]) + 1.0)
         except (IndexError,TypeError,AssertionError):
             raise SystemExit('Error with s value array values. Expected three values of float log10(s) -  smin smax sstep !')
 
@@ -158,7 +158,7 @@ def main():
         if args.soptimize:
 
             if not args.srange:
-                processing_dict['srange'] = np.linspace(-1.0,2.0,16.0)
+                processing_dict['srange'] = np.linspace(-1.0,1.0,11.0)
             else:
                 processing_dict['srange'] = args.srange
 
