@@ -691,7 +691,7 @@ class MODISsmth5:
 
                                 smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]]
 
-                                arr_smooth[...] = nodata
+                            arr_smooth[...] = nodata
 
                         else:
 
@@ -761,6 +761,8 @@ class MODISsmth5:
                             bco = bc + smoothoffset
 
                             smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]]
+
+                        arr_smooth[...] = nodata
 
                     else:
 
@@ -879,7 +881,7 @@ class MODISsmth5:
 
                                 smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]]
 
-                                arr_smooth[...] = nodata
+                            arr_smooth[...] = nodata
 
                         else:
 
@@ -952,6 +954,7 @@ class MODISsmth5:
                             bco = bc + smoothoffset
 
                             smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]]
+                        arr_smooth[...] = nodata
 
                     else:
 
@@ -1086,7 +1089,7 @@ class MODISsmth5:
 
                                 smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]]
 
-                                arr_smooth[...] = nodata
+                            arr_smooth[...] = nodata
 
                         else:
 
@@ -1172,6 +1175,9 @@ class MODISsmth5:
                             bco = bc + smoothoffset
 
                             smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]]
+
+                        arr_smooth[...] = nodata
+
 
                     else:
 
