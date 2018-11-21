@@ -239,7 +239,7 @@ def pentvec(yr):
     t = []
 
     for m in range(1,13):
-        for d in ['05','10','15','20','25','30']:
+        for d in ['03','08','13','18','23','28']:
             try:
                 t.append(datetime.datetime.strptime('{}{:02d}{}'.format(yr,m,d),'%Y%m%d').date().strftime('%Y%j'))
             except ValueError:
