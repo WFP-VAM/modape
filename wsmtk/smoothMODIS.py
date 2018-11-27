@@ -6,6 +6,7 @@ import shutil
 import os
 import sys
 import glob
+import datetime
 import argparse
 import multiprocessing
 import numpy as np
@@ -238,7 +239,7 @@ def main():
                     print('Raw HDF5 {} not found! Please check path.'.format(h5))
                     continue
 
-                smt_h5 = MODISsmth5(rawfile = h5, tempint = args.tempint, nsmooth = args.nsmooth, nupdate = args.nupdate, targetdir = args.targetdir, nworkers = args.nworkers)
+                smt_h5 = MODISsmth5(rawfile = h5, startdate= args.startdate, tempint = args.tempint, nsmooth = args.nsmooth, nupdate = args.nupdate, targetdir = args.targetdir, nworkers = args.nworkers)
 
                 if not smt_h5.exists:
                     smt_h5.create()
@@ -265,7 +266,7 @@ def main():
                     print('Raw HDF5 {} not found! Please check path.'.format(h5))
                     continue
 
-                smt_h5 = MODISsmth5(rawfile = h5, tempint = args.tempint, nsmooth = args.nsmooth, nupdate = args.nupdate, targetdir = args.targetdir, nworkers = args.nworkers)
+                smt_h5 = MODISsmth5(rawfile = h5, startdate=args.startdate, tempint = args.tempint, nsmooth = args.nsmooth, nupdate = args.nupdate, targetdir = args.targetdir, nworkers = args.nworkers)
 
                 if not smt_h5.exists:
                     smt_h5.create()
@@ -292,7 +293,7 @@ def main():
                     print('Raw HDF5 {} not found! Please check path.'.format(h5))
                     continue
 
-                smt_h5 = MODISsmth5(rawfile = h5, tempint = args.tempint, nsmooth = args.nsmooth, nupdate = args.nupdate, targetdir = args.targetdir, nworkers = args.nworkers)
+                smt_h5 = MODISsmth5(rawfile = h5, startdate=args.startdate, tempint = args.tempint, nsmooth = args.nsmooth, nupdate = args.nupdate, targetdir = args.targetdir, nworkers = args.nworkers)
 
                 if not smt_h5.exists:
                     smt_h5.create()

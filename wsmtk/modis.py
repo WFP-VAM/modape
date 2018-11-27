@@ -474,7 +474,7 @@ class MODISrawh5:
 class MODISsmth5:
     '''Class for smoothed MODIS data collected into HDF5 file.'''
 
-    def __init__(self,rawfile,tempint=None,nsmooth=0,nupdate=0,targetdir=os.getcwd(),nworkers=1):
+    def __init__(self,rawfile,startdate=None,tempint=None,nsmooth=0,nupdate=0,targetdir=os.getcwd(),nworkers=1):
         '''Create MODISsmth5 object.
 
         Args:
@@ -493,6 +493,7 @@ class MODISsmth5:
         self.nworkers = nworkers
         self.nupdate = nupdate
         self.nsmooth = nsmooth
+        self.startdate = startdate
 
         # Get info from raw HDF5
         with h5py.File(self.rawfile,'r') as h5f:
@@ -514,9 +515,12 @@ class MODISsmth5:
         if txflag != 'n':
             self.tinterpolate = True
             self.temporalresolution = tempint
+            if self.startdate:
+                txflag = 'c'
         else:
             self.tinterpolate = False
             self.temporalresolution = None
+
 
         # Filename for smoothed HDF5
         self.outname = '{}/{}.tx{}.{}.h5'.format(
@@ -556,7 +560,7 @@ class MODISsmth5:
         if not self.temporalresolution:
             self.temporalresolution = rtres
 
-        dates = DateHelper(rawdates=self.rawdates, rtres=rtres,stres=self.temporalresolution,tshift=tshift,nupdate=self.nupdate)
+        dates = DateHelper(rawdates=self.rawdates, rtres=rtres,stres=self.temporalresolution, start = self.startdate, tshift=tshift,nupdate=self.nupdate)
 
         if not self.tinterpolate:
             dates.target = self.rawdates
@@ -619,7 +623,7 @@ class MODISsmth5:
             smt_ds.attrs['lastrun'] = "fixed s: log10(sopt) = {}".format(s)
             smt_ds.attrs['log10sopt'] = s
 
-            dates = DateHelper(rawdates=self.rawdates, rtres=rtres,stres=self.temporalresolution,tshift=tshift,nupdate=self.nupdate)
+            dates = DateHelper(rawdates=self.rawdates, rtres=rtres,stres=self.temporalresolution, start = self.startdate, tshift=tshift,nupdate=self.nupdate)
             if not self.tinterpolate:
                 dates.target = self.rawdates
 
@@ -803,7 +807,7 @@ class MODISsmth5:
             smt_ds.attrs['processingtimestamp'] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
             smt_ds.attrs['lastrun'] = "fixed s from grid"
 
-            dates = DateHelper(rawdates=self.rawdates, rtres=rtres,stres=self.temporalresolution,tshift=tshift,nupdate=self.nupdate)
+            dates = DateHelper(rawdates=self.rawdates, rtres=rtres,stres=self.temporalresolution, start = self.startdate, tshift=tshift,nupdate=self.nupdate)
 
             if not self.tinterpolate:
                 dates.target = self.rawdates
@@ -1007,7 +1011,7 @@ class MODISsmth5:
             else:
                 smt_ds.attrs['lastrun'] = "V-curve optimization of s"
 
-            dates = DateHelper(rawdates=self.rawdates, rtres=rtres,stres=self.temporalresolution,tshift=tshift,nupdate=self.nupdate)
+            dates = DateHelper(rawdates=self.rawdates, rtres=rtres,stres=self.temporalresolution, start = self.startdate,tshift=tshift,nupdate=self.nupdate)
 
             if not self.tinterpolate:
                 dates.target = self.rawdates
