@@ -8,6 +8,12 @@ import multiprocessing.pool
 import array
 from .whittaker import ws2d, ws2d_vc, ws2d_vc_asy
 
+# assign xrange to range if py2
+try:
+    range = xrange
+except NameError:
+    pass
+
 class SessionWithHeaderRedirection(requests.Session):
     ''' Session class for MODIS query.
 
@@ -112,46 +118,60 @@ class Pool(multiprocessing.pool.Pool):
 
 class DateHelper:
 
-    def __init__(self,rawdates,rtres,stres,tshift,nupdate=0):
+    def __init__(self,rawdates,rtres,stres,start=None,tshift = 0,nupdate=0):
 
-        yrmin = int(min([x[:4] for x in rawdates]))
-        yrmax = int(max([x[:4] for x in rawdates]))
+        if start:
 
-        daily_tmp = [y for x in range(yrmin,yrmax+1,1) for y in tvec(x,1)]
+            stop = (fromjulian(rawdates[-1]) + datetime.timedelta(rtres)).strftime('%Y%j')
 
-        stop = (fromjulian(rawdates[-1]) + datetime.timedelta(rtres)).strftime('%Y%j')
+            tdiff = (fromjulian(stop) - fromjulian(rawdates[0])).days
 
-        self.daily = daily_tmp[daily_tmp.index(rawdates[0]):daily_tmp.index(stop)+1]
+            self.daily = [(fromjulian(rawdates[0]) + datetime.timedelta(x)).strftime('%Y%j') for x in range(tdiff+1)]
 
-        if stres == 5:
+            self.target = [self.daily[x] for x in range(self.daily.index(start),len(self.daily),stres)]
+            self.target = self.target[-nupdate:]
 
-            target_temp = [y for x in range(yrmin,yrmax+1,1) for y in pentvec(x)]
-
-        elif stres == 10:
-
-            target_temp = [y for x in range(yrmin,yrmax+1,1) for y in dekvec(x)]
 
         else:
 
-            target_temp = [y for x in range(yrmin,yrmax+1,1) for y in tvec(x,stres)]
+            yrmin = int(min([x[:4] for x in rawdates]))
+            yrmax = int(max([x[:4] for x in rawdates]))
 
-        target_temp.sort()
+            daily_tmp = [y for x in range(yrmin,yrmax+1,1) for y in tvec(x,1)]
 
-        for sd in self.daily:
-            if sd in target_temp:
-                start_target = sd
-                del sd
-                break
+            stop = (fromjulian(rawdates[-1]) + datetime.timedelta(rtres)).strftime('%Y%j')
 
-        for sd in reversed(self.daily):
-            if sd in target_temp:
-                stop_target = sd
-                del sd
-                break
+            self.daily = daily_tmp[daily_tmp.index(rawdates[0]):daily_tmp.index(stop)+1]
+
+            if stres == 5:
+
+                target_temp = [y for x in range(yrmin,yrmax+1,1) for y in pentvec(x)]
+
+            elif stres == 10:
+
+                target_temp = [y for x in range(yrmin,yrmax+1,1) for y in dekvec(x)]
+
+            else:
+
+                target_temp = [y for x in range(yrmin,yrmax+1,1) for y in tvec(x,stres)]
+
+            target_temp.sort()
+
+            for sd in self.daily:
+                if sd in target_temp:
+                    start_target = sd
+                    del sd
+                    break
+
+            for sd in reversed(self.daily):
+                if sd in target_temp:
+                    stop_target = sd
+                    del sd
+                    break
 
 
-        self.target = target_temp[target_temp.index(start_target):target_temp.index(stop_target)+1]
-        self.target = self.target[-nupdate:]
+            self.target = target_temp[target_temp.index(start_target):target_temp.index(stop_target)+1]
+            self.target = self.target[-nupdate:]
 
     def getDV(self,nd):
 

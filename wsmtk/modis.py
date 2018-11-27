@@ -648,7 +648,7 @@ class MODISsmth5:
 
                     vec_dly = dates.getDV(nodata)
 
-                    # Only for shift?
+                    # Shift for interpolation
                     for d in self.rawdates:
                         vec_dly[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = 0
 
@@ -713,7 +713,7 @@ class MODISsmth5:
 
                     vec_dly = dates.getDV(nodata)
 
-                    # Only for shift?
+                    # Shift for interpolation
                     for d in self.rawdates:
                         vec_dly[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = 0
 
@@ -833,7 +833,7 @@ class MODISsmth5:
 
                     vec_dly = dates.getDV(nodata)
 
-                    # Only for shift?
+                    # Shift for interpolation
                     for d in self.rawdates:
                         vec_dly[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = 0
 
@@ -904,7 +904,7 @@ class MODISsmth5:
 
                     vec_dly = dates.getDV(nodata)
 
-                    # Only for shift?
+                    # Shift for interpolation
                     for d in self.rawdates:
                         vec_dly[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = 0
 
@@ -1037,7 +1037,7 @@ class MODISsmth5:
 
                     vec_dly = dates.getDV(nodata)
 
-                    # Only for shift?
+                    # Shift for interpolation
                     for d in self.rawdates:
                         vec_dly[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = 0
 
@@ -1112,7 +1112,7 @@ class MODISsmth5:
 
                     vec_dly = dates.getDV(nodata)
 
-                    # Only for shift?
+                    # Shift for interpolation
                     for d in self.rawdates:
                         vec_dly[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = 0
 

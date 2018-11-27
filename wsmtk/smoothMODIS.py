@@ -32,7 +32,7 @@ def run_ws2d(h5):
 
     else:
 
-        smt_h5 = MODISsmth5(rawfile = h5, tempint = pdict['tempint'], nsmooth = pdict['nsmooth'], nupdate = pdict['nupdate'], targetdir = pdict['targetdir'], nworkers = pdict['nworkers'])
+        smt_h5 = MODISsmth5(rawfile = h5, startdate = pdict['startdate'], tempint = pdict['tempint'], nsmooth = pdict['nsmooth'], nupdate = pdict['nupdate'], targetdir = pdict['targetdir'], nworkers = pdict['nworkers'])
 
         if not smt_h5.exists:
             smt_h5.create()
@@ -52,7 +52,7 @@ def run_ws2d_sgrid(h5):
 
     else:
 
-        smt_h5 = MODISsmth5(rawfile = h5, tempint = pdict['tempint'], nsmooth = pdict['nsmooth'], nupdate = pdict['nupdate'], targetdir = pdict['targetdir'], nworkers = pdict['nworkers'])
+        smt_h5 = MODISsmth5(rawfile = h5, startdate = pdict['startdate'], tempint = pdict['tempint'], nsmooth = pdict['nsmooth'], nupdate = pdict['nupdate'], targetdir = pdict['targetdir'], nworkers = pdict['nworkers'])
 
         if not smt_h5.exists:
             smt_h5.create()
@@ -72,7 +72,7 @@ def run_ws2d_vOpt(h5):
 
     else:
 
-        smt_h5 = MODISsmth5(rawfile = h5, tempint = pdict['tempint'], nsmooth = pdict['nsmooth'], nupdate = pdict['nupdate'], targetdir = pdict['targetdir'], nworkers = pdict['nworkers'])
+        smt_h5 = MODISsmth5(rawfile = h5, startdate = pdict['startdate'], tempint = pdict['tempint'], nsmooth = pdict['nsmooth'], nupdate = pdict['nupdate'], targetdir = pdict['targetdir'], nworkers = pdict['nworkers'])
 
         if not smt_h5.exists:
             smt_h5.create()
@@ -108,6 +108,7 @@ def main():
     parser.add_argument("-u","--nupdate", help='Number of smoothed timesteps to be updated in HDF5 file',default=0, metavar='',type = int)
     parser.add_argument("-p","--pvalue", help='Value for asymmetric smoothing (float required)', metavar='', type = float)
     parser.add_argument("-d","--targetdir", help='Target directory for smoothed output',default=os.getcwd(),metavar='')
+    parser.add_argument("--startdate", help='Startdate fur temporal interpolation (format YYYY-MM-DD or YYYYJJJ)',metavar='')
     parser.add_argument("--soptimize", help='Use V-curve for s value optimization',action='store_true')
     parser.add_argument("--parallel-tiles", help='Number of tiles processed in parallel (default = None)',default=1,type=int,metavar='')
     parser.add_argument("--nworkers", help='Number of worker processes used per tile (default is number is 1 - no concurrency)',default=1, metavar='', type = int)
@@ -145,9 +146,19 @@ def main():
         except:
             raise SystemExit('Error with s value. Expected float log10(s)!')
 
+    if args.startdate:
+
+        try:
+            datetime.datetime.strptime(args.startdate,'%Y-%m-%d').strftime('%Y%j')
+        except ValueError:
+            try:
+                datetime.datetime.strptime(args.startdate,'%Y%j').strftime('%Y%j')
+            except ValueError:
+                raise SystemExit('Error parsing startdate. Please check format!')
+
     # prepare processing dict
 
-    processing_dict = init_parameters(tempint=args.tempint,nsmooth=args.nsmooth,nupdate=args.nupdate,targetdir=args.targetdir,nworkers=args.nworkers)
+    processing_dict = init_parameters(tempint=args.tempint,nsmooth=args.nsmooth,nupdate=args.nupdate,targetdir=args.targetdir,nworkers=args.nworkers,startdate=args.startdate)
 
     if not args.quiet:
         print('\n[{}]: Starting smoothMODIS.py ... \n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
