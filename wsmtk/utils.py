@@ -350,8 +350,26 @@ def execute_ws2d_sgrid(ix):
         z2[...] = ws2d(y = z2, lmda = 0.0001, w = np.array((z2 != parameters['nd']) * 1,dtype='float32'))
         arr_smooth[ix,:] = z2[parameters['dix']]
 
-def execute_ws2d_vOpt(ix):
+def execute_ws2d_vc(ix):
     '''Execute whittaker smoother with V-curve optimization of s in worker.'''
+
+    if parameters['p']:
+
+        arr_raw[ix,:], arr_sgrid[ix] = ws2d_vc_asy(y = arr_raw[ix,:], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1,dtype='float32'), llas = array.array('f',parameters['srange']), p = parameters['p'])
+    else:
+
+        arr_raw[ix,:], arr_sgrid[ix] = ws2d_vc(y = arr_raw[ix,:], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1,dtype='float32'), llas = array.array('f',parameters['srange']))
+
+    if parameters['shared_array_smooth']:
+
+        z2 = parameters['vec_dly'].copy()
+        z2[ z2 != parameters['nd'] ] = arr_raw[ix,:]
+        z2[...] = ws2d(y = z2, lmda = 0.0001, w = np.array((z2 != parameters['nd']) * 1,dtype='float32'))
+        arr_smooth[ix,:] = z2[parameters['dix']]
+
+
+def execute_ws2d_vcOpt(ix):
+    '''Execute whittaker smoother with V-curve 2step-optimization of s in worker.'''
 
     z, lopt =  ws2d_vc(y = arr_raw[ix,:], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1,dtype='float32'), llas = array.array('f',parameters['srange']))
 

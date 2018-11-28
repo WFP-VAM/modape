@@ -60,9 +60,27 @@ def run_ws2d_sgrid(h5):
 
         smt_h5.ws2d_sgrid()
 
-
-def run_ws2d_vOpt(h5):
+def run_ws2d_vc(h5):
     '''Run smoother with V-curve optimization of s
+
+    Args:
+        pdict: dictionary with processing parameters for tile
+    '''
+    if not os.path.isfile(h5):
+
+        print('Raw HDF5 {} not found! Please check path.'.format(h5))
+
+    else:
+
+        smt_h5 = MODISsmth5(rawfile = h5, startdate = pdict['startdate'], tempint = pdict['tempint'], nsmooth = pdict['nsmooth'], nupdate = pdict['nupdate'], targetdir = pdict['targetdir'], nworkers = pdict['nworkers'])
+
+        if not smt_h5.exists:
+            smt_h5.create()
+
+        smt_h5.ws2d_vc(pdict['srange'],pdict['pvalue'])
+
+def run_ws2d_vcOpt(h5):
+    '''Run smoother with V-curve optimization of s with two-step optimization
 
     Args:
         pdict: dictionary with processing parameters for tile
@@ -110,7 +128,8 @@ def main():
     parser.add_argument("-p","--pvalue", help='Value for asymmetric smoothing (float required)', metavar='', type = float)
     parser.add_argument("-d","--targetdir", help='Target directory for smoothed output',default=os.getcwd(),metavar='')
     parser.add_argument("--startdate", help='Startdate fur temporal interpolation (format YYYY-MM-DD or YYYYJJJ)',metavar='')
-    parser.add_argument("--soptimize", help='Use V-curve for s value optimization',action='store_true')
+    parser.add_argument("--vcurve", help='Use V-curve for s value optimization',action='store_true')
+    parser.add_argument("--twostep", help='Use 2-step V-curve for s value optimization',action='store_true')
     parser.add_argument("--parallel-tiles", help='Number of tiles processed in parallel (default = None)',default=1,type=int,metavar='')
     parser.add_argument("--nworkers", help='Number of worker processes used per tile (default is number is 1 - no concurrency)',default=1, metavar='', type = int)
     parser.add_argument("--quiet", help='Be quiet',action='store_true')
@@ -166,8 +185,7 @@ def main():
 
     if args.parallel_tiles > 1:
 
-        # Check if V-curve optimization is true
-        if args.soptimize:
+        if args.vcurve:
 
             if not args.srange:
                 processing_dict['srange'] = np.linspace(-1.0,1.0,11.0)
@@ -181,7 +199,31 @@ def main():
 
             with closing(Pool(processes=args.parallel_tiles,initializer = initfun, initargs = (processing_dict,))) as pool:
 
-                res = pool.map(run_ws2d_vOpt,files)
+                res = pool.map(run_ws2d_vc,files)
+
+            pool.close()
+            pool.join()
+
+            if not args.quiet:
+                print('[{}]: Done.'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
+
+
+        # Check if V-curve optimization is true
+        elif args.twostep:
+
+            if not args.srange:
+                processing_dict['srange'] = np.linspace(-1.0,1.0,11.0)
+            else:
+                processing_dict['srange'] = args.srange
+
+            processing_dict['pvalue'] = args.pvalue
+
+            if not args.quiet:
+                print('\nRunning whittaker smoother 2-step V-curve optimization ... \n')
+
+            with closing(Pool(processes=args.parallel_tiles,initializer = initfun, initargs = (processing_dict,))) as pool:
+
+                res = pool.map(run_ws2d_vcOpt,files)
 
             pool.close()
             pool.join()
@@ -223,7 +265,7 @@ def main():
 
     else:
 
-        if args.soptimize:
+        if args.vcurve:
 
             if not args.srange:
                 args.srange = np.linspace(-1.0,2.0,16.0)
@@ -244,7 +286,37 @@ def main():
                 if not smt_h5.exists:
                     smt_h5.create()
 
-                smt_h5.ws2d_vOpt(args.srange,args.pvalue)
+                smt_h5.ws2d_vc(args.srange,args.pvalue)
+
+                if not args.quiet:
+                    bar.next()
+
+            if not args.quiet:
+                bar.finish()
+                print('[{}]: Done.'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
+
+        elif args.twostep:
+
+            if not args.srange:
+                args.srange = np.linspace(-1.0,2.0,16.0)
+
+            if not args.quiet:
+                print('\nRunning whittaker smoother 2-step V-curve optimization ... \n')
+                bar = Bar('Processing',fill='=',max=len(files),suffix='%(percent)d%%  ')
+                bar.goto(0)
+
+            for h5 in files:
+
+                if not os.path.isfile(h5):
+                    print('Raw HDF5 {} not found! Please check path.'.format(h5))
+                    continue
+
+                smt_h5 = MODISsmth5(rawfile = h5, startdate= args.startdate, tempint = args.tempint, nsmooth = args.nsmooth, nupdate = args.nupdate, targetdir = args.targetdir, nworkers = args.nworkers)
+
+                if not smt_h5.exists:
+                    smt_h5.create()
+
+                smt_h5.ws2d_vcOpt(args.srange,args.pvalue)
 
                 if not args.quiet:
                     bar.next()

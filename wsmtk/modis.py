@@ -968,12 +968,9 @@ class MODISsmth5:
                             smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]]
 
 
-    def ws2d_vOpt(self,srange,p=None):
+    def ws2d_vc(self,srange,p=None):
 
         '''Apply whittaker smoother V-curve optimization of s.
-
-        This current implementation runs the optimization two times, using the first sOpt to further constrain the
-        srange.
 
         Optionally, a p value can be specified to use asymmetric smoothing.
 
@@ -1077,7 +1074,224 @@ class MODISsmth5:
                             #no data points, skipping to next block
                             continue
 
-                        res = pool.map(execute_ws2d_vOpt,mapIX)
+                        res = pool.map(execute_ws2d_vc,mapIX)
+
+                        # write back data
+
+                        arr_sgrid[arr_sgrid>0] = np.log10(arr_sgrid[arr_sgrid>0])
+
+                        smt_sgrid[br:br+rawchunks[0]] = arr_sgrid[...]
+                        arr_sgrid[...] = 0
+
+                        if self.tinterpolate:
+
+                            for bc in range(0,len(dates.target),smoothchunks[1]):
+                                bco = bc + smoothoffset
+
+                                smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]]
+
+                            arr_smooth[...] = nodata
+
+                        else:
+
+                            for bc in range(0,len(dates.target),smoothchunks[1]):
+                                bco = bc + smoothoffset
+
+                                smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]]
+
+            else:
+
+                arr_raw = np.zeros((rawchunks[0], len(self.rawdates)),dtype='float32')
+                arr_sgrid = np.zeros((rawchunks[0],),dtype='float32')
+
+                # Create weights array
+                wts = arr_raw.copy()
+
+                if self.tinterpolate:
+
+                    arr_smooth = np.zeros((smoothchunks[0],len(dates.target)),dtype='float32')
+
+                    vec_dly = dates.getDV(nodata)
+
+                    # Shift for interpolation
+                    for d in self.rawdates:
+                        vec_dly[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = 0
+
+                else:
+                    arr_smooth = None
+
+                for br in range(0,rawshape[0],rawchunks[0]):
+
+                    arr_smooth[...] = nodata
+                    wts[...] = 0
+
+                    for bc in range(0,len(self.rawdates),rawchunks[1]):
+                        bco = bc + rawoffset
+
+                        arr_raw[:, bc:bc+rawchunks[1]] = raw_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]]
+
+                    wts[...] = (arr_raw != nodata) * 1
+
+                    ndix = np.sum(wts,1)>0 #70
+                    mapIX = np.where(ndix)[0]
+
+                    if len(mapIX) == 0:
+                        #no data points, skipping to next block
+                        continue
+
+                    for r in mapIX:
+
+                        if p:
+                            arr_raw[r,:] , arr_sgrid[r] = ws2d_vc_asy(y = arr_raw[r,:], w = np.array((arr_raw[r,:] != nodata) * 1,dtype='float32'), llas = array.array('f',srange),p=p)
+                        else:
+                            arr_raw[r,:] , arr_sgrid[r] = ws2d_vc(y = arr_raw[r,:], w = np.array((arr_raw[r,:] != nodata) * 1,dtype='float32'), llas = array.array('f',srange))
+
+                        if self.tinterpolate:
+
+                            z2 = vec_dly.copy()
+                            z2[z2 != nodata] = arr_raw[r,:]
+                            z2[...] = ws2d(y = z2, lmda = 0.0001, w = np.array((z2 != nodata) * 1,dtype='float32'))
+                            arr_smooth[r,:] = z2[dix]
+
+                        else:
+                            pass
+
+                    # write back data
+
+                    arr_sgrid[arr_sgrid>0] = np.log10(arr_sgrid[arr_sgrid>0])
+
+                    smt_sgrid[br:br+rawchunks[0]] = arr_sgrid[...]
+                    arr_sgrid[...] = 0
+
+                    if self.tinterpolate:
+
+                        for bc in range(0,len(dates.target),smoothchunks[1]):
+                            bco = bc + smoothoffset
+
+                            smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]]
+
+                        arr_smooth[...] = nodata
+
+
+                    else:
+
+                        for bc in range(0,len(dates.target),smoothchunks[1]):
+                            bco = bc + smoothoffset
+
+                            smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]]
+
+
+
+    def ws2d_vcOpt(self,srange,p=None):
+
+        '''Apply whittaker smoother V-curve optimization of s.
+
+        This current implementation runs the optimization two times, using the first sOpt to further constrain the
+        srange.
+
+        Optionally, a p value can be specified to use asymmetric smoothing.
+
+        Args:
+            srange (arr): Float32 array of s-values to apply
+            p (float): Percentile value
+        '''
+
+        with h5py.File(self.rawfile,'r') as rawh5, h5py.File(self.outname,'r+') as smth5:
+            raw_ds = rawh5.get('data')
+            raw_dts = rawh5.get('dates')
+            rtres = raw_ds.attrs['temporalresolution'].item()
+
+            smt_ds = smth5.get('data')
+            smt_dts = smth5.get('dates')
+            smt_sgrid = smth5.get('sgrid')
+
+            rawshape = raw_ds.shape
+            rawchunks = raw_ds.chunks
+
+            smoothshape = smt_ds.shape
+            smoothchunks = smt_ds.chunks
+
+            nodata = raw_ds.attrs['nodata'].item()
+
+            self.temporalresolution = smt_ds.attrs['temporalresolution'].item()
+            tshift = raw_ds.attrs['tshift'].item()
+
+            # Store run parameters for infotool
+            smt_ds.attrs['processingtimestamp'] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+
+            if p:
+                smt_ds.attrs['lastrun'] = "V-curve 2-step optimization of s with p = {}".format(p)
+                smt_ds.attrs['pvalue'] = p
+            else:
+                smt_ds.attrs['lastrun'] = "V-curve 2-step optimization of s"
+
+            dates = DateHelper(rawdates=self.rawdates, rtres=rtres,stres=self.temporalresolution, start = self.startdate,tshift=tshift,nupdate=self.nupdate)
+
+            if not self.tinterpolate:
+                dates.target = self.rawdates
+
+            dix = dates.getDIX()
+
+            # Resize if date list is bigger than shape of smoothed data
+            if len(dates.target) > smoothshape[0]:
+                smt_dts.resize((len(dates.target),))
+                smt_ds.resize((smoothshape[0],len(dates.target)))
+                smt_dts[...] = [x.encode("ascii", "ignore") for x in dates.target]
+
+            # calculate offsets
+
+            rawoffset = [x.decode() for x in raw_dts[...]].index(self.rawdates[0])
+            smoothoffset = [x.decode() for x in smt_dts[...]].index(dates.target[0])
+
+            if self.nworkers > 1:
+
+                if self.tinterpolate:
+
+                    shared_array_smooth = init_shared(smoothchunks[0] * len(dates.target))
+                    arr_smooth = tonumpyarray(shared_array_smooth)
+                    arr_smooth.shape = (smoothchunks[0],len(dates.target))
+                    arr_smooth[...] = nodata
+
+
+                    vec_dly = dates.getDV(nodata)
+
+                    # Shift for interpolation
+                    for d in self.rawdates:
+                        vec_dly[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = 0
+
+                else:
+                    vec_dly = None
+                    shared_array_smooth = None
+                    arr_smooth = None
+
+                shared_array_raw = init_shared(rawchunks[0] * len(self.rawdates))
+                parameters = init_parameters(rdim=(rawchunks[0], len(self.rawdates)),sdim=(smoothchunks[0], len(dates.target)), nd=nodata, p=p, shared_array_smooth=shared_array_smooth, vec_dly=vec_dly, dix=dix, srange=srange)
+
+                parameters['shared_array_sgrid'] = init_shared(rawchunks[0])
+
+                arr_raw = tonumpyarray(shared_array_raw)
+                arr_raw.shape = (rawchunks[0], len(self.rawdates))
+
+                arr_sgrid = tonumpyarray(parameters['shared_array_sgrid'])
+
+                with closing(mp.Pool(processes=self.nworkers,initializer = init_worker, initargs = (shared_array_raw,parameters))) as pool:
+
+                    # load raw data
+                    for br in range(0,rawshape[0],rawchunks[0]):
+
+                        for bc in range(0,len(self.rawdates),rawchunks[1]):
+                            bco = bc + rawoffset
+
+                            arr_raw[:, bc:bc+rawchunks[1]] = raw_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]]
+
+                        ndix = np.sum(arr_raw!=-3000,1)>0 #70
+                        mapIX = np.where(ndix)[0]
+
+                        if len(mapIX) == 0:
+                            #no data points, skipping to next block
+                            continue
+
+                        res = pool.map(execute_ws2d_vcOpt,mapIX)
 
                         # write back data
 
