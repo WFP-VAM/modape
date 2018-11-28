@@ -194,7 +194,10 @@ class RTS:
             ndix = np.sum(arr != self.nodata,1)>0 #70
             mapIX = np.where(ndix)[0]
 
-            arr[-mapIX,:] = self.nodata
+            if len(mapIX) == 0:
+                continue # skip bc no data in block         
+
+            arr[np.logical_not(ndix),:]  = self.nodata
 
             for r in mapIX:
 
@@ -287,7 +290,10 @@ class RTS:
             ndix = np.sum(arr != self.nodata,1)>0 #70
             mapIX = np.where(ndix)[0]
 
-            arr[-mapIX,:] = self.nodata
+            if len(mapIX) == 0:
+                continue # skip bc no data in block
+
+            arr[np.logical_not(ndix),:]  = self.nodata
 
             for r in mapIX:
 
@@ -409,7 +415,11 @@ class RTS:
             ndix = np.sum(arr != self.nodata,1)>0 #70
             mapIX = np.where(ndix)[0]
 
-            arr[-mapIX,:] = self.nodata
+            if len(mapIX) == 0:
+                continue # skip bc no data in block
+
+
+            arr[np.logical_not(ndix),:]  = self.nodata
 
             for r in mapIX:
 
