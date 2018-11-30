@@ -195,7 +195,7 @@ class RTS:
             mapIX = np.where(ndix)[0]
 
             if len(mapIX) == 0:
-                continue # skip bc no data in block         
+                continue # skip bc no data in block
 
             arr[np.logical_not(ndix),:]  = self.nodata
 
