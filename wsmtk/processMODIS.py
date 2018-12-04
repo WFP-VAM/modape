@@ -5,20 +5,48 @@ import os
 import sys
 import glob
 import argparse
-import datetime
 import re
 import traceback
+from progress.bar import Bar
+import time
+from contextlib import contextmanager, closing
+import multiprocessing as mp
+
+
+def run_process(pdict):
+    '''Execute processing into raw HDF5 file
+
+    Little wrapper to execute the processing into a raw HDF5 file. This enables multi-process concurrency.
+
+    Args:
+        pdict: dictionary with processing parameters for tile
+    '''
+
+    for par in pdict['parameters']:
+
+        try:
+
+            rh5 = MODISrawh5(pdict['files'],param=par,targetdir=pdict['targetdir'])
+
+            # Creatre if file doesn't exist yet
+            if not rh5.exists:
+                rh5.create(compression=pdict['compression'], chunk=pdict['chunksize'])
+            rh5.update()
+
+        except Exception as e:
+
+            print('\nError processing product {}, parameter {}. \n\n Traceback:\n'.format(rh5.product,par))
+
+            traceback.print_exc()
+        print('\n')
+
 
 def main():
-    '''Collect raw MODIS hdf files into a daily raw MODIS HDF5 file.
+    '''Collect raw MODIS hdf files into a raw MODIS HDF5 file.
 
     All MODIS hdf files within srcdir will be collected into a raw MODIS HDF5 file, corresponding to product type and tile.
     If the respective HDF5 file does not exists in the target directory, it will be created. Otherwhise, the file will be
     updated and the data inserted at the proper temporal location within the HDF5 file.
-
-    The 2D raw data will be converted into 3D daily data, where the 3rd dimension of the array corresponds to the temporal
-    resolution of the input product. If available, the compositing DOYs will be used to assing the values to the corresponding
-    pixel within the 3D array. If such information is not availabe, the data will be set to the mid-point of the compositing period.
 
     By default, 16-day MOD13* and MYD13* products will be interleaved into an 8-day product with the new product ID MXD*.
     '''
@@ -27,9 +55,11 @@ def main():
     parser.add_argument("srcdir", help='directory with raw MODIS .hdf files',default=os.getcwd(),metavar='srcdir')
     #parser.add_argument("-p","--parameter", help='VAM parameter code',metavar='') ## paramter selection not implemented
     parser.add_argument("-d","--targetdir", help='Target directory for PROCESSED MODIS files (default is scrdir)',metavar='')
-    parser.add_argument("-c","--compression", help='Compression for HDF5 files',default='gzip',metavar='')
+    parser.add_argument("-x","--compression", help='Compression for HDF5 files',default='gzip',metavar='')
     parser.add_argument("--all-parameters", help='Flag to process all possible VAM parameters',action='store_true')
-    parser.add_argument("-b","--blocksize", help='Minimum values for row & columns per processing block (default 120 120)',nargs=2,default=[120,120],type=int,metavar='')
+    parser.add_argument("-c","--chunksize", help='Number of pixels per block (value needs to result in integer number of blocks)',type=int,metavar='')
+    parser.add_argument("--parallel-tiles", help='Number of tiles processed in parallel (default = None)',default=1,type=int,metavar='')
+    parser.add_argument("--quiet", help='Be quiet',action='store_true')
 
     # Fail and print help if no arguments supplied
     if len(sys.argv)==1:
@@ -57,70 +87,87 @@ def main():
     lst = re.compile('M.D11')
 
 
+    # processin dictionary
+
+    processing_dict = {}
+
     # Seperate input files into group
     groups = ['.*'.join(re.findall(ppatt,os.path.basename(x)) + re.findall(tpatt,os.path.basename(x)) + [re.sub(vpatt,'\\1',os.path.basename(x))])  for x in files]
 
     # Join MOD13/MYD13
     groups = list(set([re.sub('(M.{1})(D.+)','M.'+'\\2',x) if re.match(vimvem,x) else x for x in groups]))
 
-    # If all parameters are requested
-    if args.all_parameters:
 
-        # Iterate over groups
-        for g in groups:
+    for g in groups:
 
-            gpatt = re.compile(g + '.*hdf')
+        gpatt = re.compile(g + '.*hdf')
 
-            # Subset file list
-            files_sub = [x for x in files if re.search(gpatt,x)]
+        processing_dict[g] = {}
+
+        processing_dict[g]['targetdir'] = args.targetdir
+
+        processing_dict[g]['files'] = [x for x in files if re.search(gpatt,x)]
+
+        if args.chunksize:
+
+            processing_dict[g]['chunksize'] = args.chunksize
+
+        else:
+
+            processing_dict[g]['chunksize'] = None
+
+        processing_dict[g]['compression'] = args.compression
+
+
+        if args.all_parameters:
 
             if re.match(vimvem,g.split('.*')[0]):
-                allps = ['VIM','VEM']
+
+                processing_dict[g]['parameters'] = ['VIM','VEM']
+
             elif re.match(lst,g.split('.*')[0]):
-                allps = ['LTD','LTN']
+
+                processing_dict[g]['parameters'] = ['LTD','LTN']
+
             else:
-                ## maybe change to warning?
                 raise SystemExit('No parameters implemented for {}'.format(g.split('.*')[0]))
+        else:
+            processing_dict[g]['parameters'] = [None]
 
-            # Iterate over parameters
-            for p in allps:
 
-                # Create raw MODIS HDF5 file object
-                try:
-                    h5 = MODISrawh5(files_sub,param=p,targetdir=args.targetdir,compression=args.compression,crow=args.blocksize[0],ccol=args.blocksize[1])
+    if args.parallel_tiles > 1:
 
-                    # Creatre if file doesn't exist yet
-                    if not h5.exists:
-                        h5.create()
-                    h5.update()
+        if not args.quiet:
+            print('\n\n[{}]: Start processing - {} tiles in parallel ...'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),args.parallel_tiles))
 
-                except Exception as e:
-                    print('\nError processing file group {}, parameter {}. Skipping to next group/parameter!. \n\n Traceback:\n'.format(g,p))
-                    traceback.print_exc()
-                    print('\n')
-                    continue
+        with closing(mp.Pool(processes=args.parallel_tiles)) as pool:
+
+            res = pool.map(run_process,[processing_dict[g] for g in groups])
+
+        pool.close()
+        pool.join()
+
+        if not args.quiet:
+            print('[{}]: Done.'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
+
     else:
+
+        if not args.quiet:
+            print('\n\n[{}]: Start processing ... \n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
+
+            bar = Bar('Processing',fill='=',max=len(groups),suffix='%(percent)d%%  ')
+            bar.goto(0)
 
         for g in groups:
 
-            gpatt = re.compile(g + '.*hdf')
+            run_process(processing_dict[g])
 
-            files_sub = [x for x in files if re.search(gpatt,x)]
+            if not args.quiet:
+                bar.next()
 
-            try:
-
-                h5 = MODISrawh5(files_sub,targetdir=args.targetdir,compression=args.compression,crow=args.blocksize[0],ccol=args.blocksize[1])
-
-                if not h5.exists:
-                    h5.create()
-
-                h5.update()
-
-            except Exception as e:
-                print('\nError processing file group {}. Skipping to next group!. \n\n Traceback:\n'.format(g))
-                traceback.print_exc()
-                print('\n')
-                continue
+        if not args.quiet:
+            bar.finish()
+            print('\n[{}]: Done.'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
 
 if __name__ == '__main__':
     main()

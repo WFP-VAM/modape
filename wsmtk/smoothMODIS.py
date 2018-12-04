@@ -1,20 +1,110 @@
 #!/usr/bin/env python
 from __future__ import print_function
+from wsmtk.modis import MODISsmth5
+from wsmtk.utils import init_parameters, Pool
+import shutil
 import os
 import sys
+import glob
+import datetime
 import argparse
-import multiprocessing as mp
-import array
+import multiprocessing
 import numpy as np
-from .modis import MODISsmth5
 import time
+from progress.bar import Bar
+from contextlib import contextmanager, closing
+
+def initfun(pdict_):
+    '''Initfun for worker'''
+
+    global pdict
+    pdict = pdict_
+
+def run_ws2d(h5):
+    '''Run smoother with fixed s
+
+    Args:
+        pdict: dictionary with processing parameters for tile
+    '''
+
+    if not os.path.isfile(h5):
+
+        print('Raw HDF5 {} not found! Please check path.'.format(h5))
+
+    else:
+
+        smt_h5 = MODISsmth5(rawfile = h5, startdate = pdict['startdate'], tempint = pdict['tempint'], nsmooth = pdict['nsmooth'], nupdate = pdict['nupdate'], targetdir = pdict['targetdir'], nworkers = pdict['nworkers'])
+
+        if not smt_h5.exists:
+            smt_h5.create()
+
+        smt_h5.ws2d(pdict['s'])
+
+
+def run_ws2d_sgrid(h5):
+    '''Run smoother with fixed s from grid
+
+    Args:
+        pdict: dictionary with processing parameters for tile
+    '''
+    if not os.path.isfile(h5):
+
+        print('Raw HDF5 {} not found! Please check path.'.format(h5))
+
+    else:
+
+        smt_h5 = MODISsmth5(rawfile = h5, startdate = pdict['startdate'], tempint = pdict['tempint'], nsmooth = pdict['nsmooth'], nupdate = pdict['nupdate'], targetdir = pdict['targetdir'], nworkers = pdict['nworkers'])
+
+        if not smt_h5.exists:
+            smt_h5.create()
+
+        smt_h5.ws2d_sgrid()
+
+def run_ws2d_vc(h5):
+    '''Run smoother with V-curve optimization of s
+
+    Args:
+        pdict: dictionary with processing parameters for tile
+    '''
+    if not os.path.isfile(h5):
+
+        print('Raw HDF5 {} not found! Please check path.'.format(h5))
+
+    else:
+
+        smt_h5 = MODISsmth5(rawfile = h5, startdate = pdict['startdate'], tempint = pdict['tempint'], nsmooth = pdict['nsmooth'], nupdate = pdict['nupdate'], targetdir = pdict['targetdir'], nworkers = pdict['nworkers'])
+
+        if not smt_h5.exists:
+            smt_h5.create()
+
+        smt_h5.ws2d_vc(pdict['srange'],pdict['pvalue'])
+
+def run_ws2d_vcOpt(h5):
+    '''Run smoother with V-curve optimization of s with two-step optimization
+
+    Args:
+        pdict: dictionary with processing parameters for tile
+    '''
+    if not os.path.isfile(h5):
+
+        print('Raw HDF5 {} not found! Please check path.'.format(h5))
+
+    else:
+
+        smt_h5 = MODISsmth5(rawfile = h5, startdate = pdict['startdate'], tempint = pdict['tempint'], nsmooth = pdict['nsmooth'], nupdate = pdict['nupdate'], targetdir = pdict['targetdir'], nworkers = pdict['nworkers'])
+
+        if not smt_h5.exists:
+            smt_h5.create()
+
+        smt_h5.ws2d_vOpt(pdict['srange'],pdict['pvalue'])
+
 
 def main():
     '''Smooth, gapfill and interpolate processed raw MODIS HDF5 files.
 
     The smoothing function takes a previously created raw MODIS HDF file (as created by processMODIS) as input.
-    The raw data can be smoothed with eiter a fixed s value, a pixel-by-pixel s value read from grid,
-    V-curve optimization of s (creates or updates the s-grid) or asymmetric V-curve optimzation (with p supplied).
+    The raw data can be smoothed with eiter a fixed s value, a pixel-by-pixel s value read from a previously computed grid or
+    V-curve optimization of s (creates or updates the s-grid)
 
     The desired temporal resolution of the ouput file can be defined with tempint, allowing for seamless interpolation.
 
@@ -24,23 +114,25 @@ def main():
     By default, the entire temporal range of the raw data is used for smoothing, and the entire smoothed data is updated.
     The parameters nsmooth and nupdate can modify this behaviour.
 
-    To speed up processing time, parallel processing can be leveraged, splitting up the task for n workers (default
-    is number of available CPUs minus 1)
+    To speed up processing time, parallel processing can be leveraged, processing a user defined number of tiles in parallel, and for each tile splitting up the task into n worker processes (by default,
+    no concurrency is enabled)
     '''
 
     parser = argparse.ArgumentParser(description="Smooth, gapfill and interpolate processed raw MODIS HDF5 files")
-    parser.add_argument("rawfile", help='Raw MODIS HDF5 file',metavar='RAW HDF5')
-    parser.add_argument("-s","--svalue", help='S value for smoothing (has to be log10(s)', metavar='', type = float)
-    parser.add_argument("-S","--srange", help='S value range for V-curve (float log10(s) values as smin smax sstep - default 0.0 4.0 0.1)',nargs='+',metavar='')
+    parser.add_argument("input", help='Smoothing input - either one or more raw MODIS HDF5 file(s) or path containing raw MODIS HDF5 file(s)',nargs='+',metavar='input')
+    parser.add_argument("-s","--svalue", help='S value for smoothing (has to be log10(s))', metavar='', type = float)
+    parser.add_argument("-S","--srange", help='S value range for V-curve (float log10(s) values as smin smax sstep - default -1.0 1.0 0.2)',nargs='+',metavar='')
     parser.add_argument("-t","--tempint", help='Value for temporal interpolation (integer required - default is native temporal resolution AKA no interpolation)', metavar='',type = int)
-    parser.add_argument("-n","--nsmooth", help='Number of raw timesteps used for smoothing', metavar='',type = int)
-    parser.add_argument("-u","--nupdate", help='Number of smoothed timesteps to be updated in HDF5 file', metavar='',type = int)
+    parser.add_argument("-n","--nsmooth", help='Number of raw timesteps used for smoothing',default=0, metavar='',type = int)
+    parser.add_argument("-u","--nupdate", help='Number of smoothed timesteps to be updated in HDF5 file',default=0, metavar='',type = int)
     parser.add_argument("-p","--pvalue", help='Value for asymmetric smoothing (float required)', metavar='', type = float)
     parser.add_argument("-d","--targetdir", help='Target directory for smoothed output',default=os.getcwd(),metavar='')
-    parser.add_argument("--soptimize", help='Use V-curve for s value optimization',action='store_true')
-    parser.add_argument("--parallel", help='Parallel processing',action='store_true')
-    parser.add_argument("--nworkers", help='Number of workers used for parallel processing (default is number of cores available minus 1)',default=mp.cpu_count()-1, metavar='', type = int)
-
+    parser.add_argument("--startdate", help='Startdate fur temporal interpolation (format YYYY-MM-DD or YYYYJJJ)',metavar='')
+    parser.add_argument("--vcurve", help='Use V-curve for s value optimization',action='store_true')
+    parser.add_argument("--twostep", help='Use 2-step V-curve for s value optimization',action='store_true')
+    parser.add_argument("--parallel-tiles", help='Number of tiles processed in parallel (default = None)',default=1,type=int,metavar='')
+    parser.add_argument("--nworkers", help='Number of worker processes used per tile (default is number is 1 - no concurrency)',default=1, metavar='', type = int)
+    parser.add_argument("--quiet", help='Be quiet',action='store_true')
 
     # Fail and print help if no arguments supplied
     if len(sys.argv)==1:
@@ -49,80 +141,246 @@ def main():
 
     args = parser.parse_args()
 
-    print('\n[{}]: Starting smoothMODIS.py ... \n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
+    if len(args.input) == 1 & os.path.isdir(args.input[0]):
+        files = glob.glob(args.input[0] + '/*.h5')
+    else:
+        files = args.input
 
-    # Check if raw file exisis
+    assert len(files) > 0; "No files found to process"
 
-    if not os.path.isfile(args.rawfile):
-        raise SystemExit('Raw HDF5 {} not found! Please check path.'.format(args.rawfile))
+    if not os.path.isdir(args.targetdir):
+        print("Targetdir {} doesn't exist. Creating ... ",end='')
+        shutil.os.mkdir(args.targetdir)
+        print('done.')
 
-    print('\nInput file: {}\n'.format(args.rawfile))
+    if args.srange:
+        try:
+            assert len(args.srange) == 3
+            args.srange = np.linspace(float(args.srange[0]),float(args.srange[1]),abs((args.srange[0]-args.srange[1]))/float(args.srange[2]) + 1.0)
+        except (IndexError,TypeError,AssertionError):
+            raise SystemExit('Error with s value array values. Expected three values of float log10(s) -  smin smax sstep !')
 
-    # Create MODISsmth5 object
-    smt_h5 = MODISsmth5(rawfile = args.rawfile, tempint = args.tempint, nsmooth = args.nsmooth, nupdate = args.nupdate, targetdir = args.targetdir, parallel = args.parallel, nworkers = args.nworkers)
+    if args.svalue:
+        try:
+            args.svalue = 10**float(args.svalue)
+        except:
+            raise SystemExit('Error with s value. Expected float log10(s)!')
 
-    # Create if not exists
-    if not smt_h5.exists:
-        smt_h5.create()
+    if args.startdate:
 
-    # Check if V-curve optimization is true
-    if args.soptimize:
-
-        # Parse s-range or use default
-        if args.srange:
+        try:
+            datetime.datetime.strptime(args.startdate,'%Y-%m-%d').strftime('%Y%j')
+        except ValueError:
             try:
-                assert len(args.srange) == 3
-                srange = array.array('f',np.linspace(float(args.srange[0]),float(args.srange[1]),float(args.srange[1])/float(args.srange[2]) + 1.0))
-            except (IndexError,TypeError,AssertionError):
-                raise SystemExit('Error with s value array values. Expected three values of float log10(s) -  smin smax sstep !')
-        else:
-            srange = array.array('f',np.linspace(0.0,4.0,41.0))
-
-        # If p-value is supplied, asymmetric whittaker is used
-        if args.pvalue:
-
-            # Parse p-value
-            try:
-                p = float(args.pvalue)
+                datetime.datetime.strptime(args.startdate,'%Y%j').strftime('%Y%j')
             except ValueError:
-                raise SystemExit('Error using p-value ... expected float, got {}.'.format(type(args.pvalue)))
+                raise SystemExit('Error parsing startdate. Please check format!')
 
-            print('\nRunning asymmetric whittaker smoother with V-curve optimization ... \n')
+    # prepare processing dict
 
-            # Execute asymmetric whittaker smoother with V-curve optimization
-            smt_h5.ws2d_vc_asy(srange=srange,p=p)
+    processing_dict = init_parameters(tempint=args.tempint,nsmooth=args.nsmooth,nupdate=args.nupdate,targetdir=args.targetdir,nworkers=args.nworkers,startdate=args.startdate)
+
+    if not args.quiet:
+        print('\n[{}]: Starting smoothMODIS.py ... \n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
+
+    if args.parallel_tiles > 1:
+
+        if args.vcurve:
+
+            if not args.srange:
+                processing_dict['srange'] = np.linspace(-1.0,1.0,11.0)
+            else:
+                processing_dict['srange'] = args.srange
+
+            processing_dict['pvalue'] = args.pvalue
+
+            if not args.quiet:
+                print('\nRunning whittaker smoother V-curve optimization ... \n')
+
+            with closing(Pool(processes=args.parallel_tiles,initializer = initfun, initargs = (processing_dict,))) as pool:
+
+                res = pool.map(run_ws2d_vc,files)
+
+            pool.close()
+            pool.join()
+
+            if not args.quiet:
+                print('[{}]: Done.'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
+
+
+        # Check if V-curve optimization is true
+        elif args.twostep:
+
+            if not args.srange:
+                processing_dict['srange'] = np.linspace(-1.0,1.0,11.0)
+            else:
+                processing_dict['srange'] = args.srange
+
+            processing_dict['pvalue'] = args.pvalue
+
+            if not args.quiet:
+                print('\nRunning whittaker smoother 2-step V-curve optimization ... \n')
+
+            with closing(Pool(processes=args.parallel_tiles,initializer = initfun, initargs = (processing_dict,))) as pool:
+
+                res = pool.map(run_ws2d_vcOpt,files)
+
+            pool.close()
+            pool.join()
+
+            if not args.quiet:
+                print('[{}]: Done.'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
+
+        elif args.svalue:
+
+            processing_dict['s'] = args.svalue
+
+            if not args.quiet:
+                print('\nRunning whittaker smoother with fixed s value ... \n')
+
+            with closing(Pool(processes=args.parallel_tiles,initializer = initfun, initargs = (processing_dict,))) as pool:
+
+                res = pool.map(run_ws2d,files)
+
+            pool.close()
+            pool.join()
+
+            if not args.quiet:
+                print('[{}]: Done.'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
 
         else:
 
-            print('\nRunning whittaker smoother with V-curve optimization ... \n')
+            if not args.quiet:
+                print('\nRunning whittaker smoother with s value from grid ... \n')
 
-            # Execute whittaker smoother with V-curve optimization
-            smt_h5.ws2d_vc(srange=srange)
+            with closing(Pool(processes=args.parallel_tiles,initializer = initfun, initargs = (processing_dict,))) as pool:
+
+                res = pool.map(run_ws2d_sgrid,files)
+
+            pool.close()
+            pool.join()
+
+            if not args.quiet:
+                print('[{}]: Done.'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
 
     else:
 
-        if args.svalue:
+        if args.vcurve:
 
-            # Convert log10(s) to s
-            try:
-                s = 10**float(args.svalue)
-            except:
-                raise SystemExit('Error with s value. Expected float log10(s)!')
+            if not args.srange:
+                args.srange = np.linspace(-1.0,2.0,16.0)
 
-            print('\nRunning whittaker smoother with fixed s value ... \n')
+            if not args.quiet:
+                print('\nRunning whittaker smoother V-curve optimization ... \n')
+                bar = Bar('Processing',fill='=',max=len(files),suffix='%(percent)d%%  ')
+                bar.goto(0)
 
-            # Execute whittaker smoother with fixed svalue
-            smt_h5.ws2d(s=s)
+            for h5 in files:
+
+                if not os.path.isfile(h5):
+                    print('Raw HDF5 {} not found! Please check path.'.format(h5))
+                    continue
+
+                smt_h5 = MODISsmth5(rawfile = h5, startdate= args.startdate, tempint = args.tempint, nsmooth = args.nsmooth, nupdate = args.nupdate, targetdir = args.targetdir, nworkers = args.nworkers)
+
+                if not smt_h5.exists:
+                    smt_h5.create()
+
+                smt_h5.ws2d_vc(args.srange,args.pvalue)
+
+                if not args.quiet:
+                    bar.next()
+
+            if not args.quiet:
+                bar.finish()
+                print('[{}]: Done.'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
+
+        elif args.twostep:
+
+            if not args.srange:
+                args.srange = np.linspace(-1.0,2.0,16.0)
+
+            if not args.quiet:
+                print('\nRunning whittaker smoother 2-step V-curve optimization ... \n')
+                bar = Bar('Processing',fill='=',max=len(files),suffix='%(percent)d%%  ')
+                bar.goto(0)
+
+            for h5 in files:
+
+                if not os.path.isfile(h5):
+                    print('Raw HDF5 {} not found! Please check path.'.format(h5))
+                    continue
+
+                smt_h5 = MODISsmth5(rawfile = h5, startdate= args.startdate, tempint = args.tempint, nsmooth = args.nsmooth, nupdate = args.nupdate, targetdir = args.targetdir, nworkers = args.nworkers)
+
+                if not smt_h5.exists:
+                    smt_h5.create()
+
+                smt_h5.ws2d_vcOpt(args.srange,args.pvalue)
+
+                if not args.quiet:
+                    bar.next()
+
+            if not args.quiet:
+                bar.finish()
+                print('[{}]: Done.'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
+
+        elif args.svalue:
+
+            if not args.quiet:
+                print('\nRunning whittaker smoother with fixed s value ... \n')
+                bar = Bar('Processing',fill='=',max=len(files),suffix='%(percent)d%%  ')
+                bar.goto(0)
+
+            for h5 in files:
+
+                if not os.path.isfile(h5):
+                    print('Raw HDF5 {} not found! Please check path.'.format(h5))
+                    continue
+
+                smt_h5 = MODISsmth5(rawfile = h5, startdate=args.startdate, tempint = args.tempint, nsmooth = args.nsmooth, nupdate = args.nupdate, targetdir = args.targetdir, nworkers = args.nworkers)
+
+                if not smt_h5.exists:
+                    smt_h5.create()
+
+                smt_h5.ws2d(args.svalue)
+
+                if not args.quiet:
+                    bar.next()
+
+            if not args.quiet:
+                bar.finish()
+                print('[{}]: Done.'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
 
         else:
 
-            print('\nRunning whittaker smoother with s value from grid ... \n')
+            if not args.quiet:
+                print('\nRunning whittaker smoother with s value from grid ... \n')
+                bar = Bar('Processing',fill='=',max=len(files),suffix='%(percent)d%%  ')
+                bar.goto(0)
 
-            # Execute whittaker smoother with svalue from grid
-            smt_h5.ws2d_sgrid()
+            for h5 in files:
+
+                if not os.path.isfile(h5):
+                    print('Raw HDF5 {} not found! Please check path.'.format(h5))
+                    continue
+
+                smt_h5 = MODISsmth5(rawfile = h5, startdate=args.startdate, tempint = args.tempint, nsmooth = args.nsmooth, nupdate = args.nupdate, targetdir = args.targetdir, nworkers = args.nworkers)
+
+                if not smt_h5.exists:
+                    smt_h5.create()
+
+                smt_h5.ws2d_sgrid()
+
+                if not args.quiet:
+                    bar.next()
+
+            if not args.quiet:
+                bar.finish()
+                print('[{}]: Done.'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
 
     print('\n[{}]: smoothMODIS.py finished successfully.\n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
 
 if __name__ == '__main__':
-    mp.freeze_support()
+    multiprocessing.freeze_support()
     main()
