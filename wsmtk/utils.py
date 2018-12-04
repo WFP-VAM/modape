@@ -118,7 +118,7 @@ class Pool(multiprocessing.pool.Pool):
 
 class DateHelper:
 
-    def __init__(self,rawdates,rtres,stres,start=None,tshift = 0,nupdate=0):
+    def __init__(self,rawdates,rtres,stres,start=None,nupdate=0):
 
         if start:
 
