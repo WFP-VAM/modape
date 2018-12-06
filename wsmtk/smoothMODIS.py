@@ -156,9 +156,11 @@ def main():
     if args.srange:
         try:
             assert len(args.srange) == 3
-            args.srange = np.linspace(float(args.srange[0]),float(args.srange[1]),abs((args.srange[0]-args.srange[1]))/float(args.srange[2]) + 1.0)
+            args.srange = np.linspace(float(args.srange[0]),float(args.srange[1]),abs((float(args.srange[0])-float(args.srange[1])))/float(args.srange[2]) + 1.0)
         except (IndexError,TypeError,AssertionError):
             raise SystemExit('Error with s value array values. Expected three values of float log10(s) -  smin smax sstep !')
+    else:
+        args.srange = np.linspace(-1.0,1.0,11.0)
 
     if args.svalue:
         try:
@@ -187,10 +189,7 @@ def main():
 
         if args.vcurve:
 
-            if not args.srange:
-                processing_dict['srange'] = np.linspace(-1.0,1.0,11.0)
-            else:
-                processing_dict['srange'] = args.srange
+            processing_dict['srange'] = args.srange
 
             processing_dict['pvalue'] = args.pvalue
 
@@ -211,10 +210,7 @@ def main():
         # Check if V-curve optimization is true
         elif args.twostep:
 
-            if not args.srange:
-                processing_dict['srange'] = np.linspace(-1.0,1.0,11.0)
-            else:
-                processing_dict['srange'] = args.srange
+            processing_dict['srange'] = args.srange
 
             processing_dict['pvalue'] = args.pvalue
 
@@ -267,9 +263,6 @@ def main():
 
         if args.vcurve:
 
-            if not args.srange:
-                args.srange = np.linspace(-1.0,2.0,16.0)
-
             if not args.quiet:
                 print('\nRunning whittaker smoother V-curve optimization ... \n')
                 bar = Bar('Processing',fill='=',max=len(files),suffix='%(percent)d%%  ')
@@ -296,9 +289,6 @@ def main():
                 print('[{}]: Done.'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
 
         elif args.twostep:
-
-            if not args.srange:
-                args.srange = np.linspace(-1.0,2.0,16.0)
 
             if not args.quiet:
                 print('\nRunning whittaker smoother 2-step V-curve optimization ... \n')
