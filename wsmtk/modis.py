@@ -560,7 +560,7 @@ class MODISsmth5:
         if not self.temporalresolution:
             self.temporalresolution = rtres
 
-        dates = DateHelper(rawdates=self.rawdates, rtres=rtres,stres=self.temporalresolution, start = self.startdate, tshift=tshift,nupdate=self.nupdate)
+        dates = DateHelper(rawdates=self.rawdates, rtres=rtres,stres=self.temporalresolution, start = self.startdate, nupdate=self.nupdate)
 
         if not self.tinterpolate:
             dates.target = self.rawdates
@@ -623,7 +623,7 @@ class MODISsmth5:
             smt_ds.attrs['lastrun'] = "fixed s: log10(sopt) = {}".format(s)
             smt_ds.attrs['log10sopt'] = s
 
-            dates = DateHelper(rawdates=self.rawdates, rtres=rtres,stres=self.temporalresolution, start = self.startdate, tshift=tshift,nupdate=self.nupdate)
+            dates = DateHelper(rawdates=self.rawdates, rtres=rtres,stres=self.temporalresolution, start = self.startdate, nupdate=self.nupdate)
             if not self.tinterpolate:
                 dates.target = self.rawdates
 
@@ -807,7 +807,7 @@ class MODISsmth5:
             smt_ds.attrs['processingtimestamp'] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
             smt_ds.attrs['lastrun'] = "fixed s from grid"
 
-            dates = DateHelper(rawdates=self.rawdates, rtres=rtres,stres=self.temporalresolution, start = self.startdate, tshift=tshift,nupdate=self.nupdate)
+            dates = DateHelper(rawdates=self.rawdates, rtres=rtres,stres=self.temporalresolution, start = self.startdate, nupdate=self.nupdate)
 
             if not self.tinterpolate:
                 dates.target = self.rawdates
@@ -1008,7 +1008,7 @@ class MODISsmth5:
             else:
                 smt_ds.attrs['lastrun'] = "V-curve optimization of s"
 
-            dates = DateHelper(rawdates=self.rawdates, rtres=rtres,stres=self.temporalresolution, start = self.startdate,tshift=tshift,nupdate=self.nupdate)
+            dates = DateHelper(rawdates=self.rawdates, rtres=rtres,stres=self.temporalresolution, start = self.startdate,nupdate=self.nupdate)
 
             if not self.tinterpolate:
                 dates.target = self.rawdates
@@ -1225,7 +1225,7 @@ class MODISsmth5:
             else:
                 smt_ds.attrs['lastrun'] = "V-curve 2-step optimization of s"
 
-            dates = DateHelper(rawdates=self.rawdates, rtres=rtres,stres=self.temporalresolution, start = self.startdate,tshift=tshift,nupdate=self.nupdate)
+            dates = DateHelper(rawdates=self.rawdates, rtres=rtres,stres=self.temporalresolution, start = self.startdate,nupdate=self.nupdate)
 
             if not self.tinterpolate:
                 dates.target = self.rawdates
