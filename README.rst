@@ -1,4 +1,4 @@
-wsmtk
+wsmtk (WORKING TITLE)
 =====
 
 The **w**\ hittaker **sm**\ oothing **t**\ ool\ **k**\ it combines a state-of-the art whittaker smoother, implemented as fast C-extension through Cython and including a V-curve optimization of the smoothing parameter, with a HDF5 based processing chain optimized for MODIS data.
