@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y vim gcc build-essential
 
 RUN useradd -m worker
 
-RUN conda update --quiet --yes conda
+#RUN conda update --quiet --yes conda
 RUN conda install -y \
 	pip numpy cython pytables h5py scipy cython gdal
 
