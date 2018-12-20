@@ -10,8 +10,8 @@ from subprocess import Popen, check_output
 import h5py
 from progress.bar import Bar
 from progress.spinner import Spinner
-from .utils import *
-from .whittaker import ws2d, ws2d_vc, ws2d_vc_asy
+from wsmtk.utils import *
+from wsmtk.whittaker import ws2d, ws2d_vc, ws2d_vc_asy
 from contextlib import contextmanager, closing
 import warnings
 import itertools
@@ -24,6 +24,11 @@ try:
     import gdal
 except ImportError:
     from osgeo import gdal
+
+try:
+    range = xrange
+except NameError:
+    pass
 
 # turn off BeautifulSoup warnings
 warnings.filterwarnings("ignore", category=UserWarning, module='bs4')

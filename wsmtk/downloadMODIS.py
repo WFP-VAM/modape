@@ -9,6 +9,11 @@ import pickle
 import re
 import ogr
 
+try:
+    range = xrange
+except NameError:
+    pass
+
 def main():
     '''Query and download MODIS products.
 

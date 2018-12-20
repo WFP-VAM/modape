@@ -6,7 +6,7 @@ import ctypes
 import multiprocessing
 import multiprocessing.pool
 import array
-from .whittaker import ws2d, ws2d_vc, ws2d_vc_asy
+from wmstk.whittaker import ws2d, ws2d_vc, ws2d_vc_asy
 
 # assign xrange to range if py2
 try:

@@ -3,9 +3,14 @@ import os
 import pandas as pd
 import numpy as np
 import argparse
-from .whittaker import ws2d, ws2d_vc, ws2d_vc_asy
+from wsmtk.whittaker import ws2d, ws2d_vc, ws2d_vc_asy
 import array
 import time
+
+try:
+    range = xrange
+except NameError:
+    pass
 
 def main():
     '''Smooth timeseries in a CSV file.
