@@ -79,12 +79,33 @@ class MODISquery:
             # results for global products are date directories on server, so need to query separately
             if self.global_flag:
 
+                r = re.compile('.*.hdf$')
+
                 dates = np.array([x.getText() for x in soup.findAll('a',href=True) if re.match('\d{4}\.\d{2}\.\d{2}',x.getText())])
                 dates_parsed = [datetime.datetime.strptime(x,'%Y.%m.%d/').date() for x in dates]
 
                 dates_ix = np.flatnonzero(np.array([x >= self.begin and x < self.end for x in dates_parsed]))
 
-                self.modisURLs = [self.queryURL + x for x in dates[dates_ix]]
+                for d in dates[dates_ix]:
+
+                    try:
+                        response = sess.get(self.queryURL + d)
+
+                    except requests.exceptions.RequestException as e:
+                        print(e)
+                        print('Error accessing {} - skipping.'.format(self.queryURL + d))
+
+                    soup = BeautifulSoup(response.content,features="html.parser")
+
+                    hrefs = soup.find_all('a',href=True)
+
+                    hdf_file = [x.getText() for x in hrefs if re.match(r,x.getText())]
+
+                    try:
+                        self.modisURLs.append(self.queryURL + d + hdf_file[0])
+                    except IndexError:
+                        print('No HDF file found in {} - skipping.'.format(self.queryURL + d))
+                        continue
 
             else:
 
@@ -165,31 +186,7 @@ class MODISquery:
             session = SessionWithHeaderRedirection(self.username, self.password)
 
             for ix,u in enumerate(self.modisURLs):
-                print('%s of %s' %(ix+1,self.results))
-
-                # for global files, URLs of HDF files have to be parsed for each date before download
-                if self.global_flag:
-
-                    try:
-                        resp_temp = session.get(u)
-
-                    except requests.exceptions.RequestException as e:
-                        print(e)
-                        print('Error accessing {} - skipping.'.format(u))
-                        continue
-
-                    soup_temp = BeautifulSoup(resp_temp.content,features="html.parser")
-
-                    hrefs = soup_temp.find_all('a',href=True)
-
-                    hdf_file = [x.getText() for x in hrefs if re.match(r,x.getText())]
-
-                    try:
-                        u = u + hdf_file[0]
-
-                    except IndexError:
-                        print('No HDF file found in {} - skipping.'.format(d_url))
-                        continue
+                print('{} of {}'.format(ix+1,self.results))
 
                 fname = u[u.rfind('/')+1:]
 
