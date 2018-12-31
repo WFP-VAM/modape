@@ -36,7 +36,7 @@ warnings.filterwarnings("ignore", category=UserWarning, module='bs4')
 class MODISquery:
     '''Class for querying and downloading MODIS data.'''
 
-    def __init__(self,url,begindate,enddate,username=None,password=None,targetdir=os.getcwd(),global_flag=None,aria2=False):
+    def __init__(self,url,begindate,enddate,username=None,password=None,targetdir=os.getcwd(),global_flag=None,aria2=False, tile_filter=None):
         '''Creates a MODISquery object.
 
         Args:
@@ -111,7 +111,16 @@ class MODISquery:
 
                 r = re.compile(".+(h\d+v\d+).+")
 
-                self.modisURLs = [x.getText() for x in soup.find_all('url')]
+                urls = [x.getText() for x in soup.find_all('url')]
+
+                if tile_filter:
+
+                    self.modisURLs = [x for x in urls if any(t in x for t in tile_filter)]
+
+                else:
+
+                    self.modisURLs = urls
+
                 self.tiles = list(set([r.search(x).group(1) for x in self.modisURLs]))
 
 
