@@ -60,6 +60,6 @@ setup(
     'Programming Language :: Python :: 2.7',
     'Programming Language :: Python :: 3',
 ],
-    install_requires=['numpy','gdal>=2','h5py','beautifulsoup4','requests','progress','pandas'],
+    install_requires=['numpy','gdal>=2','h5py','beautifulsoup4','requests','progress','pandas', "cryptography"],
     python_requires='>=2.7.11, <4',
 )
