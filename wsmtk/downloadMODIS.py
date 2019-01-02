@@ -27,6 +27,7 @@ def main():
     parser = argparse.ArgumentParser(description="Query and download MODIS products (Earthdata account required for download)")
     parser.add_argument("product", help='MODIS product ID(s)',nargs='+')
     parser.add_argument("--roi", help='Region of interest. Can be LAT/LON point, bounding box in format llx,lly,urx,ury or OGR file (shp, geojson - convex hull will be used)',nargs='+',required=False)
+    parser.add_argument("--tile-filter", help='MODIS tile filter (download only specified tiles)',nargs='+',required=False,metavar='')
     parser.add_argument("-c","--collection", help='MODIS collection',default=6,metavar='')
     parser.add_argument("-b","--begin-date", help='Start date (YYYY-MM-DD)',default='2000-01-01',metavar='')
     parser.add_argument("-e","--end-date", help='End date (YYYY-MM-DD)',default=datetime.date.today().strftime("%Y-%m-%d"),metavar='')
@@ -97,10 +98,44 @@ def main():
 
                 query = []
 
+                # if tile_filter and no ROI, limit spatial query
+
+                if args.tile_filter and not args.roi:
+
+
+                    with open(os.path.join(this_dir, "data", "ModlandTiles_bbx.pkl"),'rb') as bbx_raw:
+                        bbx = pickle.load(bbx_raw)
+
+
+                    if len(args.tile_filter) == 1:
+
+                        h,v = re.findall('\d+',args.tile_filter[0])
+
+                        bbx_sel = bbx[(bbx.ih == int(h)) & (bbx.iv == int(v))]
+
+                        # roi is approx. center point of tile
+                        args.roi = [bbx_sel.lat_max.values[0] - 5, bbx_sel.lon_max.values[0] - (bbx_sel.lon_max.values[0] - bbx_sel.lon_min.values[0])/2]
+
+                    elif len(args.tile_filter) > 1:
+
+                        h = list(set([re.findall('\d+',x.split('v')[0])[0] for x in args.tile_filter]))
+                        v = list(set([re.findall('\d+',x.split('v')[1])[0] for x in args.tile_filter]))
+
+                        # aoi is bbox including all tiles from tile_filter, plus 1 degree buffer
+                        bbx_sel = bbx.query('|'.join(['ih == {}'.format(int(x)) for x in h])).query('|'.join(['iv == {}'.format(int(x)) for x in v]))
+
+                        args.roi = [min(bbx_sel.lon_min.values)-1, min(bbx_sel.lat_min.values)-1, max(bbx_sel.lon_max.values)+1,max(bbx_sel.lat_max.values)+1]
+
+                    else:
+
+                        # not happening
+                        pass
+
                 # Construct query URL
+
                 try:
 
-                    if len(args.roi) == 1 & os.path.isfile(args.roi[0]):
+                    if len(args.roi) == 1 and os.path.isfile(args.roi[0]):
 
                         try:
 
@@ -140,8 +175,8 @@ def main():
                         raise SystemExit('ROI is expected to be point or bounding box coordinates!')
 
                 except TypeError:
-                    raise SystemExit('Download of tiled MODIS products requires ROI!')
-
+                    #query.append('bbox=-180,-90,180,90')
+                    raise SystemExit('\nDownload of tiled MODIS products requires ROI or tile-filter!\n')
 
 
                 query.append('version={}'.format(args.collection))
@@ -154,7 +189,7 @@ def main():
 
             print('\nPRODUCT: {}\n'.format(p2))
 
-            res = MODISquery(queryURL,targetdir=args.targetdir,begindate=args.begin_date,enddate=args.end_date,global_flag=global_flag,aria2=args.aria2)
+            res = MODISquery(queryURL,targetdir=args.targetdir,begindate=args.begin_date,enddate=args.end_date,global_flag=global_flag,aria2=args.aria2, tile_filter = args.tile_filter)
 
             # If download is True and at least one result, download data
             if args.download and res.results > 0:
