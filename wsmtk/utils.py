@@ -7,6 +7,9 @@ import multiprocessing
 import multiprocessing.pool
 import array
 from wsmtk.whittaker import ws2d, ws2d_vc, ws2d_vc_asy
+import pickle
+import os
+from cryptography.fernet import Fernet
 
 # assign xrange to range if py2
 try:
@@ -179,6 +182,119 @@ class DateHelper:
 
     def getDIX(self):
         return([self.daily.index(x) for x in self.target])
+
+
+class Credentials:
+    '''Credentials helper class'''
+
+    def __init__(self, username = None, password = None):
+        '''Create Credentials instance
+
+        Args:
+            username (str): Earthdata username
+            password (str): Earthdata passsword
+        '''
+
+
+        self.username = username
+        self.password = password
+
+        self.complete = not (not self.username or not self.password)
+
+    def retrieve(self):
+        '''Retrieve credentials from disk'''
+
+        try:
+            u, p = pload('wsmtk.cred.pkl')
+
+            k = pload('wsmtk.key.pkl')
+
+            cipher_suite = Fernet(k)
+
+            self.username = cipher_suite.decrypt(u).decode()
+            self.password = cipher_suite.decrypt(p).decode()
+
+        except:
+
+            self.destroy()
+            raise
+
+    def store(self):
+        '''Store credentials on disk'''
+
+        try:
+
+            k = Fernet.generate_key()
+
+            cipher_suite = Fernet(k)
+
+            u = cipher_suite.encrypt(self.username.encode())
+
+            p = cipher_suite.encrypt(self.password.encode())
+
+            pdump((u,p),'wsmtk.cred.pkl')
+
+            pdump(k,'wsmtk.key.pkl')
+
+        except:
+
+            self.destroy()
+
+            print('Storing Earthdata credentials failed!')
+
+
+
+    def destroy(self):
+        '''Remove all credential files on disk'''
+
+        try:
+            os.remove('wsmtk.cred.pkl')
+        except FileNotFoundError:
+            pass
+
+        try:
+            os.remove('wsmtk.key.pkl')
+        except FileNotFoundError:
+            pass
+
+
+
+def pdump(obj,filename):
+    '''Pickle dump wrapper
+
+    Agrs:
+        obj: Python object to be pickled
+        filename: name of target pickle file
+
+    Returns:
+        None
+    '''
+
+    try:
+        with open(filename,'wb') as pkl:
+            pickle.dump(obj,pkl)
+
+    except FileNotFoundError:
+        raise
+
+def pload(filename):
+    '''Pickle load wrapper
+
+    Agrs:
+        filename: name of target pickle file
+
+    Returns:
+        Pickled object
+    '''
+
+
+    try:
+        with open(filename,'rb') as pkl:
+            return(pickle.load(pkl))
+
+    except FileNotFoundError:
+        raise
+
 
 def dtype_GDNP(dt):
     '''GDAL/NP DataType helper.
