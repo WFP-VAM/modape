@@ -48,7 +48,7 @@ def main():
 
     args = parser.parse_args()
 
-    credentials = CredHelper(args.username, args.password)
+    credentials = Credentials(args.username, args.password)
 
     # Check for credentials if download is True
     if args.download & (not credentials.complete):
