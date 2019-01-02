@@ -742,7 +742,11 @@ class MODISsmth5:
 
                 for br in range(0,rawshape[0],rawchunks[0]):
 
-                    arr_smooth[...] = nodata
+                    try:
+                        arr_smooth[...] = nodata
+                    except TypeError:
+                        pass
+
                     wts[...] = 0
 
                     for bc in range(0,len(self.rawdates),rawchunks[1]):
@@ -933,7 +937,11 @@ class MODISsmth5:
 
                 for br in range(0,rawshape[0],rawchunks[0]):
 
-                    arr_smooth[...] = nodata
+                    try:
+                        arr_smooth[...] = nodata
+                    except TypeError:
+                        pass
+
                     wts[...] = 0
 
                     for bc in range(0,len(self.rawdates),rawchunks[1]):
@@ -1138,7 +1146,11 @@ class MODISsmth5:
 
                 for br in range(0,rawshape[0],rawchunks[0]):
 
-                    arr_smooth[...] = nodata
+                    try:
+                        arr_smooth[...] = nodata
+                    except TypeError:
+                        pass
+
                     wts[...] = 0
 
                     for bc in range(0,len(self.rawdates),rawchunks[1]):
@@ -1355,7 +1367,11 @@ class MODISsmth5:
 
                 for br in range(0,rawshape[0],rawchunks[0]):
 
-                    arr_smooth[...] = nodata
+                    try:
+                        arr_smooth[...] = nodata
+                    except TypeError:
+                        pass
+                        
                     wts[...] = 0
 
                     for bc in range(0,len(self.rawdates),rawchunks[1]):
