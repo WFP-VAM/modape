@@ -99,3 +99,7 @@ ENV/
 
 # mypy
 .mypy_cache/
+
+# cred files
+wsmtk.cred.pkl
+wsmtk.key.pkl
