@@ -356,7 +356,12 @@ class MODISrawh5:
 
         # Create directory if necessary
         if not os.path.exists(os.path.dirname(self.outname)):
-            os.makedirs(os.path.dirname(self.outname))
+
+            # Try statements caches possible error when multiple tiles are processed in parallel
+            try:
+                os.makedirs(os.path.dirname(self.outname))
+            except FileExistsError:
+                pass
 
         # Create HDF5 file
         try:
