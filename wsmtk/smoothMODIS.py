@@ -96,7 +96,7 @@ def run_ws2d_vcOpt(h5):
         if not smt_h5.exists:
             smt_h5.create()
 
-        smt_h5.ws2d_vOpt(pdict['srange'],pdict['pvalue'])
+        smt_h5.ws2d_vcOpt(pdict['srange'],pdict['pvalue'])
 
 
 def main():
