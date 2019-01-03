@@ -8,6 +8,8 @@ import datetime
 import pickle
 import re
 import ogr
+from wsmtk.utils import Credentials, pload
+
 
 try:
     range = xrange
@@ -34,6 +36,7 @@ def main():
     parser.add_argument("--username", help='Earthdata username (required for download)',metavar='')
     parser.add_argument("--password", help='Earthdata password (required for download)',metavar='')
     parser.add_argument("-d","--targetdir", help='Destination directory',default=os.getcwd(),metavar='')
+    parser.add_argument("--store-credentials", help='Store Earthdata credentials on disk to be used for future downloads (unsecure!)',action='store_true')
     #parser.add_argument("-v","--verbose", help='Verbosity',action='store_true')
     parser.add_argument("--download", help='Download data',action='store_true')
     parser.add_argument("--aria2", help='Use ARIA2 for downloading',action='store_true')
@@ -45,16 +48,32 @@ def main():
 
     args = parser.parse_args()
 
+    credentials = Credentials(args.username, args.password)
+
     # Check for credentials if download is True
-    if args.download & (not args.username or not args.password):
-        raise SystemExit('Downloading requires username and password!')
+    if args.download & (not credentials.complete):
+
+        try:
+
+            credentials.retrieve()
+
+        except:
+
+            raise SystemExit('\nError: Earthdata credentials not found!\n')
+
+    elif args.store_credentials:
+
+        credentials.store()
+
+    else:
+
+        pass
 
     args.product = [x.upper() for x in args.product]
 
     # Load product table
     this_dir, this_filename = os.path.split(__file__)
-    with open(os.path.join(this_dir, "data", "MODIS_V6_PT.pkl"),'rb') as table_raw:
-        product_table = pickle.load(table_raw)
+    product_table = pload(os.path.join(this_dir, "data", "MODIS_V6_PT.pkl"))
 
     for p in args.product:
 
@@ -193,7 +212,7 @@ def main():
 
             # If download is True and at least one result, download data
             if args.download and res.results > 0:
-                res.setCredentials(args.username,args.password)
+                res.setCredentials(credentials.username,credentials.password)
                 res.download()
 
 
