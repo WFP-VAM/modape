@@ -983,12 +983,12 @@ typedef npy_longdouble __pyx_t_5numpy_longdouble_t;
 
 /* "wsmtk/_whittaker.pyx":9
  * import numpy as np
- * tFloat = np.float32
- * ctypedef np.float32_t dtype_t             # <<<<<<<<<<<<<<
+ * tFloat = np.double
+ * ctypedef np.double_t dtype_t             # <<<<<<<<<<<<<<
  * from libc.math cimport log, pow, sqrt
  * 
  */
-typedef __pyx_t_5numpy_float32_t __pyx_t_5wsmtk_9whittaker_dtype_t;
+typedef __pyx_t_5numpy_double_t __pyx_t_5wsmtk_9whittaker_dtype_t;
 /* Declarations.proto */
 #if CYTHON_CCOMPLEX
   #ifdef __cplusplus
@@ -1662,12 +1662,12 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *, cha
 /* Module declarations from 'libc.math' */
 
 /* Module declarations from 'wsmtk.whittaker' */
-static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d(PyArrayObject *, float, PyArrayObject *, int __pyx_skip_dispatch); /*proto*/
-static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_internal(PyArrayObject *, float, arrayobject *); /*proto*/
+static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d(PyArrayObject *, double, PyArrayObject *, int __pyx_skip_dispatch); /*proto*/
+static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_internal(PyArrayObject *, double, arrayobject *); /*proto*/
 static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc(PyArrayObject *, PyArrayObject *, arrayobject *, int __pyx_skip_dispatch); /*proto*/
-static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc_asy(PyArrayObject *, PyArrayObject *, arrayobject *, float, int __pyx_skip_dispatch); /*proto*/
+static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc_asy(PyArrayObject *, PyArrayObject *, arrayobject *, double, int __pyx_skip_dispatch); /*proto*/
 static __Pyx_TypeInfo __Pyx_TypeInfo_nn___pyx_t_5wsmtk_9whittaker_dtype_t = { "dtype_t", NULL, sizeof(__pyx_t_5wsmtk_9whittaker_dtype_t), { 0 }, 0, 'R', 0, 0 };
-static __Pyx_TypeInfo __Pyx_TypeInfo_float = { "float", NULL, sizeof(float), { 0 }, 0, 'R', 0, 0 };
+static __Pyx_TypeInfo __Pyx_TypeInfo_double = { "double", NULL, sizeof(double), { 0 }, 0, 'R', 0, 0 };
 #define __Pyx_MODULE_NAME "wsmtk.whittaker"
 extern int __pyx_module_is_main_wsmtk__whittaker;
 int __pyx_module_is_main_wsmtk__whittaker = 0;
@@ -1678,7 +1678,7 @@ static PyObject *__pyx_builtin_MemoryError;
 static PyObject *__pyx_builtin_ValueError;
 static PyObject *__pyx_builtin_RuntimeError;
 static PyObject *__pyx_builtin_ImportError;
-static const char __pyx_k_f[] = "f";
+static const char __pyx_k_d[] = "d";
 static const char __pyx_k_p[] = "p";
 static const char __pyx_k_w[] = "w";
 static const char __pyx_k_y[] = "y";
@@ -1689,9 +1689,9 @@ static const char __pyx_k_main[] = "__main__";
 static const char __pyx_k_test[] = "__test__";
 static const char __pyx_k_numpy[] = "numpy";
 static const char __pyx_k_range[] = "range";
+static const char __pyx_k_double[] = "double";
 static const char __pyx_k_import[] = "__import__";
 static const char __pyx_k_tFloat[] = "tFloat";
-static const char __pyx_k_float32[] = "float32";
 static const char __pyx_k_ValueError[] = "ValueError";
 static const char __pyx_k_ImportError[] = "ImportError";
 static const char __pyx_k_MemoryError[] = "MemoryError";
@@ -1713,8 +1713,8 @@ static PyObject *__pyx_kp_u_Non_native_byte_order_not_suppor;
 static PyObject *__pyx_n_s_RuntimeError;
 static PyObject *__pyx_n_s_ValueError;
 static PyObject *__pyx_n_s_cline_in_traceback;
-static PyObject *__pyx_n_s_f;
-static PyObject *__pyx_n_s_float32;
+static PyObject *__pyx_n_s_d;
+static PyObject *__pyx_n_s_double;
 static PyObject *__pyx_n_s_import;
 static PyObject *__pyx_n_s_llas;
 static PyObject *__pyx_n_s_lmda;
@@ -1732,9 +1732,9 @@ static PyObject *__pyx_n_s_test;
 static PyObject *__pyx_kp_u_unknown_dtype_code_in_numpy_pxd;
 static PyObject *__pyx_n_s_w;
 static PyObject *__pyx_n_s_y;
-static PyObject *__pyx_pf_5wsmtk_9whittaker_ws2d(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_y, float __pyx_v_lmda, PyArrayObject *__pyx_v_w); /* proto */
+static PyObject *__pyx_pf_5wsmtk_9whittaker_ws2d(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_y, double __pyx_v_lmda, PyArrayObject *__pyx_v_w); /* proto */
 static PyObject *__pyx_pf_5wsmtk_9whittaker_2ws2d_vc(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_y, PyArrayObject *__pyx_v_w, arrayobject *__pyx_v_llas); /* proto */
-static PyObject *__pyx_pf_5wsmtk_9whittaker_4ws2d_vc_asy(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_y, PyArrayObject *__pyx_v_w, arrayobject *__pyx_v_llas, float __pyx_v_p); /* proto */
+static PyObject *__pyx_pf_5wsmtk_9whittaker_4ws2d_vc_asy(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_y, PyArrayObject *__pyx_v_w, arrayobject *__pyx_v_llas, double __pyx_v_p); /* proto */
 static int __pyx_pf_7cpython_5array_5array___getbuffer__(arrayobject *__pyx_v_self, Py_buffer *__pyx_v_info, CYTHON_UNUSED int __pyx_v_flags); /* proto */
 static void __pyx_pf_7cpython_5array_5array_2__releasebuffer__(CYTHON_UNUSED arrayobject *__pyx_v_self, Py_buffer *__pyx_v_info); /* proto */
 static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, Py_buffer *__pyx_v_info, int __pyx_v_flags); /* proto */
@@ -1752,14 +1752,14 @@ static PyObject *__pyx_tuple__9;
 /* "wsmtk/_whittaker.pyx":12
  * from libc.math cimport log, pow, sqrt
  * 
- * cpdef ws2d(np.ndarray[dtype_t] y, float lmda, np.ndarray[dtype_t] w):             # <<<<<<<<<<<<<<
- *     cdef array flt_array_template = array('f', [])
+ * cpdef ws2d(np.ndarray[dtype_t] y, double lmda, np.ndarray[dtype_t] w):             # <<<<<<<<<<<<<<
+ *     cdef array dbl_array_template = array('d', [])
  *     cdef int i, i1, i2, m, n
  */
 
 static PyObject *__pyx_pw_5wsmtk_9whittaker_1ws2d(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
-static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d(PyArrayObject *__pyx_v_y, float __pyx_v_lmda, PyArrayObject *__pyx_v_w, CYTHON_UNUSED int __pyx_skip_dispatch) {
-  arrayobject *__pyx_v_flt_array_template = 0;
+static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d(PyArrayObject *__pyx_v_y, double __pyx_v_lmda, PyArrayObject *__pyx_v_w, CYTHON_UNUSED int __pyx_skip_dispatch) {
+  arrayobject *__pyx_v_dbl_array_template = 0;
   int __pyx_v_i;
   int __pyx_v_i1;
   int __pyx_v_i2;
@@ -1817,8 +1817,8 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d(PyArrayObject *__pyx_v_y, float 
 
   /* "wsmtk/_whittaker.pyx":13
  * 
- * cpdef ws2d(np.ndarray[dtype_t] y, float lmda, np.ndarray[dtype_t] w):
- *     cdef array flt_array_template = array('f', [])             # <<<<<<<<<<<<<<
+ * cpdef ws2d(np.ndarray[dtype_t] y, double lmda, np.ndarray[dtype_t] w):
+ *     cdef array dbl_array_template = array('d', [])             # <<<<<<<<<<<<<<
  *     cdef int i, i1, i2, m, n
  *     cdef array z, d, c, e
  */
@@ -1826,16 +1826,16 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d(PyArrayObject *__pyx_v_y, float 
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_t_2 = PyTuple_New(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 13, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  __Pyx_INCREF(__pyx_n_s_f);
-  __Pyx_GIVEREF(__pyx_n_s_f);
-  PyTuple_SET_ITEM(__pyx_t_2, 0, __pyx_n_s_f);
+  __Pyx_INCREF(__pyx_n_s_d);
+  __Pyx_GIVEREF(__pyx_n_s_d);
+  PyTuple_SET_ITEM(__pyx_t_2, 0, __pyx_n_s_d);
   __Pyx_GIVEREF(__pyx_t_1);
   PyTuple_SET_ITEM(__pyx_t_2, 1, __pyx_t_1);
   __pyx_t_1 = 0;
   __pyx_t_1 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_7cpython_5array_array), __pyx_t_2, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 13, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_v_flt_array_template = ((arrayobject *)__pyx_t_1);
+  __pyx_v_dbl_array_template = ((arrayobject *)__pyx_t_1);
   __pyx_t_1 = 0;
 
   /* "wsmtk/_whittaker.pyx":17
@@ -1852,64 +1852,64 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d(PyArrayObject *__pyx_v_y, float 
  *     n = y.shape[0]
  *     m = n - 1             # <<<<<<<<<<<<<<
  * 
- *     z = clone(flt_array_template,n,zero=False)
+ *     z = clone(dbl_array_template,n,zero=False)
  */
   __pyx_v_m = (__pyx_v_n - 1);
 
   /* "wsmtk/_whittaker.pyx":20
  *     m = n - 1
  * 
- *     z = clone(flt_array_template,n,zero=False)             # <<<<<<<<<<<<<<
- *     d = clone(flt_array_template,n,zero=False)
- *     c = clone(flt_array_template,n,zero=False)
+ *     z = clone(dbl_array_template,n,zero=False)             # <<<<<<<<<<<<<<
+ *     d = clone(dbl_array_template,n,zero=False)
+ *     c = clone(dbl_array_template,n,zero=False)
  */
-  __pyx_t_1 = ((PyObject *)__pyx_f_7cpython_5array_clone(__pyx_v_flt_array_template, __pyx_v_n, 0)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 20, __pyx_L1_error)
+  __pyx_t_1 = ((PyObject *)__pyx_f_7cpython_5array_clone(__pyx_v_dbl_array_template, __pyx_v_n, 0)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 20, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_z = ((arrayobject *)__pyx_t_1);
   __pyx_t_1 = 0;
 
   /* "wsmtk/_whittaker.pyx":21
  * 
- *     z = clone(flt_array_template,n,zero=False)
- *     d = clone(flt_array_template,n,zero=False)             # <<<<<<<<<<<<<<
- *     c = clone(flt_array_template,n,zero=False)
- *     e = clone(flt_array_template,n,zero=False)
+ *     z = clone(dbl_array_template,n,zero=False)
+ *     d = clone(dbl_array_template,n,zero=False)             # <<<<<<<<<<<<<<
+ *     c = clone(dbl_array_template,n,zero=False)
+ *     e = clone(dbl_array_template,n,zero=False)
  */
-  __pyx_t_1 = ((PyObject *)__pyx_f_7cpython_5array_clone(__pyx_v_flt_array_template, __pyx_v_n, 0)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 21, __pyx_L1_error)
+  __pyx_t_1 = ((PyObject *)__pyx_f_7cpython_5array_clone(__pyx_v_dbl_array_template, __pyx_v_n, 0)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 21, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_d = ((arrayobject *)__pyx_t_1);
   __pyx_t_1 = 0;
 
   /* "wsmtk/_whittaker.pyx":22
- *     z = clone(flt_array_template,n,zero=False)
- *     d = clone(flt_array_template,n,zero=False)
- *     c = clone(flt_array_template,n,zero=False)             # <<<<<<<<<<<<<<
- *     e = clone(flt_array_template,n,zero=False)
+ *     z = clone(dbl_array_template,n,zero=False)
+ *     d = clone(dbl_array_template,n,zero=False)
+ *     c = clone(dbl_array_template,n,zero=False)             # <<<<<<<<<<<<<<
+ *     e = clone(dbl_array_template,n,zero=False)
  * 
  */
-  __pyx_t_1 = ((PyObject *)__pyx_f_7cpython_5array_clone(__pyx_v_flt_array_template, __pyx_v_n, 0)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 22, __pyx_L1_error)
+  __pyx_t_1 = ((PyObject *)__pyx_f_7cpython_5array_clone(__pyx_v_dbl_array_template, __pyx_v_n, 0)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 22, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_c = ((arrayobject *)__pyx_t_1);
   __pyx_t_1 = 0;
 
   /* "wsmtk/_whittaker.pyx":23
- *     d = clone(flt_array_template,n,zero=False)
- *     c = clone(flt_array_template,n,zero=False)
- *     e = clone(flt_array_template,n,zero=False)             # <<<<<<<<<<<<<<
+ *     d = clone(dbl_array_template,n,zero=False)
+ *     c = clone(dbl_array_template,n,zero=False)
+ *     e = clone(dbl_array_template,n,zero=False)             # <<<<<<<<<<<<<<
  * 
- *     d.data.as_floats[0] = w[0] + lmda
+ *     d.data.as_doubles[0] = w[0] + lmda
  */
-  __pyx_t_1 = ((PyObject *)__pyx_f_7cpython_5array_clone(__pyx_v_flt_array_template, __pyx_v_n, 0)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 23, __pyx_L1_error)
+  __pyx_t_1 = ((PyObject *)__pyx_f_7cpython_5array_clone(__pyx_v_dbl_array_template, __pyx_v_n, 0)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 23, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_e = ((arrayobject *)__pyx_t_1);
   __pyx_t_1 = 0;
 
   /* "wsmtk/_whittaker.pyx":25
- *     e = clone(flt_array_template,n,zero=False)
+ *     e = clone(dbl_array_template,n,zero=False)
  * 
- *     d.data.as_floats[0] = w[0] + lmda             # <<<<<<<<<<<<<<
- *     c.data.as_floats[0] = (-2 * lmda) / d.data.as_floats[0]
- *     e.data.as_floats[0] = lmda /d.data.as_floats[0]
+ *     d.data.as_doubles[0] = w[0] + lmda             # <<<<<<<<<<<<<<
+ *     c.data.as_doubles[0] = (-2 * lmda) / d.data.as_doubles[0]
+ *     e.data.as_doubles[0] = lmda /d.data.as_doubles[0]
  */
   __pyx_t_3 = 0;
   __pyx_t_4 = -1;
@@ -1920,32 +1920,32 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d(PyArrayObject *__pyx_v_y, float 
     __Pyx_RaiseBufferIndexError(__pyx_t_4);
     __PYX_ERR(0, 25, __pyx_L1_error)
   }
-  (__pyx_v_d->data.as_floats[0]) = ((*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_w.rcbuffer->pybuffer.buf, __pyx_t_3, __pyx_pybuffernd_w.diminfo[0].strides)) + __pyx_v_lmda);
+  (__pyx_v_d->data.as_doubles[0]) = ((*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_w.rcbuffer->pybuffer.buf, __pyx_t_3, __pyx_pybuffernd_w.diminfo[0].strides)) + __pyx_v_lmda);
 
   /* "wsmtk/_whittaker.pyx":26
  * 
- *     d.data.as_floats[0] = w[0] + lmda
- *     c.data.as_floats[0] = (-2 * lmda) / d.data.as_floats[0]             # <<<<<<<<<<<<<<
- *     e.data.as_floats[0] = lmda /d.data.as_floats[0]
- *     z.data.as_floats[0] = w[0] * y[0]
+ *     d.data.as_doubles[0] = w[0] + lmda
+ *     c.data.as_doubles[0] = (-2 * lmda) / d.data.as_doubles[0]             # <<<<<<<<<<<<<<
+ *     e.data.as_doubles[0] = lmda /d.data.as_doubles[0]
+ *     z.data.as_doubles[0] = w[0] * y[0]
  */
-  (__pyx_v_c->data.as_floats[0]) = ((-2.0 * __pyx_v_lmda) / (__pyx_v_d->data.as_floats[0]));
+  (__pyx_v_c->data.as_doubles[0]) = ((-2.0 * __pyx_v_lmda) / (__pyx_v_d->data.as_doubles[0]));
 
   /* "wsmtk/_whittaker.pyx":27
- *     d.data.as_floats[0] = w[0] + lmda
- *     c.data.as_floats[0] = (-2 * lmda) / d.data.as_floats[0]
- *     e.data.as_floats[0] = lmda /d.data.as_floats[0]             # <<<<<<<<<<<<<<
- *     z.data.as_floats[0] = w[0] * y[0]
- *     d.data.as_floats[1] = w[1] + 5 * lmda - d.data.as_floats[0] * (c.data.as_floats[0] * c.data.as_floats[0])
+ *     d.data.as_doubles[0] = w[0] + lmda
+ *     c.data.as_doubles[0] = (-2 * lmda) / d.data.as_doubles[0]
+ *     e.data.as_doubles[0] = lmda /d.data.as_doubles[0]             # <<<<<<<<<<<<<<
+ *     z.data.as_doubles[0] = w[0] * y[0]
+ *     d.data.as_doubles[1] = w[1] + 5 * lmda - d.data.as_doubles[0] * (c.data.as_doubles[0] * c.data.as_doubles[0])
  */
-  (__pyx_v_e->data.as_floats[0]) = (__pyx_v_lmda / (__pyx_v_d->data.as_floats[0]));
+  (__pyx_v_e->data.as_doubles[0]) = (__pyx_v_lmda / (__pyx_v_d->data.as_doubles[0]));
 
   /* "wsmtk/_whittaker.pyx":28
- *     c.data.as_floats[0] = (-2 * lmda) / d.data.as_floats[0]
- *     e.data.as_floats[0] = lmda /d.data.as_floats[0]
- *     z.data.as_floats[0] = w[0] * y[0]             # <<<<<<<<<<<<<<
- *     d.data.as_floats[1] = w[1] + 5 * lmda - d.data.as_floats[0] * (c.data.as_floats[0] * c.data.as_floats[0])
- *     c.data.as_floats[1] = (-4 * lmda - d.data.as_floats[0] * c.data.as_floats[0] * e.data.as_floats[0]) / d.data.as_floats[1]
+ *     c.data.as_doubles[0] = (-2 * lmda) / d.data.as_doubles[0]
+ *     e.data.as_doubles[0] = lmda /d.data.as_doubles[0]
+ *     z.data.as_doubles[0] = w[0] * y[0]             # <<<<<<<<<<<<<<
+ *     d.data.as_doubles[1] = w[1] + 5 * lmda - d.data.as_doubles[0] * (c.data.as_doubles[0] * c.data.as_doubles[0])
+ *     c.data.as_doubles[1] = (-4 * lmda - d.data.as_doubles[0] * c.data.as_doubles[0] * e.data.as_doubles[0]) / d.data.as_doubles[1]
  */
   __pyx_t_5 = 0;
   __pyx_t_4 = -1;
@@ -1965,14 +1965,14 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d(PyArrayObject *__pyx_v_y, float 
     __Pyx_RaiseBufferIndexError(__pyx_t_4);
     __PYX_ERR(0, 28, __pyx_L1_error)
   }
-  (__pyx_v_z->data.as_floats[0]) = ((*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_w.rcbuffer->pybuffer.buf, __pyx_t_5, __pyx_pybuffernd_w.diminfo[0].strides)) * (*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_y.rcbuffer->pybuffer.buf, __pyx_t_6, __pyx_pybuffernd_y.diminfo[0].strides)));
+  (__pyx_v_z->data.as_doubles[0]) = ((*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_w.rcbuffer->pybuffer.buf, __pyx_t_5, __pyx_pybuffernd_w.diminfo[0].strides)) * (*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_y.rcbuffer->pybuffer.buf, __pyx_t_6, __pyx_pybuffernd_y.diminfo[0].strides)));
 
   /* "wsmtk/_whittaker.pyx":29
- *     e.data.as_floats[0] = lmda /d.data.as_floats[0]
- *     z.data.as_floats[0] = w[0] * y[0]
- *     d.data.as_floats[1] = w[1] + 5 * lmda - d.data.as_floats[0] * (c.data.as_floats[0] * c.data.as_floats[0])             # <<<<<<<<<<<<<<
- *     c.data.as_floats[1] = (-4 * lmda - d.data.as_floats[0] * c.data.as_floats[0] * e.data.as_floats[0]) / d.data.as_floats[1]
- *     e.data.as_floats[1] =  lmda / d.data.as_floats[1]
+ *     e.data.as_doubles[0] = lmda /d.data.as_doubles[0]
+ *     z.data.as_doubles[0] = w[0] * y[0]
+ *     d.data.as_doubles[1] = w[1] + 5 * lmda - d.data.as_doubles[0] * (c.data.as_doubles[0] * c.data.as_doubles[0])             # <<<<<<<<<<<<<<
+ *     c.data.as_doubles[1] = (-4 * lmda - d.data.as_doubles[0] * c.data.as_doubles[0] * e.data.as_doubles[0]) / d.data.as_doubles[1]
+ *     e.data.as_doubles[1] =  lmda / d.data.as_doubles[1]
  */
   __pyx_t_7 = 1;
   __pyx_t_4 = -1;
@@ -1983,30 +1983,30 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d(PyArrayObject *__pyx_v_y, float 
     __Pyx_RaiseBufferIndexError(__pyx_t_4);
     __PYX_ERR(0, 29, __pyx_L1_error)
   }
-  (__pyx_v_d->data.as_floats[1]) = (((*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_w.rcbuffer->pybuffer.buf, __pyx_t_7, __pyx_pybuffernd_w.diminfo[0].strides)) + (5.0 * __pyx_v_lmda)) - ((__pyx_v_d->data.as_floats[0]) * ((__pyx_v_c->data.as_floats[0]) * (__pyx_v_c->data.as_floats[0]))));
+  (__pyx_v_d->data.as_doubles[1]) = (((*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_w.rcbuffer->pybuffer.buf, __pyx_t_7, __pyx_pybuffernd_w.diminfo[0].strides)) + (5.0 * __pyx_v_lmda)) - ((__pyx_v_d->data.as_doubles[0]) * ((__pyx_v_c->data.as_doubles[0]) * (__pyx_v_c->data.as_doubles[0]))));
 
   /* "wsmtk/_whittaker.pyx":30
- *     z.data.as_floats[0] = w[0] * y[0]
- *     d.data.as_floats[1] = w[1] + 5 * lmda - d.data.as_floats[0] * (c.data.as_floats[0] * c.data.as_floats[0])
- *     c.data.as_floats[1] = (-4 * lmda - d.data.as_floats[0] * c.data.as_floats[0] * e.data.as_floats[0]) / d.data.as_floats[1]             # <<<<<<<<<<<<<<
- *     e.data.as_floats[1] =  lmda / d.data.as_floats[1]
- *     z.data.as_floats[1] = w[1] * y[1] - c.data.as_floats[0] * z.data.as_floats[0]
+ *     z.data.as_doubles[0] = w[0] * y[0]
+ *     d.data.as_doubles[1] = w[1] + 5 * lmda - d.data.as_doubles[0] * (c.data.as_doubles[0] * c.data.as_doubles[0])
+ *     c.data.as_doubles[1] = (-4 * lmda - d.data.as_doubles[0] * c.data.as_doubles[0] * e.data.as_doubles[0]) / d.data.as_doubles[1]             # <<<<<<<<<<<<<<
+ *     e.data.as_doubles[1] =  lmda / d.data.as_doubles[1]
+ *     z.data.as_doubles[1] = w[1] * y[1] - c.data.as_doubles[0] * z.data.as_doubles[0]
  */
-  (__pyx_v_c->data.as_floats[1]) = (((-4.0 * __pyx_v_lmda) - (((__pyx_v_d->data.as_floats[0]) * (__pyx_v_c->data.as_floats[0])) * (__pyx_v_e->data.as_floats[0]))) / (__pyx_v_d->data.as_floats[1]));
+  (__pyx_v_c->data.as_doubles[1]) = (((-4.0 * __pyx_v_lmda) - (((__pyx_v_d->data.as_doubles[0]) * (__pyx_v_c->data.as_doubles[0])) * (__pyx_v_e->data.as_doubles[0]))) / (__pyx_v_d->data.as_doubles[1]));
 
   /* "wsmtk/_whittaker.pyx":31
- *     d.data.as_floats[1] = w[1] + 5 * lmda - d.data.as_floats[0] * (c.data.as_floats[0] * c.data.as_floats[0])
- *     c.data.as_floats[1] = (-4 * lmda - d.data.as_floats[0] * c.data.as_floats[0] * e.data.as_floats[0]) / d.data.as_floats[1]
- *     e.data.as_floats[1] =  lmda / d.data.as_floats[1]             # <<<<<<<<<<<<<<
- *     z.data.as_floats[1] = w[1] * y[1] - c.data.as_floats[0] * z.data.as_floats[0]
+ *     d.data.as_doubles[1] = w[1] + 5 * lmda - d.data.as_doubles[0] * (c.data.as_doubles[0] * c.data.as_doubles[0])
+ *     c.data.as_doubles[1] = (-4 * lmda - d.data.as_doubles[0] * c.data.as_doubles[0] * e.data.as_doubles[0]) / d.data.as_doubles[1]
+ *     e.data.as_doubles[1] =  lmda / d.data.as_doubles[1]             # <<<<<<<<<<<<<<
+ *     z.data.as_doubles[1] = w[1] * y[1] - c.data.as_doubles[0] * z.data.as_doubles[0]
  *     for i in range(2,m-1):
  */
-  (__pyx_v_e->data.as_floats[1]) = (__pyx_v_lmda / (__pyx_v_d->data.as_floats[1]));
+  (__pyx_v_e->data.as_doubles[1]) = (__pyx_v_lmda / (__pyx_v_d->data.as_doubles[1]));
 
   /* "wsmtk/_whittaker.pyx":32
- *     c.data.as_floats[1] = (-4 * lmda - d.data.as_floats[0] * c.data.as_floats[0] * e.data.as_floats[0]) / d.data.as_floats[1]
- *     e.data.as_floats[1] =  lmda / d.data.as_floats[1]
- *     z.data.as_floats[1] = w[1] * y[1] - c.data.as_floats[0] * z.data.as_floats[0]             # <<<<<<<<<<<<<<
+ *     c.data.as_doubles[1] = (-4 * lmda - d.data.as_doubles[0] * c.data.as_doubles[0] * e.data.as_doubles[0]) / d.data.as_doubles[1]
+ *     e.data.as_doubles[1] =  lmda / d.data.as_doubles[1]
+ *     z.data.as_doubles[1] = w[1] * y[1] - c.data.as_doubles[0] * z.data.as_doubles[0]             # <<<<<<<<<<<<<<
  *     for i in range(2,m-1):
  *         i1 = i - 1
  */
@@ -2028,11 +2028,11 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d(PyArrayObject *__pyx_v_y, float 
     __Pyx_RaiseBufferIndexError(__pyx_t_4);
     __PYX_ERR(0, 32, __pyx_L1_error)
   }
-  (__pyx_v_z->data.as_floats[1]) = (((*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_w.rcbuffer->pybuffer.buf, __pyx_t_8, __pyx_pybuffernd_w.diminfo[0].strides)) * (*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_y.rcbuffer->pybuffer.buf, __pyx_t_9, __pyx_pybuffernd_y.diminfo[0].strides))) - ((__pyx_v_c->data.as_floats[0]) * (__pyx_v_z->data.as_floats[0])));
+  (__pyx_v_z->data.as_doubles[1]) = (((*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_w.rcbuffer->pybuffer.buf, __pyx_t_8, __pyx_pybuffernd_w.diminfo[0].strides)) * (*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_y.rcbuffer->pybuffer.buf, __pyx_t_9, __pyx_pybuffernd_y.diminfo[0].strides))) - ((__pyx_v_c->data.as_doubles[0]) * (__pyx_v_z->data.as_doubles[0])));
 
   /* "wsmtk/_whittaker.pyx":33
- *     e.data.as_floats[1] =  lmda / d.data.as_floats[1]
- *     z.data.as_floats[1] = w[1] * y[1] - c.data.as_floats[0] * z.data.as_floats[0]
+ *     e.data.as_doubles[1] =  lmda / d.data.as_doubles[1]
+ *     z.data.as_doubles[1] = w[1] * y[1] - c.data.as_doubles[0] * z.data.as_doubles[0]
  *     for i in range(2,m-1):             # <<<<<<<<<<<<<<
  *         i1 = i - 1
  *         i2 = i - 2
@@ -2042,11 +2042,11 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d(PyArrayObject *__pyx_v_y, float 
     __pyx_v_i = __pyx_t_4;
 
     /* "wsmtk/_whittaker.pyx":34
- *     z.data.as_floats[1] = w[1] * y[1] - c.data.as_floats[0] * z.data.as_floats[0]
+ *     z.data.as_doubles[1] = w[1] * y[1] - c.data.as_doubles[0] * z.data.as_doubles[0]
  *     for i in range(2,m-1):
  *         i1 = i - 1             # <<<<<<<<<<<<<<
  *         i2 = i - 2
- *         d.data.as_floats[i]= w[i] + 6 *  lmda - (c.data.as_floats[i1] * c.data.as_floats[i1]) * d.data.as_floats[i1] - (e.data.as_floats[i2] * e.data.as_floats[i2]) * d.data.as_floats[i2]
+ *         d.data.as_doubles[i]= w[i] + 6 *  lmda - (c.data.as_doubles[i1] * c.data.as_doubles[i1]) * d.data.as_doubles[i1] - (e.data.as_doubles[i2] * e.data.as_doubles[i2]) * d.data.as_doubles[i2]
  */
     __pyx_v_i1 = (__pyx_v_i - 1);
 
@@ -2054,17 +2054,17 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d(PyArrayObject *__pyx_v_y, float 
  *     for i in range(2,m-1):
  *         i1 = i - 1
  *         i2 = i - 2             # <<<<<<<<<<<<<<
- *         d.data.as_floats[i]= w[i] + 6 *  lmda - (c.data.as_floats[i1] * c.data.as_floats[i1]) * d.data.as_floats[i1] - (e.data.as_floats[i2] * e.data.as_floats[i2]) * d.data.as_floats[i2]
- *         c.data.as_floats[i] = (-4 *  lmda - d.data.as_floats[i1] * c.data.as_floats[i1] * e.data.as_floats[i1])/ d.data.as_floats[i]
+ *         d.data.as_doubles[i]= w[i] + 6 *  lmda - (c.data.as_doubles[i1] * c.data.as_doubles[i1]) * d.data.as_doubles[i1] - (e.data.as_doubles[i2] * e.data.as_doubles[i2]) * d.data.as_doubles[i2]
+ *         c.data.as_doubles[i] = (-4 *  lmda - d.data.as_doubles[i1] * c.data.as_doubles[i1] * e.data.as_doubles[i1])/ d.data.as_doubles[i]
  */
     __pyx_v_i2 = (__pyx_v_i - 2);
 
     /* "wsmtk/_whittaker.pyx":36
  *         i1 = i - 1
  *         i2 = i - 2
- *         d.data.as_floats[i]= w[i] + 6 *  lmda - (c.data.as_floats[i1] * c.data.as_floats[i1]) * d.data.as_floats[i1] - (e.data.as_floats[i2] * e.data.as_floats[i2]) * d.data.as_floats[i2]             # <<<<<<<<<<<<<<
- *         c.data.as_floats[i] = (-4 *  lmda - d.data.as_floats[i1] * c.data.as_floats[i1] * e.data.as_floats[i1])/ d.data.as_floats[i]
- *         e.data.as_floats[i] =  lmda / d.data.as_floats[i]
+ *         d.data.as_doubles[i]= w[i] + 6 *  lmda - (c.data.as_doubles[i1] * c.data.as_doubles[i1]) * d.data.as_doubles[i1] - (e.data.as_doubles[i2] * e.data.as_doubles[i2]) * d.data.as_doubles[i2]             # <<<<<<<<<<<<<<
+ *         c.data.as_doubles[i] = (-4 *  lmda - d.data.as_doubles[i1] * c.data.as_doubles[i1] * e.data.as_doubles[i1])/ d.data.as_doubles[i]
+ *         e.data.as_doubles[i] =  lmda / d.data.as_doubles[i]
  */
     __pyx_t_11 = __pyx_v_i;
     __pyx_t_12 = -1;
@@ -2075,30 +2075,30 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d(PyArrayObject *__pyx_v_y, float 
       __Pyx_RaiseBufferIndexError(__pyx_t_12);
       __PYX_ERR(0, 36, __pyx_L1_error)
     }
-    (__pyx_v_d->data.as_floats[__pyx_v_i]) = ((((*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_w.rcbuffer->pybuffer.buf, __pyx_t_11, __pyx_pybuffernd_w.diminfo[0].strides)) + (6.0 * __pyx_v_lmda)) - (((__pyx_v_c->data.as_floats[__pyx_v_i1]) * (__pyx_v_c->data.as_floats[__pyx_v_i1])) * (__pyx_v_d->data.as_floats[__pyx_v_i1]))) - (((__pyx_v_e->data.as_floats[__pyx_v_i2]) * (__pyx_v_e->data.as_floats[__pyx_v_i2])) * (__pyx_v_d->data.as_floats[__pyx_v_i2])));
+    (__pyx_v_d->data.as_doubles[__pyx_v_i]) = ((((*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_w.rcbuffer->pybuffer.buf, __pyx_t_11, __pyx_pybuffernd_w.diminfo[0].strides)) + (6.0 * __pyx_v_lmda)) - (((__pyx_v_c->data.as_doubles[__pyx_v_i1]) * (__pyx_v_c->data.as_doubles[__pyx_v_i1])) * (__pyx_v_d->data.as_doubles[__pyx_v_i1]))) - (((__pyx_v_e->data.as_doubles[__pyx_v_i2]) * (__pyx_v_e->data.as_doubles[__pyx_v_i2])) * (__pyx_v_d->data.as_doubles[__pyx_v_i2])));
 
     /* "wsmtk/_whittaker.pyx":37
  *         i2 = i - 2
- *         d.data.as_floats[i]= w[i] + 6 *  lmda - (c.data.as_floats[i1] * c.data.as_floats[i1]) * d.data.as_floats[i1] - (e.data.as_floats[i2] * e.data.as_floats[i2]) * d.data.as_floats[i2]
- *         c.data.as_floats[i] = (-4 *  lmda - d.data.as_floats[i1] * c.data.as_floats[i1] * e.data.as_floats[i1])/ d.data.as_floats[i]             # <<<<<<<<<<<<<<
- *         e.data.as_floats[i] =  lmda / d.data.as_floats[i]
- *         z.data.as_floats[i] = w[i] * y[i] - c.data.as_floats[i1] * z.data.as_floats[i1] - e.data.as_floats[i2] * z.data.as_floats[i2]
+ *         d.data.as_doubles[i]= w[i] + 6 *  lmda - (c.data.as_doubles[i1] * c.data.as_doubles[i1]) * d.data.as_doubles[i1] - (e.data.as_doubles[i2] * e.data.as_doubles[i2]) * d.data.as_doubles[i2]
+ *         c.data.as_doubles[i] = (-4 *  lmda - d.data.as_doubles[i1] * c.data.as_doubles[i1] * e.data.as_doubles[i1])/ d.data.as_doubles[i]             # <<<<<<<<<<<<<<
+ *         e.data.as_doubles[i] =  lmda / d.data.as_doubles[i]
+ *         z.data.as_doubles[i] = w[i] * y[i] - c.data.as_doubles[i1] * z.data.as_doubles[i1] - e.data.as_doubles[i2] * z.data.as_doubles[i2]
  */
-    (__pyx_v_c->data.as_floats[__pyx_v_i]) = (((-4.0 * __pyx_v_lmda) - (((__pyx_v_d->data.as_floats[__pyx_v_i1]) * (__pyx_v_c->data.as_floats[__pyx_v_i1])) * (__pyx_v_e->data.as_floats[__pyx_v_i1]))) / (__pyx_v_d->data.as_floats[__pyx_v_i]));
+    (__pyx_v_c->data.as_doubles[__pyx_v_i]) = (((-4.0 * __pyx_v_lmda) - (((__pyx_v_d->data.as_doubles[__pyx_v_i1]) * (__pyx_v_c->data.as_doubles[__pyx_v_i1])) * (__pyx_v_e->data.as_doubles[__pyx_v_i1]))) / (__pyx_v_d->data.as_doubles[__pyx_v_i]));
 
     /* "wsmtk/_whittaker.pyx":38
- *         d.data.as_floats[i]= w[i] + 6 *  lmda - (c.data.as_floats[i1] * c.data.as_floats[i1]) * d.data.as_floats[i1] - (e.data.as_floats[i2] * e.data.as_floats[i2]) * d.data.as_floats[i2]
- *         c.data.as_floats[i] = (-4 *  lmda - d.data.as_floats[i1] * c.data.as_floats[i1] * e.data.as_floats[i1])/ d.data.as_floats[i]
- *         e.data.as_floats[i] =  lmda / d.data.as_floats[i]             # <<<<<<<<<<<<<<
- *         z.data.as_floats[i] = w[i] * y[i] - c.data.as_floats[i1] * z.data.as_floats[i1] - e.data.as_floats[i2] * z.data.as_floats[i2]
+ *         d.data.as_doubles[i]= w[i] + 6 *  lmda - (c.data.as_doubles[i1] * c.data.as_doubles[i1]) * d.data.as_doubles[i1] - (e.data.as_doubles[i2] * e.data.as_doubles[i2]) * d.data.as_doubles[i2]
+ *         c.data.as_doubles[i] = (-4 *  lmda - d.data.as_doubles[i1] * c.data.as_doubles[i1] * e.data.as_doubles[i1])/ d.data.as_doubles[i]
+ *         e.data.as_doubles[i] =  lmda / d.data.as_doubles[i]             # <<<<<<<<<<<<<<
+ *         z.data.as_doubles[i] = w[i] * y[i] - c.data.as_doubles[i1] * z.data.as_doubles[i1] - e.data.as_doubles[i2] * z.data.as_doubles[i2]
  *     i1 = m - 2
  */
-    (__pyx_v_e->data.as_floats[__pyx_v_i]) = (__pyx_v_lmda / (__pyx_v_d->data.as_floats[__pyx_v_i]));
+    (__pyx_v_e->data.as_doubles[__pyx_v_i]) = (__pyx_v_lmda / (__pyx_v_d->data.as_doubles[__pyx_v_i]));
 
     /* "wsmtk/_whittaker.pyx":39
- *         c.data.as_floats[i] = (-4 *  lmda - d.data.as_floats[i1] * c.data.as_floats[i1] * e.data.as_floats[i1])/ d.data.as_floats[i]
- *         e.data.as_floats[i] =  lmda / d.data.as_floats[i]
- *         z.data.as_floats[i] = w[i] * y[i] - c.data.as_floats[i1] * z.data.as_floats[i1] - e.data.as_floats[i2] * z.data.as_floats[i2]             # <<<<<<<<<<<<<<
+ *         c.data.as_doubles[i] = (-4 *  lmda - d.data.as_doubles[i1] * c.data.as_doubles[i1] * e.data.as_doubles[i1])/ d.data.as_doubles[i]
+ *         e.data.as_doubles[i] =  lmda / d.data.as_doubles[i]
+ *         z.data.as_doubles[i] = w[i] * y[i] - c.data.as_doubles[i1] * z.data.as_doubles[i1] - e.data.as_doubles[i2] * z.data.as_doubles[i2]             # <<<<<<<<<<<<<<
  *     i1 = m - 2
  *     i2 = m - 3
  */
@@ -2120,33 +2120,33 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d(PyArrayObject *__pyx_v_y, float 
       __Pyx_RaiseBufferIndexError(__pyx_t_12);
       __PYX_ERR(0, 39, __pyx_L1_error)
     }
-    (__pyx_v_z->data.as_floats[__pyx_v_i]) = ((((*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_w.rcbuffer->pybuffer.buf, __pyx_t_13, __pyx_pybuffernd_w.diminfo[0].strides)) * (*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_y.rcbuffer->pybuffer.buf, __pyx_t_14, __pyx_pybuffernd_y.diminfo[0].strides))) - ((__pyx_v_c->data.as_floats[__pyx_v_i1]) * (__pyx_v_z->data.as_floats[__pyx_v_i1]))) - ((__pyx_v_e->data.as_floats[__pyx_v_i2]) * (__pyx_v_z->data.as_floats[__pyx_v_i2])));
+    (__pyx_v_z->data.as_doubles[__pyx_v_i]) = ((((*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_w.rcbuffer->pybuffer.buf, __pyx_t_13, __pyx_pybuffernd_w.diminfo[0].strides)) * (*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_y.rcbuffer->pybuffer.buf, __pyx_t_14, __pyx_pybuffernd_y.diminfo[0].strides))) - ((__pyx_v_c->data.as_doubles[__pyx_v_i1]) * (__pyx_v_z->data.as_doubles[__pyx_v_i1]))) - ((__pyx_v_e->data.as_doubles[__pyx_v_i2]) * (__pyx_v_z->data.as_doubles[__pyx_v_i2])));
   }
 
   /* "wsmtk/_whittaker.pyx":40
- *         e.data.as_floats[i] =  lmda / d.data.as_floats[i]
- *         z.data.as_floats[i] = w[i] * y[i] - c.data.as_floats[i1] * z.data.as_floats[i1] - e.data.as_floats[i2] * z.data.as_floats[i2]
+ *         e.data.as_doubles[i] =  lmda / d.data.as_doubles[i]
+ *         z.data.as_doubles[i] = w[i] * y[i] - c.data.as_doubles[i1] * z.data.as_doubles[i1] - e.data.as_doubles[i2] * z.data.as_doubles[i2]
  *     i1 = m - 2             # <<<<<<<<<<<<<<
  *     i2 = m - 3
- *     d.data.as_floats[m - 1] = w[m - 1] + 5 *  lmda - (c.data.as_floats[i1] * c.data.as_floats[i1]) * d.data.as_floats[i1] - (e.data.as_floats[i2] * e.data.as_floats[i2]) * d.data.as_floats[i2]
+ *     d.data.as_doubles[m - 1] = w[m - 1] + 5 *  lmda - (c.data.as_doubles[i1] * c.data.as_doubles[i1]) * d.data.as_doubles[i1] - (e.data.as_doubles[i2] * e.data.as_doubles[i2]) * d.data.as_doubles[i2]
  */
   __pyx_v_i1 = (__pyx_v_m - 2);
 
   /* "wsmtk/_whittaker.pyx":41
- *         z.data.as_floats[i] = w[i] * y[i] - c.data.as_floats[i1] * z.data.as_floats[i1] - e.data.as_floats[i2] * z.data.as_floats[i2]
+ *         z.data.as_doubles[i] = w[i] * y[i] - c.data.as_doubles[i1] * z.data.as_doubles[i1] - e.data.as_doubles[i2] * z.data.as_doubles[i2]
  *     i1 = m - 2
  *     i2 = m - 3             # <<<<<<<<<<<<<<
- *     d.data.as_floats[m - 1] = w[m - 1] + 5 *  lmda - (c.data.as_floats[i1] * c.data.as_floats[i1]) * d.data.as_floats[i1] - (e.data.as_floats[i2] * e.data.as_floats[i2]) * d.data.as_floats[i2]
- *     c.data.as_floats[m - 1] = (-2 *  lmda - d.data.as_floats[i1] * c.data.as_floats[i1] * e.data.as_floats[i1]) / d.data.as_floats[m - 1]
+ *     d.data.as_doubles[m - 1] = w[m - 1] + 5 *  lmda - (c.data.as_doubles[i1] * c.data.as_doubles[i1]) * d.data.as_doubles[i1] - (e.data.as_doubles[i2] * e.data.as_doubles[i2]) * d.data.as_doubles[i2]
+ *     c.data.as_doubles[m - 1] = (-2 *  lmda - d.data.as_doubles[i1] * c.data.as_doubles[i1] * e.data.as_doubles[i1]) / d.data.as_doubles[m - 1]
  */
   __pyx_v_i2 = (__pyx_v_m - 3);
 
   /* "wsmtk/_whittaker.pyx":42
  *     i1 = m - 2
  *     i2 = m - 3
- *     d.data.as_floats[m - 1] = w[m - 1] + 5 *  lmda - (c.data.as_floats[i1] * c.data.as_floats[i1]) * d.data.as_floats[i1] - (e.data.as_floats[i2] * e.data.as_floats[i2]) * d.data.as_floats[i2]             # <<<<<<<<<<<<<<
- *     c.data.as_floats[m - 1] = (-2 *  lmda - d.data.as_floats[i1] * c.data.as_floats[i1] * e.data.as_floats[i1]) / d.data.as_floats[m - 1]
- *     z.data.as_floats[m - 1] = w[m - 1] * y[m - 1] - c.data.as_floats[i1] * z.data.as_floats[i1] - e.data.as_floats[i2] * z.data.as_floats[i2]
+ *     d.data.as_doubles[m - 1] = w[m - 1] + 5 *  lmda - (c.data.as_doubles[i1] * c.data.as_doubles[i1]) * d.data.as_doubles[i1] - (e.data.as_doubles[i2] * e.data.as_doubles[i2]) * d.data.as_doubles[i2]             # <<<<<<<<<<<<<<
+ *     c.data.as_doubles[m - 1] = (-2 *  lmda - d.data.as_doubles[i1] * c.data.as_doubles[i1] * e.data.as_doubles[i1]) / d.data.as_doubles[m - 1]
+ *     z.data.as_doubles[m - 1] = w[m - 1] * y[m - 1] - c.data.as_doubles[i1] * z.data.as_doubles[i1] - e.data.as_doubles[i2] * z.data.as_doubles[i2]
  */
   __pyx_t_15 = (__pyx_v_m - 1);
   __pyx_t_4 = -1;
@@ -2157,21 +2157,21 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d(PyArrayObject *__pyx_v_y, float 
     __Pyx_RaiseBufferIndexError(__pyx_t_4);
     __PYX_ERR(0, 42, __pyx_L1_error)
   }
-  (__pyx_v_d->data.as_floats[(__pyx_v_m - 1)]) = ((((*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_w.rcbuffer->pybuffer.buf, __pyx_t_15, __pyx_pybuffernd_w.diminfo[0].strides)) + (5.0 * __pyx_v_lmda)) - (((__pyx_v_c->data.as_floats[__pyx_v_i1]) * (__pyx_v_c->data.as_floats[__pyx_v_i1])) * (__pyx_v_d->data.as_floats[__pyx_v_i1]))) - (((__pyx_v_e->data.as_floats[__pyx_v_i2]) * (__pyx_v_e->data.as_floats[__pyx_v_i2])) * (__pyx_v_d->data.as_floats[__pyx_v_i2])));
+  (__pyx_v_d->data.as_doubles[(__pyx_v_m - 1)]) = ((((*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_w.rcbuffer->pybuffer.buf, __pyx_t_15, __pyx_pybuffernd_w.diminfo[0].strides)) + (5.0 * __pyx_v_lmda)) - (((__pyx_v_c->data.as_doubles[__pyx_v_i1]) * (__pyx_v_c->data.as_doubles[__pyx_v_i1])) * (__pyx_v_d->data.as_doubles[__pyx_v_i1]))) - (((__pyx_v_e->data.as_doubles[__pyx_v_i2]) * (__pyx_v_e->data.as_doubles[__pyx_v_i2])) * (__pyx_v_d->data.as_doubles[__pyx_v_i2])));
 
   /* "wsmtk/_whittaker.pyx":43
  *     i2 = m - 3
- *     d.data.as_floats[m - 1] = w[m - 1] + 5 *  lmda - (c.data.as_floats[i1] * c.data.as_floats[i1]) * d.data.as_floats[i1] - (e.data.as_floats[i2] * e.data.as_floats[i2]) * d.data.as_floats[i2]
- *     c.data.as_floats[m - 1] = (-2 *  lmda - d.data.as_floats[i1] * c.data.as_floats[i1] * e.data.as_floats[i1]) / d.data.as_floats[m - 1]             # <<<<<<<<<<<<<<
- *     z.data.as_floats[m - 1] = w[m - 1] * y[m - 1] - c.data.as_floats[i1] * z.data.as_floats[i1] - e.data.as_floats[i2] * z.data.as_floats[i2]
+ *     d.data.as_doubles[m - 1] = w[m - 1] + 5 *  lmda - (c.data.as_doubles[i1] * c.data.as_doubles[i1]) * d.data.as_doubles[i1] - (e.data.as_doubles[i2] * e.data.as_doubles[i2]) * d.data.as_doubles[i2]
+ *     c.data.as_doubles[m - 1] = (-2 *  lmda - d.data.as_doubles[i1] * c.data.as_doubles[i1] * e.data.as_doubles[i1]) / d.data.as_doubles[m - 1]             # <<<<<<<<<<<<<<
+ *     z.data.as_doubles[m - 1] = w[m - 1] * y[m - 1] - c.data.as_doubles[i1] * z.data.as_doubles[i1] - e.data.as_doubles[i2] * z.data.as_doubles[i2]
  *     i1 = m - 1
  */
-  (__pyx_v_c->data.as_floats[(__pyx_v_m - 1)]) = (((-2.0 * __pyx_v_lmda) - (((__pyx_v_d->data.as_floats[__pyx_v_i1]) * (__pyx_v_c->data.as_floats[__pyx_v_i1])) * (__pyx_v_e->data.as_floats[__pyx_v_i1]))) / (__pyx_v_d->data.as_floats[(__pyx_v_m - 1)]));
+  (__pyx_v_c->data.as_doubles[(__pyx_v_m - 1)]) = (((-2.0 * __pyx_v_lmda) - (((__pyx_v_d->data.as_doubles[__pyx_v_i1]) * (__pyx_v_c->data.as_doubles[__pyx_v_i1])) * (__pyx_v_e->data.as_doubles[__pyx_v_i1]))) / (__pyx_v_d->data.as_doubles[(__pyx_v_m - 1)]));
 
   /* "wsmtk/_whittaker.pyx":44
- *     d.data.as_floats[m - 1] = w[m - 1] + 5 *  lmda - (c.data.as_floats[i1] * c.data.as_floats[i1]) * d.data.as_floats[i1] - (e.data.as_floats[i2] * e.data.as_floats[i2]) * d.data.as_floats[i2]
- *     c.data.as_floats[m - 1] = (-2 *  lmda - d.data.as_floats[i1] * c.data.as_floats[i1] * e.data.as_floats[i1]) / d.data.as_floats[m - 1]
- *     z.data.as_floats[m - 1] = w[m - 1] * y[m - 1] - c.data.as_floats[i1] * z.data.as_floats[i1] - e.data.as_floats[i2] * z.data.as_floats[i2]             # <<<<<<<<<<<<<<
+ *     d.data.as_doubles[m - 1] = w[m - 1] + 5 *  lmda - (c.data.as_doubles[i1] * c.data.as_doubles[i1]) * d.data.as_doubles[i1] - (e.data.as_doubles[i2] * e.data.as_doubles[i2]) * d.data.as_doubles[i2]
+ *     c.data.as_doubles[m - 1] = (-2 *  lmda - d.data.as_doubles[i1] * c.data.as_doubles[i1] * e.data.as_doubles[i1]) / d.data.as_doubles[m - 1]
+ *     z.data.as_doubles[m - 1] = w[m - 1] * y[m - 1] - c.data.as_doubles[i1] * z.data.as_doubles[i1] - e.data.as_doubles[i2] * z.data.as_doubles[i2]             # <<<<<<<<<<<<<<
  *     i1 = m - 1
  *     i2 = m - 2
  */
@@ -2193,32 +2193,32 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d(PyArrayObject *__pyx_v_y, float 
     __Pyx_RaiseBufferIndexError(__pyx_t_4);
     __PYX_ERR(0, 44, __pyx_L1_error)
   }
-  (__pyx_v_z->data.as_floats[(__pyx_v_m - 1)]) = ((((*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_w.rcbuffer->pybuffer.buf, __pyx_t_16, __pyx_pybuffernd_w.diminfo[0].strides)) * (*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_y.rcbuffer->pybuffer.buf, __pyx_t_17, __pyx_pybuffernd_y.diminfo[0].strides))) - ((__pyx_v_c->data.as_floats[__pyx_v_i1]) * (__pyx_v_z->data.as_floats[__pyx_v_i1]))) - ((__pyx_v_e->data.as_floats[__pyx_v_i2]) * (__pyx_v_z->data.as_floats[__pyx_v_i2])));
+  (__pyx_v_z->data.as_doubles[(__pyx_v_m - 1)]) = ((((*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_w.rcbuffer->pybuffer.buf, __pyx_t_16, __pyx_pybuffernd_w.diminfo[0].strides)) * (*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_y.rcbuffer->pybuffer.buf, __pyx_t_17, __pyx_pybuffernd_y.diminfo[0].strides))) - ((__pyx_v_c->data.as_doubles[__pyx_v_i1]) * (__pyx_v_z->data.as_doubles[__pyx_v_i1]))) - ((__pyx_v_e->data.as_doubles[__pyx_v_i2]) * (__pyx_v_z->data.as_doubles[__pyx_v_i2])));
 
   /* "wsmtk/_whittaker.pyx":45
- *     c.data.as_floats[m - 1] = (-2 *  lmda - d.data.as_floats[i1] * c.data.as_floats[i1] * e.data.as_floats[i1]) / d.data.as_floats[m - 1]
- *     z.data.as_floats[m - 1] = w[m - 1] * y[m - 1] - c.data.as_floats[i1] * z.data.as_floats[i1] - e.data.as_floats[i2] * z.data.as_floats[i2]
+ *     c.data.as_doubles[m - 1] = (-2 *  lmda - d.data.as_doubles[i1] * c.data.as_doubles[i1] * e.data.as_doubles[i1]) / d.data.as_doubles[m - 1]
+ *     z.data.as_doubles[m - 1] = w[m - 1] * y[m - 1] - c.data.as_doubles[i1] * z.data.as_doubles[i1] - e.data.as_doubles[i2] * z.data.as_doubles[i2]
  *     i1 = m - 1             # <<<<<<<<<<<<<<
  *     i2 = m - 2
- *     d.data.as_floats[m] = w[m] +  lmda - (c.data.as_floats[i1] * c.data.as_floats[i1]) * d.data.as_floats[i1] - (e.data.as_floats[i2] * e.data.as_floats[i2]) * d.data.as_floats[i2]
+ *     d.data.as_doubles[m] = w[m] +  lmda - (c.data.as_doubles[i1] * c.data.as_doubles[i1]) * d.data.as_doubles[i1] - (e.data.as_doubles[i2] * e.data.as_doubles[i2]) * d.data.as_doubles[i2]
  */
   __pyx_v_i1 = (__pyx_v_m - 1);
 
   /* "wsmtk/_whittaker.pyx":46
- *     z.data.as_floats[m - 1] = w[m - 1] * y[m - 1] - c.data.as_floats[i1] * z.data.as_floats[i1] - e.data.as_floats[i2] * z.data.as_floats[i2]
+ *     z.data.as_doubles[m - 1] = w[m - 1] * y[m - 1] - c.data.as_doubles[i1] * z.data.as_doubles[i1] - e.data.as_doubles[i2] * z.data.as_doubles[i2]
  *     i1 = m - 1
  *     i2 = m - 2             # <<<<<<<<<<<<<<
- *     d.data.as_floats[m] = w[m] +  lmda - (c.data.as_floats[i1] * c.data.as_floats[i1]) * d.data.as_floats[i1] - (e.data.as_floats[i2] * e.data.as_floats[i2]) * d.data.as_floats[i2]
- *     z.data.as_floats[m] = (w[m] * y[m] - c.data.as_floats[i1] * z.data.as_floats[i1] - e.data.as_floats[i2] * z.data.as_floats[i2]) / d.data.as_floats[m]
+ *     d.data.as_doubles[m] = w[m] +  lmda - (c.data.as_doubles[i1] * c.data.as_doubles[i1]) * d.data.as_doubles[i1] - (e.data.as_doubles[i2] * e.data.as_doubles[i2]) * d.data.as_doubles[i2]
+ *     z.data.as_doubles[m] = (w[m] * y[m] - c.data.as_doubles[i1] * z.data.as_doubles[i1] - e.data.as_doubles[i2] * z.data.as_doubles[i2]) / d.data.as_doubles[m]
  */
   __pyx_v_i2 = (__pyx_v_m - 2);
 
   /* "wsmtk/_whittaker.pyx":47
  *     i1 = m - 1
  *     i2 = m - 2
- *     d.data.as_floats[m] = w[m] +  lmda - (c.data.as_floats[i1] * c.data.as_floats[i1]) * d.data.as_floats[i1] - (e.data.as_floats[i2] * e.data.as_floats[i2]) * d.data.as_floats[i2]             # <<<<<<<<<<<<<<
- *     z.data.as_floats[m] = (w[m] * y[m] - c.data.as_floats[i1] * z.data.as_floats[i1] - e.data.as_floats[i2] * z.data.as_floats[i2]) / d.data.as_floats[m]
- *     z.data.as_floats[m - 1] = z.data.as_floats[m - 1] / d.data.as_floats[m - 1] - c.data.as_floats[m - 1] * z.data.as_floats[m]
+ *     d.data.as_doubles[m] = w[m] +  lmda - (c.data.as_doubles[i1] * c.data.as_doubles[i1]) * d.data.as_doubles[i1] - (e.data.as_doubles[i2] * e.data.as_doubles[i2]) * d.data.as_doubles[i2]             # <<<<<<<<<<<<<<
+ *     z.data.as_doubles[m] = (w[m] * y[m] - c.data.as_doubles[i1] * z.data.as_doubles[i1] - e.data.as_doubles[i2] * z.data.as_doubles[i2]) / d.data.as_doubles[m]
+ *     z.data.as_doubles[m - 1] = z.data.as_doubles[m - 1] / d.data.as_doubles[m - 1] - c.data.as_doubles[m - 1] * z.data.as_doubles[m]
  */
   __pyx_t_18 = __pyx_v_m;
   __pyx_t_4 = -1;
@@ -2229,13 +2229,13 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d(PyArrayObject *__pyx_v_y, float 
     __Pyx_RaiseBufferIndexError(__pyx_t_4);
     __PYX_ERR(0, 47, __pyx_L1_error)
   }
-  (__pyx_v_d->data.as_floats[__pyx_v_m]) = ((((*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_w.rcbuffer->pybuffer.buf, __pyx_t_18, __pyx_pybuffernd_w.diminfo[0].strides)) + __pyx_v_lmda) - (((__pyx_v_c->data.as_floats[__pyx_v_i1]) * (__pyx_v_c->data.as_floats[__pyx_v_i1])) * (__pyx_v_d->data.as_floats[__pyx_v_i1]))) - (((__pyx_v_e->data.as_floats[__pyx_v_i2]) * (__pyx_v_e->data.as_floats[__pyx_v_i2])) * (__pyx_v_d->data.as_floats[__pyx_v_i2])));
+  (__pyx_v_d->data.as_doubles[__pyx_v_m]) = ((((*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_w.rcbuffer->pybuffer.buf, __pyx_t_18, __pyx_pybuffernd_w.diminfo[0].strides)) + __pyx_v_lmda) - (((__pyx_v_c->data.as_doubles[__pyx_v_i1]) * (__pyx_v_c->data.as_doubles[__pyx_v_i1])) * (__pyx_v_d->data.as_doubles[__pyx_v_i1]))) - (((__pyx_v_e->data.as_doubles[__pyx_v_i2]) * (__pyx_v_e->data.as_doubles[__pyx_v_i2])) * (__pyx_v_d->data.as_doubles[__pyx_v_i2])));
 
   /* "wsmtk/_whittaker.pyx":48
  *     i2 = m - 2
- *     d.data.as_floats[m] = w[m] +  lmda - (c.data.as_floats[i1] * c.data.as_floats[i1]) * d.data.as_floats[i1] - (e.data.as_floats[i2] * e.data.as_floats[i2]) * d.data.as_floats[i2]
- *     z.data.as_floats[m] = (w[m] * y[m] - c.data.as_floats[i1] * z.data.as_floats[i1] - e.data.as_floats[i2] * z.data.as_floats[i2]) / d.data.as_floats[m]             # <<<<<<<<<<<<<<
- *     z.data.as_floats[m - 1] = z.data.as_floats[m - 1] / d.data.as_floats[m - 1] - c.data.as_floats[m - 1] * z.data.as_floats[m]
+ *     d.data.as_doubles[m] = w[m] +  lmda - (c.data.as_doubles[i1] * c.data.as_doubles[i1]) * d.data.as_doubles[i1] - (e.data.as_doubles[i2] * e.data.as_doubles[i2]) * d.data.as_doubles[i2]
+ *     z.data.as_doubles[m] = (w[m] * y[m] - c.data.as_doubles[i1] * z.data.as_doubles[i1] - e.data.as_doubles[i2] * z.data.as_doubles[i2]) / d.data.as_doubles[m]             # <<<<<<<<<<<<<<
+ *     z.data.as_doubles[m - 1] = z.data.as_doubles[m - 1] / d.data.as_doubles[m - 1] - c.data.as_doubles[m - 1] * z.data.as_doubles[m]
  *     for i in range(m-2,-1,-1):
  */
   __pyx_t_19 = __pyx_v_m;
@@ -2256,39 +2256,39 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d(PyArrayObject *__pyx_v_y, float 
     __Pyx_RaiseBufferIndexError(__pyx_t_4);
     __PYX_ERR(0, 48, __pyx_L1_error)
   }
-  (__pyx_v_z->data.as_floats[__pyx_v_m]) = (((((*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_w.rcbuffer->pybuffer.buf, __pyx_t_19, __pyx_pybuffernd_w.diminfo[0].strides)) * (*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_y.rcbuffer->pybuffer.buf, __pyx_t_20, __pyx_pybuffernd_y.diminfo[0].strides))) - ((__pyx_v_c->data.as_floats[__pyx_v_i1]) * (__pyx_v_z->data.as_floats[__pyx_v_i1]))) - ((__pyx_v_e->data.as_floats[__pyx_v_i2]) * (__pyx_v_z->data.as_floats[__pyx_v_i2]))) / (__pyx_v_d->data.as_floats[__pyx_v_m]));
+  (__pyx_v_z->data.as_doubles[__pyx_v_m]) = (((((*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_w.rcbuffer->pybuffer.buf, __pyx_t_19, __pyx_pybuffernd_w.diminfo[0].strides)) * (*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_y.rcbuffer->pybuffer.buf, __pyx_t_20, __pyx_pybuffernd_y.diminfo[0].strides))) - ((__pyx_v_c->data.as_doubles[__pyx_v_i1]) * (__pyx_v_z->data.as_doubles[__pyx_v_i1]))) - ((__pyx_v_e->data.as_doubles[__pyx_v_i2]) * (__pyx_v_z->data.as_doubles[__pyx_v_i2]))) / (__pyx_v_d->data.as_doubles[__pyx_v_m]));
 
   /* "wsmtk/_whittaker.pyx":49
- *     d.data.as_floats[m] = w[m] +  lmda - (c.data.as_floats[i1] * c.data.as_floats[i1]) * d.data.as_floats[i1] - (e.data.as_floats[i2] * e.data.as_floats[i2]) * d.data.as_floats[i2]
- *     z.data.as_floats[m] = (w[m] * y[m] - c.data.as_floats[i1] * z.data.as_floats[i1] - e.data.as_floats[i2] * z.data.as_floats[i2]) / d.data.as_floats[m]
- *     z.data.as_floats[m - 1] = z.data.as_floats[m - 1] / d.data.as_floats[m - 1] - c.data.as_floats[m - 1] * z.data.as_floats[m]             # <<<<<<<<<<<<<<
+ *     d.data.as_doubles[m] = w[m] +  lmda - (c.data.as_doubles[i1] * c.data.as_doubles[i1]) * d.data.as_doubles[i1] - (e.data.as_doubles[i2] * e.data.as_doubles[i2]) * d.data.as_doubles[i2]
+ *     z.data.as_doubles[m] = (w[m] * y[m] - c.data.as_doubles[i1] * z.data.as_doubles[i1] - e.data.as_doubles[i2] * z.data.as_doubles[i2]) / d.data.as_doubles[m]
+ *     z.data.as_doubles[m - 1] = z.data.as_doubles[m - 1] / d.data.as_doubles[m - 1] - c.data.as_doubles[m - 1] * z.data.as_doubles[m]             # <<<<<<<<<<<<<<
  *     for i in range(m-2,-1,-1):
- *         z.data.as_floats[i] = z.data.as_floats[i] / d.data.as_floats[i] - c.data.as_floats[i] * z.data.as_floats[i + 1] - e.data.as_floats[i] * z.data.as_floats[i + 2]
+ *         z.data.as_doubles[i] = z.data.as_doubles[i] / d.data.as_doubles[i] - c.data.as_doubles[i] * z.data.as_doubles[i + 1] - e.data.as_doubles[i] * z.data.as_doubles[i + 2]
  */
-  (__pyx_v_z->data.as_floats[(__pyx_v_m - 1)]) = (((__pyx_v_z->data.as_floats[(__pyx_v_m - 1)]) / (__pyx_v_d->data.as_floats[(__pyx_v_m - 1)])) - ((__pyx_v_c->data.as_floats[(__pyx_v_m - 1)]) * (__pyx_v_z->data.as_floats[__pyx_v_m])));
+  (__pyx_v_z->data.as_doubles[(__pyx_v_m - 1)]) = (((__pyx_v_z->data.as_doubles[(__pyx_v_m - 1)]) / (__pyx_v_d->data.as_doubles[(__pyx_v_m - 1)])) - ((__pyx_v_c->data.as_doubles[(__pyx_v_m - 1)]) * (__pyx_v_z->data.as_doubles[__pyx_v_m])));
 
   /* "wsmtk/_whittaker.pyx":50
- *     z.data.as_floats[m] = (w[m] * y[m] - c.data.as_floats[i1] * z.data.as_floats[i1] - e.data.as_floats[i2] * z.data.as_floats[i2]) / d.data.as_floats[m]
- *     z.data.as_floats[m - 1] = z.data.as_floats[m - 1] / d.data.as_floats[m - 1] - c.data.as_floats[m - 1] * z.data.as_floats[m]
+ *     z.data.as_doubles[m] = (w[m] * y[m] - c.data.as_doubles[i1] * z.data.as_doubles[i1] - e.data.as_doubles[i2] * z.data.as_doubles[i2]) / d.data.as_doubles[m]
+ *     z.data.as_doubles[m - 1] = z.data.as_doubles[m - 1] / d.data.as_doubles[m - 1] - c.data.as_doubles[m - 1] * z.data.as_doubles[m]
  *     for i in range(m-2,-1,-1):             # <<<<<<<<<<<<<<
- *         z.data.as_floats[i] = z.data.as_floats[i] / d.data.as_floats[i] - c.data.as_floats[i] * z.data.as_floats[i + 1] - e.data.as_floats[i] * z.data.as_floats[i + 2]
+ *         z.data.as_doubles[i] = z.data.as_doubles[i] / d.data.as_doubles[i] - c.data.as_doubles[i] * z.data.as_doubles[i + 1] - e.data.as_doubles[i] * z.data.as_doubles[i + 2]
  * 
  */
   for (__pyx_t_4 = (__pyx_v_m - 2); __pyx_t_4 > -1L; __pyx_t_4-=1) {
     __pyx_v_i = __pyx_t_4;
 
     /* "wsmtk/_whittaker.pyx":51
- *     z.data.as_floats[m - 1] = z.data.as_floats[m - 1] / d.data.as_floats[m - 1] - c.data.as_floats[m - 1] * z.data.as_floats[m]
+ *     z.data.as_doubles[m - 1] = z.data.as_doubles[m - 1] / d.data.as_doubles[m - 1] - c.data.as_doubles[m - 1] * z.data.as_doubles[m]
  *     for i in range(m-2,-1,-1):
- *         z.data.as_floats[i] = z.data.as_floats[i] / d.data.as_floats[i] - c.data.as_floats[i] * z.data.as_floats[i + 1] - e.data.as_floats[i] * z.data.as_floats[i + 2]             # <<<<<<<<<<<<<<
+ *         z.data.as_doubles[i] = z.data.as_doubles[i] / d.data.as_doubles[i] - c.data.as_doubles[i] * z.data.as_doubles[i + 1] - e.data.as_doubles[i] * z.data.as_doubles[i + 2]             # <<<<<<<<<<<<<<
  * 
  *     return z
  */
-    (__pyx_v_z->data.as_floats[__pyx_v_i]) = ((((__pyx_v_z->data.as_floats[__pyx_v_i]) / (__pyx_v_d->data.as_floats[__pyx_v_i])) - ((__pyx_v_c->data.as_floats[__pyx_v_i]) * (__pyx_v_z->data.as_floats[(__pyx_v_i + 1)]))) - ((__pyx_v_e->data.as_floats[__pyx_v_i]) * (__pyx_v_z->data.as_floats[(__pyx_v_i + 2)])));
+    (__pyx_v_z->data.as_doubles[__pyx_v_i]) = ((((__pyx_v_z->data.as_doubles[__pyx_v_i]) / (__pyx_v_d->data.as_doubles[__pyx_v_i])) - ((__pyx_v_c->data.as_doubles[__pyx_v_i]) * (__pyx_v_z->data.as_doubles[(__pyx_v_i + 1)]))) - ((__pyx_v_e->data.as_doubles[__pyx_v_i]) * (__pyx_v_z->data.as_doubles[(__pyx_v_i + 2)])));
   }
 
   /* "wsmtk/_whittaker.pyx":53
- *         z.data.as_floats[i] = z.data.as_floats[i] / d.data.as_floats[i] - c.data.as_floats[i] * z.data.as_floats[i + 1] - e.data.as_floats[i] * z.data.as_floats[i + 2]
+ *         z.data.as_doubles[i] = z.data.as_doubles[i] / d.data.as_doubles[i] - c.data.as_doubles[i] * z.data.as_doubles[i + 1] - e.data.as_doubles[i] * z.data.as_doubles[i + 2]
  * 
  *     return z             # <<<<<<<<<<<<<<
  * 
@@ -2302,8 +2302,8 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d(PyArrayObject *__pyx_v_y, float 
   /* "wsmtk/_whittaker.pyx":12
  * from libc.math cimport log, pow, sqrt
  * 
- * cpdef ws2d(np.ndarray[dtype_t] y, float lmda, np.ndarray[dtype_t] w):             # <<<<<<<<<<<<<<
- *     cdef array flt_array_template = array('f', [])
+ * cpdef ws2d(np.ndarray[dtype_t] y, double lmda, np.ndarray[dtype_t] w):             # <<<<<<<<<<<<<<
+ *     cdef array dbl_array_template = array('d', [])
  *     cdef int i, i1, i2, m, n
  */
 
@@ -2325,7 +2325,7 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d(PyArrayObject *__pyx_v_y, float 
   __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_w.rcbuffer->pybuffer);
   __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_y.rcbuffer->pybuffer);
   __pyx_L2:;
-  __Pyx_XDECREF((PyObject *)__pyx_v_flt_array_template);
+  __Pyx_XDECREF((PyObject *)__pyx_v_dbl_array_template);
   __Pyx_XDECREF((PyObject *)__pyx_v_z);
   __Pyx_XDECREF((PyObject *)__pyx_v_d);
   __Pyx_XDECREF((PyObject *)__pyx_v_c);
@@ -2339,7 +2339,7 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d(PyArrayObject *__pyx_v_y, float 
 static PyObject *__pyx_pw_5wsmtk_9whittaker_1ws2d(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
 static PyObject *__pyx_pw_5wsmtk_9whittaker_1ws2d(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
   PyArrayObject *__pyx_v_y = 0;
-  float __pyx_v_lmda;
+  double __pyx_v_lmda;
   PyArrayObject *__pyx_v_w = 0;
   PyObject *__pyx_r = 0;
   __Pyx_RefNannyDeclarations
@@ -2389,7 +2389,7 @@ static PyObject *__pyx_pw_5wsmtk_9whittaker_1ws2d(PyObject *__pyx_self, PyObject
       values[2] = PyTuple_GET_ITEM(__pyx_args, 2);
     }
     __pyx_v_y = ((PyArrayObject *)values[0]);
-    __pyx_v_lmda = __pyx_PyFloat_AsFloat(values[1]); if (unlikely((__pyx_v_lmda == (float)-1) && PyErr_Occurred())) __PYX_ERR(0, 12, __pyx_L3_error)
+    __pyx_v_lmda = __pyx_PyFloat_AsDouble(values[1]); if (unlikely((__pyx_v_lmda == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 12, __pyx_L3_error)
     __pyx_v_w = ((PyArrayObject *)values[2]);
   }
   goto __pyx_L4_argument_unpacking_done;
@@ -2413,7 +2413,7 @@ static PyObject *__pyx_pw_5wsmtk_9whittaker_1ws2d(PyObject *__pyx_self, PyObject
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_5wsmtk_9whittaker_ws2d(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_y, float __pyx_v_lmda, PyArrayObject *__pyx_v_w) {
+static PyObject *__pyx_pf_5wsmtk_9whittaker_ws2d(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_y, double __pyx_v_lmda, PyArrayObject *__pyx_v_w) {
   __Pyx_LocalBuf_ND __pyx_pybuffernd_w;
   __Pyx_Buffer __pyx_pybuffer_w;
   __Pyx_LocalBuf_ND __pyx_pybuffernd_y;
@@ -2472,13 +2472,13 @@ static PyObject *__pyx_pf_5wsmtk_9whittaker_ws2d(CYTHON_UNUSED PyObject *__pyx_s
 /* "wsmtk/_whittaker.pyx":56
  * 
  * 
- * cdef ws2d_internal(np.ndarray[dtype_t] y, float lmda, array[float] w):             # <<<<<<<<<<<<<<
+ * cdef ws2d_internal(np.ndarray[dtype_t] y, double lmda, array[double] w):             # <<<<<<<<<<<<<<
  *     ## internal whittaker function for asymmetric smoothing
- *     cdef array flt_array_template = array('f', [])
+ *     cdef array dbl_array_template = array('d', [])
  */
 
-static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_internal(PyArrayObject *__pyx_v_y, float __pyx_v_lmda, arrayobject *__pyx_v_w) {
-  arrayobject *__pyx_v_flt_array_template = 0;
+static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_internal(PyArrayObject *__pyx_v_y, double __pyx_v_lmda, arrayobject *__pyx_v_w) {
+  arrayobject *__pyx_v_dbl_array_template = 0;
   int __pyx_v_i;
   int __pyx_v_i1;
   int __pyx_v_i2;
@@ -2520,14 +2520,14 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_internal(PyArrayObject *__pyx_v_
   __pyx_pybuffernd_y.diminfo[0].strides = __pyx_pybuffernd_y.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_y.diminfo[0].shape = __pyx_pybuffernd_y.rcbuffer->pybuffer.shape[0];
   {
     __Pyx_BufFmt_StackElem __pyx_stack[1];
-    if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_w.rcbuffer->pybuffer, (PyObject*)__pyx_v_w, &__Pyx_TypeInfo_float, PyBUF_FORMAT| PyBUF_INDIRECT, 1, 0, __pyx_stack) == -1)) __PYX_ERR(0, 56, __pyx_L1_error)
+    if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_w.rcbuffer->pybuffer, (PyObject*)__pyx_v_w, &__Pyx_TypeInfo_double, PyBUF_FORMAT| PyBUF_INDIRECT, 1, 0, __pyx_stack) == -1)) __PYX_ERR(0, 56, __pyx_L1_error)
   }
   __pyx_pybuffernd_w.diminfo[0].strides = __pyx_pybuffernd_w.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_w.diminfo[0].shape = __pyx_pybuffernd_w.rcbuffer->pybuffer.shape[0]; __pyx_pybuffernd_w.diminfo[0].suboffsets = __pyx_pybuffernd_w.rcbuffer->pybuffer.suboffsets[0];
 
   /* "wsmtk/_whittaker.pyx":58
- * cdef ws2d_internal(np.ndarray[dtype_t] y, float lmda, array[float] w):
+ * cdef ws2d_internal(np.ndarray[dtype_t] y, double lmda, array[double] w):
  *     ## internal whittaker function for asymmetric smoothing
- *     cdef array flt_array_template = array('f', [])             # <<<<<<<<<<<<<<
+ *     cdef array dbl_array_template = array('d', [])             # <<<<<<<<<<<<<<
  *     cdef int i, i1, i2, m, n
  *     cdef array z, d, c, e
  */
@@ -2535,16 +2535,16 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_internal(PyArrayObject *__pyx_v_
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_t_2 = PyTuple_New(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 58, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  __Pyx_INCREF(__pyx_n_s_f);
-  __Pyx_GIVEREF(__pyx_n_s_f);
-  PyTuple_SET_ITEM(__pyx_t_2, 0, __pyx_n_s_f);
+  __Pyx_INCREF(__pyx_n_s_d);
+  __Pyx_GIVEREF(__pyx_n_s_d);
+  PyTuple_SET_ITEM(__pyx_t_2, 0, __pyx_n_s_d);
   __Pyx_GIVEREF(__pyx_t_1);
   PyTuple_SET_ITEM(__pyx_t_2, 1, __pyx_t_1);
   __pyx_t_1 = 0;
   __pyx_t_1 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_7cpython_5array_array), __pyx_t_2, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 58, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_v_flt_array_template = ((arrayobject *)__pyx_t_1);
+  __pyx_v_dbl_array_template = ((arrayobject *)__pyx_t_1);
   __pyx_t_1 = 0;
 
   /* "wsmtk/_whittaker.pyx":62
@@ -2561,91 +2561,91 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_internal(PyArrayObject *__pyx_v_
  *     n = y.shape[0]
  *     m = n - 1             # <<<<<<<<<<<<<<
  * 
- *     z = clone(flt_array_template,n,zero=False)
+ *     z = clone(dbl_array_template,n,zero=False)
  */
   __pyx_v_m = (__pyx_v_n - 1);
 
   /* "wsmtk/_whittaker.pyx":65
  *     m = n - 1
  * 
- *     z = clone(flt_array_template,n,zero=False)             # <<<<<<<<<<<<<<
- *     d = clone(flt_array_template,n,zero=False)
- *     c = clone(flt_array_template,n,zero=False)
+ *     z = clone(dbl_array_template,n,zero=False)             # <<<<<<<<<<<<<<
+ *     d = clone(dbl_array_template,n,zero=False)
+ *     c = clone(dbl_array_template,n,zero=False)
  */
-  __pyx_t_1 = ((PyObject *)__pyx_f_7cpython_5array_clone(__pyx_v_flt_array_template, __pyx_v_n, 0)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 65, __pyx_L1_error)
+  __pyx_t_1 = ((PyObject *)__pyx_f_7cpython_5array_clone(__pyx_v_dbl_array_template, __pyx_v_n, 0)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 65, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_z = ((arrayobject *)__pyx_t_1);
   __pyx_t_1 = 0;
 
   /* "wsmtk/_whittaker.pyx":66
  * 
- *     z = clone(flt_array_template,n,zero=False)
- *     d = clone(flt_array_template,n,zero=False)             # <<<<<<<<<<<<<<
- *     c = clone(flt_array_template,n,zero=False)
- *     e = clone(flt_array_template,n,zero=False)
+ *     z = clone(dbl_array_template,n,zero=False)
+ *     d = clone(dbl_array_template,n,zero=False)             # <<<<<<<<<<<<<<
+ *     c = clone(dbl_array_template,n,zero=False)
+ *     e = clone(dbl_array_template,n,zero=False)
  */
-  __pyx_t_1 = ((PyObject *)__pyx_f_7cpython_5array_clone(__pyx_v_flt_array_template, __pyx_v_n, 0)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 66, __pyx_L1_error)
+  __pyx_t_1 = ((PyObject *)__pyx_f_7cpython_5array_clone(__pyx_v_dbl_array_template, __pyx_v_n, 0)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 66, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_d = ((arrayobject *)__pyx_t_1);
   __pyx_t_1 = 0;
 
   /* "wsmtk/_whittaker.pyx":67
- *     z = clone(flt_array_template,n,zero=False)
- *     d = clone(flt_array_template,n,zero=False)
- *     c = clone(flt_array_template,n,zero=False)             # <<<<<<<<<<<<<<
- *     e = clone(flt_array_template,n,zero=False)
+ *     z = clone(dbl_array_template,n,zero=False)
+ *     d = clone(dbl_array_template,n,zero=False)
+ *     c = clone(dbl_array_template,n,zero=False)             # <<<<<<<<<<<<<<
+ *     e = clone(dbl_array_template,n,zero=False)
  * 
  */
-  __pyx_t_1 = ((PyObject *)__pyx_f_7cpython_5array_clone(__pyx_v_flt_array_template, __pyx_v_n, 0)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 67, __pyx_L1_error)
+  __pyx_t_1 = ((PyObject *)__pyx_f_7cpython_5array_clone(__pyx_v_dbl_array_template, __pyx_v_n, 0)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 67, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_c = ((arrayobject *)__pyx_t_1);
   __pyx_t_1 = 0;
 
   /* "wsmtk/_whittaker.pyx":68
- *     d = clone(flt_array_template,n,zero=False)
- *     c = clone(flt_array_template,n,zero=False)
- *     e = clone(flt_array_template,n,zero=False)             # <<<<<<<<<<<<<<
+ *     d = clone(dbl_array_template,n,zero=False)
+ *     c = clone(dbl_array_template,n,zero=False)
+ *     e = clone(dbl_array_template,n,zero=False)             # <<<<<<<<<<<<<<
  * 
- *     d.data.as_floats[0] = w.data.as_floats[0] + lmda
+ *     d.data.as_doubles[0] = w.data.as_doubles[0] + lmda
  */
-  __pyx_t_1 = ((PyObject *)__pyx_f_7cpython_5array_clone(__pyx_v_flt_array_template, __pyx_v_n, 0)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 68, __pyx_L1_error)
+  __pyx_t_1 = ((PyObject *)__pyx_f_7cpython_5array_clone(__pyx_v_dbl_array_template, __pyx_v_n, 0)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 68, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_e = ((arrayobject *)__pyx_t_1);
   __pyx_t_1 = 0;
 
   /* "wsmtk/_whittaker.pyx":70
- *     e = clone(flt_array_template,n,zero=False)
+ *     e = clone(dbl_array_template,n,zero=False)
  * 
- *     d.data.as_floats[0] = w.data.as_floats[0] + lmda             # <<<<<<<<<<<<<<
- *     c.data.as_floats[0] = (-2 * lmda) / d.data.as_floats[0]
- *     e.data.as_floats[0] = lmda /d.data.as_floats[0]
+ *     d.data.as_doubles[0] = w.data.as_doubles[0] + lmda             # <<<<<<<<<<<<<<
+ *     c.data.as_doubles[0] = (-2 * lmda) / d.data.as_doubles[0]
+ *     e.data.as_doubles[0] = lmda /d.data.as_doubles[0]
  */
-  (__pyx_v_d->data.as_floats[0]) = ((__pyx_v_w->data.as_floats[0]) + __pyx_v_lmda);
+  (__pyx_v_d->data.as_doubles[0]) = ((__pyx_v_w->data.as_doubles[0]) + __pyx_v_lmda);
 
   /* "wsmtk/_whittaker.pyx":71
  * 
- *     d.data.as_floats[0] = w.data.as_floats[0] + lmda
- *     c.data.as_floats[0] = (-2 * lmda) / d.data.as_floats[0]             # <<<<<<<<<<<<<<
- *     e.data.as_floats[0] = lmda /d.data.as_floats[0]
- *     z.data.as_floats[0] = w.data.as_floats[0] * y[0]
+ *     d.data.as_doubles[0] = w.data.as_doubles[0] + lmda
+ *     c.data.as_doubles[0] = (-2 * lmda) / d.data.as_doubles[0]             # <<<<<<<<<<<<<<
+ *     e.data.as_doubles[0] = lmda /d.data.as_doubles[0]
+ *     z.data.as_doubles[0] = w.data.as_doubles[0] * y[0]
  */
-  (__pyx_v_c->data.as_floats[0]) = ((-2.0 * __pyx_v_lmda) / (__pyx_v_d->data.as_floats[0]));
+  (__pyx_v_c->data.as_doubles[0]) = ((-2.0 * __pyx_v_lmda) / (__pyx_v_d->data.as_doubles[0]));
 
   /* "wsmtk/_whittaker.pyx":72
- *     d.data.as_floats[0] = w.data.as_floats[0] + lmda
- *     c.data.as_floats[0] = (-2 * lmda) / d.data.as_floats[0]
- *     e.data.as_floats[0] = lmda /d.data.as_floats[0]             # <<<<<<<<<<<<<<
- *     z.data.as_floats[0] = w.data.as_floats[0] * y[0]
- *     d.data.as_floats[1] = w.data.as_floats[1] + 5 * lmda - d.data.as_floats[0] * (c.data.as_floats[0] * c.data.as_floats[0])
+ *     d.data.as_doubles[0] = w.data.as_doubles[0] + lmda
+ *     c.data.as_doubles[0] = (-2 * lmda) / d.data.as_doubles[0]
+ *     e.data.as_doubles[0] = lmda /d.data.as_doubles[0]             # <<<<<<<<<<<<<<
+ *     z.data.as_doubles[0] = w.data.as_doubles[0] * y[0]
+ *     d.data.as_doubles[1] = w.data.as_doubles[1] + 5 * lmda - d.data.as_doubles[0] * (c.data.as_doubles[0] * c.data.as_doubles[0])
  */
-  (__pyx_v_e->data.as_floats[0]) = (__pyx_v_lmda / (__pyx_v_d->data.as_floats[0]));
+  (__pyx_v_e->data.as_doubles[0]) = (__pyx_v_lmda / (__pyx_v_d->data.as_doubles[0]));
 
   /* "wsmtk/_whittaker.pyx":73
- *     c.data.as_floats[0] = (-2 * lmda) / d.data.as_floats[0]
- *     e.data.as_floats[0] = lmda /d.data.as_floats[0]
- *     z.data.as_floats[0] = w.data.as_floats[0] * y[0]             # <<<<<<<<<<<<<<
- *     d.data.as_floats[1] = w.data.as_floats[1] + 5 * lmda - d.data.as_floats[0] * (c.data.as_floats[0] * c.data.as_floats[0])
- *     c.data.as_floats[1] = (-4 * lmda - d.data.as_floats[0] * c.data.as_floats[0] * e.data.as_floats[0]) / d.data.as_floats[1]
+ *     c.data.as_doubles[0] = (-2 * lmda) / d.data.as_doubles[0]
+ *     e.data.as_doubles[0] = lmda /d.data.as_doubles[0]
+ *     z.data.as_doubles[0] = w.data.as_doubles[0] * y[0]             # <<<<<<<<<<<<<<
+ *     d.data.as_doubles[1] = w.data.as_doubles[1] + 5 * lmda - d.data.as_doubles[0] * (c.data.as_doubles[0] * c.data.as_doubles[0])
+ *     c.data.as_doubles[1] = (-4 * lmda - d.data.as_doubles[0] * c.data.as_doubles[0] * e.data.as_doubles[0]) / d.data.as_doubles[1]
  */
   __pyx_t_3 = 0;
   __pyx_t_4 = -1;
@@ -2656,39 +2656,39 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_internal(PyArrayObject *__pyx_v_
     __Pyx_RaiseBufferIndexError(__pyx_t_4);
     __PYX_ERR(0, 73, __pyx_L1_error)
   }
-  (__pyx_v_z->data.as_floats[0]) = ((__pyx_v_w->data.as_floats[0]) * (*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_y.rcbuffer->pybuffer.buf, __pyx_t_3, __pyx_pybuffernd_y.diminfo[0].strides)));
+  (__pyx_v_z->data.as_doubles[0]) = ((__pyx_v_w->data.as_doubles[0]) * (*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_y.rcbuffer->pybuffer.buf, __pyx_t_3, __pyx_pybuffernd_y.diminfo[0].strides)));
 
   /* "wsmtk/_whittaker.pyx":74
- *     e.data.as_floats[0] = lmda /d.data.as_floats[0]
- *     z.data.as_floats[0] = w.data.as_floats[0] * y[0]
- *     d.data.as_floats[1] = w.data.as_floats[1] + 5 * lmda - d.data.as_floats[0] * (c.data.as_floats[0] * c.data.as_floats[0])             # <<<<<<<<<<<<<<
- *     c.data.as_floats[1] = (-4 * lmda - d.data.as_floats[0] * c.data.as_floats[0] * e.data.as_floats[0]) / d.data.as_floats[1]
- *     e.data.as_floats[1] =  lmda / d.data.as_floats[1]
+ *     e.data.as_doubles[0] = lmda /d.data.as_doubles[0]
+ *     z.data.as_doubles[0] = w.data.as_doubles[0] * y[0]
+ *     d.data.as_doubles[1] = w.data.as_doubles[1] + 5 * lmda - d.data.as_doubles[0] * (c.data.as_doubles[0] * c.data.as_doubles[0])             # <<<<<<<<<<<<<<
+ *     c.data.as_doubles[1] = (-4 * lmda - d.data.as_doubles[0] * c.data.as_doubles[0] * e.data.as_doubles[0]) / d.data.as_doubles[1]
+ *     e.data.as_doubles[1] =  lmda / d.data.as_doubles[1]
  */
-  (__pyx_v_d->data.as_floats[1]) = (((__pyx_v_w->data.as_floats[1]) + (5.0 * __pyx_v_lmda)) - ((__pyx_v_d->data.as_floats[0]) * ((__pyx_v_c->data.as_floats[0]) * (__pyx_v_c->data.as_floats[0]))));
+  (__pyx_v_d->data.as_doubles[1]) = (((__pyx_v_w->data.as_doubles[1]) + (5.0 * __pyx_v_lmda)) - ((__pyx_v_d->data.as_doubles[0]) * ((__pyx_v_c->data.as_doubles[0]) * (__pyx_v_c->data.as_doubles[0]))));
 
   /* "wsmtk/_whittaker.pyx":75
- *     z.data.as_floats[0] = w.data.as_floats[0] * y[0]
- *     d.data.as_floats[1] = w.data.as_floats[1] + 5 * lmda - d.data.as_floats[0] * (c.data.as_floats[0] * c.data.as_floats[0])
- *     c.data.as_floats[1] = (-4 * lmda - d.data.as_floats[0] * c.data.as_floats[0] * e.data.as_floats[0]) / d.data.as_floats[1]             # <<<<<<<<<<<<<<
- *     e.data.as_floats[1] =  lmda / d.data.as_floats[1]
- *     z.data.as_floats[1] = w.data.as_floats[1] * y[1] - c.data.as_floats[0] * z.data.as_floats[0]
+ *     z.data.as_doubles[0] = w.data.as_doubles[0] * y[0]
+ *     d.data.as_doubles[1] = w.data.as_doubles[1] + 5 * lmda - d.data.as_doubles[0] * (c.data.as_doubles[0] * c.data.as_doubles[0])
+ *     c.data.as_doubles[1] = (-4 * lmda - d.data.as_doubles[0] * c.data.as_doubles[0] * e.data.as_doubles[0]) / d.data.as_doubles[1]             # <<<<<<<<<<<<<<
+ *     e.data.as_doubles[1] =  lmda / d.data.as_doubles[1]
+ *     z.data.as_doubles[1] = w.data.as_doubles[1] * y[1] - c.data.as_doubles[0] * z.data.as_doubles[0]
  */
-  (__pyx_v_c->data.as_floats[1]) = (((-4.0 * __pyx_v_lmda) - (((__pyx_v_d->data.as_floats[0]) * (__pyx_v_c->data.as_floats[0])) * (__pyx_v_e->data.as_floats[0]))) / (__pyx_v_d->data.as_floats[1]));
+  (__pyx_v_c->data.as_doubles[1]) = (((-4.0 * __pyx_v_lmda) - (((__pyx_v_d->data.as_doubles[0]) * (__pyx_v_c->data.as_doubles[0])) * (__pyx_v_e->data.as_doubles[0]))) / (__pyx_v_d->data.as_doubles[1]));
 
   /* "wsmtk/_whittaker.pyx":76
- *     d.data.as_floats[1] = w.data.as_floats[1] + 5 * lmda - d.data.as_floats[0] * (c.data.as_floats[0] * c.data.as_floats[0])
- *     c.data.as_floats[1] = (-4 * lmda - d.data.as_floats[0] * c.data.as_floats[0] * e.data.as_floats[0]) / d.data.as_floats[1]
- *     e.data.as_floats[1] =  lmda / d.data.as_floats[1]             # <<<<<<<<<<<<<<
- *     z.data.as_floats[1] = w.data.as_floats[1] * y[1] - c.data.as_floats[0] * z.data.as_floats[0]
+ *     d.data.as_doubles[1] = w.data.as_doubles[1] + 5 * lmda - d.data.as_doubles[0] * (c.data.as_doubles[0] * c.data.as_doubles[0])
+ *     c.data.as_doubles[1] = (-4 * lmda - d.data.as_doubles[0] * c.data.as_doubles[0] * e.data.as_doubles[0]) / d.data.as_doubles[1]
+ *     e.data.as_doubles[1] =  lmda / d.data.as_doubles[1]             # <<<<<<<<<<<<<<
+ *     z.data.as_doubles[1] = w.data.as_doubles[1] * y[1] - c.data.as_doubles[0] * z.data.as_doubles[0]
  *     for i in range(2,m-1):
  */
-  (__pyx_v_e->data.as_floats[1]) = (__pyx_v_lmda / (__pyx_v_d->data.as_floats[1]));
+  (__pyx_v_e->data.as_doubles[1]) = (__pyx_v_lmda / (__pyx_v_d->data.as_doubles[1]));
 
   /* "wsmtk/_whittaker.pyx":77
- *     c.data.as_floats[1] = (-4 * lmda - d.data.as_floats[0] * c.data.as_floats[0] * e.data.as_floats[0]) / d.data.as_floats[1]
- *     e.data.as_floats[1] =  lmda / d.data.as_floats[1]
- *     z.data.as_floats[1] = w.data.as_floats[1] * y[1] - c.data.as_floats[0] * z.data.as_floats[0]             # <<<<<<<<<<<<<<
+ *     c.data.as_doubles[1] = (-4 * lmda - d.data.as_doubles[0] * c.data.as_doubles[0] * e.data.as_doubles[0]) / d.data.as_doubles[1]
+ *     e.data.as_doubles[1] =  lmda / d.data.as_doubles[1]
+ *     z.data.as_doubles[1] = w.data.as_doubles[1] * y[1] - c.data.as_doubles[0] * z.data.as_doubles[0]             # <<<<<<<<<<<<<<
  *     for i in range(2,m-1):
  *         i1 = i - 1
  */
@@ -2701,11 +2701,11 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_internal(PyArrayObject *__pyx_v_
     __Pyx_RaiseBufferIndexError(__pyx_t_4);
     __PYX_ERR(0, 77, __pyx_L1_error)
   }
-  (__pyx_v_z->data.as_floats[1]) = (((__pyx_v_w->data.as_floats[1]) * (*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_y.rcbuffer->pybuffer.buf, __pyx_t_5, __pyx_pybuffernd_y.diminfo[0].strides))) - ((__pyx_v_c->data.as_floats[0]) * (__pyx_v_z->data.as_floats[0])));
+  (__pyx_v_z->data.as_doubles[1]) = (((__pyx_v_w->data.as_doubles[1]) * (*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_y.rcbuffer->pybuffer.buf, __pyx_t_5, __pyx_pybuffernd_y.diminfo[0].strides))) - ((__pyx_v_c->data.as_doubles[0]) * (__pyx_v_z->data.as_doubles[0])));
 
   /* "wsmtk/_whittaker.pyx":78
- *     e.data.as_floats[1] =  lmda / d.data.as_floats[1]
- *     z.data.as_floats[1] = w.data.as_floats[1] * y[1] - c.data.as_floats[0] * z.data.as_floats[0]
+ *     e.data.as_doubles[1] =  lmda / d.data.as_doubles[1]
+ *     z.data.as_doubles[1] = w.data.as_doubles[1] * y[1] - c.data.as_doubles[0] * z.data.as_doubles[0]
  *     for i in range(2,m-1):             # <<<<<<<<<<<<<<
  *         i1 = i - 1
  *         i2 = i - 2
@@ -2715,11 +2715,11 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_internal(PyArrayObject *__pyx_v_
     __pyx_v_i = __pyx_t_4;
 
     /* "wsmtk/_whittaker.pyx":79
- *     z.data.as_floats[1] = w.data.as_floats[1] * y[1] - c.data.as_floats[0] * z.data.as_floats[0]
+ *     z.data.as_doubles[1] = w.data.as_doubles[1] * y[1] - c.data.as_doubles[0] * z.data.as_doubles[0]
  *     for i in range(2,m-1):
  *         i1 = i - 1             # <<<<<<<<<<<<<<
  *         i2 = i - 2
- *         d.data.as_floats[i]= w.data.as_floats[i] + 6 *  lmda - (c.data.as_floats[i1] * c.data.as_floats[i1]) * d.data.as_floats[i1] - (e.data.as_floats[i2] * e.data.as_floats[i2]) * d.data.as_floats[i2]
+ *         d.data.as_doubles[i]= w.data.as_doubles[i] + 6 *  lmda - (c.data.as_doubles[i1] * c.data.as_doubles[i1]) * d.data.as_doubles[i1] - (e.data.as_doubles[i2] * e.data.as_doubles[i2]) * d.data.as_doubles[i2]
  */
     __pyx_v_i1 = (__pyx_v_i - 1);
 
@@ -2727,42 +2727,42 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_internal(PyArrayObject *__pyx_v_
  *     for i in range(2,m-1):
  *         i1 = i - 1
  *         i2 = i - 2             # <<<<<<<<<<<<<<
- *         d.data.as_floats[i]= w.data.as_floats[i] + 6 *  lmda - (c.data.as_floats[i1] * c.data.as_floats[i1]) * d.data.as_floats[i1] - (e.data.as_floats[i2] * e.data.as_floats[i2]) * d.data.as_floats[i2]
- *         c.data.as_floats[i] = (-4 *  lmda - d.data.as_floats[i1] * c.data.as_floats[i1] * e.data.as_floats[i1])/ d.data.as_floats[i]
+ *         d.data.as_doubles[i]= w.data.as_doubles[i] + 6 *  lmda - (c.data.as_doubles[i1] * c.data.as_doubles[i1]) * d.data.as_doubles[i1] - (e.data.as_doubles[i2] * e.data.as_doubles[i2]) * d.data.as_doubles[i2]
+ *         c.data.as_doubles[i] = (-4 *  lmda - d.data.as_doubles[i1] * c.data.as_doubles[i1] * e.data.as_doubles[i1])/ d.data.as_doubles[i]
  */
     __pyx_v_i2 = (__pyx_v_i - 2);
 
     /* "wsmtk/_whittaker.pyx":81
  *         i1 = i - 1
  *         i2 = i - 2
- *         d.data.as_floats[i]= w.data.as_floats[i] + 6 *  lmda - (c.data.as_floats[i1] * c.data.as_floats[i1]) * d.data.as_floats[i1] - (e.data.as_floats[i2] * e.data.as_floats[i2]) * d.data.as_floats[i2]             # <<<<<<<<<<<<<<
- *         c.data.as_floats[i] = (-4 *  lmda - d.data.as_floats[i1] * c.data.as_floats[i1] * e.data.as_floats[i1])/ d.data.as_floats[i]
- *         e.data.as_floats[i] =  lmda / d.data.as_floats[i]
+ *         d.data.as_doubles[i]= w.data.as_doubles[i] + 6 *  lmda - (c.data.as_doubles[i1] * c.data.as_doubles[i1]) * d.data.as_doubles[i1] - (e.data.as_doubles[i2] * e.data.as_doubles[i2]) * d.data.as_doubles[i2]             # <<<<<<<<<<<<<<
+ *         c.data.as_doubles[i] = (-4 *  lmda - d.data.as_doubles[i1] * c.data.as_doubles[i1] * e.data.as_doubles[i1])/ d.data.as_doubles[i]
+ *         e.data.as_doubles[i] =  lmda / d.data.as_doubles[i]
  */
-    (__pyx_v_d->data.as_floats[__pyx_v_i]) = ((((__pyx_v_w->data.as_floats[__pyx_v_i]) + (6.0 * __pyx_v_lmda)) - (((__pyx_v_c->data.as_floats[__pyx_v_i1]) * (__pyx_v_c->data.as_floats[__pyx_v_i1])) * (__pyx_v_d->data.as_floats[__pyx_v_i1]))) - (((__pyx_v_e->data.as_floats[__pyx_v_i2]) * (__pyx_v_e->data.as_floats[__pyx_v_i2])) * (__pyx_v_d->data.as_floats[__pyx_v_i2])));
+    (__pyx_v_d->data.as_doubles[__pyx_v_i]) = ((((__pyx_v_w->data.as_doubles[__pyx_v_i]) + (6.0 * __pyx_v_lmda)) - (((__pyx_v_c->data.as_doubles[__pyx_v_i1]) * (__pyx_v_c->data.as_doubles[__pyx_v_i1])) * (__pyx_v_d->data.as_doubles[__pyx_v_i1]))) - (((__pyx_v_e->data.as_doubles[__pyx_v_i2]) * (__pyx_v_e->data.as_doubles[__pyx_v_i2])) * (__pyx_v_d->data.as_doubles[__pyx_v_i2])));
 
     /* "wsmtk/_whittaker.pyx":82
  *         i2 = i - 2
- *         d.data.as_floats[i]= w.data.as_floats[i] + 6 *  lmda - (c.data.as_floats[i1] * c.data.as_floats[i1]) * d.data.as_floats[i1] - (e.data.as_floats[i2] * e.data.as_floats[i2]) * d.data.as_floats[i2]
- *         c.data.as_floats[i] = (-4 *  lmda - d.data.as_floats[i1] * c.data.as_floats[i1] * e.data.as_floats[i1])/ d.data.as_floats[i]             # <<<<<<<<<<<<<<
- *         e.data.as_floats[i] =  lmda / d.data.as_floats[i]
- *         z.data.as_floats[i] = w.data.as_floats[i] * y[i] - c.data.as_floats[i1] * z.data.as_floats[i1] - e.data.as_floats[i2] * z.data.as_floats[i2]
+ *         d.data.as_doubles[i]= w.data.as_doubles[i] + 6 *  lmda - (c.data.as_doubles[i1] * c.data.as_doubles[i1]) * d.data.as_doubles[i1] - (e.data.as_doubles[i2] * e.data.as_doubles[i2]) * d.data.as_doubles[i2]
+ *         c.data.as_doubles[i] = (-4 *  lmda - d.data.as_doubles[i1] * c.data.as_doubles[i1] * e.data.as_doubles[i1])/ d.data.as_doubles[i]             # <<<<<<<<<<<<<<
+ *         e.data.as_doubles[i] =  lmda / d.data.as_doubles[i]
+ *         z.data.as_doubles[i] = w.data.as_doubles[i] * y[i] - c.data.as_doubles[i1] * z.data.as_doubles[i1] - e.data.as_doubles[i2] * z.data.as_doubles[i2]
  */
-    (__pyx_v_c->data.as_floats[__pyx_v_i]) = (((-4.0 * __pyx_v_lmda) - (((__pyx_v_d->data.as_floats[__pyx_v_i1]) * (__pyx_v_c->data.as_floats[__pyx_v_i1])) * (__pyx_v_e->data.as_floats[__pyx_v_i1]))) / (__pyx_v_d->data.as_floats[__pyx_v_i]));
+    (__pyx_v_c->data.as_doubles[__pyx_v_i]) = (((-4.0 * __pyx_v_lmda) - (((__pyx_v_d->data.as_doubles[__pyx_v_i1]) * (__pyx_v_c->data.as_doubles[__pyx_v_i1])) * (__pyx_v_e->data.as_doubles[__pyx_v_i1]))) / (__pyx_v_d->data.as_doubles[__pyx_v_i]));
 
     /* "wsmtk/_whittaker.pyx":83
- *         d.data.as_floats[i]= w.data.as_floats[i] + 6 *  lmda - (c.data.as_floats[i1] * c.data.as_floats[i1]) * d.data.as_floats[i1] - (e.data.as_floats[i2] * e.data.as_floats[i2]) * d.data.as_floats[i2]
- *         c.data.as_floats[i] = (-4 *  lmda - d.data.as_floats[i1] * c.data.as_floats[i1] * e.data.as_floats[i1])/ d.data.as_floats[i]
- *         e.data.as_floats[i] =  lmda / d.data.as_floats[i]             # <<<<<<<<<<<<<<
- *         z.data.as_floats[i] = w.data.as_floats[i] * y[i] - c.data.as_floats[i1] * z.data.as_floats[i1] - e.data.as_floats[i2] * z.data.as_floats[i2]
+ *         d.data.as_doubles[i]= w.data.as_doubles[i] + 6 *  lmda - (c.data.as_doubles[i1] * c.data.as_doubles[i1]) * d.data.as_doubles[i1] - (e.data.as_doubles[i2] * e.data.as_doubles[i2]) * d.data.as_doubles[i2]
+ *         c.data.as_doubles[i] = (-4 *  lmda - d.data.as_doubles[i1] * c.data.as_doubles[i1] * e.data.as_doubles[i1])/ d.data.as_doubles[i]
+ *         e.data.as_doubles[i] =  lmda / d.data.as_doubles[i]             # <<<<<<<<<<<<<<
+ *         z.data.as_doubles[i] = w.data.as_doubles[i] * y[i] - c.data.as_doubles[i1] * z.data.as_doubles[i1] - e.data.as_doubles[i2] * z.data.as_doubles[i2]
  *     i1 = m - 2
  */
-    (__pyx_v_e->data.as_floats[__pyx_v_i]) = (__pyx_v_lmda / (__pyx_v_d->data.as_floats[__pyx_v_i]));
+    (__pyx_v_e->data.as_doubles[__pyx_v_i]) = (__pyx_v_lmda / (__pyx_v_d->data.as_doubles[__pyx_v_i]));
 
     /* "wsmtk/_whittaker.pyx":84
- *         c.data.as_floats[i] = (-4 *  lmda - d.data.as_floats[i1] * c.data.as_floats[i1] * e.data.as_floats[i1])/ d.data.as_floats[i]
- *         e.data.as_floats[i] =  lmda / d.data.as_floats[i]
- *         z.data.as_floats[i] = w.data.as_floats[i] * y[i] - c.data.as_floats[i1] * z.data.as_floats[i1] - e.data.as_floats[i2] * z.data.as_floats[i2]             # <<<<<<<<<<<<<<
+ *         c.data.as_doubles[i] = (-4 *  lmda - d.data.as_doubles[i1] * c.data.as_doubles[i1] * e.data.as_doubles[i1])/ d.data.as_doubles[i]
+ *         e.data.as_doubles[i] =  lmda / d.data.as_doubles[i]
+ *         z.data.as_doubles[i] = w.data.as_doubles[i] * y[i] - c.data.as_doubles[i1] * z.data.as_doubles[i1] - e.data.as_doubles[i2] * z.data.as_doubles[i2]             # <<<<<<<<<<<<<<
  *     i1 = m - 2
  *     i2 = m - 3
  */
@@ -2775,49 +2775,49 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_internal(PyArrayObject *__pyx_v_
       __Pyx_RaiseBufferIndexError(__pyx_t_8);
       __PYX_ERR(0, 84, __pyx_L1_error)
     }
-    (__pyx_v_z->data.as_floats[__pyx_v_i]) = ((((__pyx_v_w->data.as_floats[__pyx_v_i]) * (*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_y.rcbuffer->pybuffer.buf, __pyx_t_7, __pyx_pybuffernd_y.diminfo[0].strides))) - ((__pyx_v_c->data.as_floats[__pyx_v_i1]) * (__pyx_v_z->data.as_floats[__pyx_v_i1]))) - ((__pyx_v_e->data.as_floats[__pyx_v_i2]) * (__pyx_v_z->data.as_floats[__pyx_v_i2])));
+    (__pyx_v_z->data.as_doubles[__pyx_v_i]) = ((((__pyx_v_w->data.as_doubles[__pyx_v_i]) * (*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_y.rcbuffer->pybuffer.buf, __pyx_t_7, __pyx_pybuffernd_y.diminfo[0].strides))) - ((__pyx_v_c->data.as_doubles[__pyx_v_i1]) * (__pyx_v_z->data.as_doubles[__pyx_v_i1]))) - ((__pyx_v_e->data.as_doubles[__pyx_v_i2]) * (__pyx_v_z->data.as_doubles[__pyx_v_i2])));
   }
 
   /* "wsmtk/_whittaker.pyx":85
- *         e.data.as_floats[i] =  lmda / d.data.as_floats[i]
- *         z.data.as_floats[i] = w.data.as_floats[i] * y[i] - c.data.as_floats[i1] * z.data.as_floats[i1] - e.data.as_floats[i2] * z.data.as_floats[i2]
+ *         e.data.as_doubles[i] =  lmda / d.data.as_doubles[i]
+ *         z.data.as_doubles[i] = w.data.as_doubles[i] * y[i] - c.data.as_doubles[i1] * z.data.as_doubles[i1] - e.data.as_doubles[i2] * z.data.as_doubles[i2]
  *     i1 = m - 2             # <<<<<<<<<<<<<<
  *     i2 = m - 3
- *     d.data.as_floats[m - 1] = w.data.as_floats[m - 1] + 5 *  lmda - (c.data.as_floats[i1] * c.data.as_floats[i1]) * d.data.as_floats[i1] - (e.data.as_floats[i2] * e.data.as_floats[i2]) * d.data.as_floats[i2]
+ *     d.data.as_doubles[m - 1] = w.data.as_doubles[m - 1] + 5 *  lmda - (c.data.as_doubles[i1] * c.data.as_doubles[i1]) * d.data.as_doubles[i1] - (e.data.as_doubles[i2] * e.data.as_doubles[i2]) * d.data.as_doubles[i2]
  */
   __pyx_v_i1 = (__pyx_v_m - 2);
 
   /* "wsmtk/_whittaker.pyx":86
- *         z.data.as_floats[i] = w.data.as_floats[i] * y[i] - c.data.as_floats[i1] * z.data.as_floats[i1] - e.data.as_floats[i2] * z.data.as_floats[i2]
+ *         z.data.as_doubles[i] = w.data.as_doubles[i] * y[i] - c.data.as_doubles[i1] * z.data.as_doubles[i1] - e.data.as_doubles[i2] * z.data.as_doubles[i2]
  *     i1 = m - 2
  *     i2 = m - 3             # <<<<<<<<<<<<<<
- *     d.data.as_floats[m - 1] = w.data.as_floats[m - 1] + 5 *  lmda - (c.data.as_floats[i1] * c.data.as_floats[i1]) * d.data.as_floats[i1] - (e.data.as_floats[i2] * e.data.as_floats[i2]) * d.data.as_floats[i2]
- *     c.data.as_floats[m - 1] = (-2 *  lmda - d.data.as_floats[i1] * c.data.as_floats[i1] * e.data.as_floats[i1]) / d.data.as_floats[m - 1]
+ *     d.data.as_doubles[m - 1] = w.data.as_doubles[m - 1] + 5 *  lmda - (c.data.as_doubles[i1] * c.data.as_doubles[i1]) * d.data.as_doubles[i1] - (e.data.as_doubles[i2] * e.data.as_doubles[i2]) * d.data.as_doubles[i2]
+ *     c.data.as_doubles[m - 1] = (-2 *  lmda - d.data.as_doubles[i1] * c.data.as_doubles[i1] * e.data.as_doubles[i1]) / d.data.as_doubles[m - 1]
  */
   __pyx_v_i2 = (__pyx_v_m - 3);
 
   /* "wsmtk/_whittaker.pyx":87
  *     i1 = m - 2
  *     i2 = m - 3
- *     d.data.as_floats[m - 1] = w.data.as_floats[m - 1] + 5 *  lmda - (c.data.as_floats[i1] * c.data.as_floats[i1]) * d.data.as_floats[i1] - (e.data.as_floats[i2] * e.data.as_floats[i2]) * d.data.as_floats[i2]             # <<<<<<<<<<<<<<
- *     c.data.as_floats[m - 1] = (-2 *  lmda - d.data.as_floats[i1] * c.data.as_floats[i1] * e.data.as_floats[i1]) / d.data.as_floats[m - 1]
- *     z.data.as_floats[m - 1] = w.data.as_floats[m - 1] * y[m - 1] - c.data.as_floats[i1] * z.data.as_floats[i1] - e.data.as_floats[i2] * z.data.as_floats[i2]
+ *     d.data.as_doubles[m - 1] = w.data.as_doubles[m - 1] + 5 *  lmda - (c.data.as_doubles[i1] * c.data.as_doubles[i1]) * d.data.as_doubles[i1] - (e.data.as_doubles[i2] * e.data.as_doubles[i2]) * d.data.as_doubles[i2]             # <<<<<<<<<<<<<<
+ *     c.data.as_doubles[m - 1] = (-2 *  lmda - d.data.as_doubles[i1] * c.data.as_doubles[i1] * e.data.as_doubles[i1]) / d.data.as_doubles[m - 1]
+ *     z.data.as_doubles[m - 1] = w.data.as_doubles[m - 1] * y[m - 1] - c.data.as_doubles[i1] * z.data.as_doubles[i1] - e.data.as_doubles[i2] * z.data.as_doubles[i2]
  */
-  (__pyx_v_d->data.as_floats[(__pyx_v_m - 1)]) = ((((__pyx_v_w->data.as_floats[(__pyx_v_m - 1)]) + (5.0 * __pyx_v_lmda)) - (((__pyx_v_c->data.as_floats[__pyx_v_i1]) * (__pyx_v_c->data.as_floats[__pyx_v_i1])) * (__pyx_v_d->data.as_floats[__pyx_v_i1]))) - (((__pyx_v_e->data.as_floats[__pyx_v_i2]) * (__pyx_v_e->data.as_floats[__pyx_v_i2])) * (__pyx_v_d->data.as_floats[__pyx_v_i2])));
+  (__pyx_v_d->data.as_doubles[(__pyx_v_m - 1)]) = ((((__pyx_v_w->data.as_doubles[(__pyx_v_m - 1)]) + (5.0 * __pyx_v_lmda)) - (((__pyx_v_c->data.as_doubles[__pyx_v_i1]) * (__pyx_v_c->data.as_doubles[__pyx_v_i1])) * (__pyx_v_d->data.as_doubles[__pyx_v_i1]))) - (((__pyx_v_e->data.as_doubles[__pyx_v_i2]) * (__pyx_v_e->data.as_doubles[__pyx_v_i2])) * (__pyx_v_d->data.as_doubles[__pyx_v_i2])));
 
   /* "wsmtk/_whittaker.pyx":88
  *     i2 = m - 3
- *     d.data.as_floats[m - 1] = w.data.as_floats[m - 1] + 5 *  lmda - (c.data.as_floats[i1] * c.data.as_floats[i1]) * d.data.as_floats[i1] - (e.data.as_floats[i2] * e.data.as_floats[i2]) * d.data.as_floats[i2]
- *     c.data.as_floats[m - 1] = (-2 *  lmda - d.data.as_floats[i1] * c.data.as_floats[i1] * e.data.as_floats[i1]) / d.data.as_floats[m - 1]             # <<<<<<<<<<<<<<
- *     z.data.as_floats[m - 1] = w.data.as_floats[m - 1] * y[m - 1] - c.data.as_floats[i1] * z.data.as_floats[i1] - e.data.as_floats[i2] * z.data.as_floats[i2]
+ *     d.data.as_doubles[m - 1] = w.data.as_doubles[m - 1] + 5 *  lmda - (c.data.as_doubles[i1] * c.data.as_doubles[i1]) * d.data.as_doubles[i1] - (e.data.as_doubles[i2] * e.data.as_doubles[i2]) * d.data.as_doubles[i2]
+ *     c.data.as_doubles[m - 1] = (-2 *  lmda - d.data.as_doubles[i1] * c.data.as_doubles[i1] * e.data.as_doubles[i1]) / d.data.as_doubles[m - 1]             # <<<<<<<<<<<<<<
+ *     z.data.as_doubles[m - 1] = w.data.as_doubles[m - 1] * y[m - 1] - c.data.as_doubles[i1] * z.data.as_doubles[i1] - e.data.as_doubles[i2] * z.data.as_doubles[i2]
  *     i1 = m - 1
  */
-  (__pyx_v_c->data.as_floats[(__pyx_v_m - 1)]) = (((-2.0 * __pyx_v_lmda) - (((__pyx_v_d->data.as_floats[__pyx_v_i1]) * (__pyx_v_c->data.as_floats[__pyx_v_i1])) * (__pyx_v_e->data.as_floats[__pyx_v_i1]))) / (__pyx_v_d->data.as_floats[(__pyx_v_m - 1)]));
+  (__pyx_v_c->data.as_doubles[(__pyx_v_m - 1)]) = (((-2.0 * __pyx_v_lmda) - (((__pyx_v_d->data.as_doubles[__pyx_v_i1]) * (__pyx_v_c->data.as_doubles[__pyx_v_i1])) * (__pyx_v_e->data.as_doubles[__pyx_v_i1]))) / (__pyx_v_d->data.as_doubles[(__pyx_v_m - 1)]));
 
   /* "wsmtk/_whittaker.pyx":89
- *     d.data.as_floats[m - 1] = w.data.as_floats[m - 1] + 5 *  lmda - (c.data.as_floats[i1] * c.data.as_floats[i1]) * d.data.as_floats[i1] - (e.data.as_floats[i2] * e.data.as_floats[i2]) * d.data.as_floats[i2]
- *     c.data.as_floats[m - 1] = (-2 *  lmda - d.data.as_floats[i1] * c.data.as_floats[i1] * e.data.as_floats[i1]) / d.data.as_floats[m - 1]
- *     z.data.as_floats[m - 1] = w.data.as_floats[m - 1] * y[m - 1] - c.data.as_floats[i1] * z.data.as_floats[i1] - e.data.as_floats[i2] * z.data.as_floats[i2]             # <<<<<<<<<<<<<<
+ *     d.data.as_doubles[m - 1] = w.data.as_doubles[m - 1] + 5 *  lmda - (c.data.as_doubles[i1] * c.data.as_doubles[i1]) * d.data.as_doubles[i1] - (e.data.as_doubles[i2] * e.data.as_doubles[i2]) * d.data.as_doubles[i2]
+ *     c.data.as_doubles[m - 1] = (-2 *  lmda - d.data.as_doubles[i1] * c.data.as_doubles[i1] * e.data.as_doubles[i1]) / d.data.as_doubles[m - 1]
+ *     z.data.as_doubles[m - 1] = w.data.as_doubles[m - 1] * y[m - 1] - c.data.as_doubles[i1] * z.data.as_doubles[i1] - e.data.as_doubles[i2] * z.data.as_doubles[i2]             # <<<<<<<<<<<<<<
  *     i1 = m - 1
  *     i2 = m - 2
  */
@@ -2830,40 +2830,40 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_internal(PyArrayObject *__pyx_v_
     __Pyx_RaiseBufferIndexError(__pyx_t_4);
     __PYX_ERR(0, 89, __pyx_L1_error)
   }
-  (__pyx_v_z->data.as_floats[(__pyx_v_m - 1)]) = ((((__pyx_v_w->data.as_floats[(__pyx_v_m - 1)]) * (*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_y.rcbuffer->pybuffer.buf, __pyx_t_9, __pyx_pybuffernd_y.diminfo[0].strides))) - ((__pyx_v_c->data.as_floats[__pyx_v_i1]) * (__pyx_v_z->data.as_floats[__pyx_v_i1]))) - ((__pyx_v_e->data.as_floats[__pyx_v_i2]) * (__pyx_v_z->data.as_floats[__pyx_v_i2])));
+  (__pyx_v_z->data.as_doubles[(__pyx_v_m - 1)]) = ((((__pyx_v_w->data.as_doubles[(__pyx_v_m - 1)]) * (*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_y.rcbuffer->pybuffer.buf, __pyx_t_9, __pyx_pybuffernd_y.diminfo[0].strides))) - ((__pyx_v_c->data.as_doubles[__pyx_v_i1]) * (__pyx_v_z->data.as_doubles[__pyx_v_i1]))) - ((__pyx_v_e->data.as_doubles[__pyx_v_i2]) * (__pyx_v_z->data.as_doubles[__pyx_v_i2])));
 
   /* "wsmtk/_whittaker.pyx":90
- *     c.data.as_floats[m - 1] = (-2 *  lmda - d.data.as_floats[i1] * c.data.as_floats[i1] * e.data.as_floats[i1]) / d.data.as_floats[m - 1]
- *     z.data.as_floats[m - 1] = w.data.as_floats[m - 1] * y[m - 1] - c.data.as_floats[i1] * z.data.as_floats[i1] - e.data.as_floats[i2] * z.data.as_floats[i2]
+ *     c.data.as_doubles[m - 1] = (-2 *  lmda - d.data.as_doubles[i1] * c.data.as_doubles[i1] * e.data.as_doubles[i1]) / d.data.as_doubles[m - 1]
+ *     z.data.as_doubles[m - 1] = w.data.as_doubles[m - 1] * y[m - 1] - c.data.as_doubles[i1] * z.data.as_doubles[i1] - e.data.as_doubles[i2] * z.data.as_doubles[i2]
  *     i1 = m - 1             # <<<<<<<<<<<<<<
  *     i2 = m - 2
- *     d.data.as_floats[m] = w.data.as_floats[m] +  lmda - (c.data.as_floats[i1] * c.data.as_floats[i1]) * d.data.as_floats[i1] - (e.data.as_floats[i2] * e.data.as_floats[i2]) * d.data.as_floats[i2]
+ *     d.data.as_doubles[m] = w.data.as_doubles[m] +  lmda - (c.data.as_doubles[i1] * c.data.as_doubles[i1]) * d.data.as_doubles[i1] - (e.data.as_doubles[i2] * e.data.as_doubles[i2]) * d.data.as_doubles[i2]
  */
   __pyx_v_i1 = (__pyx_v_m - 1);
 
   /* "wsmtk/_whittaker.pyx":91
- *     z.data.as_floats[m - 1] = w.data.as_floats[m - 1] * y[m - 1] - c.data.as_floats[i1] * z.data.as_floats[i1] - e.data.as_floats[i2] * z.data.as_floats[i2]
+ *     z.data.as_doubles[m - 1] = w.data.as_doubles[m - 1] * y[m - 1] - c.data.as_doubles[i1] * z.data.as_doubles[i1] - e.data.as_doubles[i2] * z.data.as_doubles[i2]
  *     i1 = m - 1
  *     i2 = m - 2             # <<<<<<<<<<<<<<
- *     d.data.as_floats[m] = w.data.as_floats[m] +  lmda - (c.data.as_floats[i1] * c.data.as_floats[i1]) * d.data.as_floats[i1] - (e.data.as_floats[i2] * e.data.as_floats[i2]) * d.data.as_floats[i2]
- *     z.data.as_floats[m] = (w.data.as_floats[m] * y[m] - c.data.as_floats[i1] * z.data.as_floats[i1] - e.data.as_floats[i2] * z.data.as_floats[i2]) / d.data.as_floats[m]
+ *     d.data.as_doubles[m] = w.data.as_doubles[m] +  lmda - (c.data.as_doubles[i1] * c.data.as_doubles[i1]) * d.data.as_doubles[i1] - (e.data.as_doubles[i2] * e.data.as_doubles[i2]) * d.data.as_doubles[i2]
+ *     z.data.as_doubles[m] = (w.data.as_doubles[m] * y[m] - c.data.as_doubles[i1] * z.data.as_doubles[i1] - e.data.as_doubles[i2] * z.data.as_doubles[i2]) / d.data.as_doubles[m]
  */
   __pyx_v_i2 = (__pyx_v_m - 2);
 
   /* "wsmtk/_whittaker.pyx":92
  *     i1 = m - 1
  *     i2 = m - 2
- *     d.data.as_floats[m] = w.data.as_floats[m] +  lmda - (c.data.as_floats[i1] * c.data.as_floats[i1]) * d.data.as_floats[i1] - (e.data.as_floats[i2] * e.data.as_floats[i2]) * d.data.as_floats[i2]             # <<<<<<<<<<<<<<
- *     z.data.as_floats[m] = (w.data.as_floats[m] * y[m] - c.data.as_floats[i1] * z.data.as_floats[i1] - e.data.as_floats[i2] * z.data.as_floats[i2]) / d.data.as_floats[m]
- *     z.data.as_floats[m - 1] = z.data.as_floats[m - 1] / d.data.as_floats[m - 1] - c.data.as_floats[m - 1] * z.data.as_floats[m]
+ *     d.data.as_doubles[m] = w.data.as_doubles[m] +  lmda - (c.data.as_doubles[i1] * c.data.as_doubles[i1]) * d.data.as_doubles[i1] - (e.data.as_doubles[i2] * e.data.as_doubles[i2]) * d.data.as_doubles[i2]             # <<<<<<<<<<<<<<
+ *     z.data.as_doubles[m] = (w.data.as_doubles[m] * y[m] - c.data.as_doubles[i1] * z.data.as_doubles[i1] - e.data.as_doubles[i2] * z.data.as_doubles[i2]) / d.data.as_doubles[m]
+ *     z.data.as_doubles[m - 1] = z.data.as_doubles[m - 1] / d.data.as_doubles[m - 1] - c.data.as_doubles[m - 1] * z.data.as_doubles[m]
  */
-  (__pyx_v_d->data.as_floats[__pyx_v_m]) = ((((__pyx_v_w->data.as_floats[__pyx_v_m]) + __pyx_v_lmda) - (((__pyx_v_c->data.as_floats[__pyx_v_i1]) * (__pyx_v_c->data.as_floats[__pyx_v_i1])) * (__pyx_v_d->data.as_floats[__pyx_v_i1]))) - (((__pyx_v_e->data.as_floats[__pyx_v_i2]) * (__pyx_v_e->data.as_floats[__pyx_v_i2])) * (__pyx_v_d->data.as_floats[__pyx_v_i2])));
+  (__pyx_v_d->data.as_doubles[__pyx_v_m]) = ((((__pyx_v_w->data.as_doubles[__pyx_v_m]) + __pyx_v_lmda) - (((__pyx_v_c->data.as_doubles[__pyx_v_i1]) * (__pyx_v_c->data.as_doubles[__pyx_v_i1])) * (__pyx_v_d->data.as_doubles[__pyx_v_i1]))) - (((__pyx_v_e->data.as_doubles[__pyx_v_i2]) * (__pyx_v_e->data.as_doubles[__pyx_v_i2])) * (__pyx_v_d->data.as_doubles[__pyx_v_i2])));
 
   /* "wsmtk/_whittaker.pyx":93
  *     i2 = m - 2
- *     d.data.as_floats[m] = w.data.as_floats[m] +  lmda - (c.data.as_floats[i1] * c.data.as_floats[i1]) * d.data.as_floats[i1] - (e.data.as_floats[i2] * e.data.as_floats[i2]) * d.data.as_floats[i2]
- *     z.data.as_floats[m] = (w.data.as_floats[m] * y[m] - c.data.as_floats[i1] * z.data.as_floats[i1] - e.data.as_floats[i2] * z.data.as_floats[i2]) / d.data.as_floats[m]             # <<<<<<<<<<<<<<
- *     z.data.as_floats[m - 1] = z.data.as_floats[m - 1] / d.data.as_floats[m - 1] - c.data.as_floats[m - 1] * z.data.as_floats[m]
+ *     d.data.as_doubles[m] = w.data.as_doubles[m] +  lmda - (c.data.as_doubles[i1] * c.data.as_doubles[i1]) * d.data.as_doubles[i1] - (e.data.as_doubles[i2] * e.data.as_doubles[i2]) * d.data.as_doubles[i2]
+ *     z.data.as_doubles[m] = (w.data.as_doubles[m] * y[m] - c.data.as_doubles[i1] * z.data.as_doubles[i1] - e.data.as_doubles[i2] * z.data.as_doubles[i2]) / d.data.as_doubles[m]             # <<<<<<<<<<<<<<
+ *     z.data.as_doubles[m - 1] = z.data.as_doubles[m - 1] / d.data.as_doubles[m - 1] - c.data.as_doubles[m - 1] * z.data.as_doubles[m]
  *     for i in range(m-2,-1,-1):
  */
   __pyx_t_10 = __pyx_v_m;
@@ -2875,39 +2875,39 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_internal(PyArrayObject *__pyx_v_
     __Pyx_RaiseBufferIndexError(__pyx_t_4);
     __PYX_ERR(0, 93, __pyx_L1_error)
   }
-  (__pyx_v_z->data.as_floats[__pyx_v_m]) = (((((__pyx_v_w->data.as_floats[__pyx_v_m]) * (*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_y.rcbuffer->pybuffer.buf, __pyx_t_10, __pyx_pybuffernd_y.diminfo[0].strides))) - ((__pyx_v_c->data.as_floats[__pyx_v_i1]) * (__pyx_v_z->data.as_floats[__pyx_v_i1]))) - ((__pyx_v_e->data.as_floats[__pyx_v_i2]) * (__pyx_v_z->data.as_floats[__pyx_v_i2]))) / (__pyx_v_d->data.as_floats[__pyx_v_m]));
+  (__pyx_v_z->data.as_doubles[__pyx_v_m]) = (((((__pyx_v_w->data.as_doubles[__pyx_v_m]) * (*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_y.rcbuffer->pybuffer.buf, __pyx_t_10, __pyx_pybuffernd_y.diminfo[0].strides))) - ((__pyx_v_c->data.as_doubles[__pyx_v_i1]) * (__pyx_v_z->data.as_doubles[__pyx_v_i1]))) - ((__pyx_v_e->data.as_doubles[__pyx_v_i2]) * (__pyx_v_z->data.as_doubles[__pyx_v_i2]))) / (__pyx_v_d->data.as_doubles[__pyx_v_m]));
 
   /* "wsmtk/_whittaker.pyx":94
- *     d.data.as_floats[m] = w.data.as_floats[m] +  lmda - (c.data.as_floats[i1] * c.data.as_floats[i1]) * d.data.as_floats[i1] - (e.data.as_floats[i2] * e.data.as_floats[i2]) * d.data.as_floats[i2]
- *     z.data.as_floats[m] = (w.data.as_floats[m] * y[m] - c.data.as_floats[i1] * z.data.as_floats[i1] - e.data.as_floats[i2] * z.data.as_floats[i2]) / d.data.as_floats[m]
- *     z.data.as_floats[m - 1] = z.data.as_floats[m - 1] / d.data.as_floats[m - 1] - c.data.as_floats[m - 1] * z.data.as_floats[m]             # <<<<<<<<<<<<<<
+ *     d.data.as_doubles[m] = w.data.as_doubles[m] +  lmda - (c.data.as_doubles[i1] * c.data.as_doubles[i1]) * d.data.as_doubles[i1] - (e.data.as_doubles[i2] * e.data.as_doubles[i2]) * d.data.as_doubles[i2]
+ *     z.data.as_doubles[m] = (w.data.as_doubles[m] * y[m] - c.data.as_doubles[i1] * z.data.as_doubles[i1] - e.data.as_doubles[i2] * z.data.as_doubles[i2]) / d.data.as_doubles[m]
+ *     z.data.as_doubles[m - 1] = z.data.as_doubles[m - 1] / d.data.as_doubles[m - 1] - c.data.as_doubles[m - 1] * z.data.as_doubles[m]             # <<<<<<<<<<<<<<
  *     for i in range(m-2,-1,-1):
- *         z.data.as_floats[i] = z.data.as_floats[i] / d.data.as_floats[i] - c.data.as_floats[i] * z.data.as_floats[i + 1] - e.data.as_floats[i] * z.data.as_floats[i + 2]
+ *         z.data.as_doubles[i] = z.data.as_doubles[i] / d.data.as_doubles[i] - c.data.as_doubles[i] * z.data.as_doubles[i + 1] - e.data.as_doubles[i] * z.data.as_doubles[i + 2]
  */
-  (__pyx_v_z->data.as_floats[(__pyx_v_m - 1)]) = (((__pyx_v_z->data.as_floats[(__pyx_v_m - 1)]) / (__pyx_v_d->data.as_floats[(__pyx_v_m - 1)])) - ((__pyx_v_c->data.as_floats[(__pyx_v_m - 1)]) * (__pyx_v_z->data.as_floats[__pyx_v_m])));
+  (__pyx_v_z->data.as_doubles[(__pyx_v_m - 1)]) = (((__pyx_v_z->data.as_doubles[(__pyx_v_m - 1)]) / (__pyx_v_d->data.as_doubles[(__pyx_v_m - 1)])) - ((__pyx_v_c->data.as_doubles[(__pyx_v_m - 1)]) * (__pyx_v_z->data.as_doubles[__pyx_v_m])));
 
   /* "wsmtk/_whittaker.pyx":95
- *     z.data.as_floats[m] = (w.data.as_floats[m] * y[m] - c.data.as_floats[i1] * z.data.as_floats[i1] - e.data.as_floats[i2] * z.data.as_floats[i2]) / d.data.as_floats[m]
- *     z.data.as_floats[m - 1] = z.data.as_floats[m - 1] / d.data.as_floats[m - 1] - c.data.as_floats[m - 1] * z.data.as_floats[m]
+ *     z.data.as_doubles[m] = (w.data.as_doubles[m] * y[m] - c.data.as_doubles[i1] * z.data.as_doubles[i1] - e.data.as_doubles[i2] * z.data.as_doubles[i2]) / d.data.as_doubles[m]
+ *     z.data.as_doubles[m - 1] = z.data.as_doubles[m - 1] / d.data.as_doubles[m - 1] - c.data.as_doubles[m - 1] * z.data.as_doubles[m]
  *     for i in range(m-2,-1,-1):             # <<<<<<<<<<<<<<
- *         z.data.as_floats[i] = z.data.as_floats[i] / d.data.as_floats[i] - c.data.as_floats[i] * z.data.as_floats[i + 1] - e.data.as_floats[i] * z.data.as_floats[i + 2]
+ *         z.data.as_doubles[i] = z.data.as_doubles[i] / d.data.as_doubles[i] - c.data.as_doubles[i] * z.data.as_doubles[i + 1] - e.data.as_doubles[i] * z.data.as_doubles[i + 2]
  * 
  */
   for (__pyx_t_4 = (__pyx_v_m - 2); __pyx_t_4 > -1L; __pyx_t_4-=1) {
     __pyx_v_i = __pyx_t_4;
 
     /* "wsmtk/_whittaker.pyx":96
- *     z.data.as_floats[m - 1] = z.data.as_floats[m - 1] / d.data.as_floats[m - 1] - c.data.as_floats[m - 1] * z.data.as_floats[m]
+ *     z.data.as_doubles[m - 1] = z.data.as_doubles[m - 1] / d.data.as_doubles[m - 1] - c.data.as_doubles[m - 1] * z.data.as_doubles[m]
  *     for i in range(m-2,-1,-1):
- *         z.data.as_floats[i] = z.data.as_floats[i] / d.data.as_floats[i] - c.data.as_floats[i] * z.data.as_floats[i + 1] - e.data.as_floats[i] * z.data.as_floats[i + 2]             # <<<<<<<<<<<<<<
+ *         z.data.as_doubles[i] = z.data.as_doubles[i] / d.data.as_doubles[i] - c.data.as_doubles[i] * z.data.as_doubles[i + 1] - e.data.as_doubles[i] * z.data.as_doubles[i + 2]             # <<<<<<<<<<<<<<
  * 
  *     return z
  */
-    (__pyx_v_z->data.as_floats[__pyx_v_i]) = ((((__pyx_v_z->data.as_floats[__pyx_v_i]) / (__pyx_v_d->data.as_floats[__pyx_v_i])) - ((__pyx_v_c->data.as_floats[__pyx_v_i]) * (__pyx_v_z->data.as_floats[(__pyx_v_i + 1)]))) - ((__pyx_v_e->data.as_floats[__pyx_v_i]) * (__pyx_v_z->data.as_floats[(__pyx_v_i + 2)])));
+    (__pyx_v_z->data.as_doubles[__pyx_v_i]) = ((((__pyx_v_z->data.as_doubles[__pyx_v_i]) / (__pyx_v_d->data.as_doubles[__pyx_v_i])) - ((__pyx_v_c->data.as_doubles[__pyx_v_i]) * (__pyx_v_z->data.as_doubles[(__pyx_v_i + 1)]))) - ((__pyx_v_e->data.as_doubles[__pyx_v_i]) * (__pyx_v_z->data.as_doubles[(__pyx_v_i + 2)])));
   }
 
   /* "wsmtk/_whittaker.pyx":98
- *         z.data.as_floats[i] = z.data.as_floats[i] / d.data.as_floats[i] - c.data.as_floats[i] * z.data.as_floats[i + 1] - e.data.as_floats[i] * z.data.as_floats[i + 2]
+ *         z.data.as_doubles[i] = z.data.as_doubles[i] / d.data.as_doubles[i] - c.data.as_doubles[i] * z.data.as_doubles[i + 1] - e.data.as_doubles[i] * z.data.as_doubles[i + 2]
  * 
  *     return z             # <<<<<<<<<<<<<<
  * 
@@ -2921,9 +2921,9 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_internal(PyArrayObject *__pyx_v_
   /* "wsmtk/_whittaker.pyx":56
  * 
  * 
- * cdef ws2d_internal(np.ndarray[dtype_t] y, float lmda, array[float] w):             # <<<<<<<<<<<<<<
+ * cdef ws2d_internal(np.ndarray[dtype_t] y, double lmda, array[double] w):             # <<<<<<<<<<<<<<
  *     ## internal whittaker function for asymmetric smoothing
- *     cdef array flt_array_template = array('f', [])
+ *     cdef array dbl_array_template = array('d', [])
  */
 
   /* function exit code */
@@ -2944,7 +2944,7 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_internal(PyArrayObject *__pyx_v_
   __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_w.rcbuffer->pybuffer);
   __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_y.rcbuffer->pybuffer);
   __pyx_L2:;
-  __Pyx_XDECREF((PyObject *)__pyx_v_flt_array_template);
+  __Pyx_XDECREF((PyObject *)__pyx_v_dbl_array_template);
   __Pyx_XDECREF((PyObject *)__pyx_v_z);
   __Pyx_XDECREF((PyObject *)__pyx_v_d);
   __Pyx_XDECREF((PyObject *)__pyx_v_c);
@@ -2957,9 +2957,9 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_internal(PyArrayObject *__pyx_v_
 /* "wsmtk/_whittaker.pyx":101
  * 
  * 
- * cpdef ws2d_vc(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[float] llas):             # <<<<<<<<<<<<<<
+ * cpdef ws2d_vc(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[double] llas):             # <<<<<<<<<<<<<<
  *     ## vcurve
- *     cdef array template = array('f', [])
+ *     cdef array template = array('d', [])
  */
 
 static PyObject *__pyx_pw_5wsmtk_9whittaker_3ws2d_vc(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
@@ -2979,20 +2979,20 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc(PyArrayObject *__pyx_v_y, PyA
   int __pyx_v_lix;
   int __pyx_v_i;
   int __pyx_v_k;
-  float __pyx_v_w_tmp;
-  float __pyx_v_y_tmp;
-  float __pyx_v_z_tmp;
-  float __pyx_v_z2;
-  float __pyx_v_llastep;
-  float __pyx_v_f1;
-  float __pyx_v_f2;
-  float __pyx_v_p1;
-  float __pyx_v_p2;
-  float __pyx_v_l;
-  float __pyx_v_l1;
-  float __pyx_v_l2;
-  float __pyx_v_vmin;
-  float __pyx_v_lopt;
+  double __pyx_v_w_tmp;
+  double __pyx_v_y_tmp;
+  double __pyx_v_z_tmp;
+  double __pyx_v_z2;
+  double __pyx_v_llastep;
+  double __pyx_v_f1;
+  double __pyx_v_f2;
+  double __pyx_v_p1;
+  double __pyx_v_p2;
+  double __pyx_v_l;
+  double __pyx_v_l1;
+  double __pyx_v_l2;
+  double __pyx_v_vmin;
+  double __pyx_v_lopt;
   __Pyx_LocalBuf_ND __pyx_pybuffernd_llas;
   __Pyx_Buffer __pyx_pybuffer_llas;
   __Pyx_LocalBuf_ND __pyx_pybuffernd_w;
@@ -3039,14 +3039,14 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc(PyArrayObject *__pyx_v_y, PyA
   __pyx_pybuffernd_w.diminfo[0].strides = __pyx_pybuffernd_w.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_w.diminfo[0].shape = __pyx_pybuffernd_w.rcbuffer->pybuffer.shape[0];
   {
     __Pyx_BufFmt_StackElem __pyx_stack[1];
-    if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_llas.rcbuffer->pybuffer, (PyObject*)__pyx_v_llas, &__Pyx_TypeInfo_float, PyBUF_FORMAT| PyBUF_INDIRECT, 1, 0, __pyx_stack) == -1)) __PYX_ERR(0, 101, __pyx_L1_error)
+    if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_llas.rcbuffer->pybuffer, (PyObject*)__pyx_v_llas, &__Pyx_TypeInfo_double, PyBUF_FORMAT| PyBUF_INDIRECT, 1, 0, __pyx_stack) == -1)) __PYX_ERR(0, 101, __pyx_L1_error)
   }
   __pyx_pybuffernd_llas.diminfo[0].strides = __pyx_pybuffernd_llas.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_llas.diminfo[0].shape = __pyx_pybuffernd_llas.rcbuffer->pybuffer.shape[0]; __pyx_pybuffernd_llas.diminfo[0].suboffsets = __pyx_pybuffernd_llas.rcbuffer->pybuffer.suboffsets[0];
 
   /* "wsmtk/_whittaker.pyx":103
- * cpdef ws2d_vc(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[float] llas):
+ * cpdef ws2d_vc(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[double] llas):
  *     ## vcurve
- *     cdef array template = array('f', [])             # <<<<<<<<<<<<<<
+ *     cdef array template = array('d', [])             # <<<<<<<<<<<<<<
  * 
  *     cdef array fits, pens, diff1, lamids, v, z
  */
@@ -3054,9 +3054,9 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc(PyArrayObject *__pyx_v_y, PyA
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_t_2 = PyTuple_New(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 103, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  __Pyx_INCREF(__pyx_n_s_f);
-  __Pyx_GIVEREF(__pyx_n_s_f);
-  PyTuple_SET_ITEM(__pyx_t_2, 0, __pyx_n_s_f);
+  __Pyx_INCREF(__pyx_n_s_d);
+  __Pyx_GIVEREF(__pyx_n_s_d);
+  PyTuple_SET_ITEM(__pyx_t_2, 0, __pyx_n_s_d);
   __Pyx_GIVEREF(__pyx_t_1);
   PyTuple_SET_ITEM(__pyx_t_2, 1, __pyx_t_1);
   __pyx_t_1 = 0;
@@ -3067,7 +3067,7 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc(PyArrayObject *__pyx_v_y, PyA
   __pyx_t_1 = 0;
 
   /* "wsmtk/_whittaker.pyx":109
- *     cdef float w_tmp, y_tmp, z_tmp, z2, llastep, f1, f2, p1, p2, l, l1, l2, vmin, lopt
+ *     cdef double w_tmp, y_tmp, z_tmp, z2, llastep, f1, f2, p1, p2, l, l1, l2, vmin, lopt
  * 
  *     m = y.shape[0]             # <<<<<<<<<<<<<<
  *     m1 = m - 1
@@ -3130,14 +3130,14 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc(PyArrayObject *__pyx_v_y, PyA
  *     i = 0
  *     k = 0             # <<<<<<<<<<<<<<
  * 
- *     template = array('f',[])
+ *     template = array('d',[])
  */
   __pyx_v_k = 0;
 
   /* "wsmtk/_whittaker.pyx":117
  *     k = 0
  * 
- *     template = array('f',[])             # <<<<<<<<<<<<<<
+ *     template = array('d',[])             # <<<<<<<<<<<<<<
  * 
  *     fits = clone(template, nl, True)
  */
@@ -3145,9 +3145,9 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc(PyArrayObject *__pyx_v_y, PyA
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_t_2 = PyTuple_New(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 117, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  __Pyx_INCREF(__pyx_n_s_f);
-  __Pyx_GIVEREF(__pyx_n_s_f);
-  PyTuple_SET_ITEM(__pyx_t_2, 0, __pyx_n_s_f);
+  __Pyx_INCREF(__pyx_n_s_d);
+  __Pyx_GIVEREF(__pyx_n_s_d);
+  PyTuple_SET_ITEM(__pyx_t_2, 0, __pyx_n_s_d);
   __Pyx_GIVEREF(__pyx_t_1);
   PyTuple_SET_ITEM(__pyx_t_2, 1, __pyx_t_1);
   __pyx_t_1 = 0;
@@ -3158,7 +3158,7 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc(PyArrayObject *__pyx_v_y, PyA
   __pyx_t_1 = 0;
 
   /* "wsmtk/_whittaker.pyx":119
- *     template = array('f',[])
+ *     template = array('d',[])
  * 
  *     fits = clone(template, nl, True)             # <<<<<<<<<<<<<<
  *     pens = clone(template,nl,True)
@@ -3233,7 +3233,7 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc(PyArrayObject *__pyx_v_y, PyA
  *     # Compute v-curve
  * 
  *     for lix in range(nl):             # <<<<<<<<<<<<<<
- *         l = pow(10,llas.data.as_floats[lix])
+ *         l = pow(10,llas.data.as_doubles[lix])
  *         z[0:m] = ws2d(y,l,w)
  */
   __pyx_t_4 = __pyx_v_nl;
@@ -3243,15 +3243,15 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc(PyArrayObject *__pyx_v_y, PyA
     /* "wsmtk/_whittaker.pyx":129
  * 
  *     for lix in range(nl):
- *         l = pow(10,llas.data.as_floats[lix])             # <<<<<<<<<<<<<<
+ *         l = pow(10,llas.data.as_doubles[lix])             # <<<<<<<<<<<<<<
  *         z[0:m] = ws2d(y,l,w)
  *         for i in range(m):
  */
-    __pyx_v_l = pow(10.0, (__pyx_v_llas->data.as_floats[__pyx_v_lix]));
+    __pyx_v_l = pow(10.0, (__pyx_v_llas->data.as_doubles[__pyx_v_lix]));
 
     /* "wsmtk/_whittaker.pyx":130
  *     for lix in range(nl):
- *         l = pow(10,llas.data.as_floats[lix])
+ *         l = pow(10,llas.data.as_doubles[lix])
  *         z[0:m] = ws2d(y,l,w)             # <<<<<<<<<<<<<<
  *         for i in range(m):
  *             w_tmp = w[i]
@@ -3262,7 +3262,7 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc(PyArrayObject *__pyx_v_y, PyA
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
     /* "wsmtk/_whittaker.pyx":131
- *         l = pow(10,llas.data.as_floats[lix])
+ *         l = pow(10,llas.data.as_doubles[lix])
  *         z[0:m] = ws2d(y,l,w)
  *         for i in range(m):             # <<<<<<<<<<<<<<
  *             w_tmp = w[i]
@@ -3277,7 +3277,7 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc(PyArrayObject *__pyx_v_y, PyA
  *         for i in range(m):
  *             w_tmp = w[i]             # <<<<<<<<<<<<<<
  *             y_tmp = y[i]
- *             z_tmp = z.data.as_floats[i]
+ *             z_tmp = z.data.as_doubles[i]
  */
       __pyx_t_8 = __pyx_v_i;
       __pyx_t_9 = -1;
@@ -3294,8 +3294,8 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc(PyArrayObject *__pyx_v_y, PyA
  *         for i in range(m):
  *             w_tmp = w[i]
  *             y_tmp = y[i]             # <<<<<<<<<<<<<<
- *             z_tmp = z.data.as_floats[i]
- *             fits.data.as_floats[lix] += pow(w_tmp * (y_tmp - z_tmp),2)
+ *             z_tmp = z.data.as_doubles[i]
+ *             fits.data.as_doubles[lix] += pow(w_tmp * (y_tmp - z_tmp),2)
  */
       __pyx_t_10 = __pyx_v_i;
       __pyx_t_9 = -1;
@@ -3311,38 +3311,38 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc(PyArrayObject *__pyx_v_y, PyA
       /* "wsmtk/_whittaker.pyx":134
  *             w_tmp = w[i]
  *             y_tmp = y[i]
- *             z_tmp = z.data.as_floats[i]             # <<<<<<<<<<<<<<
- *             fits.data.as_floats[lix] += pow(w_tmp * (y_tmp - z_tmp),2)
- *         fits.data.as_floats[lix] = log(fits.data.as_floats[lix])
+ *             z_tmp = z.data.as_doubles[i]             # <<<<<<<<<<<<<<
+ *             fits.data.as_doubles[lix] += pow(w_tmp * (y_tmp - z_tmp),2)
+ *         fits.data.as_doubles[lix] = log(fits.data.as_doubles[lix])
  */
-      __pyx_v_z_tmp = (__pyx_v_z->data.as_floats[__pyx_v_i]);
+      __pyx_v_z_tmp = (__pyx_v_z->data.as_doubles[__pyx_v_i]);
 
       /* "wsmtk/_whittaker.pyx":135
  *             y_tmp = y[i]
- *             z_tmp = z.data.as_floats[i]
- *             fits.data.as_floats[lix] += pow(w_tmp * (y_tmp - z_tmp),2)             # <<<<<<<<<<<<<<
- *         fits.data.as_floats[lix] = log(fits.data.as_floats[lix])
+ *             z_tmp = z.data.as_doubles[i]
+ *             fits.data.as_doubles[lix] += pow(w_tmp * (y_tmp - z_tmp),2)             # <<<<<<<<<<<<<<
+ *         fits.data.as_doubles[lix] = log(fits.data.as_doubles[lix])
  * 
  */
       __pyx_t_9 = __pyx_v_lix;
-      (__pyx_v_fits->data.as_floats[__pyx_t_9]) = ((__pyx_v_fits->data.as_floats[__pyx_t_9]) + pow((__pyx_v_w_tmp * (__pyx_v_y_tmp - __pyx_v_z_tmp)), 2.0));
+      (__pyx_v_fits->data.as_doubles[__pyx_t_9]) = ((__pyx_v_fits->data.as_doubles[__pyx_t_9]) + pow((__pyx_v_w_tmp * (__pyx_v_y_tmp - __pyx_v_z_tmp)), 2.0));
     }
 
     /* "wsmtk/_whittaker.pyx":136
- *             z_tmp = z.data.as_floats[i]
- *             fits.data.as_floats[lix] += pow(w_tmp * (y_tmp - z_tmp),2)
- *         fits.data.as_floats[lix] = log(fits.data.as_floats[lix])             # <<<<<<<<<<<<<<
+ *             z_tmp = z.data.as_doubles[i]
+ *             fits.data.as_doubles[lix] += pow(w_tmp * (y_tmp - z_tmp),2)
+ *         fits.data.as_doubles[lix] = log(fits.data.as_doubles[lix])             # <<<<<<<<<<<<<<
  * 
  *         for i in range(m1):
  */
-    (__pyx_v_fits->data.as_floats[__pyx_v_lix]) = log((__pyx_v_fits->data.as_floats[__pyx_v_lix]));
+    (__pyx_v_fits->data.as_doubles[__pyx_v_lix]) = log((__pyx_v_fits->data.as_doubles[__pyx_v_lix]));
 
     /* "wsmtk/_whittaker.pyx":138
- *         fits.data.as_floats[lix] = log(fits.data.as_floats[lix])
+ *         fits.data.as_doubles[lix] = log(fits.data.as_doubles[lix])
  * 
  *         for i in range(m1):             # <<<<<<<<<<<<<<
- *             z_tmp = z.data.as_floats[i]
- *             z2 = z.data.as_floats[i+1]
+ *             z_tmp = z.data.as_doubles[i]
+ *             z2 = z.data.as_doubles[i+1]
  */
     __pyx_t_6 = __pyx_v_m1;
     for (__pyx_t_7 = 0; __pyx_t_7 < __pyx_t_6; __pyx_t_7+=1) {
@@ -3351,79 +3351,79 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc(PyArrayObject *__pyx_v_y, PyA
       /* "wsmtk/_whittaker.pyx":139
  * 
  *         for i in range(m1):
- *             z_tmp = z.data.as_floats[i]             # <<<<<<<<<<<<<<
- *             z2 = z.data.as_floats[i+1]
- *             diff1.data.as_floats[i] = z2 - z_tmp
+ *             z_tmp = z.data.as_doubles[i]             # <<<<<<<<<<<<<<
+ *             z2 = z.data.as_doubles[i+1]
+ *             diff1.data.as_doubles[i] = z2 - z_tmp
  */
-      __pyx_v_z_tmp = (__pyx_v_z->data.as_floats[__pyx_v_i]);
+      __pyx_v_z_tmp = (__pyx_v_z->data.as_doubles[__pyx_v_i]);
 
       /* "wsmtk/_whittaker.pyx":140
  *         for i in range(m1):
- *             z_tmp = z.data.as_floats[i]
- *             z2 = z.data.as_floats[i+1]             # <<<<<<<<<<<<<<
- *             diff1.data.as_floats[i] = z2 - z_tmp
+ *             z_tmp = z.data.as_doubles[i]
+ *             z2 = z.data.as_doubles[i+1]             # <<<<<<<<<<<<<<
+ *             diff1.data.as_doubles[i] = z2 - z_tmp
  *         for i in range(m2):
  */
-      __pyx_v_z2 = (__pyx_v_z->data.as_floats[(__pyx_v_i + 1)]);
+      __pyx_v_z2 = (__pyx_v_z->data.as_doubles[(__pyx_v_i + 1)]);
 
       /* "wsmtk/_whittaker.pyx":141
- *             z_tmp = z.data.as_floats[i]
- *             z2 = z.data.as_floats[i+1]
- *             diff1.data.as_floats[i] = z2 - z_tmp             # <<<<<<<<<<<<<<
+ *             z_tmp = z.data.as_doubles[i]
+ *             z2 = z.data.as_doubles[i+1]
+ *             diff1.data.as_doubles[i] = z2 - z_tmp             # <<<<<<<<<<<<<<
  *         for i in range(m2):
- *             z_tmp = diff1.data.as_floats[i]
+ *             z_tmp = diff1.data.as_doubles[i]
  */
-      (__pyx_v_diff1->data.as_floats[__pyx_v_i]) = (__pyx_v_z2 - __pyx_v_z_tmp);
+      (__pyx_v_diff1->data.as_doubles[__pyx_v_i]) = (__pyx_v_z2 - __pyx_v_z_tmp);
     }
 
     /* "wsmtk/_whittaker.pyx":142
- *             z2 = z.data.as_floats[i+1]
- *             diff1.data.as_floats[i] = z2 - z_tmp
+ *             z2 = z.data.as_doubles[i+1]
+ *             diff1.data.as_doubles[i] = z2 - z_tmp
  *         for i in range(m2):             # <<<<<<<<<<<<<<
- *             z_tmp = diff1.data.as_floats[i]
- *             z2 = diff1.data.as_floats[i+1]
+ *             z_tmp = diff1.data.as_doubles[i]
+ *             z2 = diff1.data.as_doubles[i+1]
  */
     __pyx_t_6 = __pyx_v_m2;
     for (__pyx_t_7 = 0; __pyx_t_7 < __pyx_t_6; __pyx_t_7+=1) {
       __pyx_v_i = __pyx_t_7;
 
       /* "wsmtk/_whittaker.pyx":143
- *             diff1.data.as_floats[i] = z2 - z_tmp
+ *             diff1.data.as_doubles[i] = z2 - z_tmp
  *         for i in range(m2):
- *             z_tmp = diff1.data.as_floats[i]             # <<<<<<<<<<<<<<
- *             z2 = diff1.data.as_floats[i+1]
- *             pens.data.as_floats[lix] += pow(z2 - z_tmp,2)
+ *             z_tmp = diff1.data.as_doubles[i]             # <<<<<<<<<<<<<<
+ *             z2 = diff1.data.as_doubles[i+1]
+ *             pens.data.as_doubles[lix] += pow(z2 - z_tmp,2)
  */
-      __pyx_v_z_tmp = (__pyx_v_diff1->data.as_floats[__pyx_v_i]);
+      __pyx_v_z_tmp = (__pyx_v_diff1->data.as_doubles[__pyx_v_i]);
 
       /* "wsmtk/_whittaker.pyx":144
  *         for i in range(m2):
- *             z_tmp = diff1.data.as_floats[i]
- *             z2 = diff1.data.as_floats[i+1]             # <<<<<<<<<<<<<<
- *             pens.data.as_floats[lix] += pow(z2 - z_tmp,2)
- *         pens.data.as_floats[lix] = log(pens.data.as_floats[lix])
+ *             z_tmp = diff1.data.as_doubles[i]
+ *             z2 = diff1.data.as_doubles[i+1]             # <<<<<<<<<<<<<<
+ *             pens.data.as_doubles[lix] += pow(z2 - z_tmp,2)
+ *         pens.data.as_doubles[lix] = log(pens.data.as_doubles[lix])
  */
-      __pyx_v_z2 = (__pyx_v_diff1->data.as_floats[(__pyx_v_i + 1)]);
+      __pyx_v_z2 = (__pyx_v_diff1->data.as_doubles[(__pyx_v_i + 1)]);
 
       /* "wsmtk/_whittaker.pyx":145
- *             z_tmp = diff1.data.as_floats[i]
- *             z2 = diff1.data.as_floats[i+1]
- *             pens.data.as_floats[lix] += pow(z2 - z_tmp,2)             # <<<<<<<<<<<<<<
- *         pens.data.as_floats[lix] = log(pens.data.as_floats[lix])
+ *             z_tmp = diff1.data.as_doubles[i]
+ *             z2 = diff1.data.as_doubles[i+1]
+ *             pens.data.as_doubles[lix] += pow(z2 - z_tmp,2)             # <<<<<<<<<<<<<<
+ *         pens.data.as_doubles[lix] = log(pens.data.as_doubles[lix])
  * 
  */
       __pyx_t_9 = __pyx_v_lix;
-      (__pyx_v_pens->data.as_floats[__pyx_t_9]) = ((__pyx_v_pens->data.as_floats[__pyx_t_9]) + pow((__pyx_v_z2 - __pyx_v_z_tmp), 2.0));
+      (__pyx_v_pens->data.as_doubles[__pyx_t_9]) = ((__pyx_v_pens->data.as_doubles[__pyx_t_9]) + pow((__pyx_v_z2 - __pyx_v_z_tmp), 2.0));
     }
 
     /* "wsmtk/_whittaker.pyx":146
- *             z2 = diff1.data.as_floats[i+1]
- *             pens.data.as_floats[lix] += pow(z2 - z_tmp,2)
- *         pens.data.as_floats[lix] = log(pens.data.as_floats[lix])             # <<<<<<<<<<<<<<
+ *             z2 = diff1.data.as_doubles[i+1]
+ *             pens.data.as_doubles[lix] += pow(z2 - z_tmp,2)
+ *         pens.data.as_doubles[lix] = log(pens.data.as_doubles[lix])             # <<<<<<<<<<<<<<
  * 
  * 
  */
-    (__pyx_v_pens->data.as_floats[__pyx_v_lix]) = log((__pyx_v_pens->data.as_floats[__pyx_v_lix]));
+    (__pyx_v_pens->data.as_doubles[__pyx_v_lix]) = log((__pyx_v_pens->data.as_doubles[__pyx_v_lix]));
   }
 
   /* "wsmtk/_whittaker.pyx":151
@@ -3451,14 +3451,14 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc(PyArrayObject *__pyx_v_y, PyA
     __Pyx_RaiseBufferIndexError(__pyx_t_4);
     __PYX_ERR(0, 151, __pyx_L1_error)
   }
-  __pyx_v_llastep = ((*__Pyx_BufPtrFull1d(float *, __pyx_pybuffernd_llas.rcbuffer->pybuffer.buf, __pyx_t_11, __pyx_pybuffernd_llas.diminfo[0].strides, __pyx_pybuffernd_llas.diminfo[0].suboffsets)) - (*__Pyx_BufPtrFull1d(float *, __pyx_pybuffernd_llas.rcbuffer->pybuffer.buf, __pyx_t_12, __pyx_pybuffernd_llas.diminfo[0].strides, __pyx_pybuffernd_llas.diminfo[0].suboffsets)));
+  __pyx_v_llastep = ((*__Pyx_BufPtrFull1d(double *, __pyx_pybuffernd_llas.rcbuffer->pybuffer.buf, __pyx_t_11, __pyx_pybuffernd_llas.diminfo[0].strides, __pyx_pybuffernd_llas.diminfo[0].suboffsets)) - (*__Pyx_BufPtrFull1d(double *, __pyx_pybuffernd_llas.rcbuffer->pybuffer.buf, __pyx_t_12, __pyx_pybuffernd_llas.diminfo[0].strides, __pyx_pybuffernd_llas.diminfo[0].suboffsets)));
 
   /* "wsmtk/_whittaker.pyx":153
  *     llastep = llas[1] - llas[0]
  * 
  *     for i in range(nl1):             # <<<<<<<<<<<<<<
- *         l1 = llas.data.as_floats[i]
- *         l2 = llas.data.as_floats[i+1]
+ *         l1 = llas.data.as_doubles[i]
+ *         l2 = llas.data.as_doubles[i+1]
  */
   __pyx_t_4 = __pyx_v_nl1;
   for (__pyx_t_5 = 0; __pyx_t_5 < __pyx_t_4; __pyx_t_5+=1) {
@@ -3467,129 +3467,129 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc(PyArrayObject *__pyx_v_y, PyA
     /* "wsmtk/_whittaker.pyx":154
  * 
  *     for i in range(nl1):
- *         l1 = llas.data.as_floats[i]             # <<<<<<<<<<<<<<
- *         l2 = llas.data.as_floats[i+1]
- *         f1 = fits.data.as_floats[i]
+ *         l1 = llas.data.as_doubles[i]             # <<<<<<<<<<<<<<
+ *         l2 = llas.data.as_doubles[i+1]
+ *         f1 = fits.data.as_doubles[i]
  */
-    __pyx_v_l1 = (__pyx_v_llas->data.as_floats[__pyx_v_i]);
+    __pyx_v_l1 = (__pyx_v_llas->data.as_doubles[__pyx_v_i]);
 
     /* "wsmtk/_whittaker.pyx":155
  *     for i in range(nl1):
- *         l1 = llas.data.as_floats[i]
- *         l2 = llas.data.as_floats[i+1]             # <<<<<<<<<<<<<<
- *         f1 = fits.data.as_floats[i]
- *         f2 = fits.data.as_floats[i+1]
+ *         l1 = llas.data.as_doubles[i]
+ *         l2 = llas.data.as_doubles[i+1]             # <<<<<<<<<<<<<<
+ *         f1 = fits.data.as_doubles[i]
+ *         f2 = fits.data.as_doubles[i+1]
  */
-    __pyx_v_l2 = (__pyx_v_llas->data.as_floats[(__pyx_v_i + 1)]);
+    __pyx_v_l2 = (__pyx_v_llas->data.as_doubles[(__pyx_v_i + 1)]);
 
     /* "wsmtk/_whittaker.pyx":156
- *         l1 = llas.data.as_floats[i]
- *         l2 = llas.data.as_floats[i+1]
- *         f1 = fits.data.as_floats[i]             # <<<<<<<<<<<<<<
- *         f2 = fits.data.as_floats[i+1]
- *         p1 = pens.data.as_floats[i]
+ *         l1 = llas.data.as_doubles[i]
+ *         l2 = llas.data.as_doubles[i+1]
+ *         f1 = fits.data.as_doubles[i]             # <<<<<<<<<<<<<<
+ *         f2 = fits.data.as_doubles[i+1]
+ *         p1 = pens.data.as_doubles[i]
  */
-    __pyx_v_f1 = (__pyx_v_fits->data.as_floats[__pyx_v_i]);
+    __pyx_v_f1 = (__pyx_v_fits->data.as_doubles[__pyx_v_i]);
 
     /* "wsmtk/_whittaker.pyx":157
- *         l2 = llas.data.as_floats[i+1]
- *         f1 = fits.data.as_floats[i]
- *         f2 = fits.data.as_floats[i+1]             # <<<<<<<<<<<<<<
- *         p1 = pens.data.as_floats[i]
- *         p2 = pens.data.as_floats[i+1]
+ *         l2 = llas.data.as_doubles[i+1]
+ *         f1 = fits.data.as_doubles[i]
+ *         f2 = fits.data.as_doubles[i+1]             # <<<<<<<<<<<<<<
+ *         p1 = pens.data.as_doubles[i]
+ *         p2 = pens.data.as_doubles[i+1]
  */
-    __pyx_v_f2 = (__pyx_v_fits->data.as_floats[(__pyx_v_i + 1)]);
+    __pyx_v_f2 = (__pyx_v_fits->data.as_doubles[(__pyx_v_i + 1)]);
 
     /* "wsmtk/_whittaker.pyx":158
- *         f1 = fits.data.as_floats[i]
- *         f2 = fits.data.as_floats[i+1]
- *         p1 = pens.data.as_floats[i]             # <<<<<<<<<<<<<<
- *         p2 = pens.data.as_floats[i+1]
- *         v.data.as_floats[i] = sqrt(pow(f2 - f1,2) + pow(p2 - p1,2)) / (log(10) * llastep)
+ *         f1 = fits.data.as_doubles[i]
+ *         f2 = fits.data.as_doubles[i+1]
+ *         p1 = pens.data.as_doubles[i]             # <<<<<<<<<<<<<<
+ *         p2 = pens.data.as_doubles[i+1]
+ *         v.data.as_doubles[i] = sqrt(pow(f2 - f1,2) + pow(p2 - p1,2)) / (log(10) * llastep)
  */
-    __pyx_v_p1 = (__pyx_v_pens->data.as_floats[__pyx_v_i]);
+    __pyx_v_p1 = (__pyx_v_pens->data.as_doubles[__pyx_v_i]);
 
     /* "wsmtk/_whittaker.pyx":159
- *         f2 = fits.data.as_floats[i+1]
- *         p1 = pens.data.as_floats[i]
- *         p2 = pens.data.as_floats[i+1]             # <<<<<<<<<<<<<<
- *         v.data.as_floats[i] = sqrt(pow(f2 - f1,2) + pow(p2 - p1,2)) / (log(10) * llastep)
- *         lamids.data.as_floats[i] = (l1+l2) / 2
+ *         f2 = fits.data.as_doubles[i+1]
+ *         p1 = pens.data.as_doubles[i]
+ *         p2 = pens.data.as_doubles[i+1]             # <<<<<<<<<<<<<<
+ *         v.data.as_doubles[i] = sqrt(pow(f2 - f1,2) + pow(p2 - p1,2)) / (log(10) * llastep)
+ *         lamids.data.as_doubles[i] = (l1+l2) / 2
  */
-    __pyx_v_p2 = (__pyx_v_pens->data.as_floats[(__pyx_v_i + 1)]);
+    __pyx_v_p2 = (__pyx_v_pens->data.as_doubles[(__pyx_v_i + 1)]);
 
     /* "wsmtk/_whittaker.pyx":160
- *         p1 = pens.data.as_floats[i]
- *         p2 = pens.data.as_floats[i+1]
- *         v.data.as_floats[i] = sqrt(pow(f2 - f1,2) + pow(p2 - p1,2)) / (log(10) * llastep)             # <<<<<<<<<<<<<<
- *         lamids.data.as_floats[i] = (l1+l2) / 2
+ *         p1 = pens.data.as_doubles[i]
+ *         p2 = pens.data.as_doubles[i+1]
+ *         v.data.as_doubles[i] = sqrt(pow(f2 - f1,2) + pow(p2 - p1,2)) / (log(10) * llastep)             # <<<<<<<<<<<<<<
+ *         lamids.data.as_doubles[i] = (l1+l2) / 2
  * 
  */
-    (__pyx_v_v->data.as_floats[__pyx_v_i]) = (sqrt((pow((__pyx_v_f2 - __pyx_v_f1), 2.0) + pow((__pyx_v_p2 - __pyx_v_p1), 2.0))) / (log(10.0) * __pyx_v_llastep));
+    (__pyx_v_v->data.as_doubles[__pyx_v_i]) = (sqrt((pow((__pyx_v_f2 - __pyx_v_f1), 2.0) + pow((__pyx_v_p2 - __pyx_v_p1), 2.0))) / (log(10.0) * __pyx_v_llastep));
 
     /* "wsmtk/_whittaker.pyx":161
- *         p2 = pens.data.as_floats[i+1]
- *         v.data.as_floats[i] = sqrt(pow(f2 - f1,2) + pow(p2 - p1,2)) / (log(10) * llastep)
- *         lamids.data.as_floats[i] = (l1+l2) / 2             # <<<<<<<<<<<<<<
+ *         p2 = pens.data.as_doubles[i+1]
+ *         v.data.as_doubles[i] = sqrt(pow(f2 - f1,2) + pow(p2 - p1,2)) / (log(10) * llastep)
+ *         lamids.data.as_doubles[i] = (l1+l2) / 2             # <<<<<<<<<<<<<<
  * 
  * 
  */
-    (__pyx_v_lamids->data.as_floats[__pyx_v_i]) = ((__pyx_v_l1 + __pyx_v_l2) / 2.0);
+    (__pyx_v_lamids->data.as_doubles[__pyx_v_i]) = ((__pyx_v_l1 + __pyx_v_l2) / 2.0);
   }
 
   /* "wsmtk/_whittaker.pyx":164
  * 
  * 
- *     vmin = v.data.as_floats[k]             # <<<<<<<<<<<<<<
+ *     vmin = v.data.as_doubles[k]             # <<<<<<<<<<<<<<
  *     for i in range(1,nl1):
- *         if v.data.as_floats[i] < vmin:
+ *         if v.data.as_doubles[i] < vmin:
  */
-  __pyx_v_vmin = (__pyx_v_v->data.as_floats[__pyx_v_k]);
+  __pyx_v_vmin = (__pyx_v_v->data.as_doubles[__pyx_v_k]);
 
   /* "wsmtk/_whittaker.pyx":165
  * 
- *     vmin = v.data.as_floats[k]
+ *     vmin = v.data.as_doubles[k]
  *     for i in range(1,nl1):             # <<<<<<<<<<<<<<
- *         if v.data.as_floats[i] < vmin:
- *             vmin = v.data.as_floats[i]
+ *         if v.data.as_doubles[i] < vmin:
+ *             vmin = v.data.as_doubles[i]
  */
   __pyx_t_4 = __pyx_v_nl1;
   for (__pyx_t_5 = 1; __pyx_t_5 < __pyx_t_4; __pyx_t_5+=1) {
     __pyx_v_i = __pyx_t_5;
 
     /* "wsmtk/_whittaker.pyx":166
- *     vmin = v.data.as_floats[k]
+ *     vmin = v.data.as_doubles[k]
  *     for i in range(1,nl1):
- *         if v.data.as_floats[i] < vmin:             # <<<<<<<<<<<<<<
- *             vmin = v.data.as_floats[i]
+ *         if v.data.as_doubles[i] < vmin:             # <<<<<<<<<<<<<<
+ *             vmin = v.data.as_doubles[i]
  *             k = i
  */
-    __pyx_t_13 = (((__pyx_v_v->data.as_floats[__pyx_v_i]) < __pyx_v_vmin) != 0);
+    __pyx_t_13 = (((__pyx_v_v->data.as_doubles[__pyx_v_i]) < __pyx_v_vmin) != 0);
     if (__pyx_t_13) {
 
       /* "wsmtk/_whittaker.pyx":167
  *     for i in range(1,nl1):
- *         if v.data.as_floats[i] < vmin:
- *             vmin = v.data.as_floats[i]             # <<<<<<<<<<<<<<
+ *         if v.data.as_doubles[i] < vmin:
+ *             vmin = v.data.as_doubles[i]             # <<<<<<<<<<<<<<
  *             k = i
  * 
  */
-      __pyx_v_vmin = (__pyx_v_v->data.as_floats[__pyx_v_i]);
+      __pyx_v_vmin = (__pyx_v_v->data.as_doubles[__pyx_v_i]);
 
       /* "wsmtk/_whittaker.pyx":168
- *         if v.data.as_floats[i] < vmin:
- *             vmin = v.data.as_floats[i]
+ *         if v.data.as_doubles[i] < vmin:
+ *             vmin = v.data.as_doubles[i]
  *             k = i             # <<<<<<<<<<<<<<
  * 
- *     lopt = pow(10,lamids.data.as_floats[k])
+ *     lopt = pow(10,lamids.data.as_doubles[k])
  */
       __pyx_v_k = __pyx_v_i;
 
       /* "wsmtk/_whittaker.pyx":166
- *     vmin = v.data.as_floats[k]
+ *     vmin = v.data.as_doubles[k]
  *     for i in range(1,nl1):
- *         if v.data.as_floats[i] < vmin:             # <<<<<<<<<<<<<<
- *             vmin = v.data.as_floats[i]
+ *         if v.data.as_doubles[i] < vmin:             # <<<<<<<<<<<<<<
+ *             vmin = v.data.as_doubles[i]
  *             k = i
  */
     }
@@ -3598,14 +3598,14 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc(PyArrayObject *__pyx_v_y, PyA
   /* "wsmtk/_whittaker.pyx":170
  *             k = i
  * 
- *     lopt = pow(10,lamids.data.as_floats[k])             # <<<<<<<<<<<<<<
+ *     lopt = pow(10,lamids.data.as_doubles[k])             # <<<<<<<<<<<<<<
  * 
  *     z[0:m] = ws2d(y,lopt,w)
  */
-  __pyx_v_lopt = pow(10.0, (__pyx_v_lamids->data.as_floats[__pyx_v_k]));
+  __pyx_v_lopt = pow(10.0, (__pyx_v_lamids->data.as_doubles[__pyx_v_k]));
 
   /* "wsmtk/_whittaker.pyx":172
- *     lopt = pow(10,lamids.data.as_floats[k])
+ *     lopt = pow(10,lamids.data.as_doubles[k])
  * 
  *     z[0:m] = ws2d(y,lopt,w)             # <<<<<<<<<<<<<<
  * 
@@ -3641,9 +3641,9 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc(PyArrayObject *__pyx_v_y, PyA
   /* "wsmtk/_whittaker.pyx":101
  * 
  * 
- * cpdef ws2d_vc(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[float] llas):             # <<<<<<<<<<<<<<
+ * cpdef ws2d_vc(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[double] llas):             # <<<<<<<<<<<<<<
  *     ## vcurve
- *     cdef array template = array('f', [])
+ *     cdef array template = array('d', [])
  */
 
   /* function exit code */
@@ -3792,7 +3792,7 @@ static PyObject *__pyx_pf_5wsmtk_9whittaker_2ws2d_vc(CYTHON_UNUSED PyObject *__p
   __pyx_pybuffernd_w.diminfo[0].strides = __pyx_pybuffernd_w.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_w.diminfo[0].shape = __pyx_pybuffernd_w.rcbuffer->pybuffer.shape[0];
   {
     __Pyx_BufFmt_StackElem __pyx_stack[1];
-    if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_llas.rcbuffer->pybuffer, (PyObject*)__pyx_v_llas, &__Pyx_TypeInfo_float, PyBUF_FORMAT| PyBUF_INDIRECT, 1, 0, __pyx_stack) == -1)) __PYX_ERR(0, 101, __pyx_L1_error)
+    if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_llas.rcbuffer->pybuffer, (PyObject*)__pyx_v_llas, &__Pyx_TypeInfo_double, PyBUF_FORMAT| PyBUF_INDIRECT, 1, 0, __pyx_stack) == -1)) __PYX_ERR(0, 101, __pyx_L1_error)
   }
   __pyx_pybuffernd_llas.diminfo[0].strides = __pyx_pybuffernd_llas.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_llas.diminfo[0].shape = __pyx_pybuffernd_llas.rcbuffer->pybuffer.shape[0]; __pyx_pybuffernd_llas.diminfo[0].suboffsets = __pyx_pybuffernd_llas.rcbuffer->pybuffer.suboffsets[0];
   __Pyx_XDECREF(__pyx_r);
@@ -3829,13 +3829,13 @@ static PyObject *__pyx_pf_5wsmtk_9whittaker_2ws2d_vc(CYTHON_UNUSED PyObject *__p
 /* "wsmtk/_whittaker.pyx":177
  * 
  * 
- * cpdef ws2d_vc_asy(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[float] llas, float p):             # <<<<<<<<<<<<<<
+ * cpdef ws2d_vc_asy(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[double] llas, double p):             # <<<<<<<<<<<<<<
  *     ## vcurve with asymmetric smoothing
  * 
  */
 
 static PyObject *__pyx_pw_5wsmtk_9whittaker_5ws2d_vc_asy(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
-static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc_asy(PyArrayObject *__pyx_v_y, PyArrayObject *__pyx_v_w, arrayobject *__pyx_v_llas, float __pyx_v_p, CYTHON_UNUSED int __pyx_skip_dispatch) {
+static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc_asy(PyArrayObject *__pyx_v_y, PyArrayObject *__pyx_v_w, arrayobject *__pyx_v_llas, double __pyx_v_p, CYTHON_UNUSED int __pyx_skip_dispatch) {
   arrayobject *__pyx_v_template = 0;
   arrayobject *__pyx_v_fits = 0;
   arrayobject *__pyx_v_pens = 0;
@@ -3852,21 +3852,21 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc_asy(PyArrayObject *__pyx_v_y,
   int __pyx_v_i;
   int __pyx_v_j;
   int __pyx_v_k;
-  float __pyx_v_w_tmp;
-  float __pyx_v_y_tmp;
-  float __pyx_v_z_tmp;
-  float __pyx_v_z2;
-  float __pyx_v_llastep;
-  float __pyx_v_fit1;
-  float __pyx_v_fit2;
-  float __pyx_v_pen1;
-  float __pyx_v_pen2;
-  float __pyx_v_l;
-  float __pyx_v_l1;
-  float __pyx_v_l2;
-  float __pyx_v_vmin;
-  float __pyx_v_lopt;
-  float __pyx_v_p1;
+  double __pyx_v_w_tmp;
+  double __pyx_v_y_tmp;
+  double __pyx_v_z_tmp;
+  double __pyx_v_z2;
+  double __pyx_v_llastep;
+  double __pyx_v_fit1;
+  double __pyx_v_fit2;
+  double __pyx_v_pen1;
+  double __pyx_v_pen2;
+  double __pyx_v_l;
+  double __pyx_v_l1;
+  double __pyx_v_l2;
+  double __pyx_v_vmin;
+  double __pyx_v_lopt;
+  double __pyx_v_p1;
   arrayobject *__pyx_v_znew = NULL;
   arrayobject *__pyx_v_wa = NULL;
   arrayobject *__pyx_v_ww = NULL;
@@ -3919,14 +3919,14 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc_asy(PyArrayObject *__pyx_v_y,
   __pyx_pybuffernd_w.diminfo[0].strides = __pyx_pybuffernd_w.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_w.diminfo[0].shape = __pyx_pybuffernd_w.rcbuffer->pybuffer.shape[0];
   {
     __Pyx_BufFmt_StackElem __pyx_stack[1];
-    if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_llas.rcbuffer->pybuffer, (PyObject*)__pyx_v_llas, &__Pyx_TypeInfo_float, PyBUF_FORMAT| PyBUF_INDIRECT, 1, 0, __pyx_stack) == -1)) __PYX_ERR(0, 177, __pyx_L1_error)
+    if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_llas.rcbuffer->pybuffer, (PyObject*)__pyx_v_llas, &__Pyx_TypeInfo_double, PyBUF_FORMAT| PyBUF_INDIRECT, 1, 0, __pyx_stack) == -1)) __PYX_ERR(0, 177, __pyx_L1_error)
   }
   __pyx_pybuffernd_llas.diminfo[0].strides = __pyx_pybuffernd_llas.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_llas.diminfo[0].shape = __pyx_pybuffernd_llas.rcbuffer->pybuffer.shape[0]; __pyx_pybuffernd_llas.diminfo[0].suboffsets = __pyx_pybuffernd_llas.rcbuffer->pybuffer.suboffsets[0];
 
   /* "wsmtk/_whittaker.pyx":180
  *     ## vcurve with asymmetric smoothing
  * 
- *     cdef array template = array('f', [])             # <<<<<<<<<<<<<<
+ *     cdef array template = array('d', [])             # <<<<<<<<<<<<<<
  * 
  *     cdef array fits, pens, diff1, lamids, v, z
  */
@@ -3934,9 +3934,9 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc_asy(PyArrayObject *__pyx_v_y,
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_t_2 = PyTuple_New(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 180, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  __Pyx_INCREF(__pyx_n_s_f);
-  __Pyx_GIVEREF(__pyx_n_s_f);
-  PyTuple_SET_ITEM(__pyx_t_2, 0, __pyx_n_s_f);
+  __Pyx_INCREF(__pyx_n_s_d);
+  __Pyx_GIVEREF(__pyx_n_s_d);
+  PyTuple_SET_ITEM(__pyx_t_2, 0, __pyx_n_s_d);
   __Pyx_GIVEREF(__pyx_t_1);
   PyTuple_SET_ITEM(__pyx_t_2, 1, __pyx_t_1);
   __pyx_t_1 = 0;
@@ -3947,7 +3947,7 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc_asy(PyArrayObject *__pyx_v_y,
   __pyx_t_1 = 0;
 
   /* "wsmtk/_whittaker.pyx":186
- *     cdef float w_tmp, y_tmp, z_tmp, z2, llastep, fit1, fit2, pen1, pen2, l, l1, l2, vmin, lopt, p1
+ *     cdef double w_tmp, y_tmp, z_tmp, z2, llastep, fit1, fit2, pen1, pen2, l, l1, l2, vmin, lopt, p1
  * 
  *     m = y.shape[0]             # <<<<<<<<<<<<<<
  *     m1 = m - 1
@@ -4028,14 +4028,14 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc_asy(PyArrayObject *__pyx_v_y,
  *     j = 0
  *     p1 = 1-p             # <<<<<<<<<<<<<<
  * 
- *     template = array('f',[])
+ *     template = array('d',[])
  */
   __pyx_v_p1 = (1.0 - __pyx_v_p);
 
   /* "wsmtk/_whittaker.pyx":196
  *     p1 = 1-p
  * 
- *     template = array('f',[])             # <<<<<<<<<<<<<<
+ *     template = array('d',[])             # <<<<<<<<<<<<<<
  * 
  *     fits = clone(template, nl, True)
  */
@@ -4043,9 +4043,9 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc_asy(PyArrayObject *__pyx_v_y,
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_t_2 = PyTuple_New(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 196, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  __Pyx_INCREF(__pyx_n_s_f);
-  __Pyx_GIVEREF(__pyx_n_s_f);
-  PyTuple_SET_ITEM(__pyx_t_2, 0, __pyx_n_s_f);
+  __Pyx_INCREF(__pyx_n_s_d);
+  __Pyx_GIVEREF(__pyx_n_s_d);
+  PyTuple_SET_ITEM(__pyx_t_2, 0, __pyx_n_s_d);
   __Pyx_GIVEREF(__pyx_t_1);
   PyTuple_SET_ITEM(__pyx_t_2, 1, __pyx_t_1);
   __pyx_t_1 = 0;
@@ -4056,7 +4056,7 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc_asy(PyArrayObject *__pyx_v_y,
   __pyx_t_1 = 0;
 
   /* "wsmtk/_whittaker.pyx":198
- *     template = array('f',[])
+ *     template = array('d',[])
  * 
  *     fits = clone(template, nl, True)             # <<<<<<<<<<<<<<
  *     pens = clone(template,nl,True)
@@ -4167,7 +4167,7 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc_asy(PyArrayObject *__pyx_v_y,
  *     # Compute v-curve
  * 
  *     for lix in range(nl):             # <<<<<<<<<<<<<<
- *         l = pow(10,llas.data.as_floats[lix])
+ *         l = pow(10,llas.data.as_doubles[lix])
  * 
  */
   __pyx_t_4 = __pyx_v_nl;
@@ -4177,14 +4177,14 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc_asy(PyArrayObject *__pyx_v_y,
     /* "wsmtk/_whittaker.pyx":211
  * 
  *     for lix in range(nl):
- *         l = pow(10,llas.data.as_floats[lix])             # <<<<<<<<<<<<<<
+ *         l = pow(10,llas.data.as_doubles[lix])             # <<<<<<<<<<<<<<
  * 
  *         for i in range(10):
  */
-    __pyx_v_l = pow(10.0, (__pyx_v_llas->data.as_floats[__pyx_v_lix]));
+    __pyx_v_l = pow(10.0, (__pyx_v_llas->data.as_doubles[__pyx_v_lix]));
 
     /* "wsmtk/_whittaker.pyx":213
- *         l = pow(10,llas.data.as_floats[lix])
+ *         l = pow(10,llas.data.as_doubles[lix])
  * 
  *         for i in range(10):             # <<<<<<<<<<<<<<
  *           for j in range(m):
@@ -4198,7 +4198,7 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc_asy(PyArrayObject *__pyx_v_y,
  *         for i in range(10):
  *           for j in range(m):             # <<<<<<<<<<<<<<
  *             y_tmp = y[j]
- *             z_tmp = z.data.as_floats[j]
+ *             z_tmp = z.data.as_doubles[j]
  */
       __pyx_t_7 = __pyx_v_m;
       for (__pyx_t_8 = 0; __pyx_t_8 < __pyx_t_7; __pyx_t_8+=1) {
@@ -4208,7 +4208,7 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc_asy(PyArrayObject *__pyx_v_y,
  *         for i in range(10):
  *           for j in range(m):
  *             y_tmp = y[j]             # <<<<<<<<<<<<<<
- *             z_tmp = z.data.as_floats[j]
+ *             z_tmp = z.data.as_doubles[j]
  *             if y_tmp > z_tmp:
  */
         __pyx_t_9 = __pyx_v_j;
@@ -4225,57 +4225,57 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc_asy(PyArrayObject *__pyx_v_y,
         /* "wsmtk/_whittaker.pyx":216
  *           for j in range(m):
  *             y_tmp = y[j]
- *             z_tmp = z.data.as_floats[j]             # <<<<<<<<<<<<<<
+ *             z_tmp = z.data.as_doubles[j]             # <<<<<<<<<<<<<<
  *             if y_tmp > z_tmp:
- *               wa.data.as_floats[j] = p
+ *               wa.data.as_doubles[j] = p
  */
-        __pyx_v_z_tmp = (__pyx_v_z->data.as_floats[__pyx_v_j]);
+        __pyx_v_z_tmp = (__pyx_v_z->data.as_doubles[__pyx_v_j]);
 
         /* "wsmtk/_whittaker.pyx":217
  *             y_tmp = y[j]
- *             z_tmp = z.data.as_floats[j]
+ *             z_tmp = z.data.as_doubles[j]
  *             if y_tmp > z_tmp:             # <<<<<<<<<<<<<<
- *               wa.data.as_floats[j] = p
+ *               wa.data.as_doubles[j] = p
  *             else:
  */
         __pyx_t_11 = ((__pyx_v_y_tmp > __pyx_v_z_tmp) != 0);
         if (__pyx_t_11) {
 
           /* "wsmtk/_whittaker.pyx":218
- *             z_tmp = z.data.as_floats[j]
+ *             z_tmp = z.data.as_doubles[j]
  *             if y_tmp > z_tmp:
- *               wa.data.as_floats[j] = p             # <<<<<<<<<<<<<<
+ *               wa.data.as_doubles[j] = p             # <<<<<<<<<<<<<<
  *             else:
- *               wa.data.as_floats[j] = p1
+ *               wa.data.as_doubles[j] = p1
  */
-          (__pyx_v_wa->data.as_floats[__pyx_v_j]) = __pyx_v_p;
+          (__pyx_v_wa->data.as_doubles[__pyx_v_j]) = __pyx_v_p;
 
           /* "wsmtk/_whittaker.pyx":217
  *             y_tmp = y[j]
- *             z_tmp = z.data.as_floats[j]
+ *             z_tmp = z.data.as_doubles[j]
  *             if y_tmp > z_tmp:             # <<<<<<<<<<<<<<
- *               wa.data.as_floats[j] = p
+ *               wa.data.as_doubles[j] = p
  *             else:
  */
           goto __pyx_L9;
         }
 
         /* "wsmtk/_whittaker.pyx":220
- *               wa.data.as_floats[j] = p
+ *               wa.data.as_doubles[j] = p
  *             else:
- *               wa.data.as_floats[j] = p1             # <<<<<<<<<<<<<<
- *             ww.data.as_floats[j] = w[j] * wa.data.as_floats[j]
+ *               wa.data.as_doubles[j] = p1             # <<<<<<<<<<<<<<
+ *             ww.data.as_doubles[j] = w[j] * wa.data.as_doubles[j]
  * 
  */
         /*else*/ {
-          (__pyx_v_wa->data.as_floats[__pyx_v_j]) = __pyx_v_p1;
+          (__pyx_v_wa->data.as_doubles[__pyx_v_j]) = __pyx_v_p1;
         }
         __pyx_L9:;
 
         /* "wsmtk/_whittaker.pyx":221
  *             else:
- *               wa.data.as_floats[j] = p1
- *             ww.data.as_floats[j] = w[j] * wa.data.as_floats[j]             # <<<<<<<<<<<<<<
+ *               wa.data.as_doubles[j] = p1
+ *             ww.data.as_doubles[j] = w[j] * wa.data.as_doubles[j]             # <<<<<<<<<<<<<<
  * 
  *           znew[0:m] = ws2d_internal(y,l,ww)
  */
@@ -4288,11 +4288,11 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc_asy(PyArrayObject *__pyx_v_y,
           __Pyx_RaiseBufferIndexError(__pyx_t_10);
           __PYX_ERR(0, 221, __pyx_L1_error)
         }
-        (__pyx_v_ww->data.as_floats[__pyx_v_j]) = ((*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_w.rcbuffer->pybuffer.buf, __pyx_t_12, __pyx_pybuffernd_w.diminfo[0].strides)) * (__pyx_v_wa->data.as_floats[__pyx_v_j]));
+        (__pyx_v_ww->data.as_doubles[__pyx_v_j]) = ((*__Pyx_BufPtrStrided1d(__pyx_t_5wsmtk_9whittaker_dtype_t *, __pyx_pybuffernd_w.rcbuffer->pybuffer.buf, __pyx_t_12, __pyx_pybuffernd_w.diminfo[0].strides)) * (__pyx_v_wa->data.as_doubles[__pyx_v_j]));
       }
 
       /* "wsmtk/_whittaker.pyx":223
- *             ww.data.as_floats[j] = w[j] * wa.data.as_floats[j]
+ *             ww.data.as_doubles[j] = w[j] * wa.data.as_doubles[j]
  * 
  *           znew[0:m] = ws2d_internal(y,l,ww)             # <<<<<<<<<<<<<<
  * 
@@ -4317,7 +4317,7 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc_asy(PyArrayObject *__pyx_v_y,
  *           z_tmp = 0.0
  *           j = 0             # <<<<<<<<<<<<<<
  *           for j in range(m):
- *             z_tmp += abs(znew.data.as_floats[j] - z.data.as_floats[j])
+ *             z_tmp += abs(znew.data.as_doubles[j] - z.data.as_doubles[j])
  */
       __pyx_v_j = 0;
 
@@ -4325,7 +4325,7 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc_asy(PyArrayObject *__pyx_v_y,
  *           z_tmp = 0.0
  *           j = 0
  *           for j in range(m):             # <<<<<<<<<<<<<<
- *             z_tmp += abs(znew.data.as_floats[j] - z.data.as_floats[j])
+ *             z_tmp += abs(znew.data.as_doubles[j] - z.data.as_doubles[j])
  * 
  */
       __pyx_t_7 = __pyx_v_m;
@@ -4335,15 +4335,15 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc_asy(PyArrayObject *__pyx_v_y,
         /* "wsmtk/_whittaker.pyx":228
  *           j = 0
  *           for j in range(m):
- *             z_tmp += abs(znew.data.as_floats[j] - z.data.as_floats[j])             # <<<<<<<<<<<<<<
+ *             z_tmp += abs(znew.data.as_doubles[j] - z.data.as_doubles[j])             # <<<<<<<<<<<<<<
  * 
  *           if z_tmp == 0.0:
  */
-        __pyx_v_z_tmp = (__pyx_v_z_tmp + fabsf(((__pyx_v_znew->data.as_floats[__pyx_v_j]) - (__pyx_v_z->data.as_floats[__pyx_v_j]))));
+        __pyx_v_z_tmp = (__pyx_v_z_tmp + fabs(((__pyx_v_znew->data.as_doubles[__pyx_v_j]) - (__pyx_v_z->data.as_doubles[__pyx_v_j]))));
       }
 
       /* "wsmtk/_whittaker.pyx":230
- *             z_tmp += abs(znew.data.as_floats[j] - z.data.as_floats[j])
+ *             z_tmp += abs(znew.data.as_doubles[j] - z.data.as_doubles[j])
  * 
  *           if z_tmp == 0.0:             # <<<<<<<<<<<<<<
  *             break
@@ -4362,7 +4362,7 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc_asy(PyArrayObject *__pyx_v_y,
         goto __pyx_L6_break;
 
         /* "wsmtk/_whittaker.pyx":230
- *             z_tmp += abs(znew.data.as_floats[j] - z.data.as_floats[j])
+ *             z_tmp += abs(znew.data.as_doubles[j] - z.data.as_doubles[j])
  * 
  *           if z_tmp == 0.0:             # <<<<<<<<<<<<<<
  *             break
@@ -4400,7 +4400,7 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc_asy(PyArrayObject *__pyx_v_y,
  *         for i in range(m):
  *             w_tmp = w[i]             # <<<<<<<<<<<<<<
  *             y_tmp = y[i]
- *             z_tmp = z.data.as_floats[i]
+ *             z_tmp = z.data.as_doubles[i]
  */
       __pyx_t_13 = __pyx_v_i;
       __pyx_t_8 = -1;
@@ -4417,8 +4417,8 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc_asy(PyArrayObject *__pyx_v_y,
  *         for i in range(m):
  *             w_tmp = w[i]
  *             y_tmp = y[i]             # <<<<<<<<<<<<<<
- *             z_tmp = z.data.as_floats[i]
- *             fits.data.as_floats[lix] += pow(w_tmp * (y_tmp - z_tmp),2)
+ *             z_tmp = z.data.as_doubles[i]
+ *             fits.data.as_doubles[lix] += pow(w_tmp * (y_tmp - z_tmp),2)
  */
       __pyx_t_14 = __pyx_v_i;
       __pyx_t_8 = -1;
@@ -4434,38 +4434,38 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc_asy(PyArrayObject *__pyx_v_y,
       /* "wsmtk/_whittaker.pyx":238
  *             w_tmp = w[i]
  *             y_tmp = y[i]
- *             z_tmp = z.data.as_floats[i]             # <<<<<<<<<<<<<<
- *             fits.data.as_floats[lix] += pow(w_tmp * (y_tmp - z_tmp),2)
- *         fits.data.as_floats[lix] = log(fits.data.as_floats[lix])
+ *             z_tmp = z.data.as_doubles[i]             # <<<<<<<<<<<<<<
+ *             fits.data.as_doubles[lix] += pow(w_tmp * (y_tmp - z_tmp),2)
+ *         fits.data.as_doubles[lix] = log(fits.data.as_doubles[lix])
  */
-      __pyx_v_z_tmp = (__pyx_v_z->data.as_floats[__pyx_v_i]);
+      __pyx_v_z_tmp = (__pyx_v_z->data.as_doubles[__pyx_v_i]);
 
       /* "wsmtk/_whittaker.pyx":239
  *             y_tmp = y[i]
- *             z_tmp = z.data.as_floats[i]
- *             fits.data.as_floats[lix] += pow(w_tmp * (y_tmp - z_tmp),2)             # <<<<<<<<<<<<<<
- *         fits.data.as_floats[lix] = log(fits.data.as_floats[lix])
+ *             z_tmp = z.data.as_doubles[i]
+ *             fits.data.as_doubles[lix] += pow(w_tmp * (y_tmp - z_tmp),2)             # <<<<<<<<<<<<<<
+ *         fits.data.as_doubles[lix] = log(fits.data.as_doubles[lix])
  * 
  */
       __pyx_t_8 = __pyx_v_lix;
-      (__pyx_v_fits->data.as_floats[__pyx_t_8]) = ((__pyx_v_fits->data.as_floats[__pyx_t_8]) + pow((__pyx_v_w_tmp * (__pyx_v_y_tmp - __pyx_v_z_tmp)), 2.0));
+      (__pyx_v_fits->data.as_doubles[__pyx_t_8]) = ((__pyx_v_fits->data.as_doubles[__pyx_t_8]) + pow((__pyx_v_w_tmp * (__pyx_v_y_tmp - __pyx_v_z_tmp)), 2.0));
     }
 
     /* "wsmtk/_whittaker.pyx":240
- *             z_tmp = z.data.as_floats[i]
- *             fits.data.as_floats[lix] += pow(w_tmp * (y_tmp - z_tmp),2)
- *         fits.data.as_floats[lix] = log(fits.data.as_floats[lix])             # <<<<<<<<<<<<<<
+ *             z_tmp = z.data.as_doubles[i]
+ *             fits.data.as_doubles[lix] += pow(w_tmp * (y_tmp - z_tmp),2)
+ *         fits.data.as_doubles[lix] = log(fits.data.as_doubles[lix])             # <<<<<<<<<<<<<<
  * 
  *         for i in range(m1):
  */
-    (__pyx_v_fits->data.as_floats[__pyx_v_lix]) = log((__pyx_v_fits->data.as_floats[__pyx_v_lix]));
+    (__pyx_v_fits->data.as_doubles[__pyx_v_lix]) = log((__pyx_v_fits->data.as_doubles[__pyx_v_lix]));
 
     /* "wsmtk/_whittaker.pyx":242
- *         fits.data.as_floats[lix] = log(fits.data.as_floats[lix])
+ *         fits.data.as_doubles[lix] = log(fits.data.as_doubles[lix])
  * 
  *         for i in range(m1):             # <<<<<<<<<<<<<<
- *             z_tmp = z.data.as_floats[i]
- *             z2 = z.data.as_floats[i+1]
+ *             z_tmp = z.data.as_doubles[i]
+ *             z2 = z.data.as_doubles[i+1]
  */
     __pyx_t_6 = __pyx_v_m1;
     for (__pyx_t_7 = 0; __pyx_t_7 < __pyx_t_6; __pyx_t_7+=1) {
@@ -4474,79 +4474,79 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc_asy(PyArrayObject *__pyx_v_y,
       /* "wsmtk/_whittaker.pyx":243
  * 
  *         for i in range(m1):
- *             z_tmp = z.data.as_floats[i]             # <<<<<<<<<<<<<<
- *             z2 = z.data.as_floats[i+1]
- *             diff1.data.as_floats[i] = z2 - z_tmp
+ *             z_tmp = z.data.as_doubles[i]             # <<<<<<<<<<<<<<
+ *             z2 = z.data.as_doubles[i+1]
+ *             diff1.data.as_doubles[i] = z2 - z_tmp
  */
-      __pyx_v_z_tmp = (__pyx_v_z->data.as_floats[__pyx_v_i]);
+      __pyx_v_z_tmp = (__pyx_v_z->data.as_doubles[__pyx_v_i]);
 
       /* "wsmtk/_whittaker.pyx":244
  *         for i in range(m1):
- *             z_tmp = z.data.as_floats[i]
- *             z2 = z.data.as_floats[i+1]             # <<<<<<<<<<<<<<
- *             diff1.data.as_floats[i] = z2 - z_tmp
+ *             z_tmp = z.data.as_doubles[i]
+ *             z2 = z.data.as_doubles[i+1]             # <<<<<<<<<<<<<<
+ *             diff1.data.as_doubles[i] = z2 - z_tmp
  *         for i in range(m2):
  */
-      __pyx_v_z2 = (__pyx_v_z->data.as_floats[(__pyx_v_i + 1)]);
+      __pyx_v_z2 = (__pyx_v_z->data.as_doubles[(__pyx_v_i + 1)]);
 
       /* "wsmtk/_whittaker.pyx":245
- *             z_tmp = z.data.as_floats[i]
- *             z2 = z.data.as_floats[i+1]
- *             diff1.data.as_floats[i] = z2 - z_tmp             # <<<<<<<<<<<<<<
+ *             z_tmp = z.data.as_doubles[i]
+ *             z2 = z.data.as_doubles[i+1]
+ *             diff1.data.as_doubles[i] = z2 - z_tmp             # <<<<<<<<<<<<<<
  *         for i in range(m2):
- *             z_tmp = diff1.data.as_floats[i]
+ *             z_tmp = diff1.data.as_doubles[i]
  */
-      (__pyx_v_diff1->data.as_floats[__pyx_v_i]) = (__pyx_v_z2 - __pyx_v_z_tmp);
+      (__pyx_v_diff1->data.as_doubles[__pyx_v_i]) = (__pyx_v_z2 - __pyx_v_z_tmp);
     }
 
     /* "wsmtk/_whittaker.pyx":246
- *             z2 = z.data.as_floats[i+1]
- *             diff1.data.as_floats[i] = z2 - z_tmp
+ *             z2 = z.data.as_doubles[i+1]
+ *             diff1.data.as_doubles[i] = z2 - z_tmp
  *         for i in range(m2):             # <<<<<<<<<<<<<<
- *             z_tmp = diff1.data.as_floats[i]
- *             z2 = diff1.data.as_floats[i+1]
+ *             z_tmp = diff1.data.as_doubles[i]
+ *             z2 = diff1.data.as_doubles[i+1]
  */
     __pyx_t_6 = __pyx_v_m2;
     for (__pyx_t_7 = 0; __pyx_t_7 < __pyx_t_6; __pyx_t_7+=1) {
       __pyx_v_i = __pyx_t_7;
 
       /* "wsmtk/_whittaker.pyx":247
- *             diff1.data.as_floats[i] = z2 - z_tmp
+ *             diff1.data.as_doubles[i] = z2 - z_tmp
  *         for i in range(m2):
- *             z_tmp = diff1.data.as_floats[i]             # <<<<<<<<<<<<<<
- *             z2 = diff1.data.as_floats[i+1]
- *             pens.data.as_floats[lix] += pow(z2 - z_tmp,2)
+ *             z_tmp = diff1.data.as_doubles[i]             # <<<<<<<<<<<<<<
+ *             z2 = diff1.data.as_doubles[i+1]
+ *             pens.data.as_doubles[lix] += pow(z2 - z_tmp,2)
  */
-      __pyx_v_z_tmp = (__pyx_v_diff1->data.as_floats[__pyx_v_i]);
+      __pyx_v_z_tmp = (__pyx_v_diff1->data.as_doubles[__pyx_v_i]);
 
       /* "wsmtk/_whittaker.pyx":248
  *         for i in range(m2):
- *             z_tmp = diff1.data.as_floats[i]
- *             z2 = diff1.data.as_floats[i+1]             # <<<<<<<<<<<<<<
- *             pens.data.as_floats[lix] += pow(z2 - z_tmp,2)
- *         pens.data.as_floats[lix] = log(pens.data.as_floats[lix])
+ *             z_tmp = diff1.data.as_doubles[i]
+ *             z2 = diff1.data.as_doubles[i+1]             # <<<<<<<<<<<<<<
+ *             pens.data.as_doubles[lix] += pow(z2 - z_tmp,2)
+ *         pens.data.as_doubles[lix] = log(pens.data.as_doubles[lix])
  */
-      __pyx_v_z2 = (__pyx_v_diff1->data.as_floats[(__pyx_v_i + 1)]);
+      __pyx_v_z2 = (__pyx_v_diff1->data.as_doubles[(__pyx_v_i + 1)]);
 
       /* "wsmtk/_whittaker.pyx":249
- *             z_tmp = diff1.data.as_floats[i]
- *             z2 = diff1.data.as_floats[i+1]
- *             pens.data.as_floats[lix] += pow(z2 - z_tmp,2)             # <<<<<<<<<<<<<<
- *         pens.data.as_floats[lix] = log(pens.data.as_floats[lix])
+ *             z_tmp = diff1.data.as_doubles[i]
+ *             z2 = diff1.data.as_doubles[i+1]
+ *             pens.data.as_doubles[lix] += pow(z2 - z_tmp,2)             # <<<<<<<<<<<<<<
+ *         pens.data.as_doubles[lix] = log(pens.data.as_doubles[lix])
  * 
  */
       __pyx_t_8 = __pyx_v_lix;
-      (__pyx_v_pens->data.as_floats[__pyx_t_8]) = ((__pyx_v_pens->data.as_floats[__pyx_t_8]) + pow((__pyx_v_z2 - __pyx_v_z_tmp), 2.0));
+      (__pyx_v_pens->data.as_doubles[__pyx_t_8]) = ((__pyx_v_pens->data.as_doubles[__pyx_t_8]) + pow((__pyx_v_z2 - __pyx_v_z_tmp), 2.0));
     }
 
     /* "wsmtk/_whittaker.pyx":250
- *             z2 = diff1.data.as_floats[i+1]
- *             pens.data.as_floats[lix] += pow(z2 - z_tmp,2)
- *         pens.data.as_floats[lix] = log(pens.data.as_floats[lix])             # <<<<<<<<<<<<<<
+ *             z2 = diff1.data.as_doubles[i+1]
+ *             pens.data.as_doubles[lix] += pow(z2 - z_tmp,2)
+ *         pens.data.as_doubles[lix] = log(pens.data.as_doubles[lix])             # <<<<<<<<<<<<<<
  * 
  * 
  */
-    (__pyx_v_pens->data.as_floats[__pyx_v_lix]) = log((__pyx_v_pens->data.as_floats[__pyx_v_lix]));
+    (__pyx_v_pens->data.as_doubles[__pyx_v_lix]) = log((__pyx_v_pens->data.as_doubles[__pyx_v_lix]));
   }
 
   /* "wsmtk/_whittaker.pyx":255
@@ -4574,14 +4574,14 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc_asy(PyArrayObject *__pyx_v_y,
     __Pyx_RaiseBufferIndexError(__pyx_t_4);
     __PYX_ERR(0, 255, __pyx_L1_error)
   }
-  __pyx_v_llastep = ((*__Pyx_BufPtrFull1d(float *, __pyx_pybuffernd_llas.rcbuffer->pybuffer.buf, __pyx_t_15, __pyx_pybuffernd_llas.diminfo[0].strides, __pyx_pybuffernd_llas.diminfo[0].suboffsets)) - (*__Pyx_BufPtrFull1d(float *, __pyx_pybuffernd_llas.rcbuffer->pybuffer.buf, __pyx_t_16, __pyx_pybuffernd_llas.diminfo[0].strides, __pyx_pybuffernd_llas.diminfo[0].suboffsets)));
+  __pyx_v_llastep = ((*__Pyx_BufPtrFull1d(double *, __pyx_pybuffernd_llas.rcbuffer->pybuffer.buf, __pyx_t_15, __pyx_pybuffernd_llas.diminfo[0].strides, __pyx_pybuffernd_llas.diminfo[0].suboffsets)) - (*__Pyx_BufPtrFull1d(double *, __pyx_pybuffernd_llas.rcbuffer->pybuffer.buf, __pyx_t_16, __pyx_pybuffernd_llas.diminfo[0].strides, __pyx_pybuffernd_llas.diminfo[0].suboffsets)));
 
   /* "wsmtk/_whittaker.pyx":257
  *     llastep = llas[1] - llas[0]
  * 
  *     for i in range(nl1):             # <<<<<<<<<<<<<<
- *         l1 = llas.data.as_floats[i]
- *         l2 = llas.data.as_floats[i+1]
+ *         l1 = llas.data.as_doubles[i]
+ *         l2 = llas.data.as_doubles[i+1]
  */
   __pyx_t_4 = __pyx_v_nl1;
   for (__pyx_t_5 = 0; __pyx_t_5 < __pyx_t_4; __pyx_t_5+=1) {
@@ -4590,129 +4590,129 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc_asy(PyArrayObject *__pyx_v_y,
     /* "wsmtk/_whittaker.pyx":258
  * 
  *     for i in range(nl1):
- *         l1 = llas.data.as_floats[i]             # <<<<<<<<<<<<<<
- *         l2 = llas.data.as_floats[i+1]
- *         fit1 = fits.data.as_floats[i]
+ *         l1 = llas.data.as_doubles[i]             # <<<<<<<<<<<<<<
+ *         l2 = llas.data.as_doubles[i+1]
+ *         fit1 = fits.data.as_doubles[i]
  */
-    __pyx_v_l1 = (__pyx_v_llas->data.as_floats[__pyx_v_i]);
+    __pyx_v_l1 = (__pyx_v_llas->data.as_doubles[__pyx_v_i]);
 
     /* "wsmtk/_whittaker.pyx":259
  *     for i in range(nl1):
- *         l1 = llas.data.as_floats[i]
- *         l2 = llas.data.as_floats[i+1]             # <<<<<<<<<<<<<<
- *         fit1 = fits.data.as_floats[i]
- *         fit2 = fits.data.as_floats[i+1]
+ *         l1 = llas.data.as_doubles[i]
+ *         l2 = llas.data.as_doubles[i+1]             # <<<<<<<<<<<<<<
+ *         fit1 = fits.data.as_doubles[i]
+ *         fit2 = fits.data.as_doubles[i+1]
  */
-    __pyx_v_l2 = (__pyx_v_llas->data.as_floats[(__pyx_v_i + 1)]);
+    __pyx_v_l2 = (__pyx_v_llas->data.as_doubles[(__pyx_v_i + 1)]);
 
     /* "wsmtk/_whittaker.pyx":260
- *         l1 = llas.data.as_floats[i]
- *         l2 = llas.data.as_floats[i+1]
- *         fit1 = fits.data.as_floats[i]             # <<<<<<<<<<<<<<
- *         fit2 = fits.data.as_floats[i+1]
- *         pen1 = pens.data.as_floats[i]
+ *         l1 = llas.data.as_doubles[i]
+ *         l2 = llas.data.as_doubles[i+1]
+ *         fit1 = fits.data.as_doubles[i]             # <<<<<<<<<<<<<<
+ *         fit2 = fits.data.as_doubles[i+1]
+ *         pen1 = pens.data.as_doubles[i]
  */
-    __pyx_v_fit1 = (__pyx_v_fits->data.as_floats[__pyx_v_i]);
+    __pyx_v_fit1 = (__pyx_v_fits->data.as_doubles[__pyx_v_i]);
 
     /* "wsmtk/_whittaker.pyx":261
- *         l2 = llas.data.as_floats[i+1]
- *         fit1 = fits.data.as_floats[i]
- *         fit2 = fits.data.as_floats[i+1]             # <<<<<<<<<<<<<<
- *         pen1 = pens.data.as_floats[i]
- *         pen2 = pens.data.as_floats[i+1]
+ *         l2 = llas.data.as_doubles[i+1]
+ *         fit1 = fits.data.as_doubles[i]
+ *         fit2 = fits.data.as_doubles[i+1]             # <<<<<<<<<<<<<<
+ *         pen1 = pens.data.as_doubles[i]
+ *         pen2 = pens.data.as_doubles[i+1]
  */
-    __pyx_v_fit2 = (__pyx_v_fits->data.as_floats[(__pyx_v_i + 1)]);
+    __pyx_v_fit2 = (__pyx_v_fits->data.as_doubles[(__pyx_v_i + 1)]);
 
     /* "wsmtk/_whittaker.pyx":262
- *         fit1 = fits.data.as_floats[i]
- *         fit2 = fits.data.as_floats[i+1]
- *         pen1 = pens.data.as_floats[i]             # <<<<<<<<<<<<<<
- *         pen2 = pens.data.as_floats[i+1]
- *         v.data.as_floats[i] = sqrt(pow(fit2 - fit1,2) + pow(pen2 - pen1,2)) / (log(10) * llastep)
+ *         fit1 = fits.data.as_doubles[i]
+ *         fit2 = fits.data.as_doubles[i+1]
+ *         pen1 = pens.data.as_doubles[i]             # <<<<<<<<<<<<<<
+ *         pen2 = pens.data.as_doubles[i+1]
+ *         v.data.as_doubles[i] = sqrt(pow(fit2 - fit1,2) + pow(pen2 - pen1,2)) / (log(10) * llastep)
  */
-    __pyx_v_pen1 = (__pyx_v_pens->data.as_floats[__pyx_v_i]);
+    __pyx_v_pen1 = (__pyx_v_pens->data.as_doubles[__pyx_v_i]);
 
     /* "wsmtk/_whittaker.pyx":263
- *         fit2 = fits.data.as_floats[i+1]
- *         pen1 = pens.data.as_floats[i]
- *         pen2 = pens.data.as_floats[i+1]             # <<<<<<<<<<<<<<
- *         v.data.as_floats[i] = sqrt(pow(fit2 - fit1,2) + pow(pen2 - pen1,2)) / (log(10) * llastep)
- *         lamids.data.as_floats[i] = (l1+l2) / 2
+ *         fit2 = fits.data.as_doubles[i+1]
+ *         pen1 = pens.data.as_doubles[i]
+ *         pen2 = pens.data.as_doubles[i+1]             # <<<<<<<<<<<<<<
+ *         v.data.as_doubles[i] = sqrt(pow(fit2 - fit1,2) + pow(pen2 - pen1,2)) / (log(10) * llastep)
+ *         lamids.data.as_doubles[i] = (l1+l2) / 2
  */
-    __pyx_v_pen2 = (__pyx_v_pens->data.as_floats[(__pyx_v_i + 1)]);
+    __pyx_v_pen2 = (__pyx_v_pens->data.as_doubles[(__pyx_v_i + 1)]);
 
     /* "wsmtk/_whittaker.pyx":264
- *         pen1 = pens.data.as_floats[i]
- *         pen2 = pens.data.as_floats[i+1]
- *         v.data.as_floats[i] = sqrt(pow(fit2 - fit1,2) + pow(pen2 - pen1,2)) / (log(10) * llastep)             # <<<<<<<<<<<<<<
- *         lamids.data.as_floats[i] = (l1+l2) / 2
+ *         pen1 = pens.data.as_doubles[i]
+ *         pen2 = pens.data.as_doubles[i+1]
+ *         v.data.as_doubles[i] = sqrt(pow(fit2 - fit1,2) + pow(pen2 - pen1,2)) / (log(10) * llastep)             # <<<<<<<<<<<<<<
+ *         lamids.data.as_doubles[i] = (l1+l2) / 2
  * 
  */
-    (__pyx_v_v->data.as_floats[__pyx_v_i]) = (sqrt((pow((__pyx_v_fit2 - __pyx_v_fit1), 2.0) + pow((__pyx_v_pen2 - __pyx_v_pen1), 2.0))) / (log(10.0) * __pyx_v_llastep));
+    (__pyx_v_v->data.as_doubles[__pyx_v_i]) = (sqrt((pow((__pyx_v_fit2 - __pyx_v_fit1), 2.0) + pow((__pyx_v_pen2 - __pyx_v_pen1), 2.0))) / (log(10.0) * __pyx_v_llastep));
 
     /* "wsmtk/_whittaker.pyx":265
- *         pen2 = pens.data.as_floats[i+1]
- *         v.data.as_floats[i] = sqrt(pow(fit2 - fit1,2) + pow(pen2 - pen1,2)) / (log(10) * llastep)
- *         lamids.data.as_floats[i] = (l1+l2) / 2             # <<<<<<<<<<<<<<
+ *         pen2 = pens.data.as_doubles[i+1]
+ *         v.data.as_doubles[i] = sqrt(pow(fit2 - fit1,2) + pow(pen2 - pen1,2)) / (log(10) * llastep)
+ *         lamids.data.as_doubles[i] = (l1+l2) / 2             # <<<<<<<<<<<<<<
  * 
  * 
  */
-    (__pyx_v_lamids->data.as_floats[__pyx_v_i]) = ((__pyx_v_l1 + __pyx_v_l2) / 2.0);
+    (__pyx_v_lamids->data.as_doubles[__pyx_v_i]) = ((__pyx_v_l1 + __pyx_v_l2) / 2.0);
   }
 
   /* "wsmtk/_whittaker.pyx":268
  * 
  * 
- *     vmin = v.data.as_floats[k]             # <<<<<<<<<<<<<<
+ *     vmin = v.data.as_doubles[k]             # <<<<<<<<<<<<<<
  *     for i in range(1,nl1):
- *         if v.data.as_floats[i] < vmin:
+ *         if v.data.as_doubles[i] < vmin:
  */
-  __pyx_v_vmin = (__pyx_v_v->data.as_floats[__pyx_v_k]);
+  __pyx_v_vmin = (__pyx_v_v->data.as_doubles[__pyx_v_k]);
 
   /* "wsmtk/_whittaker.pyx":269
  * 
- *     vmin = v.data.as_floats[k]
+ *     vmin = v.data.as_doubles[k]
  *     for i in range(1,nl1):             # <<<<<<<<<<<<<<
- *         if v.data.as_floats[i] < vmin:
- *             vmin = v.data.as_floats[i]
+ *         if v.data.as_doubles[i] < vmin:
+ *             vmin = v.data.as_doubles[i]
  */
   __pyx_t_4 = __pyx_v_nl1;
   for (__pyx_t_5 = 1; __pyx_t_5 < __pyx_t_4; __pyx_t_5+=1) {
     __pyx_v_i = __pyx_t_5;
 
     /* "wsmtk/_whittaker.pyx":270
- *     vmin = v.data.as_floats[k]
+ *     vmin = v.data.as_doubles[k]
  *     for i in range(1,nl1):
- *         if v.data.as_floats[i] < vmin:             # <<<<<<<<<<<<<<
- *             vmin = v.data.as_floats[i]
+ *         if v.data.as_doubles[i] < vmin:             # <<<<<<<<<<<<<<
+ *             vmin = v.data.as_doubles[i]
  *             k = i
  */
-    __pyx_t_11 = (((__pyx_v_v->data.as_floats[__pyx_v_i]) < __pyx_v_vmin) != 0);
+    __pyx_t_11 = (((__pyx_v_v->data.as_doubles[__pyx_v_i]) < __pyx_v_vmin) != 0);
     if (__pyx_t_11) {
 
       /* "wsmtk/_whittaker.pyx":271
  *     for i in range(1,nl1):
- *         if v.data.as_floats[i] < vmin:
- *             vmin = v.data.as_floats[i]             # <<<<<<<<<<<<<<
+ *         if v.data.as_doubles[i] < vmin:
+ *             vmin = v.data.as_doubles[i]             # <<<<<<<<<<<<<<
  *             k = i
  * 
  */
-      __pyx_v_vmin = (__pyx_v_v->data.as_floats[__pyx_v_i]);
+      __pyx_v_vmin = (__pyx_v_v->data.as_doubles[__pyx_v_i]);
 
       /* "wsmtk/_whittaker.pyx":272
- *         if v.data.as_floats[i] < vmin:
- *             vmin = v.data.as_floats[i]
+ *         if v.data.as_doubles[i] < vmin:
+ *             vmin = v.data.as_doubles[i]
  *             k = i             # <<<<<<<<<<<<<<
  * 
- *     lopt = pow(10,lamids.data.as_floats[k])
+ *     lopt = pow(10,lamids.data.as_doubles[k])
  */
       __pyx_v_k = __pyx_v_i;
 
       /* "wsmtk/_whittaker.pyx":270
- *     vmin = v.data.as_floats[k]
+ *     vmin = v.data.as_doubles[k]
  *     for i in range(1,nl1):
- *         if v.data.as_floats[i] < vmin:             # <<<<<<<<<<<<<<
- *             vmin = v.data.as_floats[i]
+ *         if v.data.as_doubles[i] < vmin:             # <<<<<<<<<<<<<<
+ *             vmin = v.data.as_doubles[i]
  *             k = i
  */
     }
@@ -4721,14 +4721,14 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc_asy(PyArrayObject *__pyx_v_y,
   /* "wsmtk/_whittaker.pyx":274
  *             k = i
  * 
- *     lopt = pow(10,lamids.data.as_floats[k])             # <<<<<<<<<<<<<<
+ *     lopt = pow(10,lamids.data.as_doubles[k])             # <<<<<<<<<<<<<<
  * 
  *     z[0:m] = ws2d_internal(y,lopt,ww)
  */
-  __pyx_v_lopt = pow(10.0, (__pyx_v_lamids->data.as_floats[__pyx_v_k]));
+  __pyx_v_lopt = pow(10.0, (__pyx_v_lamids->data.as_doubles[__pyx_v_k]));
 
   /* "wsmtk/_whittaker.pyx":276
- *     lopt = pow(10,lamids.data.as_floats[k])
+ *     lopt = pow(10,lamids.data.as_doubles[k])
  * 
  *     z[0:m] = ws2d_internal(y,lopt,ww)             # <<<<<<<<<<<<<<
  * 
@@ -4762,7 +4762,7 @@ static PyObject *__pyx_f_5wsmtk_9whittaker_ws2d_vc_asy(PyArrayObject *__pyx_v_y,
   /* "wsmtk/_whittaker.pyx":177
  * 
  * 
- * cpdef ws2d_vc_asy(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[float] llas, float p):             # <<<<<<<<<<<<<<
+ * cpdef ws2d_vc_asy(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[double] llas, double p):             # <<<<<<<<<<<<<<
  *     ## vcurve with asymmetric smoothing
  * 
  */
@@ -4808,7 +4808,7 @@ static PyObject *__pyx_pw_5wsmtk_9whittaker_5ws2d_vc_asy(PyObject *__pyx_self, P
   PyArrayObject *__pyx_v_y = 0;
   PyArrayObject *__pyx_v_w = 0;
   arrayobject *__pyx_v_llas = 0;
-  float __pyx_v_p;
+  double __pyx_v_p;
   PyObject *__pyx_r = 0;
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("ws2d_vc_asy (wrapper)", 0);
@@ -4868,7 +4868,7 @@ static PyObject *__pyx_pw_5wsmtk_9whittaker_5ws2d_vc_asy(PyObject *__pyx_self, P
     __pyx_v_y = ((PyArrayObject *)values[0]);
     __pyx_v_w = ((PyArrayObject *)values[1]);
     __pyx_v_llas = ((arrayobject *)values[2]);
-    __pyx_v_p = __pyx_PyFloat_AsFloat(values[3]); if (unlikely((__pyx_v_p == (float)-1) && PyErr_Occurred())) __PYX_ERR(0, 177, __pyx_L3_error)
+    __pyx_v_p = __pyx_PyFloat_AsDouble(values[3]); if (unlikely((__pyx_v_p == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 177, __pyx_L3_error)
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
@@ -4892,7 +4892,7 @@ static PyObject *__pyx_pw_5wsmtk_9whittaker_5ws2d_vc_asy(PyObject *__pyx_self, P
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_5wsmtk_9whittaker_4ws2d_vc_asy(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_y, PyArrayObject *__pyx_v_w, arrayobject *__pyx_v_llas, float __pyx_v_p) {
+static PyObject *__pyx_pf_5wsmtk_9whittaker_4ws2d_vc_asy(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_y, PyArrayObject *__pyx_v_w, arrayobject *__pyx_v_llas, double __pyx_v_p) {
   __Pyx_LocalBuf_ND __pyx_pybuffernd_llas;
   __Pyx_Buffer __pyx_pybuffer_llas;
   __Pyx_LocalBuf_ND __pyx_pybuffernd_w;
@@ -4927,7 +4927,7 @@ static PyObject *__pyx_pf_5wsmtk_9whittaker_4ws2d_vc_asy(CYTHON_UNUSED PyObject 
   __pyx_pybuffernd_w.diminfo[0].strides = __pyx_pybuffernd_w.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_w.diminfo[0].shape = __pyx_pybuffernd_w.rcbuffer->pybuffer.shape[0];
   {
     __Pyx_BufFmt_StackElem __pyx_stack[1];
-    if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_llas.rcbuffer->pybuffer, (PyObject*)__pyx_v_llas, &__Pyx_TypeInfo_float, PyBUF_FORMAT| PyBUF_INDIRECT, 1, 0, __pyx_stack) == -1)) __PYX_ERR(0, 177, __pyx_L1_error)
+    if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_llas.rcbuffer->pybuffer, (PyObject*)__pyx_v_llas, &__Pyx_TypeInfo_double, PyBUF_FORMAT| PyBUF_INDIRECT, 1, 0, __pyx_stack) == -1)) __PYX_ERR(0, 177, __pyx_L1_error)
   }
   __pyx_pybuffernd_llas.diminfo[0].strides = __pyx_pybuffernd_llas.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_llas.diminfo[0].shape = __pyx_pybuffernd_llas.rcbuffer->pybuffer.shape[0]; __pyx_pybuffernd_llas.diminfo[0].suboffsets = __pyx_pybuffernd_llas.rcbuffer->pybuffer.suboffsets[0];
   __Pyx_XDECREF(__pyx_r);
@@ -8225,8 +8225,8 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_RuntimeError, __pyx_k_RuntimeError, sizeof(__pyx_k_RuntimeError), 0, 0, 1, 1},
   {&__pyx_n_s_ValueError, __pyx_k_ValueError, sizeof(__pyx_k_ValueError), 0, 0, 1, 1},
   {&__pyx_n_s_cline_in_traceback, __pyx_k_cline_in_traceback, sizeof(__pyx_k_cline_in_traceback), 0, 0, 1, 1},
-  {&__pyx_n_s_f, __pyx_k_f, sizeof(__pyx_k_f), 0, 0, 1, 1},
-  {&__pyx_n_s_float32, __pyx_k_float32, sizeof(__pyx_k_float32), 0, 0, 1, 1},
+  {&__pyx_n_s_d, __pyx_k_d, sizeof(__pyx_k_d), 0, 0, 1, 1},
+  {&__pyx_n_s_double, __pyx_k_double, sizeof(__pyx_k_double), 0, 0, 1, 1},
   {&__pyx_n_s_import, __pyx_k_import, sizeof(__pyx_k_import), 0, 0, 1, 1},
   {&__pyx_n_s_llas, __pyx_k_llas, sizeof(__pyx_k_llas), 0, 0, 1, 1},
   {&__pyx_n_s_lmda, __pyx_k_lmda, sizeof(__pyx_k_lmda), 0, 0, 1, 1},
@@ -8534,8 +8534,8 @@ static int __pyx_pymod_exec_whittaker(PyObject *__pyx_pyinit_module)
  * 
  * cimport numpy as np
  * import numpy as np             # <<<<<<<<<<<<<<
- * tFloat = np.float32
- * ctypedef np.float32_t dtype_t
+ * tFloat = np.double
+ * ctypedef np.double_t dtype_t
  */
   __pyx_t_1 = __Pyx_Import(__pyx_n_s_numpy, 0, -1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 7, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
@@ -8545,13 +8545,13 @@ static int __pyx_pymod_exec_whittaker(PyObject *__pyx_pyinit_module)
   /* "wsmtk/_whittaker.pyx":8
  * cimport numpy as np
  * import numpy as np
- * tFloat = np.float32             # <<<<<<<<<<<<<<
- * ctypedef np.float32_t dtype_t
+ * tFloat = np.double             # <<<<<<<<<<<<<<
+ * ctypedef np.double_t dtype_t
  * from libc.math cimport log, pow, sqrt
  */
   __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 8, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_float32); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 8, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_double); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 8, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   if (PyDict_SetItem(__pyx_d, __pyx_n_s_tFloat, __pyx_t_2) < 0) __PYX_ERR(0, 8, __pyx_L1_error)
