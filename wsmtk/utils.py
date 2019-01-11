@@ -178,7 +178,7 @@ class DateHelper:
 
     def getDV(self,nd):
 
-        return(np.full(len(self.daily),nd,dtype='float32'))
+        return(np.full(len(self.daily),nd,dtype='double'))
 
     def getDIX(self):
         return([self.daily.index(x) for x in self.target])
@@ -390,12 +390,12 @@ def dekvec(yr):
 
 def init_shared(ncell):
     '''Create shared value array for smoothing.'''
-    shared_array_base = multiprocessing.Array(ctypes.c_float,ncell,lock=False)
+    shared_array_base = multiprocessing.Array(ctypes.c_double,ncell,lock=False)
     return(shared_array_base)
 
 def tonumpyarray(shared_array):
     '''Create numpy array from shared memory.'''
-    nparray= np.frombuffer(shared_array,dtype=ctypes.c_float)
+    nparray= np.frombuffer(shared_array,dtype=ctypes.c_double)
     assert nparray.base is shared_array
     return nparray
 
@@ -445,25 +445,25 @@ def execute_ws2d(ix):
         ix ([int]): List of indices as integer
     '''
 
-    arr_raw[ix,:] = ws2d(y = arr_raw[ix,:], lmda = 10**parameters['s'], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1, dtype='float32'))
+    arr_raw[ix,:] = ws2d(y = arr_raw[ix,:], lmda = 10**parameters['s'], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1, dtype='double'))
 
     if parameters['shared_array_smooth']:
 
         z2 = parameters['vec_dly'].copy()
         z2[ z2 != parameters['nd'] ] = arr_raw[ix,:]
-        z2[...] = ws2d(y = z2, lmda = 0.0001, w = np.array((z2 != parameters['nd']) * 1,dtype='float32'))
+        z2[...] = ws2d(y = z2, lmda = 0.0001, w = np.array((z2 != parameters['nd']) * 1,dtype='double'))
         arr_smooth[ix,:] = z2[parameters['dix']]
 
 def execute_ws2d_sgrid(ix):
     '''Execute whittaker smoother with s from grid in worker.'''
 
-    arr_raw[ix,:] = ws2d(y = arr_raw[ix,:], lmda = 10**arr_sgrid[ix], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1,dtype='float32'))
+    arr_raw[ix,:] = ws2d(y = arr_raw[ix,:], lmda = 10**arr_sgrid[ix], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1,dtype='double'))
 
     if parameters['shared_array_smooth']:
 
         z2 = parameters['vec_dly'].copy()
         z2[ z2 != parameters['nd'] ] = arr_raw[ix,:]
-        z2[...] = ws2d(y = z2, lmda = 0.0001, w = np.array((z2 != parameters['nd']) * 1,dtype='float32'))
+        z2[...] = ws2d(y = z2, lmda = 0.0001, w = np.array((z2 != parameters['nd']) * 1,dtype='double'))
         arr_smooth[ix,:] = z2[parameters['dix']]
 
 def execute_ws2d_vc(ix):
@@ -471,23 +471,23 @@ def execute_ws2d_vc(ix):
 
     if parameters['p']:
 
-        arr_raw[ix,:], arr_sgrid[ix] = ws2d_vc_asy(y = arr_raw[ix,:], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1,dtype='float32'), llas = array.array('f',parameters['srange']), p = parameters['p'])
+        arr_raw[ix,:], arr_sgrid[ix] = ws2d_vc_asy(y = arr_raw[ix,:], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1,dtype='double'), llas = array.array('d',parameters['srange']), p = parameters['p'])
     else:
 
-        arr_raw[ix,:], arr_sgrid[ix] = ws2d_vc(y = arr_raw[ix,:], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1,dtype='float32'), llas = array.array('f',parameters['srange']))
+        arr_raw[ix,:], arr_sgrid[ix] = ws2d_vc(y = arr_raw[ix,:], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1,dtype='double'), llas = array.array('d',parameters['srange']))
 
     if parameters['shared_array_smooth']:
 
         z2 = parameters['vec_dly'].copy()
         z2[ z2 != parameters['nd'] ] = arr_raw[ix,:]
-        z2[...] = ws2d(y = z2, lmda = 0.0001, w = np.array((z2 != parameters['nd']) * 1,dtype='float32'))
+        z2[...] = ws2d(y = z2, lmda = 0.0001, w = np.array((z2 != parameters['nd']) * 1,dtype='double'))
         arr_smooth[ix,:] = z2[parameters['dix']]
 
 
 def execute_ws2d_vcOpt(ix):
     '''Execute whittaker smoother with V-curve 2step-optimization of s in worker.'''
 
-    z, lopt =  ws2d_vc(y = arr_raw[ix,:], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1,dtype='float32'), llas = array.array('f',parameters['srange']))
+    z, lopt =  ws2d_vc(y = arr_raw[ix,:], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1,dtype='double'), llas = array.array('d',parameters['srange']))
 
     srange_lim = parameters['srange'][parameters['srange'] <= np.log10(lopt)]
 
@@ -496,14 +496,14 @@ def execute_ws2d_vcOpt(ix):
 
     if parameters['p']:
 
-        arr_raw[ix,:], arr_sgrid[ix] = ws2d_vc_asy(y = arr_raw[ix,:], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1,dtype='float32'), llas = array.array('f',srange_lim), p = parameters['p'])
+        arr_raw[ix,:], arr_sgrid[ix] = ws2d_vc_asy(y = arr_raw[ix,:], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1,dtype='double'), llas = array.array('d',srange_lim), p = parameters['p'])
     else:
 
-        arr_raw[ix,:], arr_sgrid[ix] = ws2d_vc(y = arr_raw[ix,:], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1,dtype='float32'), llas = array.array('f',srange_lim))
+        arr_raw[ix,:], arr_sgrid[ix] = ws2d_vc(y = arr_raw[ix,:], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1,dtype='double'), llas = array.array('d',srange_lim))
 
     if parameters['shared_array_smooth']:
 
         z2 = parameters['vec_dly'].copy()
         z2[ z2 != parameters['nd'] ] = arr_raw[ix,:]
-        z2[...] = ws2d(y = z2, lmda = 0.0001, w = np.array((z2 != parameters['nd']) * 1,dtype='float32'))
+        z2[...] = ws2d(y = z2, lmda = 0.0001, w = np.array((z2 != parameters['nd']) * 1,dtype='double'))
         arr_smooth[ix,:] = z2[parameters['dix']]

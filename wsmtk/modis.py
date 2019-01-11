@@ -722,14 +722,14 @@ class MODISsmth5:
 
             else:
 
-                arr_raw = np.zeros((rawchunks[0], len(self.rawdates)),dtype='float32')
+                arr_raw = np.zeros((rawchunks[0], len(self.rawdates)),dtype='double')
 
                 # Create weights array
                 wts = arr_raw.copy()
 
                 if self.tinterpolate:
 
-                    arr_smooth = np.zeros((smoothchunks[0],len(dates.target)),dtype='float32')
+                    arr_smooth = np.zeros((smoothchunks[0],len(dates.target)),dtype='double')
 
                     vec_dly = dates.getDV(nodata)
 
@@ -771,7 +771,7 @@ class MODISsmth5:
 
                             z2 = vec_dly.copy()
                             z2[z2 != nodata] = arr_raw[r,:]
-                            z2[...] = ws2d(y = z2, lmda = 0.0001, w = np.array((z2 != nodata) * 1,dtype='float32'))
+                            z2[...] = ws2d(y = z2, lmda = 0.0001, w = np.array((z2 != nodata) * 1,dtype='double'))
                             arr_smooth[r,:] = z2[dix]
 
                         else:
@@ -916,15 +916,15 @@ class MODISsmth5:
 
             else:
 
-                arr_raw = np.zeros((rawchunks[0], len(self.rawdates)),dtype='float32')
-                arr_sgrid = np.zeros((rawchunks[0],),dtype='float32')
+                arr_raw = np.zeros((rawchunks[0], len(self.rawdates)),dtype='double')
+                arr_sgrid = np.zeros((rawchunks[0],),dtype='double')
 
                 # Create weights array
                 wts = arr_raw.copy()
 
                 if self.tinterpolate:
 
-                    arr_smooth = np.zeros((smoothchunks[0],len(dates.target)),dtype='float32')
+                    arr_smooth = np.zeros((smoothchunks[0],len(dates.target)),dtype='double')
 
                     vec_dly = dates.getDV(nodata)
 
@@ -968,7 +968,7 @@ class MODISsmth5:
 
                             z2 = vec_dly.copy()
                             z2[z2 != nodata] = arr_raw[r,:]
-                            z2[...] = ws2d(y = z2, lmda = 0.0001, w = np.array((z2 != nodata) * 1,dtype='float32'))
+                            z2[...] = ws2d(y = z2, lmda = 0.0001, w = np.array((z2 != nodata) * 1,dtype='double'))
                             arr_smooth[r,:] = z2[dix]
 
                         else:
@@ -1125,15 +1125,15 @@ class MODISsmth5:
 
             else:
 
-                arr_raw = np.zeros((rawchunks[0], len(self.rawdates)),dtype='float32')
-                arr_sgrid = np.zeros((rawchunks[0],),dtype='float32')
+                arr_raw = np.zeros((rawchunks[0], len(self.rawdates)),dtype='double')
+                arr_sgrid = np.zeros((rawchunks[0],),dtype='double')
 
                 # Create weights array
                 wts = arr_raw.copy()
 
                 if self.tinterpolate:
 
-                    arr_smooth = np.zeros((smoothchunks[0],len(dates.target)),dtype='float32')
+                    arr_smooth = np.zeros((smoothchunks[0],len(dates.target)),dtype='double')
 
                     vec_dly = dates.getDV(nodata)
 
@@ -1170,15 +1170,15 @@ class MODISsmth5:
                     for r in mapIX:
 
                         if p:
-                            arr_raw[r,:] , arr_sgrid[r] = ws2d_vc_asy(y = arr_raw[r,:], w = np.array((arr_raw[r,:] != nodata) * 1,dtype='float32'), llas = array.array('f',srange),p=p)
+                            arr_raw[r,:] , arr_sgrid[r] = ws2d_vc_asy(y = arr_raw[r,:], w = np.array((arr_raw[r,:] != nodata) * 1,dtype='double'), llas = array.array('d',srange),p=p)
                         else:
-                            arr_raw[r,:] , arr_sgrid[r] = ws2d_vc(y = arr_raw[r,:], w = np.array((arr_raw[r,:] != nodata) * 1,dtype='float32'), llas = array.array('f',srange))
+                            arr_raw[r,:] , arr_sgrid[r] = ws2d_vc(y = arr_raw[r,:], w = np.array((arr_raw[r,:] != nodata) * 1,dtype='double'), llas = array.array('d',srange))
 
                         if self.tinterpolate:
 
                             z2 = vec_dly.copy()
                             z2[z2 != nodata] = arr_raw[r,:]
-                            z2[...] = ws2d(y = z2, lmda = 0.0001, w = np.array((z2 != nodata) * 1,dtype='float32'))
+                            z2[...] = ws2d(y = z2, lmda = 0.0001, w = np.array((z2 != nodata) * 1,dtype='double'))
                             arr_smooth[r,:] = z2[dix]
 
                         else:
@@ -1346,15 +1346,15 @@ class MODISsmth5:
 
             else:
 
-                arr_raw = np.zeros((rawchunks[0], len(self.rawdates)),dtype='float32')
-                arr_sgrid = np.zeros((rawchunks[0],),dtype='float32')
+                arr_raw = np.zeros((rawchunks[0], len(self.rawdates)),dtype='double')
+                arr_sgrid = np.zeros((rawchunks[0],),dtype='double')
 
                 # Create weights array
                 wts = arr_raw.copy()
 
                 if self.tinterpolate:
 
-                    arr_smooth = np.zeros((smoothchunks[0],len(dates.target)),dtype='float32')
+                    arr_smooth = np.zeros((smoothchunks[0],len(dates.target)),dtype='double')
 
                     vec_dly = dates.getDV(nodata)
 
@@ -1371,7 +1371,7 @@ class MODISsmth5:
                         arr_smooth[...] = nodata
                     except TypeError:
                         pass
-                        
+
                     wts[...] = 0
 
                     for bc in range(0,len(self.rawdates),rawchunks[1]):
@@ -1390,7 +1390,7 @@ class MODISsmth5:
 
                     for r in mapIX:
 
-                        z , lopt = ws2d_vc(y = arr_raw[r,:], w = np.array((arr_raw[r,:] != nodata) * 1,dtype='float32'), llas = array.array('f',srange))
+                        z , lopt = ws2d_vc(y = arr_raw[r,:], w = np.array((arr_raw[r,:] != nodata) * 1,dtype='double'), llas = array.array('d',srange))
 
                         srange_lim = srange[srange <= np.log10(lopt)]
 
@@ -1398,15 +1398,15 @@ class MODISsmth5:
                             srange_lim = np.concatenate([srange_lim-0.2,srange_lim])
 
                         if p:
-                            arr_raw[r,:] , arr_sgrid[r] = ws2d_vc_asy(y = arr_raw[r,:], w = np.array((arr_raw[r,:] != nodata) * 1,dtype='float32'), llas = array.array('f',srange_lim),p=p)
+                            arr_raw[r,:] , arr_sgrid[r] = ws2d_vc_asy(y = arr_raw[r,:], w = np.array((arr_raw[r,:] != nodata) * 1,dtype='double'), llas = array.array('f',srange_lim),p=p)
                         else:
-                            arr_raw[r,:] , arr_sgrid[r] = ws2d_vc(y = arr_raw[r,:], w = np.array((arr_raw[r,:] != nodata) * 1,dtype='float32'), llas = array.array('f',srange_lim))
+                            arr_raw[r,:] , arr_sgrid[r] = ws2d_vc(y = arr_raw[r,:], w = np.array((arr_raw[r,:] != nodata) * 1,dtype='double'), llas = array.array('f',srange_lim))
 
                         if self.tinterpolate:
 
                             z2 = vec_dly.copy()
                             z2[z2 != nodata] = arr_raw[r,:]
-                            z2[...] = ws2d(y = z2, lmda = 0.0001, w = np.array((z2 != nodata) * 1,dtype='float32'))
+                            z2[...] = ws2d(y = z2, lmda = 0.0001, w = np.array((z2 != nodata) * 1,dtype='double'))
                             arr_smooth[r,:] = z2[dix]
 
                         else:

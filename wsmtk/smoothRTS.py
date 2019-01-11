@@ -170,7 +170,7 @@ class RTS:
         for yo, ys, xo, xs in iterateBlocks(self.nrows,self.ncols,self.bsize):
 
             # Create value and weight arrays
-            arr = np.zeros((ys*xs,self.nfiles),dtype='float32')
+            arr = np.zeros((ys*xs,self.nfiles),dtype='double')
             wts = arr.copy()
 
             # Helper view
@@ -243,7 +243,7 @@ class RTS:
 
         # modify target directory based on asymmetric or normal whittaker
 
-        srange_arr = array.array('f',srange)
+        srange_arr = array.array('d',srange)
 
         if p:
             tdir = self.targetdir + '/filtvcp/'
@@ -270,9 +270,9 @@ class RTS:
 
         for yo, ys, xo, xs in iterateBlocks(self.nrows,self.ncols,self.bsize):
 
-            arr = np.zeros((ys*xs,self.nfiles),dtype='float32')
+            arr = np.zeros((ys*xs,self.nfiles),dtype='double')
             wts = arr.copy()
-            sarr = np.zeros((ys*xs),dtype='float32')
+            sarr = np.zeros((ys*xs),dtype='double')
 
             arr_helper = arr.view()
             arr_helper.shape = (ys,xs,self.nfiles)
@@ -367,7 +367,7 @@ class RTS:
             p (float): P-value for percentile
         '''
 
-        srange_arr = array.array('f',srange)
+        srange_arr = array.array('d',srange)
 
         # modify target directory based on asymmetric or normal whittaker
         if p:
@@ -395,9 +395,9 @@ class RTS:
 
         for yo, ys, xo, xs in iterateBlocks(self.nrows,self.ncols,self.bsize):
 
-            arr = np.zeros((ys*xs,self.nfiles),dtype='float32')
+            arr = np.zeros((ys*xs,self.nfiles),dtype='double')
             wts = arr.copy()
-            sarr = np.zeros((ys*xs),dtype='float32')
+            sarr = np.zeros((ys*xs),dtype='double')
 
             arr_helper = arr.view()
             arr_helper.shape = (ys,xs,self.nfiles)
@@ -428,9 +428,9 @@ class RTS:
                 srange_lim = srange[srange <= np.log10(sopt)]
 
                 if len(srange_lim)==1:
-                    srange_lim = array.array('f',np.concatenate([srange_lim-0.2,srange_lim]))
+                    srange_lim = array.array('d',np.concatenate([srange_lim-0.2,srange_lim]))
                 else:
-                    srange_lim = array.array('f',srange_lim)
+                    srange_lim = array.array('d',srange_lim)
 
                 if p:
 

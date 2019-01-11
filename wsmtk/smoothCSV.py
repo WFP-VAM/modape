@@ -58,7 +58,7 @@ def main():
     resdf['ID'] = pd.concat([pd.Series(['Lon','Lat']),pd.Series(np.linspace(1,len(df)-2,len(df)-2)),pd.Series(['Sopt','logSopt'])],ignore_index=True)
 
     # Initialize array
-    tmparr = np.zeros(len(df)-2,dtype='float32')
+    tmparr = np.zeros(len(df)-2,dtype='double')
 
     # If fixed s
     if args.svalue:
@@ -77,7 +77,7 @@ def main():
 
             tmparr[...] = val[2:]
 
-            val[2:] = ws2d(tmparr,s,np.array((tmparr > 0)*1,dtype='float32'))
+            val[2:] = ws2d(tmparr,s,np.array((tmparr > 0)*1,dtype='double'))
 
             resdf[c] =  pd.concat([pd.Series(val),pd.Series([s,np.log10(s)])],ignore_index=True)
 
@@ -90,12 +90,12 @@ def main():
             assert len(args.srange) == 3, 'Expected 3 inputs for S range: smin smax step!'
 
             try:
-                srange = array.array('f',np.linspace(args.srange[0],args.srange[1],args.srange[1]/args.srange[2]+1))
+                srange = array.array('d',np.linspace(args.srange[0],args.srange[1],args.srange[1]/args.srange[2]+1))
             except:
                 print('Error parsing S range values')
                 raise
         else:
-            srange = array.array('f',np.linspace(0.0,4.0,41))
+            srange = array.array('d',np.linspace(0.0,4.0,41))
             args.srange = [0.0,4.0,0.1]
 
         # If asymmetric V-curve
@@ -113,7 +113,7 @@ def main():
 
                 tmparr[...] = val[2:]
 
-                val[2:], sopt = ws2d_vc_asy(tmparr,np.array((tmparr > 0)*1,dtype='float32'),srange,args.pvalue)
+                val[2:], sopt = ws2d_vc_asy(tmparr,np.array((tmparr > 0)*1,dtype='double'),srange,args.pvalue)
 
                 resdf[c] =  pd.concat([pd.Series(val),pd.Series([sopt,np.log10(sopt)]),pd.Series(args.pvalue)],ignore_index=True)
 
@@ -130,7 +130,7 @@ def main():
 
                 tmparr[...] = val[2:]
 
-                val[2:], sopt = ws2d_vc(tmparr,np.array((tmparr > 0)*1,dtype='float32'),srange)
+                val[2:], sopt = ws2d_vc(tmparr,np.array((tmparr > 0)*1,dtype='double'),srange)
 
                 resdf[c] =  pd.concat([pd.Series(val),pd.Series([sopt,np.log10(sopt)])],ignore_index=True)
 
