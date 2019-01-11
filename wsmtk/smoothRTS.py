@@ -223,8 +223,8 @@ class RTS:
             thefile.write('\n')
             thefile.write('Timestamp: {}\n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
             thefile.write('\n')
-            thefile.write('Sopt: {}\n'.format(10**s))
-            thefile.write('log10(Sopt): {}\n'.format(s))
+            thefile.write('Sopt: {}\n'.format(s))
+            thefile.write('log10(Sopt): {}\n'.format(np.log10(s)))
             thefile.write('Nodata value: {}\n'.format(self.nodata))
             thefile.write('\n')
 
