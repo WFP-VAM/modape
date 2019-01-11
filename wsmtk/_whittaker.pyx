@@ -275,4 +275,4 @@ cpdef ws2d_vc_asy(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[float] lla
 
     z[0:m] = ws2d_internal(y,lopt,ww)
 
-    return z, lopt
+    return z, lopt, lamids, v
