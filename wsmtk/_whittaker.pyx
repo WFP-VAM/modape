@@ -9,6 +9,44 @@ tFloat = np.double
 ctypedef np.double_t dtype_t
 from libc.math cimport log, pow, sqrt
 
+cpdef lag1corr(np.ndarray[dtype_t] data1, np.ndarray[dtype_t] data2, double nd):
+
+    ## Calculate Lag-1 autocorrelation
+    ## adapted from https://stackoverflow.com/a/29194624/5997555
+
+    cdef int M, sub
+    cdef double sum1, sum2, var_sum1, var_sum2, cross_sum, std1, std2, cross_mean
+
+    M = data1.size
+
+    sum1 = 0.
+    sum2 = 0.
+    sub = 0
+    for i in range(M):
+        if data1[i] != nd and data2[i] != nd:
+            sum1 += data1[i]
+            sum2 += data2[i]
+        else:
+            sub += 1
+    mean1 = sum1 / (M-sub)
+    mean2 = sum2 / (M-sub)
+
+    var_sum1 = 0.
+    var_sum2 = 0.
+    cross_sum = 0.
+    for i in range(M):
+        if data1[i] != nd and data2[i] != nd:
+            var_sum1 += (data1[i] - mean1) ** 2
+            var_sum2 += (data2[i] - mean2) ** 2
+            cross_sum += (data1[i] * data2[i])
+
+    std1 = (var_sum1 / (M-sub)) ** .5
+    std2 = (var_sum2 / (M-sub)) ** .5
+    cross_mean = cross_sum / (M-sub)
+
+    return (cross_mean - mean1 * mean2) / (std1 * std2)
+
+
 cpdef ws2d(np.ndarray[dtype_t] y, double lmda, np.ndarray[dtype_t] w):
     cdef array dbl_array_template = array('d', [])
     cdef int i, i1, i2, m, n
