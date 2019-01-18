@@ -172,7 +172,7 @@ class MODISquery:
                 for item in self.modisURLs:
                     flist.write("%s\n" % item)
 
-            args = ['aria2c','--file-allocation=none','-c','-x','10','-s','10','--http-user',self.username,'--http-passwd',self.password,'-d',self.targetdir]
+            args = ['aria2c','--file-allocation=none','-m','50','--retry-wait','2','-c','-x','10','-s','10','--http-user',self.username,'--http-passwd',self.password,'-d',self.targetdir]
 
             # execute subprocess
             p = Popen(args + ['-i','{}/MODIS_filelist.txt'.format(self.targetdir)])

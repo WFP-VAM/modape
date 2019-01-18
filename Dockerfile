@@ -8,13 +8,13 @@ ENV CPL_ZIP_ENCODING UTF-8
 
 RUN conda install -y python=3.5
 
-RUN apt-get update && apt-get install -y vim gcc build-essential
+RUN apt-get update && apt-get install -y vim gcc build-essential aria2
 
 RUN useradd -m worker
 
 #RUN conda update --quiet --yes conda
 RUN conda install -y \
-	pip numpy cython pytables h5py scipy cython gdal
+	pip h5py gdal
 
 RUN conda clean -y -t
 
