@@ -382,7 +382,7 @@ def main():
                 if not smt_h5.exists:
                     smt_h5.create()
 
-                smt_h5.ws2d_vcOpt(args.srange,pv)
+                smt_h5.ws2d_vc(args.srange,pv)
 
                 if not args.quiet:
                     bar.next()
