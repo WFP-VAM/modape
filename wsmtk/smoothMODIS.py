@@ -81,7 +81,7 @@ def run_ws2d_vc(h5):
         smt_h5.ws2d_vc(pdict['srange'])
 
 def run_ws2d_vcp(h5):
-    '''Run smoother with V-curve optimization of s with two-step optimization
+    '''Run asymmetric smoother with V-curve optimization of s
 
     Args:
         pdict: dictionary with processing parameters for tile
@@ -320,7 +320,7 @@ def main():
 
     else:
 
-        if args.vcurve:
+        if args.vc:
 
             if not args.quiet:
                 print('\nRunning whittaker smoother V-curve optimization ... \n')
@@ -338,7 +338,7 @@ def main():
                 if not smt_h5.exists:
                     smt_h5.create()
 
-                smt_h5.ws2d_vc(args.srange,args.pvalue)
+                smt_h5.ws2d_vc(args.srange)
 
                 if not args.quiet:
                     bar.next()
@@ -347,7 +347,7 @@ def main():
                 bar.finish()
                 print('[{}]: Done.'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
 
-        elif args.twostep:
+        elif args.vcp:
 
             if not args.quiet:
                 print('\nRunning whittaker smoother 2-step V-curve optimization ... \n')
@@ -355,6 +355,23 @@ def main():
                 bar.goto(0)
 
             for h5 in files:
+
+                if not args.pvalue:
+
+                    if re.match('M.D13',os.path.basename(h5)):
+
+                        pv = 0.90
+
+                    elif re.match('M.D11',os.path.basename(h5)):
+
+                        pv = 0.95
+
+                    else:
+
+                        pv = 0.50
+                else:
+
+                    pv = args.pvalue
 
                 if not os.path.isfile(h5):
                     print('Raw HDF5 {} not found! Please check path.'.format(h5))
@@ -365,7 +382,7 @@ def main():
                 if not smt_h5.exists:
                     smt_h5.create()
 
-                smt_h5.ws2d_vcOpt(args.srange,args.pvalue)
+                smt_h5.ws2d_vcOpt(args.srange,pv)
 
                 if not args.quiet:
                     bar.next()
