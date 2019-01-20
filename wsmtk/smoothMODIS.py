@@ -265,27 +265,27 @@ def main():
 
 
 
-        '''
-        # Check if V-curve optimization is true
-        elif args.twostep:
+            '''
+            # Check if V-curve optimization is true
+            elif args.twostep:
 
-            processing_dict['srange'] = args.srange
+                processing_dict['srange'] = args.srange
 
-            processing_dict['pvalue'] = args.pvalue
+                processing_dict['pvalue'] = args.pvalue
 
-            if not args.quiet:
-                print('\nRunning whittaker smoother 2-step V-curve optimization ... \n')
+                if not args.quiet:
+                    print('\nRunning whittaker smoother 2-step V-curve optimization ... \n')
 
-            with closing(Pool(processes=args.parallel_tiles,initializer = initfun, initargs = (processing_dict,))) as pool:
+                with closing(Pool(processes=args.parallel_tiles,initializer = initfun, initargs = (processing_dict,))) as pool:
 
-                res = pool.map(run_ws2d_vcOpt,files)
+                    res = pool.map(run_ws2d_vcOpt,files)
 
-            pool.close()
-            pool.join()
+                pool.close()
+                pool.join()
 
-            if not args.quiet:
-                print('[{}]: Done.'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
-        '''
+                if not args.quiet:
+                    print('[{}]: Done.'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
+            '''
         elif args.svalue:
 
             processing_dict['s'] = args.svalue
