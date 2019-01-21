@@ -140,7 +140,7 @@ class DateHelper:
             yrmin = int(min([x[:4] for x in rawdates]))
             yrmax = int(max([x[:4] for x in rawdates]))
 
-            daily_tmp = [y for x in range(yrmin,yrmax+1,1) for y in tvec(x,1)]
+            daily_tmp = [y for x in range(yrmin,yrmax+2,1) for y in tvec(x,1)]
 
             stop = (fromjulian(rawdates[-1]) + datetime.timedelta(rtres)).strftime('%Y%j')
 
