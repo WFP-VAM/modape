@@ -11,7 +11,7 @@ import h5py
 from progress.bar import Bar
 from progress.spinner import Spinner
 from wsmtk.utils import *
-from wsmtk.whittaker import ws2d, ws2d_vc, ws2d_vc_asy
+from wsmtk.whittaker import lag1corr, ws2d, ws2d_vc, ws2d_vc_asy
 from contextlib import contextmanager, closing
 import warnings
 import itertools
@@ -1169,10 +1169,26 @@ class MODISsmth5:
 
                     for r in mapIX:
 
-                        if p:
-                            arr_raw[r,:] , arr_sgrid[r] = ws2d_vc_asy(y = arr_raw[r,:], w = np.array((arr_raw[r,:] != nodata) * 1,dtype='double'), llas = array.array('d',srange),p=p)
+                        if not srange:
+
+                            lc = lag1corr(arr_raw[r,:-1],arr_raw[r,1:],nodata)
+
+                            if lc <= 0.5:
+                                sr = np.linspace(-2.0,1.0,16.0)
+
+                            elif lc > 0.5:
+                                sr = np.linspace(0.0,3.0,16.0)
+
+                            else:
+                                sr = np.linspace(-1.0,1.0,11.0)
                         else:
-                            arr_raw[r,:] , arr_sgrid[r] = ws2d_vc(y = arr_raw[r,:], w = np.array((arr_raw[r,:] != nodata) * 1,dtype='double'), llas = array.array('d',srange))
+
+                            sr = srange
+
+                        if p:
+                            arr_raw[r,:] , arr_sgrid[r] = ws2d_vc_asy(y = arr_raw[r,:], w = np.array((arr_raw[r,:] != nodata) * 1,dtype='double'), llas = array.array('d',sr),p=p)
+                        else:
+                            arr_raw[r,:] , arr_sgrid[r] = ws2d_vc(y = arr_raw[r,:], w = np.array((arr_raw[r,:] != nodata) * 1,dtype='double'), llas = array.array('d',sr))
 
                         if self.tinterpolate:
 
