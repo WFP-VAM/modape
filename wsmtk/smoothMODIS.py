@@ -350,7 +350,7 @@ def main():
         elif args.vcp:
 
             if not args.quiet:
-                print('\nRunning whittaker smoother 2-step V-curve optimization ... \n')
+                print('\nRunning whittaker smoother asymmetric V-curve optimization ... \n')
                 bar = Bar('Processing',fill='=',max=len(files),suffix='%(percent)d%%  ')
                 bar.goto(0)
 
