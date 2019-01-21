@@ -469,6 +469,7 @@ def execute_ws2d_sgrid(ix):
 def execute_ws2d_vc(ix):
     '''Execute whittaker smoother with V-curve optimization of s in worker.'''
 
+
     if not parameters['p']:
 
         arr_raw[ix,:], arr_sgrid[ix] = ws2d_vc(y = arr_raw[ix,:], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1,dtype='double'), llas = array.array('d',parameters['srange']))
@@ -477,15 +478,18 @@ def execute_ws2d_vc(ix):
 
         if not parameters['srange']:
 
-            lc = lag1corr(arr_raw[ix,:-1],arr_raw[ix,1:],parameters['nd'])
+            lc = lag1corr(arr_raw[ix,:-1],arr_raw[ix,1:],int(parameters['nd']))
 
             if lc <= 0.5:
-                parameters['srange'] = np.linspace(-2,1,16)
+                srange = np.linspace(-2.0,1.0,16.0)
+
+            elif lc > 0.5:
+                srange = np.linspace(0.0,3.0,16.0)
 
             else:
-                parameters['srange'] = np.linspace(0,3,16)
+                srange = np.linspace(-1.0,1.0,11.0)
 
-        arr_raw[ix,:], arr_sgrid[ix] = ws2d_vc_asy(y = arr_raw[ix,:], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1,dtype='double'), llas = array.array('d',parameters['srange']), p = parameters['p'])
+        arr_raw[ix,:], arr_sgrid[ix] = ws2d_vc_asy(y = arr_raw[ix,:], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1,dtype='double'), llas = array.array('d',srange), p = parameters['p'])
 
     if parameters['shared_array_smooth']:
 
