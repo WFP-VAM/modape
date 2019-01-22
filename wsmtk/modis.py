@@ -670,7 +670,7 @@ class MODISsmth5:
 
                     # Shift for interpolation
                     for d in self.rawdates:
-                        vec_dly[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = 0
+                        vec_dly[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
 
                 else:
                     vec_dly = None
@@ -735,7 +735,7 @@ class MODISsmth5:
 
                     # Shift for interpolation
                     for d in self.rawdates:
-                        vec_dly[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = 0
+                        vec_dly[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
 
                 else:
                     arr_smooth = None
@@ -859,7 +859,7 @@ class MODISsmth5:
 
                     # Shift for interpolation
                     for d in self.rawdates:
-                        vec_dly[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = 0
+                        vec_dly[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
 
                 else:
                     vec_dly = None
@@ -930,7 +930,7 @@ class MODISsmth5:
 
                     # Shift for interpolation
                     for d in self.rawdates:
-                        vec_dly[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = 0
+                        vec_dly[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
 
                 else:
                     arr_smooth = None
@@ -1064,7 +1064,7 @@ class MODISsmth5:
 
                     # Shift for interpolation
                     for d in self.rawdates:
-                        vec_dly[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = 0
+                        vec_dly[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
 
                 else:
                     vec_dly = None
@@ -1139,7 +1139,7 @@ class MODISsmth5:
 
                     # Shift for interpolation
                     for d in self.rawdates:
-                        vec_dly[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = 0
+                        vec_dly[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
 
                 else:
                     arr_smooth = None
@@ -1285,7 +1285,7 @@ class MODISsmth5:
 
                     # Shift for interpolation
                     for d in self.rawdates:
-                        vec_dly[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = 0
+                        vec_dly[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
 
                 else:
                     vec_dly = None
@@ -1360,7 +1360,7 @@ class MODISsmth5:
 
                     # Shift for interpolation
                     for d in self.rawdates:
-                        vec_dly[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = 0
+                        vec_dly[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
 
                 else:
                     arr_smooth = None
