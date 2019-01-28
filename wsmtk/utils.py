@@ -480,10 +480,10 @@ def execute_ws2d_vc(ix):
 
             lc = lag1corr(arr_raw[ix,:-1],arr_raw[ix,1:],int(parameters['nd']))
 
-            if lc <= 0.5:
+            if lc > 0.5:
                 srange = np.linspace(-2.0,1.0,16.0)
 
-            elif lc > 0.5:
+            elif lc <= 0.5:
                 srange = np.linspace(0.0,3.0,16.0)
 
             else:
