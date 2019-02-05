@@ -20,6 +20,7 @@ import gc
 import array
 import multiprocessing as mp
 import traceback
+import uuid
 try:
     import gdal
 except ImportError:
@@ -167,22 +168,35 @@ class MODISquery:
             except:
                 raise SystemExit("ARIA2 download needs ARIA2 to be available in PATH! Please make sure it's installed and available in PATH!")
 
+            # if targetdir doesn't exist, create
+
+            if not os.path.exists(self.targetdir):
+
+                try:
+                    os.mkdir(self.targetdir)
+                except FileNotFoundError:
+                    print('\nCould not create target directory {} (Trying to create directories recursively?)\n'.format(self.targetdir))
+                    sys.exit(1)
+
+
+            flist = self.targetdir + '/{}'.format(str(uuid.uuid4()))
+
             # write URLs of query resuls to disk for WGET
-            with open(self.targetdir + '/MODIS_filelist.txt','w') as flist:
+            with open(flist,'w') as thefile:
                 for item in self.modisURLs:
-                    flist.write("%s\n" % item)
+                    thefile.write("%s\n" % item)
 
             args = ['aria2c','--file-allocation=none','-m','50','--retry-wait','2','-c','-x','10','-s','10','--http-user',self.username,'--http-passwd',self.password,'-d',self.targetdir]
 
             # execute subprocess
-            p = Popen(args + ['-i','{}/MODIS_filelist.txt'.format(self.targetdir)])
+            p = Popen(args + ['-i',flist])
             p.wait()
 
             # remove filelist.txt if all downloads are successful
             if p.returncode is not 0:
-                print("Error occured during download, please check files against MODIS_filelist.txt!")
+                print("\nError (error code {}) occured during download, please check files against MODIS URL list ({})!\n".format(p.returncode,flist))
             else:
-                os.remove(self.targetdir + '/MODIS_filelist.txt')
+                os.remove(flist)
 
 
             self.files = [self.targetdir + os.path.basename(x) for x in self.modisURLs]
