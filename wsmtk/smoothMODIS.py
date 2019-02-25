@@ -157,12 +157,12 @@ def main():
     parser.add_argument("input", help='Smoothing input - either one or more raw MODIS HDF5 file(s) or path containing raw MODIS HDF5 file(s)',nargs='+',metavar='input')
     parser.add_argument("-s","--svalue", help='S value for smoothing (has to be log10(s))', metavar='', type = float)
     parser.add_argument("-S","--srange", help='S value range for V-curve (float log10(s) values as smin smax sstep - default -1.0 1.0 0.2)',nargs='+',metavar='')
-    parser.add_argument("-t","--tempint", help='Value for temporal interpolation (integer required - default is native temporal resolution AKA no interpolation)', metavar='',type = int)
+    parser.add_argument("-t","--tempint", help='Value for temporal interpolation (integer required - default is native temporal resolution i.e. no interpolation)', metavar='',type = int)
     parser.add_argument("-n","--nsmooth", help='Number of raw timesteps used for smoothing',default=0, metavar='',type = int)
     parser.add_argument("-u","--nupdate", help='Number of smoothed timesteps to be updated in HDF5 file',default=0, metavar='',type = int)
     parser.add_argument("-p","--pvalue", help='Value for asymmetric smoothing (float required)', metavar='', type = float)
     parser.add_argument("-d","--targetdir", help='Target directory for smoothed output',default=os.getcwd(),metavar='')
-    parser.add_argument("--startdate", help='Startdate fur temporal interpolation (format YYYY-MM-DD or YYYYJJJ)',metavar='')
+    parser.add_argument("--startdate", help='Startdate for temporal interpolation (format YYYY-MM-DD or YYYYJJJ)',metavar='')
     parser.add_argument("--vc", help='Use V-curve for s value optimization',action='store_true')
     parser.add_argument("--vcp", help='Use asymmetric V-curve for s value optimization',action='store_true')
     #parser.add_argument("--twostep", help='Use 2-step V-curve for s value optimization',action='store_true')
@@ -263,29 +263,6 @@ def main():
             if not args.quiet:
                 print('[{}]: Done.'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
 
-
-
-            '''
-            # Check if V-curve optimization is true
-            elif args.twostep:
-
-                processing_dict['srange'] = args.srange
-
-                processing_dict['pvalue'] = args.pvalue
-
-                if not args.quiet:
-                    print('\nRunning whittaker smoother 2-step V-curve optimization ... \n')
-
-                with closing(Pool(processes=args.parallel_tiles,initializer = initfun, initargs = (processing_dict,))) as pool:
-
-                    res = pool.map(run_ws2d_vcOpt,files)
-
-                pool.close()
-                pool.join()
-
-                if not args.quiet:
-                    print('[{}]: Done.'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
-            '''
         elif args.svalue:
 
             processing_dict['s'] = args.svalue
