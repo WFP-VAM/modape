@@ -116,7 +116,9 @@ class MODISquery:
 
                 if tile_filter:
 
-                    self.modisURLs = [x for x in urls if any(t in x for t in tile_filter)]
+                    tiles = [x.lower() for x in tile_filter]
+
+                    self.modisURLs = [x for x in urls if any(t in x for t in tiles)]
 
                 else:
 

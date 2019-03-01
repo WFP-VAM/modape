@@ -121,24 +121,26 @@ def main():
 
                 if args.tile_filter and not args.roi:
 
+                    # cast to lowercase
+                    tiles = [x.lower() for x in args.tile_filter]
 
                     with open(os.path.join(this_dir, "data", "ModlandTiles_bbx.pkl"),'rb') as bbx_raw:
                         bbx = pickle.load(bbx_raw)
 
 
-                    if len(args.tile_filter) == 1:
+                    if len(tiles) == 1:
 
-                        h,v = re.findall('\d+',args.tile_filter[0])
+                        h,v = re.findall('\d+',tiles[0])
 
                         bbx_sel = bbx[(bbx.ih == int(h)) & (bbx.iv == int(v))]
 
                         # roi is approx. center point of tile
                         args.roi = [bbx_sel.lat_max.values[0] - 5, bbx_sel.lon_max.values[0] - (bbx_sel.lon_max.values[0] - bbx_sel.lon_min.values[0])/2]
 
-                    elif len(args.tile_filter) > 1:
+                    elif len(tiles) > 1:
 
-                        h = list(set([re.findall('\d+',x.split('v')[0])[0] for x in args.tile_filter]))
-                        v = list(set([re.findall('\d+',x.split('v')[1])[0] for x in args.tile_filter]))
+                        h = list(set([re.findall('\d+',x.split('v')[0])[0] for x in tiles]))
+                        v = list(set([re.findall('\d+',x.split('v')[1])[0] for x in tiles]))
 
                         # aoi is bbox including all tiles from tile_filter, plus 1 degree buffer
                         bbx_sel = bbx.query('|'.join(['ih == {}'.format(int(x)) for x in h])).query('|'.join(['iv == {}'.format(int(x)) for x in v]))
