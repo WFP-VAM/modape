@@ -6,6 +6,7 @@ import shutil
 import os
 import sys
 import glob
+import re
 import datetime
 import argparse
 import multiprocessing
@@ -77,6 +78,40 @@ def run_ws2d_vc(h5):
         if not smt_h5.exists:
             smt_h5.create()
 
+        smt_h5.ws2d_vc(pdict['srange'])
+
+def run_ws2d_vcp(h5):
+    '''Run asymmetric smoother with V-curve optimization of s
+
+    Args:
+        pdict: dictionary with processing parameters for tile
+    '''
+    if not os.path.isfile(h5):
+
+        print('Raw HDF5 {} not found! Please check path.'.format(h5))
+
+    else:
+
+        smt_h5 = MODISsmth5(rawfile = h5, startdate = pdict['startdate'], tempint = pdict['tempint'], nsmooth = pdict['nsmooth'], nupdate = pdict['nupdate'], targetdir = pdict['targetdir'], nworkers = pdict['nworkers'])
+
+        if not smt_h5.exists:
+            smt_h5.create()
+
+        if not pdict['pvalue']:
+
+            if re.match('M.D13',os.path.basename(h5)):
+
+                 pdict['pvalue'] = 0.90
+
+            elif re.match('M.D11',os.path.basename(h5)):
+
+                pdict['pvalue'] = 0.95
+
+            else:
+
+                pdict['pvalue'] = 0.50
+
+
         smt_h5.ws2d_vc(pdict['srange'],pdict['pvalue'])
 
 def run_ws2d_vcOpt(h5):
@@ -122,14 +157,15 @@ def main():
     parser.add_argument("input", help='Smoothing input - either one or more raw MODIS HDF5 file(s) or path containing raw MODIS HDF5 file(s)',nargs='+',metavar='input')
     parser.add_argument("-s","--svalue", help='S value for smoothing (has to be log10(s))', metavar='', type = float)
     parser.add_argument("-S","--srange", help='S value range for V-curve (float log10(s) values as smin smax sstep - default -1.0 1.0 0.2)',nargs='+',metavar='')
-    parser.add_argument("-t","--tempint", help='Value for temporal interpolation (integer required - default is native temporal resolution AKA no interpolation)', metavar='',type = int)
+    parser.add_argument("-t","--tempint", help='Value for temporal interpolation (integer required - default is native temporal resolution i.e. no interpolation)', metavar='',type = int)
     parser.add_argument("-n","--nsmooth", help='Number of raw timesteps used for smoothing',default=0, metavar='',type = int)
     parser.add_argument("-u","--nupdate", help='Number of smoothed timesteps to be updated in HDF5 file',default=0, metavar='',type = int)
     parser.add_argument("-p","--pvalue", help='Value for asymmetric smoothing (float required)', metavar='', type = float)
     parser.add_argument("-d","--targetdir", help='Target directory for smoothed output',default=os.getcwd(),metavar='')
-    parser.add_argument("--startdate", help='Startdate fur temporal interpolation (format YYYY-MM-DD or YYYYJJJ)',metavar='')
-    parser.add_argument("--vcurve", help='Use V-curve for s value optimization',action='store_true')
-    parser.add_argument("--twostep", help='Use 2-step V-curve for s value optimization',action='store_true')
+    parser.add_argument("--startdate", help='Startdate for temporal interpolation (format YYYY-MM-DD or YYYYJJJ)',metavar='')
+    parser.add_argument("--vc", help='Use V-curve for s value optimization',action='store_true')
+    parser.add_argument("--vcp", help='Use asymmetric V-curve for s value optimization',action='store_true')
+    #parser.add_argument("--twostep", help='Use 2-step V-curve for s value optimization',action='store_true')
     parser.add_argument("--parallel-tiles", help='Number of tiles processed in parallel (default = None)',default=1,type=int,metavar='')
     parser.add_argument("--nworkers", help='Number of worker processes used per tile (default is number is 1 - no concurrency)',default=1, metavar='', type = int)
     parser.add_argument("--quiet", help='Be quiet',action='store_true')
@@ -159,8 +195,6 @@ def main():
             args.srange = np.linspace(float(args.srange[0]),float(args.srange[1]),abs((float(args.srange[0])-float(args.srange[1])))/float(args.srange[2]) + 1.0)
         except (IndexError,TypeError,AssertionError):
             raise SystemExit('Error with s value array values. Expected three values of float log10(s) -  smin smax sstep !')
-    else:
-        args.srange = np.linspace(-1.0,1.0,11.0)
 
     if args.svalue:
         try:
@@ -187,11 +221,15 @@ def main():
 
     if args.parallel_tiles > 1:
 
-        if args.vcurve:
+        if args.vc:
 
-            processing_dict['srange'] = args.srange
+            if not args.srange:
 
-            processing_dict['pvalue'] = args.pvalue
+                processing_dict['srange'] = np.linspace(-1.0,1.0,11.0)
+
+            else:
+
+                processing_dict['srange'] = args.srange
 
             if not args.quiet:
                 print('\nRunning whittaker smoother V-curve optimization ... \n')
@@ -206,20 +244,18 @@ def main():
             if not args.quiet:
                 print('[{}]: Done.'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
 
-
-        # Check if V-curve optimization is true
-        elif args.twostep:
+        elif args.vcp:
 
             processing_dict['srange'] = args.srange
 
             processing_dict['pvalue'] = args.pvalue
 
             if not args.quiet:
-                print('\nRunning whittaker smoother 2-step V-curve optimization ... \n')
+                print('\nRunning whittaker smoother asymmetric V-curve optimization ... \n')
 
             with closing(Pool(processes=args.parallel_tiles,initializer = initfun, initargs = (processing_dict,))) as pool:
 
-                res = pool.map(run_ws2d_vcOpt,files)
+                res = pool.map(run_ws2d_vcp,files)
 
             pool.close()
             pool.join()
@@ -261,7 +297,7 @@ def main():
 
     else:
 
-        if args.vcurve:
+        if args.vc:
 
             if not args.quiet:
                 print('\nRunning whittaker smoother V-curve optimization ... \n')
@@ -279,7 +315,7 @@ def main():
                 if not smt_h5.exists:
                     smt_h5.create()
 
-                smt_h5.ws2d_vc(args.srange,args.pvalue)
+                smt_h5.ws2d_vc(args.srange)
 
                 if not args.quiet:
                     bar.next()
@@ -288,14 +324,31 @@ def main():
                 bar.finish()
                 print('[{}]: Done.'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
 
-        elif args.twostep:
+        elif args.vcp:
 
             if not args.quiet:
-                print('\nRunning whittaker smoother 2-step V-curve optimization ... \n')
+                print('\nRunning whittaker smoother asymmetric V-curve optimization ... \n')
                 bar = Bar('Processing',fill='=',max=len(files),suffix='%(percent)d%%  ')
                 bar.goto(0)
 
             for h5 in files:
+
+                if not args.pvalue:
+
+                    if re.match('M.D13',os.path.basename(h5)):
+
+                        pv = 0.90
+
+                    elif re.match('M.D11',os.path.basename(h5)):
+
+                        pv = 0.95
+
+                    else:
+
+                        pv = 0.50
+                else:
+
+                    pv = args.pvalue
 
                 if not os.path.isfile(h5):
                     print('Raw HDF5 {} not found! Please check path.'.format(h5))
@@ -306,7 +359,7 @@ def main():
                 if not smt_h5.exists:
                     smt_h5.create()
 
-                smt_h5.ws2d_vcOpt(args.srange,args.pvalue)
+                smt_h5.ws2d_vc(args.srange,pv)
 
                 if not args.quiet:
                     bar.next()
