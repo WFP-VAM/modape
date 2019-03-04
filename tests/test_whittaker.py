@@ -17,33 +17,36 @@ class TestWhittaker(unittest.TestCase):
     def tearDownClass(cls):
         cls.data = None
 
+    def setUp(self):
+        
+        self.y = self.data['y']
+        self.w = self.data['w']
+
+    def tearDown(self):
+        self.y = None
+        self.w = None
+
     def test_lag1corr(self):
-        y = self.data['y']
-        self.assertEqual(lag1corr(y[:-1],y[1:],-3000.0),self.data['lag1corr'])
+
+        self.assertEqual(lag1corr(self.y[:-1],self.y[1:],-3000.0),self.data['lag1corr'])
 
     def test_ws2d(self):
-        y = self.data['y']
-        w = self.data['w']
 
-        z = np.array(ws2d(y,10,w),dtype='double')
+        z = np.array(ws2d(self.y,10,self.w),dtype='double')
 
         self.assertTrue(np.all(z == self.data['z_ws2d']))
 
 
     def test_ws2dvc(self):
-        y = self.data['y']
-        w = self.data['w']
 
-        z,sopt = ws2d_vc(y,w,array.array('d',np.linspace(-2.0,1.0,16.0)))
+        z,sopt = ws2d_vc(self.y,self.w,array.array('d',np.linspace(-2.0,1.0,16.0)))
 
         self.assertTrue(np.all(np.array(z,dtype='double') == self.data['z_ws2dvc']))
         self.assertEqual(sopt,self.data['sopt_ws2dvc'])
 
     def test_ws2dvcp(self):
-        y = self.data['y']
-        w = self.data['w']
 
-        z,sopt = ws2d_vc_asy(y,w,array.array('d',np.linspace(-2.0,1.0,16.0)),p = 0.90)
+        z,sopt = ws2d_vc_asy(self.y,self.w,array.array('d',np.linspace(-2.0,1.0,16.0)),p = 0.90)
 
         self.assertTrue(np.all(np.array(z,dtype='double') == self.data['z_ws2dvcp']))
         self.assertEqual(sopt,self.data['sopt_ws2dvcp'])
