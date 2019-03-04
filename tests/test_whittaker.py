@@ -18,11 +18,12 @@ class TestWhittaker(unittest.TestCase):
         cls.data = None
 
     def setUp(self):
-        
+
         self.y = self.data['y']
         self.w = self.data['w']
 
     def tearDown(self):
+        
         self.y = None
         self.w = None
 
