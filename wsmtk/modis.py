@@ -281,7 +281,7 @@ class MODISrawh5:
 
         # When no parameter is selected, the default is VIM and LTD
         if not param:
-            ref_sds = ref_sds = [x[0] for x in ref.GetSubDatasets() if self.paramdict['VIM'] in x[0] or self.paramdict['LTD'] in x[0]][0]
+            ref_sds = [x[0] for x in ref.GetSubDatasets() if self.paramdict['VIM'] in x[0] or self.paramdict['LTD'] in x[0]][0]
             self.param = [key for key, value in self.paramdict.items() if value in ref_sds][0]
             ref_sds = None
         elif param in self.paramdict.keys():
