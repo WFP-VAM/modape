@@ -16,20 +16,20 @@ def create_gdal(x,y):
 
     return(ds)
 
-def create_h5():
+def create_h5(fn,x,y,tr,ts,r):
 
-    with h5py.File('MXD13A2.h18v06.006.VIM.h5','a',driver='core',backing_store=True) as h5f:
+    with h5py.File(fn,'a',driver='core',backing_store=True) as h5f:
 
-        dset = h5f.create_dataset('data',shape=(1200*1200,4),dtype='Int16',maxshape=(1200*1200,None),chunks=((1200*1200)//25,10),compression='gzip',fillvalue=-3000)
+        dset = h5f.create_dataset('data',shape=(x * y,4),dtype='Int16',maxshape=(x * y,None),chunks=((x * y)//25,10),compression='gzip',fillvalue=-3000)
         h5f.create_dataset('dates',data = [x.encode('ascii') for x in ['2002185','2002193','2002201','2002209']],shape=(4,),maxshape=(None,),dtype='S8',compression='gzip')
         dset.attrs['nodata'] = -3000
-        dset.attrs['temporalresolution'] = 8
-        dset.attrs['tshift'] = 8
-        dset.attrs['RasterXSize'] = 1200
-        dset.attrs['RasterYSize'] = 1200
+        dset.attrs['temporalresolution'] = tr
+        dset.attrs['tshift'] = ts
+        dset.attrs['RasterXSize'] = x
+        dset.attrs['RasterYSize'] = y
         dset.attrs['geotransform'] = (0,0,0,0,0)
         dset.attrs['projection'] = 'PRJ'
-        dset.attrs['resolution'] = 0.009
+        dset.attrs['resolution'] = r
 
 
 class TestMODIS(unittest.TestCase):
@@ -121,31 +121,73 @@ class TestMODIS(unittest.TestCase):
     #@patch('wsmtk.modis.h5py.File')
     def test_smoothHDF5(self):
 
-        create_h5()
+        # Test smooth tiled 10-day NDVI
 
-        smth5 = MODISsmth5('MXD13A2.h18v06.006.VIM.h5',tempint = 10)
-
-        self.assertEqual(os.path.basename(smth5.outname),'MXD13A2.h18v06.006.txd.VIM.h5')
-        self.assertEqual(smth5.rawdates,['2002185','2002193','2002201','2002209'])
-        self.assertTrue(smth5.tinterpolate)
-        self.assertEqual(smth5.temporalresolution,10)
-        self.assertFalse(smth5.exists)
-
-        smth5.create()
-
-        self.assertTrue(smth5.exists)
-
-        with h5py.File('MXD13A2.h18v06.006.txd.VIM.h5','r+') as h5f:
-
-            self.assertEqual([x.decode() for x in h5f.get('dates')[...]],['2002186', '2002196', '2002206', '2002217'])
+        try:
 
 
-        os.remove('MXD13A2.h18v06.006.VIM.h5')
-        os.remove('MXD13A2.h18v06.006.txd.VIM.h5')
+            create_h5(fn = 'MXD13A2.h18v06.006.VIM.h5',x = 1200, y = 1200, tr = 8, ts = 8, r = 0.009)
+
+            smth5 = MODISsmth5('MXD13A2.h18v06.006.VIM.h5',tempint = 10)
+
+            self.assertEqual(os.path.basename(smth5.outname),'MXD13A2.h18v06.006.txd.VIM.h5')
+            self.assertEqual(smth5.rawdates,['2002185','2002193','2002201','2002209'])
+            self.assertTrue(smth5.tinterpolate)
+            self.assertEqual(smth5.temporalresolution,10)
+            self.assertFalse(smth5.exists)
+
+            smth5.create()
+
+            self.assertTrue(smth5.exists)
+
+            with h5py.File('MXD13A2.h18v06.006.txd.VIM.h5','r+') as h5f:
+
+                self.assertEqual([x.decode() for x in h5f.get('dates')[...]],['2002186', '2002196', '2002206', '2002217'])
+
+        except:
+            try:
+                os.remove('MXD13A2.h18v06.006.VIM.h5')
+                os.remove('MXD13A2.h18v06.006.txd.VIM.h5')
+            except:
+                pass
+            raise
+        else:
+            os.remove('MXD13A2.h18v06.006.VIM.h5')
+            os.remove('MXD13A2.h18v06.006.txd.VIM.h5')
+
+        # Test smooth global 5-day LST Day
+
+        try:
+
+            create_h5(fn = 'MOD11C2.006.LTD.h5',x = 3600, y = 7200, tr = 8, ts = 4, r = 0.05)
 
 
-    ## TO TEST: lst, parameter,  global
+            smth5 = MODISsmth5('MOD11C2.006.LTD.h5',tempint = 5)
 
+            self.assertEqual(os.path.basename(smth5.outname),'MOD11C2.006.txp.LTD.h5')
+            self.assertEqual(smth5.rawdates,['2002185','2002193','2002201','2002209'])
+            self.assertTrue(smth5.tinterpolate)
+            self.assertEqual(smth5.temporalresolution,5)
+            self.assertFalse(smth5.exists)
+
+            smth5.create()
+
+            self.assertTrue(smth5.exists)
+
+            with h5py.File('MOD11C2.006.txp.LTD.h5','r+') as h5f:
+
+                self.assertEqual([x.decode() for x in h5f.get('dates')[...]],['2002189', '2002194', '2002199', '2002204','2002209','2002215'])
+
+        except:
+            try:
+                os.remove('MOD11C2.006.LTD.h5')
+                os.remove('MOD11C2.006.txp.LTD.h5')
+            except:
+                pass
+            raise
+        else:
+            os.remove('MOD11C2.006.LTD.h5')
+            os.remove('MOD11C2.006.txp.LTD.h5')
 
 
     # def test_query(self):
