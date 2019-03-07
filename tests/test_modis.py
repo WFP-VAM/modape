@@ -1,12 +1,12 @@
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 import uuid
 import os
 import shutil
 import gdal
 import h5py
 
-from wsmtk.modis import MODISrawh5, MODISsmth5
+from wsmtk.modis import MODISquery, MODISrawh5, MODISsmth5
 
 def create_gdal(x,y):
 
@@ -49,6 +49,77 @@ class TestMODIS(unittest.TestCase):
     def tearDown(self):
 
         pass
+
+    @patch('wsmtk.modis.requests.Session')
+    def test_query(self,mocked_get):
+
+        class MockRSP:
+            status_code = 200
+            content = b'''<?xml version="1.0"?>
+            <inventory>
+                <url>https://e4ftl01.cr.usgs.gov//MODV6_Cmp_B/MOLT/MOD13A2.006/2000.02.18/MOD13A2.A2000049.h18v06.006.2015136104646.hdf</url>
+                <url>https://e4ftl01.cr.usgs.gov//MODV6_Cmp_B/MOLT/MOD13A2.006/2000.03.05/MOD13A2.A2000065.h18v06.006.2015136022922.hdf</url>
+                <url>https://e4ftl01.cr.usgs.gov//MODV6_Cmp_B/MOLT/MOD13A2.006/2000.03.21/MOD13A2.A2000081.h18v06.006.2015136035955.hdf</url>
+                <url>https://e4ftl01.cr.usgs.gov//MODV6_Cmp_B/MOLT/MOD13A2.006/2000.04.06/MOD13A2.A2000097.h18v06.006.2015136035959.hdf</url>
+                <url>https://e4ftl01.cr.usgs.gov//MODV6_Cmp_B/MOLT/MOD13A2.006/2000.04.22/MOD13A2.A2000113.h18v06.006.2015137034359.hdf</url>
+            </inventory>
+            '''
+
+
+            def raise_for_status(self):
+                pass
+
+        # Test query of MOD tiled NDVI
+
+        mock_rsp = MockRSP()
+
+        urls = ["https://e4ftl01.cr.usgs.gov//MODV6_Cmp_B/MOLT/MOD13A2.006/2000.02.18/MOD13A2.A2000049.h18v06.006.2015136104646.hdf",
+                "https://e4ftl01.cr.usgs.gov//MODV6_Cmp_B/MOLT/MOD13A2.006/2000.03.05/MOD13A2.A2000065.h18v06.006.2015136022922.hdf",
+                "https://e4ftl01.cr.usgs.gov//MODV6_Cmp_B/MOLT/MOD13A2.006/2000.03.21/MOD13A2.A2000081.h18v06.006.2015136035955.hdf",
+                "https://e4ftl01.cr.usgs.gov//MODV6_Cmp_B/MOLT/MOD13A2.006/2000.04.06/MOD13A2.A2000097.h18v06.006.2015136035959.hdf",
+                "https://e4ftl01.cr.usgs.gov//MODV6_Cmp_B/MOLT/MOD13A2.006/2000.04.22/MOD13A2.A2000113.h18v06.006.2015137034359.hdf"]
+
+        mocked_get.return_value.__enter__.return_value.get.return_value = mock_rsp
+
+        query = MODISquery(url='http://test.query',begindate = '2000-01-01',enddate = '2000-04-30')
+
+        self.assertFalse(query.global_flag)
+        self.assertEqual(query.modisURLs,urls)
+        self.assertEqual(query.tiles,['h18v06'])
+        self.assertEqual(query.results,5)
+
+        del query
+        # mock_rsp.content = b'''<?xml version="1.0"?>
+        # <inventory>
+        #     <url>https://e4ftl01.cr.usgs.gov/MOLA/MYD11C2.006/2002.07.04/</url>
+        #     <url>https://e4ftl01.cr.usgs.gov/MOLA/MYD11C2.006/2002.07.12/</url>
+        #     <url>https://e4ftl01.cr.usgs.gov/MOLA/MYD11C2.006/2002.07.20/</url>
+        #     <url>https://e4ftl01.cr.usgs.gov/MOLA/MYD11C2.006/2002.07.28/</url>
+        #     <url>https://e4ftl01.cr.usgs.gov/MOLA/MYD11C2.006/2002.08.05/</url>
+        # </inventory>
+        # '''
+        #
+        # mocked_get.return_value.__enter__.return_value.get.return_value = mock_rsp
+        #
+        # query = MODISquery(url='http://test.query',begindate = '2002-07-01',enddate = '2002-08-15')
+        #
+        # self.assertTrue(query.global_flag)
+        # #self.assertEqual(query.modisURLs,urls)
+        #
+        # #self.assertEqual(query.tiles,['h18v06'])
+        # self.assertEqual(query.results,5)
+        #
+        #
+        # # Test query of MYD global LST
+
+
+
+
+
+
+
+
+
 
 
     @patch('wsmtk.modis.gdal.Dataset.GetMetadataItem',return_value = -3000)
@@ -188,28 +259,6 @@ class TestMODIS(unittest.TestCase):
         else:
             os.remove('MOD11C2.006.LTD.h5')
             os.remove('MOD11C2.006.txp.LTD.h5')
-
-
-    # def test_query(self):
-    #
-    #     with patch('wsmtk.modis.requests.session') as mocked_get:
-    #
-    #         mocked_get.get = 'test'
-    #         mocked_get.statuscode = 200
-    #         mocked_get.return_value.content = b'''<?xml version="1.0"?>
-    #         <inventory>
-    #             <url>https://e4ftl01.cr.usgs.gov//MODV6_Cmp_B/MOLT/MOD13A2.006/2000.02.18/MOD13A2.A2000049.h18v06.006.2015136104646.hdf</url>
-    #             <url>https://e4ftl01.cr.usgs.gov//MODV6_Cmp_B/MOLT/MOD13A2.006/2000.03.05/MOD13A2.A2000065.h18v06.006.2015136022922.hdf</url>
-    #             <url>https://e4ftl01.cr.usgs.gov//MODV6_Cmp_B/MOLT/MOD13A2.006/2000.03.21/MOD13A2.A2000081.h18v06.006.2015136035955.hdf</url>
-    #             <url>https://e4ftl01.cr.usgs.gov//MODV6_Cmp_B/MOLT/MOD13A2.006/2000.04.06/MOD13A2.A2000097.h18v06.006.2015136035959.hdf</url>
-    #             <url>https://e4ftl01.cr.usgs.gov//MODV6_Cmp_B/MOLT/MOD13A2.006/2000.04.22/MOD13A2.A2000113.h18v06.006.2015137034359.hdf</url>
-    #         </inventory>
-    #         '''
-    #
-    #         query = MODISquery(url='mock://test.query',begindate = '2002-07-04',enddate = '2003-12-31')
-    #         print(query)
-
-
 
 
 
