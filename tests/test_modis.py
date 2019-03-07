@@ -2,9 +2,11 @@ import unittest
 from unittest.mock import patch, Mock
 import uuid
 import os
+import re
 import shutil
 import gdal
 import h5py
+import fake
 
 from wsmtk.modis import MODISquery, MODISrawh5, MODISsmth5
 
@@ -54,24 +56,35 @@ class TestMODIS(unittest.TestCase):
     def test_query(self,mocked_get):
 
         class MockRSP:
-            status_code = 200
-            content = b'''<?xml version="1.0"?>
-            <inventory>
-                <url>https://e4ftl01.cr.usgs.gov//MODV6_Cmp_B/MOLT/MOD13A2.006/2000.02.18/MOD13A2.A2000049.h18v06.006.2015136104646.hdf</url>
-                <url>https://e4ftl01.cr.usgs.gov//MODV6_Cmp_B/MOLT/MOD13A2.006/2000.03.05/MOD13A2.A2000065.h18v06.006.2015136022922.hdf</url>
-                <url>https://e4ftl01.cr.usgs.gov//MODV6_Cmp_B/MOLT/MOD13A2.006/2000.03.21/MOD13A2.A2000081.h18v06.006.2015136035955.hdf</url>
-                <url>https://e4ftl01.cr.usgs.gov//MODV6_Cmp_B/MOLT/MOD13A2.006/2000.04.06/MOD13A2.A2000097.h18v06.006.2015136035959.hdf</url>
-                <url>https://e4ftl01.cr.usgs.gov//MODV6_Cmp_B/MOLT/MOD13A2.006/2000.04.22/MOD13A2.A2000113.h18v06.006.2015137034359.hdf</url>
-            </inventory>
-            '''
 
-
-            def raise_for_status(self):
+            def raise_for_status():
                 pass
+
+            def get(self,*args):
+
+                rsp = Mock()
+
+                rsp.status_code.return_value = 200
+                rsp.raise_for_status.return_value = None
+
+                if 'tiled' in args[0]:
+
+                    rsp.content = fake.tiled
+
+                elif re.fullmatch('http://global-test.query/',args[0]):
+
+                    rsp.content = fake.glob
+
+                elif re.fullmatch('http://global-test.query/\\d.+\\.\\d.+\\.\\d.+/',args[0]):
+
+                    rsp.content = fake.mola[args[0]]
+
+                return(rsp)
 
         # Test query of MOD tiled NDVI
 
         mock_rsp = MockRSP()
+        mocked_get.return_value.__enter__.return_value = mock_rsp
 
         urls = ["https://e4ftl01.cr.usgs.gov//MODV6_Cmp_B/MOLT/MOD13A2.006/2000.02.18/MOD13A2.A2000049.h18v06.006.2015136104646.hdf",
                 "https://e4ftl01.cr.usgs.gov//MODV6_Cmp_B/MOLT/MOD13A2.006/2000.03.05/MOD13A2.A2000065.h18v06.006.2015136022922.hdf",
@@ -79,47 +92,31 @@ class TestMODIS(unittest.TestCase):
                 "https://e4ftl01.cr.usgs.gov//MODV6_Cmp_B/MOLT/MOD13A2.006/2000.04.06/MOD13A2.A2000097.h18v06.006.2015136035959.hdf",
                 "https://e4ftl01.cr.usgs.gov//MODV6_Cmp_B/MOLT/MOD13A2.006/2000.04.22/MOD13A2.A2000113.h18v06.006.2015137034359.hdf"]
 
-        mocked_get.return_value.__enter__.return_value.get.return_value = mock_rsp
-
-        query = MODISquery(url='http://test.query',begindate = '2000-01-01',enddate = '2000-04-30')
+        query = MODISquery(url='http://tiled-test.query',begindate = '2000-01-01',enddate = '2000-04-30')
 
         self.assertFalse(query.global_flag)
         self.assertEqual(query.modisURLs,urls)
         self.assertEqual(query.tiles,['h18v06'])
         self.assertEqual(query.results,5)
 
-        del query
-        # mock_rsp.content = b'''<?xml version="1.0"?>
-        # <inventory>
-        #     <url>https://e4ftl01.cr.usgs.gov/MOLA/MYD11C2.006/2002.07.04/</url>
-        #     <url>https://e4ftl01.cr.usgs.gov/MOLA/MYD11C2.006/2002.07.12/</url>
-        #     <url>https://e4ftl01.cr.usgs.gov/MOLA/MYD11C2.006/2002.07.20/</url>
-        #     <url>https://e4ftl01.cr.usgs.gov/MOLA/MYD11C2.006/2002.07.28/</url>
-        #     <url>https://e4ftl01.cr.usgs.gov/MOLA/MYD11C2.006/2002.08.05/</url>
-        # </inventory>
-        # '''
-        #
-        # mocked_get.return_value.__enter__.return_value.get.return_value = mock_rsp
-        #
-        # query = MODISquery(url='http://test.query',begindate = '2002-07-01',enddate = '2002-08-15')
-        #
-        # self.assertTrue(query.global_flag)
-        # #self.assertEqual(query.modisURLs,urls)
-        #
-        # #self.assertEqual(query.tiles,['h18v06'])
-        # self.assertEqual(query.results,5)
-        #
-        #
-        # # Test query of MYD global LST
+        del query, urls
 
+        urls = ["http://global-test.query/2002.07.04/MYD11C2.A2002185.006.2015168205556.hdf",
+                "http://global-test.query/2002.07.12/MYD11C2.A2002193.006.2015149021321.hdf",
+                "http://global-test.query/2002.07.20/MYD11C2.A2002201.006.2015149021446.hdf",
+                "http://global-test.query/2002.07.28/MYD11C2.A2002209.006.2015149021240.hdf",
+                "http://global-test.query/2002.08.05/MYD11C2.A2002217.006.2015149021044.hdf"]
 
+        query = MODISquery(url='http://global-test.query/',begindate = '2002-07-01',enddate = '2002-08-15',global_flag = True)
 
-
-
-
-
-
-
+        self.assertTrue(query.global_flag)
+        self.assertEqual(query.modisURLs,urls)
+        self.assertEqual(query.results,5)
+        
+        try:
+            shutil.rmtree('__pycache__')
+        except:
+            pass
 
 
     @patch('wsmtk.modis.gdal.Dataset.GetMetadataItem',return_value = -3000)
