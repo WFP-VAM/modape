@@ -8,11 +8,11 @@ import h5py
 
 from wsmtk.modis import MODISrawh5, MODISsmth5
 
-def create_gdal():
+def create_gdal(x,y):
 
     driver = gdal.GetDriverByName('GTiff')
 
-    ds = driver.Create('/vsimem/{}.tif'.format(str(uuid.uuid4())),1200,1200,1,3)
+    ds = driver.Create('/vsimem/{}.tif'.format(str(uuid.uuid4())),x,y,1,3)
 
     return(ds)
 
@@ -53,8 +53,10 @@ class TestMODIS(unittest.TestCase):
 
     @patch('wsmtk.modis.gdal.Dataset.GetMetadataItem',return_value = -3000)
     @patch('wsmtk.modis.gdal.Dataset.GetSubDatasets',return_value = [['NDVI']])
-    @patch('wsmtk.modis.gdal.Open',return_value = create_gdal())
+    @patch('wsmtk.modis.gdal.Open',return_value = create_gdal(1200,1200))
     def test_rawHDF5(self,mock_ds,mock_sds,mock_nodata):
+
+        # Test raw tiled NDVI with 8-day interleaving of MOD/MYD
 
         rawfiles = [
         'MOD13A2.A2002193.h18v06.006.*.hdf',
@@ -72,7 +74,6 @@ class TestMODIS(unittest.TestCase):
         self.assertEqual(os.path.basename(rawh5.outname),'MXD13A2.h18v06.006.VIM.h5')
         self.assertEqual(rawh5.temporalresolution,8)
         self.assertEqual(rawh5.tshift,8)
-        self.assertEqual(rawh5.tshift,8)
         self.assertEqual(rawh5.rawdates,['2002185','2002193','2002201','2002209'])
 
         rawh5.create()
@@ -80,6 +81,39 @@ class TestMODIS(unittest.TestCase):
         self.assertTrue(rawh5.exists)
         self.assertEqual(rawh5.nodata_value,-3000)
         self.assertEqual(rawh5.chunks,((1200*1200)//25,10))
+
+        shutil.rmtree(os.path.dirname(rawh5.outname))
+
+
+        # Test raw global LST DAY
+
+        rawfiles = [
+        'MYD11C2.A2002193.*.006.*.hdf',
+        'MYD11C2.A2002209.*.006.*.hdf',
+        'MYD11C2.A2002185.*.006.*.hdf',
+        'MYD11C2.A2002201.*.006.*.hdf',
+        ]
+
+
+        mock_ds.return_value = create_gdal(7200,3600)
+        mock_sds.return_value = [['LST_Day']]
+
+        rawh5 = MODISrawh5(files = rawfiles)
+
+        mock_ds.assert_called_with('MYD11C2.A2002185.*.006.*.hdf')
+
+        self.assertEqual(rawh5.nfiles,4)
+        self.assertFalse(rawh5.exists)
+        self.assertEqual(os.path.basename(rawh5.outname),'MYD11C2.006.LTD.h5')
+        self.assertEqual(rawh5.temporalresolution,8)
+        self.assertEqual(rawh5.tshift,4)
+        self.assertEqual(rawh5.rawdates,['2002185','2002193','2002201','2002209'])
+
+        rawh5.create()
+
+        self.assertTrue(rawh5.exists)
+        self.assertEqual(rawh5.nodata_value,-3000)
+        self.assertEqual(rawh5.chunks,((3600*7200)//25,10))
 
         shutil.rmtree(os.path.dirname(rawh5.outname))
 
@@ -110,7 +144,7 @@ class TestMODIS(unittest.TestCase):
         os.remove('MXD13A2.h18v06.006.txd.VIM.h5')
 
 
-    ## TO TEST: lst, parameter, global
+    ## TO TEST: lst, parameter,  global
 
 
 
