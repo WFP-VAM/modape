@@ -23,7 +23,7 @@ class TestWhittaker(unittest.TestCase):
         self.w = self.data['w']
 
     def tearDown(self):
-        
+
         self.y = None
         self.w = None
 
@@ -40,14 +40,14 @@ class TestWhittaker(unittest.TestCase):
 
     def test_ws2dvc(self):
 
-        z,sopt = ws2d_vc(self.y,self.w,array.array('d',np.linspace(-2.0,1.0,16.0)))
+        z,sopt = ws2d_vc(self.y,self.w,array.array('d',np.linspace(-2,1,16)))
 
         self.assertTrue(np.all(np.array(z,dtype='double') == self.data['z_ws2dvc']))
         self.assertEqual(sopt,self.data['sopt_ws2dvc'])
 
     def test_ws2dvcp(self):
 
-        z,sopt = ws2d_vc_asy(self.y,self.w,array.array('d',np.linspace(-2.0,1.0,16.0)),p = 0.90)
+        z,sopt = ws2d_vc_asy(self.y,self.w,array.array('d',np.linspace(-2,1,16)),p = 0.90)
 
         self.assertTrue(np.all(np.array(z,dtype='double') == self.data['z_ws2dvcp']))
         self.assertEqual(sopt,self.data['sopt_ws2dvcp'])
