@@ -35,21 +35,21 @@ class TestWhittaker(unittest.TestCase):
 
         z = np.array(ws2d(self.y,10,self.w),dtype='double')
 
-        self.assertTrue(np.all(z == self.data['z_ws2d']))
+        np.testing.assert_almost_equal(z,self.data['z_ws2d'],5)
 
 
     def test_ws2dvc(self):
 
         z,sopt = ws2d_vc(self.y,self.w,array.array('d',np.linspace(-2,1,16)))
 
-        self.assertTrue(np.all(np.array(z,dtype='double') == self.data['z_ws2dvc']))
+        np.testing.assert_almost_equal(z,self.data['z_ws2dvc'],5)
         self.assertEqual(sopt,self.data['sopt_ws2dvc'])
 
     def test_ws2dvcp(self):
 
         z,sopt = ws2d_vc_asy(self.y,self.w,array.array('d',np.linspace(-2,1,16)),p = 0.90)
 
-        self.assertTrue(np.all(np.array(z,dtype='double') == self.data['z_ws2dvcp']))
+        np.testing.assert_almost_equal(z,self.data['z_ws2dvcp'],5)
         self.assertEqual(sopt,self.data['sopt_ws2dvcp'])
 
 
