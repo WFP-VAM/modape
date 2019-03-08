@@ -112,7 +112,7 @@ class TestMODIS(unittest.TestCase):
         self.assertTrue(query.global_flag)
         self.assertEqual(query.modisURLs,urls)
         self.assertEqual(query.results,5)
-        
+
         try:
             shutil.rmtree('__pycache__')
         except:
@@ -186,7 +186,6 @@ class TestMODIS(unittest.TestCase):
         shutil.rmtree(os.path.dirname(rawh5.outname))
 
 
-    #@patch('wsmtk.modis.h5py.File')
     def test_smoothHDF5(self):
 
         # Test smooth tiled 10-day NDVI
