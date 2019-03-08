@@ -29,7 +29,7 @@ class TestWhittaker(unittest.TestCase):
 
     def test_lag1corr(self):
 
-        self.assertEqual(lag1corr(self.y[:-1],self.y[1:],-3000.0),self.data['lag1corr'])
+        self.assertAlmostEqual(lag1corr(self.y[:-1],self.y[1:],-3000.0),self.data['lag1corr'])
 
     def test_ws2d(self):
 
