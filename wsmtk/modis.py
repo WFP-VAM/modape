@@ -377,13 +377,9 @@ class MODISrawh5:
             self.chunks = (chunk,10)
 
         # Check if chunksize is OK
-        try:
-            assert ((nrows*ncols)/self.chunks[0]).is_integer(), "Number of chunks not equal!"
-        except AssertionError:
-            print('\n\nChunksize must result in equal number of chunks. Please adjust chunksize!')
+        if not ((nrows*ncols)/self.chunks[0]).is_integer():
             rst = None
-            raise
-
+            raise ValueError('\n\nChunksize must result in equal number of chunks. Please adjust chunksize!')
 
         self.nodata_value = int(rst.GetMetadataItem('_FillValue'))
 
@@ -550,7 +546,8 @@ class MODISsmth5:
             nworkers (int): Number of worker processes used in parallel
         '''
         if nsmooth and nupdate:
-            assert nsmooth >= nupdate, "nsmooth >= nupdate!!!!"
+            if nsmooth < nupdate:
+                raise ValueError('nsmooth must be bigger or equal (>=) to nupdate!')
 
         self.targetdir = targetdir
         self.rawfile = rawfile
