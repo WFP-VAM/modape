@@ -26,7 +26,7 @@ def run_process(pdict):
 
         try:
 
-            rh5 = MODISrawh5(pdict['files'],vpc=vpc,targetdir=pdict['targetdir'])
+            rh5 = MODISrawh5(pdict['files'],vpc=vpc,targetdir=pdict['targetdir'], interleave = pdict['interleave'])
 
             # Creatre if file doesn't exist yet
             if not rh5.exists:
@@ -48,7 +48,7 @@ def main():
     If the respective HDF5 file does not exists in the target directory, it will be created. Otherwhise, the file will be
     updated and the data inserted at the proper temporal location within the HDF5 file.
 
-    By default, 16-day MOD13* and MYD13* products will be interleaved into an 8-day product with the new product ID MXD*.
+    16-day MOD13* and MYD13* products can be interleaved into an 8-day product with the new product ID MXD* by adding the `--interleave` flag.
     '''
 
     parser = argparse.ArgumentParser(description="Process downloaded RAW MODIS hdf files")
@@ -57,6 +57,7 @@ def main():
     parser.add_argument("-x","--compression", help='Compression for HDF5 files',default='gzip',metavar='')
     parser.add_argument("--all-vampc", help='Flag to process all possible VAM product codes',action='store_true')
     parser.add_argument("-c","--chunksize", help='Number of pixels per block (value needs to result in integer number of blocks)',type=int,metavar='')
+    parser.add_argument("--interleave", help='Interleave MOD13 & MYD13 products to MXD (only works for VIM!)',action='store_true')
     parser.add_argument("--parallel-tiles", help='Number of tiles processed in parallel (default = None)',default=1,type=int,metavar='')
     parser.add_argument("--quiet", help='Be quiet',action='store_true')
 
@@ -93,9 +94,14 @@ def main():
     # Seperate input files into group
     groups = ['.*'.join(re.findall(ppatt,os.path.basename(x)) + re.findall(tpatt,os.path.basename(x)) + [re.sub(vpatt,'\\1',os.path.basename(x))])  for x in files]
 
-    # Join MOD13/MYD13
-    groups = list(set([re.sub('(M.{1})(D.+)','M.'+'\\2',x) if re.match(vimvem,x) else x for x in groups]))
+    if args.interleave:
 
+        # Join MOD13/MYD13
+        groups = list(set([re.sub('(M.{1})(D.+)','M.'+'\\2',x) if re.match(vimvem,x) else x for x in groups]))
+
+    else:
+
+        groups = list(set(groups))
 
     for g in groups:
 
@@ -106,6 +112,8 @@ def main():
         processing_dict[g]['targetdir'] = args.targetdir
 
         processing_dict[g]['files'] = [x for x in files if re.search(gpatt,x)]
+
+        processing_dict[g]['interleave'] = args.interleave
 
         if args.chunksize:
 
