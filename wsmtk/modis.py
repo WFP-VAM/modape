@@ -247,7 +247,7 @@ class MODISrawh5:
     For MOD/MYD 13 products, MOD and MYD are interleaved into a combined MXD.
     '''
 
-    def __init__(self,files,param=None,targetdir=os.getcwd()):
+    def __init__(self,files,param=None,targetdir=os.getcwd(),interleave=False):
         '''Create a MODISrawh5 class
 
         Args:
@@ -292,7 +292,7 @@ class MODISrawh5:
         ref = None
 
         # check for MOD/MYD interleaving
-        if self.param is 'VIM' and any(['MOD' in os.path.basename(x) for x in files]) and any(['MYD' in os.path.basename(x) for x in files]):
+        if interleave and self.param == 'VIM':
             self.product = [re.sub(r'M[O|Y]D','MXD',re.findall(ppatt,self.ref_file_basename)[0])]
             self.temporalresolution = 8
             self.tshift = 8
