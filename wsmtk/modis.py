@@ -247,18 +247,18 @@ class MODISrawh5:
     For MOD/MYD 13 products, MOD and MYD are interleaved into a combined MXD.
     '''
 
-    def __init__(self,files,param=None,targetdir=os.getcwd(),interleave=False):
+    def __init__(self,files,vpc=None,targetdir=os.getcwd(),interleave=False):
         '''Create a MODISrawh5 class
 
         Args:
             files ([str]): A list of absolute paths to MODIS raw hdf files to be processed
-            param (str): VAM parameter to be processed (default VIM/LTD)
+            vpc (str): VAM product code to be processed (default VIM/LTD)
             targetdir (str): Target directory for raw MODIS HDF5 file
         '''
 
         self.targetdir = targetdir
         #self.resdict = dict(zip(['250m','500m','1km','0.05_Deg'],[x/112000 for x in [250,500,1000,5600]])) ## commented for original resolution
-        self.paramdict = dict(zip(['VIM', 'VEM', 'LTD', 'LTN'], ['NDVI', 'EVI', 'LST_Day', 'LST_Night']))
+        self.vpcdict = dict(zip(['VIM', 'VEM', 'LTD', 'LTN'], ['NDVI', 'EVI', 'LST_Day', 'LST_Night']))
         self.dts_regexp = re.compile(r'.+A(\d{7}).+')
         self.rawdates = [re.findall(self.dts_regexp,x)[0] for x in files]
         self.files = [x for (y,x) in sorted(zip(self.rawdates,files))]
@@ -279,20 +279,23 @@ class MODISrawh5:
         # Open reference file
         ref = gdal.Open(self.ref_file)
 
-        # When no parameter is selected, the default is VIM and LTD
-        if not param:
-            ref_sds = [x[0] for x in ref.GetSubDatasets() if self.paramdict['VIM'] in x[0] or self.paramdict['LTD'] in x[0]][0]
-            self.param = [key for key, value in self.paramdict.items() if value in ref_sds][0]
+        # When no product is selected, the default is VIM and LTD
+        if not vpc:
+            ref_sds = [x[0] for x in ref.GetSubDatasets() if self.vpcdict['VIM'] in x[0] or self.vpcdict['LTD'] in x[0]][0]
+            self.vpc = [key for key, value in self.vpcdict.items() if value in ref_sds][0]
             ref_sds = None
-        elif param in self.paramdict.keys():
-            self.param = param
+        elif vpc in self.vpcdict.keys():
+            self.vpc = vpc
         else:
-            raise ValueError('Parameter string not recognized. Available parameters are %s.' % [x for x in self.paramdict.keys()])
+            raise ValueError('VAM product code string not recognized. Available products are %s.' % [x for x in self.vpcdict.keys()])
 
         ref = None
 
+        # VAM pproduct code to be included in filename
+        fname_vpc = self.vpc
+
         # check for MOD/MYD interleaving
-        if interleave and self.param == 'VIM':
+        if interleave and self.vpc == 'VIM':
             self.product = [re.sub(r'M[O|Y]D','MXD',re.findall(ppatt,self.ref_file_basename)[0])]
             self.temporalresolution = 8
             self.tshift = 8
@@ -306,12 +309,41 @@ class MODISrawh5:
                 self.temporalresolution = 8
                 self.tshift = 4
 
+                # LST has specific VAM product codes for the file naming
+
+                if self.vpc == 'LTD':
+
+                    if re.match(r'MOD11\w\d',self.product[0]):
+
+                        fname_vpc = 'TDT'
+
+                    elif re.match(r'MYD11\w\d',self.product[0]):
+
+                        fname_vpc = 'TDA'
+
+                    else:
+                        pass
+
+                elif self.vpc == 'LTN':
+
+                    if re.match(r'MOD11\w\d',self.product[0]):
+
+                        fname_vpc = 'TNT'
+
+                    elif re.match(r'MYD11\w\d',self.product[0]):
+
+                        fname_vpc = 'TNA'
+
+                    else:
+                        pass
+
+
         # Name of file to be created/updated
         self.outname = '{}/{}/{}.{}.h5'.format(
                                     self.targetdir,
-                                    self.param,
+                                    self.vpc,
                                     '.'.join(self.product + re.findall(tpatt,self.ref_file_basename) + [re.sub(vpatt,'\\1',self.ref_file_basename)]),
-                                    self.param)
+                                    fname_vpc)
 
         self.exists = os.path.isfile(self.outname)
         ref = None
@@ -328,7 +360,7 @@ class MODISrawh5:
         #print('\nCreating file: {} ... '.format(self.outname), end='')
 
         ref = gdal.Open(self.ref_file)
-        ref_sds = [x[0] for x in ref.GetSubDatasets() if self.paramdict[self.param] in x[0]][0]
+        ref_sds = [x[0] for x in ref.GetSubDatasets() if self.vpcdict[self.vpc] in x[0]][0]
 
         # reference raster
         rst = gdal.Open(ref_sds)
@@ -451,7 +483,7 @@ class MODISrawh5:
 
                 # Open all files and keep reference in handler
 
-                handler = FileHandler(self.files,self.paramdict[self.param])
+                handler = FileHandler(self.files,self.vpcdict[self.vpc])
 
                 handler.open()
 
@@ -1039,7 +1071,7 @@ class MODISsmth5:
             self.temporalresolution = smt_ds.attrs['temporalresolution'].item()
             tshift = raw_ds.attrs['tshift'].item()
 
-            # Store run parameters for infotool
+            # Store run vampceters for infotool
             smt_ds.attrs['processingtimestamp'] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
             if p:

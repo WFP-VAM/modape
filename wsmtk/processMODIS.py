@@ -22,11 +22,11 @@ def run_process(pdict):
         pdict: dictionary with processing parameters for tile
     '''
 
-    for par in pdict['parameters']:
+    for vpc in pdict['vampc']:
 
         try:
 
-            rh5 = MODISrawh5(pdict['files'],param=par,targetdir=pdict['targetdir'], interleave = pdict['interleave'])
+            rh5 = MODISrawh5(pdict['files'],vpc=vpc,targetdir=pdict['targetdir'], interleave = pdict['interleave'])
 
             # Creatre if file doesn't exist yet
             if not rh5.exists:
@@ -35,7 +35,7 @@ def run_process(pdict):
 
         except Exception as e:
 
-            print('\nError processing product {}, parameter {}. \n\n Traceback:\n'.format(rh5.product,par))
+            print('\nError processing product {}, product code {}. \n\n Traceback:\n'.format(rh5.product,vpc))
 
             traceback.print_exc()
         print('\n')
@@ -53,10 +53,9 @@ def main():
 
     parser = argparse.ArgumentParser(description="Process downloaded RAW MODIS hdf files")
     parser.add_argument("srcdir", help='directory with raw MODIS .hdf files',default=os.getcwd(),metavar='srcdir')
-    #parser.add_argument("-p","--parameter", help='VAM parameter code',metavar='') ## paramter selection not implemented
     parser.add_argument("-d","--targetdir", help='Target directory for PROCESSED MODIS files (default is scrdir)',metavar='')
     parser.add_argument("-x","--compression", help='Compression for HDF5 files',default='gzip',metavar='')
-    parser.add_argument("--all-parameters", help='Flag to process all possible VAM parameters',action='store_true')
+    parser.add_argument("--all-vampc", help='Flag to process all possible VAM product codes',action='store_true')
     parser.add_argument("-c","--chunksize", help='Number of pixels per block (value needs to result in integer number of blocks)',type=int,metavar='')
     parser.add_argument("--interleave", help='Interleave MOD13 & MYD13 products to MXD (only works for VIM!)',action='store_true')
     parser.add_argument("--parallel-tiles", help='Number of tiles processed in parallel (default = None)',default=1,type=int,metavar='')
@@ -127,20 +126,20 @@ def main():
         processing_dict[g]['compression'] = args.compression
 
 
-        if args.all_parameters:
+        if args.all_vampc:
 
             if re.match(vimvem,g.split('.*')[0]):
 
-                processing_dict[g]['parameters'] = ['VIM','VEM']
+                processing_dict[g]['vampc'] = ['VIM','VEM']
 
             elif re.match(lst,g.split('.*')[0]):
 
-                processing_dict[g]['parameters'] = ['LTD','LTN']
+                processing_dict[g]['vampc'] = ['LTD','LTN']
 
             else:
-                raise SystemExit('No parameters implemented for {}'.format(g.split('.*')[0]))
+                raise SystemExit('No VAM product code implemented for {}'.format(g.split('.*')[0]))
         else:
-            processing_dict[g]['parameters'] = [None]
+            processing_dict[g]['vampc'] = [None]
 
 
     if args.parallel_tiles > 1:
