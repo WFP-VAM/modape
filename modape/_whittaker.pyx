@@ -136,7 +136,7 @@ cdef ws2d_internal(np.ndarray[dtype_t] y, double lmda, array[double] w):
     return z
 
 
-cpdef ws2d_vc(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[double] llas):
+cpdef ws2doptv(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[double] llas):
     ## vcurve
     cdef array template = array('d', [])
 
@@ -212,7 +212,7 @@ cpdef ws2d_vc(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[double] llas):
     return z, lopt
 
 
-cpdef ws2d_vc_asy(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[double] llas, double p):
+cpdef ws2doptvp(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[double] llas, double p):
     ## vcurve with asymmetric smoothing
 
     cdef array template = array('d', [])
