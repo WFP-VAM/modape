@@ -10,8 +10,8 @@ from subprocess import Popen, check_output
 import h5py
 from progress.bar import Bar
 from progress.spinner import Spinner
-from wsmtk.utils import *
-from wsmtk.whittaker import lag1corr, ws2d, ws2d_vc, ws2d_vc_asy
+from modape.utils import *
+from modape.whittaker import lag1corr, ws2d, ws2d_vc, ws2d_vc_asy
 from contextlib import contextmanager, closing
 import warnings
 import itertools
