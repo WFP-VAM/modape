@@ -462,7 +462,7 @@ If expectile smoothing is chosen, the p value is also be appended.
 ```
 $ smooothCSV -h
 
-usage: smoothCSV [-h] [-s] [-S  [...]] [-p] [--optv] [--optvp] file
+usage: smoothCSV [-h] [-s] [-S  [...]] [-p] file
 
 Smooth CSV file
 
@@ -476,8 +476,6 @@ optional arguments:
                         S range for V-curve (float log10(s) values as smin
                         smax sstep - default 0.0 4.0 0.1)
   -p , --pvalue         Value for asymmetric smoothing (float required)
-  --optv                Use V-curve for s value optimization
-  --optvp               Use asymmetric V-curve for s value optimization
 ```
 **Usage example:**
 
