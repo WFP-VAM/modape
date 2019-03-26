@@ -291,6 +291,9 @@ class MODISrawh5:
 
         ref = None
 
+        # VAM pproduct code to be included in filename
+        fname_vpc = self.vpc
+
         # check for MOD/MYD interleaving
         if self.vpc is 'VIM' and any(['MOD' in os.path.basename(x) for x in files]) and any(['MYD' in os.path.basename(x) for x in files]):
             self.product = [re.sub(r'M[O|Y]D','MXD',re.findall(ppatt,self.ref_file_basename)[0])]
@@ -306,12 +309,41 @@ class MODISrawh5:
                 self.temporalresolution = 8
                 self.tshift = 4
 
+                # LST has specific VAM product codes for the file naming
+
+                if self.vpc == 'LTD':
+
+                    if re.match(r'MOD11\w\d',self.product[0]):
+
+                        fname_vpc = 'TDT'
+
+                    elif re.match(r'MYD11\w\d',self.product[0]):
+
+                        fname_vpc = 'TDA'
+
+                    else:
+                        pass
+
+                elif self.vpc == 'LTN':
+
+                    if re.match(r'MOD11\w\d',self.product[0]):
+
+                        fname_vpc = 'TNT'
+
+                    elif re.match(r'MYD11\w\d',self.product[0]):
+
+                        fname_vpc = 'TNA'
+
+                    else:
+                        pass
+
+
         # Name of file to be created/updated
         self.outname = '{}/{}/{}.{}.h5'.format(
                                     self.targetdir,
                                     self.vpc,
                                     '.'.join(self.product + re.findall(tpatt,self.ref_file_basename) + [re.sub(vpatt,'\\1',self.ref_file_basename)]),
-                                    self.vpc)
+                                    fname_vpc)
 
         self.exists = os.path.isfile(self.outname)
         ref = None
