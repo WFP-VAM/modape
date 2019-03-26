@@ -3,7 +3,7 @@ import os
 import pandas as pd
 import numpy as np
 import argparse
-from wsmtk.whittaker import ws2d, ws2d_vc, ws2d_vc_asy
+from modape.whittaker import ws2d, ws2d_vc, ws2d_vc_asy
 import array
 import time
 

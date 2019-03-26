@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from __future__ import print_function
-from wsmtk.modis import MODIStiles, MODISmosaic
+from modape.modis import MODIStiles, MODISmosaic
 import glob
 import re
 import os

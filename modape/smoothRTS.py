@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from __future__ import print_function
-from wsmtk.whittaker import *
-from wsmtk.utils import dtype_GDNP
+from modape.whittaker import *
+from modape.utils import dtype_GDNP
 import glob
 import re
 import os

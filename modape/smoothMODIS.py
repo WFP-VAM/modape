@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from __future__ import print_function
-from wsmtk.modis import MODISsmth5
-from wsmtk.utils import init_parameters, Pool
+from modape.modis import MODISsmth5
+from modape.utils import init_parameters, Pool
 import shutil
 import os
 import sys
