@@ -6,7 +6,7 @@ import ctypes
 import multiprocessing
 import multiprocessing.pool
 import array
-from wsmtk.whittaker import lag1corr, ws2d, ws2d_vc, ws2d_vc_asy
+from modape.whittaker import lag1corr, ws2d, ws2d_vc, ws2d_vc_asy
 import pickle
 import os
 from cryptography.fernet import Fernet
@@ -205,9 +205,9 @@ class Credentials:
         '''Retrieve credentials from disk'''
 
         try:
-            u, p = pload('wsmtk.cred.pkl')
+            u, p = pload('modape.cred.pkl')
 
-            k = pload('wsmtk.key.pkl')
+            k = pload('modape.key.pkl')
 
             cipher_suite = Fernet(k)
 
@@ -232,9 +232,9 @@ class Credentials:
 
             p = cipher_suite.encrypt(self.password.encode())
 
-            pdump((u,p),'wsmtk.cred.pkl')
+            pdump((u,p),'modape.cred.pkl')
 
-            pdump(k,'wsmtk.key.pkl')
+            pdump(k,'modape.key.pkl')
 
         except:
 
@@ -248,12 +248,12 @@ class Credentials:
         '''Remove all credential files on disk'''
 
         try:
-            os.remove('wsmtk.cred.pkl')
+            os.remove('modape.cred.pkl')
         except FileNotFoundError:
             pass
 
         try:
-            os.remove('wsmtk.key.pkl')
+            os.remove('modape.key.pkl')
         except FileNotFoundError:
             pass
 
