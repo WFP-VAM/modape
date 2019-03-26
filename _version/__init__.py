@@ -1,7 +1,7 @@
 """
 _version
 
-Version information for smtk
+Version information for MODAPE
 
 """
 
