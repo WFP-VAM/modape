@@ -11,7 +11,7 @@ import h5py
 from progress.bar import Bar
 from progress.spinner import Spinner
 from modape.utils import *
-from modape.whittaker import lag1corr, ws2d, ws2d_vc, ws2d_vc_asy
+from modape.whittaker import lag1corr, ws2d, ws2doptv, ws2doptvp
 from contextlib import contextmanager, closing
 import warnings
 import itertools
@@ -1041,7 +1041,7 @@ class MODISsmth5:
 
         '''Apply whittaker smoother V-curve optimization of s.
 
-        Optionally, a p value can be specified to use asymmetric smoothing.
+        Optionally, p value can be specified to use asymmetric smoothing.
 
         Args:
             srange (arr): Float32 array of s-values to apply
@@ -1231,9 +1231,9 @@ class MODISsmth5:
                             sr = srange
 
                         if p:
-                            arr_raw[r,:] , arr_sgrid[r] = ws2d_vc_asy(y = arr_raw[r,:], w = np.array((arr_raw[r,:] != nodata) * 1,dtype='double'), llas = array.array('d',sr),p=p)
+                            arr_raw[r,:] , arr_sgrid[r] = ws2doptvp(y = arr_raw[r,:], w = np.array((arr_raw[r,:] != nodata) * 1,dtype='double'), llas = array.array('d',sr),p=p)
                         else:
-                            arr_raw[r,:] , arr_sgrid[r] = ws2d_vc(y = arr_raw[r,:], w = np.array((arr_raw[r,:] != nodata) * 1,dtype='double'), llas = array.array('d',sr))
+                            arr_raw[r,:] , arr_sgrid[r] = ws2doptv(y = arr_raw[r,:], w = np.array((arr_raw[r,:] != nodata) * 1,dtype='double'), llas = array.array('d',sr))
 
                         if self.tinterpolate:
 
@@ -1273,7 +1273,8 @@ class MODISsmth5:
 
     def ws2d_vcOpt(self,srange,p=None):
 
-        '''Apply whittaker smoother V-curve optimization of s.
+        '''DEPRECATED!
+        Apply whittaker smoother V-curve optimization of s.
 
         This current implementation runs the optimization two times, using the first sOpt to further constrain the
         srange.
@@ -1451,7 +1452,7 @@ class MODISsmth5:
 
                     for r in mapIX:
 
-                        z , lopt = ws2d_vc(y = arr_raw[r,:], w = np.array((arr_raw[r,:] != nodata) * 1,dtype='double'), llas = array.array('d',srange))
+                        z , lopt = ws2doptv(y = arr_raw[r,:], w = np.array((arr_raw[r,:] != nodata) * 1,dtype='double'), llas = array.array('d',srange))
 
                         srange_lim = srange[srange <= np.log10(lopt)]
 
@@ -1459,9 +1460,9 @@ class MODISsmth5:
                             srange_lim = np.concatenate([srange_lim-0.2,srange_lim])
 
                         if p:
-                            arr_raw[r,:] , arr_sgrid[r] = ws2d_vc_asy(y = arr_raw[r,:], w = np.array((arr_raw[r,:] != nodata) * 1,dtype='double'), llas = array.array('f',srange_lim),p=p)
+                            arr_raw[r,:] , arr_sgrid[r] = ws2doptvp(y = arr_raw[r,:], w = np.array((arr_raw[r,:] != nodata) * 1,dtype='double'), llas = array.array('f',srange_lim),p=p)
                         else:
-                            arr_raw[r,:] , arr_sgrid[r] = ws2d_vc(y = arr_raw[r,:], w = np.array((arr_raw[r,:] != nodata) * 1,dtype='double'), llas = array.array('f',srange_lim))
+                            arr_raw[r,:] , arr_sgrid[r] = ws2doptv(y = arr_raw[r,:], w = np.array((arr_raw[r,:] != nodata) * 1,dtype='double'), llas = array.array('f',srange_lim))
 
                         if self.tinterpolate:
 
