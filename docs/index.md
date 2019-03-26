@@ -387,7 +387,7 @@ The smoothing currently only runs sequential, so big timeseries or big raster da
 $ smoothRTS -h
 
 usage: smoothRTS [-h] [-P] [-d] [-s] [-S  [...]] [-p] [-b] [--nodata]
-                 [--optv] [--optvp]
+                 [--soptimize]
                  path
 
 Extract a window from MODIS products
@@ -407,9 +407,7 @@ optional arguments:
   -p , --pvalue         Value for asymmetric smoothing (float required)
   -b , --blocksize      Processing block side length (default 256)
   --nodata              NoData value
-  --optv                Use V-curve for s value optimization
-  --optvp               Use asymmetric V-curve for s value optimization
-
+  --soptimize                Use V-curve (with p if supplied) for s value optimization
 ```
 
 **Usage example:**
