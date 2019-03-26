@@ -8,7 +8,7 @@ import gdal
 import h5py
 import fake
 
-from wsmtk.modis import MODISquery, MODISrawh5, MODISsmth5
+from modape.modis import MODISquery, MODISrawh5, MODISsmth5
 
 def create_gdal(x,y):
 
@@ -52,7 +52,7 @@ class TestMODIS(unittest.TestCase):
 
         pass
 
-    @patch('wsmtk.modis.requests.Session')
+    @patch('modape.modis.requests.Session')
     def test_query(self,mocked_get):
 
         class MockRSP:
@@ -119,9 +119,9 @@ class TestMODIS(unittest.TestCase):
             pass
 
 
-    @patch('wsmtk.modis.gdal.Dataset.GetMetadataItem',return_value = -3000)
-    @patch('wsmtk.modis.gdal.Dataset.GetSubDatasets',return_value = [['NDVI']])
-    @patch('wsmtk.modis.gdal.Open',return_value = create_gdal(1200,1200))
+    @patch('modape.modis.gdal.Dataset.GetMetadataItem',return_value = -3000)
+    @patch('modape.modis.gdal.Dataset.GetSubDatasets',return_value = [['NDVI']])
+    @patch('modape.modis.gdal.Open',return_value = create_gdal(1200,1200))
     def test_rawHDF5(self,mock_ds,mock_sds,mock_nodata):
 
         # Test raw tiled NDVI with 8-day interleaving of MOD/MYD

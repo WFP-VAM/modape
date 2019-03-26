@@ -3,14 +3,14 @@ import os
 import pickle
 import numpy as np
 import array
-from wsmtk.whittaker import *
+from modape.whittaker import *
 
 class TestWhittaker(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
 
-        with open('{}/data/MXD_testdata.pkl'.format(os.path.dirname(__file__).replace('tests','wsmtk')),'rb') as pkl:
+        with open('{}/data/MXD_testdata.pkl'.format(os.path.dirname(__file__).replace('tests','modape')),'rb') as pkl:
             cls.data = pickle.load(pkl)
 
     @classmethod
