@@ -3,14 +3,14 @@ import os
 import pickle
 import numpy as np
 import multiprocessing as mp
-from wsmtk.utils import *
+from modape.utils import *
 
 class TestUtils(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
 
-        with open('{}/data/MXD_dates.pkl'.format(os.path.dirname(__file__).replace('tests','wsmtk')),'rb') as pkl:
+        with open('{}/data/MXD_dates.pkl'.format(os.path.dirname(__file__).replace('tests','modape')),'rb') as pkl:
             cls.dates = pickle.load(pkl)
 
     @classmethod
@@ -40,8 +40,8 @@ class TestUtils(unittest.TestCase):
 
         cred.store()
 
-        self.assertTrue(os.path.exists('wsmtk.cred.pkl'))
-        self.assertTrue(os.path.exists('wsmtk.key.pkl'))
+        self.assertTrue(os.path.exists('modape.cred.pkl'))
+        self.assertTrue(os.path.exists('modape.key.pkl'))
 
         cred.username = None
         cred.password = None
@@ -53,8 +53,8 @@ class TestUtils(unittest.TestCase):
 
         cred.destroy()
 
-        self.assertFalse(os.path.exists('wsmtk.cred.pkl'))
-        self.assertFalse(os.path.exists('wsmtk.key.pkl'))
+        self.assertFalse(os.path.exists('modape.cred.pkl'))
+        self.assertFalse(os.path.exists('modape.key.pkl'))
 
 
     def test_fj_ldom(self):

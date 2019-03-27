@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from __future__ import print_function
-from wsmtk.whittaker import *
-from wsmtk.utils import dtype_GDNP
+from modape.whittaker import *
+from modape.utils import dtype_GDNP
 import glob
 import re
 import os
@@ -229,8 +229,7 @@ class RTS:
             thefile.write('\n')
 
 
-
-    def ws2d_vc(self,srange,p=None):
+    def ws2dopt(self,srange,p=None):
         '''Apply whittaker smoother with V-curve optimization of s to data.
 
         If a p-value is supplied, the asymmetric whittaker smoother will be
@@ -246,9 +245,9 @@ class RTS:
         srange_arr = array.array('d',srange)
 
         if p:
-            tdir = self.targetdir + '/filtvcp/'
+            tdir = self.targetdir + '/filtoptvp/'
         else:
-            tdir = self.targetdir + '/filtvc/'
+            tdir = self.targetdir + '/filtoptv/'
 
         outfiles = [tdir + '/' + os.path.basename(x) for x in self.files]
 
@@ -299,11 +298,11 @@ class RTS:
 
                 if p:
 
-                    arr[r,...], sarr[r] = ws2d_vc_asy(arr[r,...],wts[r,...],srange_arr,p)
+                    arr[r,...], sarr[r] = ws2doptvp(arr[r,...],wts[r,...],srange_arr,p)
 
                 else:
 
-                    arr[r,...], sarr[r] = ws2d_vc(arr[r,...],wts[r,...],srange_arr)
+                    arr[r,...], sarr[r] = ws2doptv(arr[r,...],wts[r,...],srange_arr)
 
 
             for fix in range(self.nfiles):
@@ -333,163 +332,168 @@ class RTS:
             ds_b = None
             ds = None
 
-        with open(tdir + '/filtvc_config.txt','w') as thefile:
-
             if p:
 
-                thefile.write('Running asymmetric whittaker smoother with V-curve optimization\n')
-                thefile.write('\n')
-                thefile.write('Timestamp: {}\n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
-                thefile.write('\n')
-                thefile.write('Sgrid: {}\n'.format(self.sgrid))
-                thefile.write('P value: {}\n'.format(p))
-                thefile.write('Nodata value: {}\n'.format(self.nodata))
-                thefile.write('\n')
+                with open(tdir + '/filtoptvp_config.txt','w') as thefile:
+
+                    thefile.write('Running asymmetric whittaker smoother with V-curve optimization\n')
+                    thefile.write('\n')
+                    thefile.write('Timestamp: {}\n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
+                    thefile.write('\n')
+                    thefile.write('Sgrid: {}\n'.format(self.sgrid))
+                    thefile.write('P value: {}\n'.format(p))
+                    thefile.write('Nodata value: {}\n'.format(self.nodata))
+                    thefile.write('\n')
 
             else:
 
-                thefile.write('Running whittaker smoother with V-curve optimization\n')
-                thefile.write('\n')
-                thefile.write('Timestamp: {}\n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
-                thefile.write('\n')
-                thefile.write('Sgrid: {}\n'.format(self.sgrid))
-                thefile.write('Nodata value: {}\n'.format(self.nodata))
-                thefile.write('\n')
+                with open(tdir + '/filtoptv_config.txt','w') as thefile:
 
-    def ws2d_vcOpt(self,srange,p=None):
-        '''Apply whittaker smoother with 2-step V-curve optimization of s to data.
-
-        If a p-value is supplied, the asymmetric whittaker smoother will be
-        applied.
-
-        Args:
-            srange (arr): Float32 array of s-values to apply
-            p (float): P-value for percentile
-        '''
-
-        srange_arr = array.array('d',srange)
-
-        # modify target directory based on asymmetric or normal whittaker
-        if p:
-            tdir = self.targetdir + '/filtvcp_2step/'
-        else:
-            tdir = self.targetdir + '/filtvc_2step/'
-
-        outfiles = [tdir + '/' + os.path.basename(x) for x in self.files]
-
-        if not os.path.exists(tdir):
-
-            try:
-                os.makedirs(tdir)
-            except:
-                print('Issues creating subdirectory {}'.format(tdir))
-                raise
-
-        # Path to s-grid
-        self.sgrid = tdir + 'sgrid.tif'
-
-        self.initRasters(tdir)
-
-        # S-grid needs to be initialized separately
-        initGDAL(self.ref_file,tdir,'sgrid.tif',dt='float32')
-
-        for yo, ys, xo, xs in iterateBlocks(self.nrows,self.ncols,self.bsize):
-
-            arr = np.zeros((ys*xs,self.nfiles),dtype='double')
-            wts = arr.copy()
-            sarr = np.zeros((ys*xs),dtype='double')
-
-            arr_helper = arr.view()
-            arr_helper.shape = (ys,xs,self.nfiles)
-
-            for fix in range(self.nfiles):
-
-                ds = gdal.Open(self.files[fix])
-
-                arr_helper[...,fix] = ds.ReadAsArray(xoff=xo,xsize=xs,yoff=yo,ysize=ys)
-
-                ds = None
-
-            wts[...] = (arr != self.nodata) * 1
-
-            ndix = np.sum(arr != self.nodata,1)>0 #70
-            mapIX = np.where(ndix)[0]
-
-            if len(mapIX) == 0:
-                continue # skip bc no data in block
+                    thefile.write('Running whittaker smoother with V-curve optimization\n')
+                    thefile.write('\n')
+                    thefile.write('Timestamp: {}\n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
+                    thefile.write('\n')
+                    thefile.write('Sgrid: {}\n'.format(self.sgrid))
+                    thefile.write('Nodata value: {}\n'.format(self.nodata))
+                    thefile.write('\n')
 
 
-            arr[np.logical_not(ndix),:]  = self.nodata
-
-            for r in mapIX:
-
-                z, sopt = ws2d_vc(arr[r,...],wts[r,...],srange_arr)
-
-                srange_lim = srange[srange <= np.log10(sopt)]
-
-                if len(srange_lim)==1:
-                    srange_lim = array.array('d',np.concatenate([srange_lim-0.2,srange_lim]))
-                else:
-                    srange_lim = array.array('d',srange_lim)
-
-                if p:
-
-                    arr[r,...], sarr[r] = ws2d_vc_asy(arr[r,...],wts[r,...],srange_lim,p)
-
-                else:
-
-                    arr[r,...], sarr[r] = ws2d_vc(arr[r,...],wts[r,...],srange_lim)
-
-
-            for fix in range(self.nfiles):
-
-                ds = gdal.Open(outfiles[fix],gdal.GA_Update)
-
-                ds_b = ds.GetRasterBand(1)
-
-                ds_b.WriteArray(arr_helper[...,fix].round(),xo,yo)
-                ds_b.FlushCache()
-
-                ds_b = None
-                ds = None
-
-
-            # Convert s values in grid to log10(s)
-            sarr[sarr>0] = np.log10(sarr[sarr>0])
-
-            # Write s-values to grid
-            ds = gdal.Open(self.sgrid,gdal.GA_Update)
-
-            ds_b = ds.GetRasterBand(1)
-
-            ds_b.WriteArray(sarr.reshape(ys,xs),xo,yo)
-            ds_b.FlushCache()
-
-            ds_b = None
-            ds = None
-
-        with open(tdir + '/filtvc_2step_config.txt','w') as thefile:
-
-            if p:
-
-                thefile.write('Running asymmetric whittaker smoother with V-curve optimization\n')
-                thefile.write('\n')
-                thefile.write('Timestamp: {}\n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
-                thefile.write('\n')
-                thefile.write('Sgrid: {}\n'.format(self.sgrid))
-                thefile.write('P value: {}\n'.format(p))
-                thefile.write('Nodata value: {}\n'.format(self.nodata))
-                thefile.write('\n')
-
-            else:
-
-                thefile.write('Running whittaker smoother with V-curve optimization\n')
-                thefile.write('\n')
-                thefile.write('Timestamp: {}\n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
-                thefile.write('\n')
-                thefile.write('Sgrid: {}\n'.format(self.sgrid))
-                thefile.write('Nodata value: {}\n'.format(self.nodata))
-                thefile.write('\n')
+    ### 2 STEP SMOOTHING IS DISABLED!
+    #
+    # def ws2d_vcOpt(self,srange,p=None):
+    #     '''Apply whittaker smoother with 2-step V-curve optimization of s to data.
+    #
+    #     If a p-value is supplied, the asymmetric whittaker smoother will be
+    #     applied.
+    #
+    #     Args:
+    #         srange (arr): Float32 array of s-values to apply
+    #         p (float): P-value for percentile
+    #     '''
+    #
+    #     srange_arr = array.array('d',srange)
+    #
+    #     # modify target directory based on asymmetric or normal whittaker
+    #     if p:
+    #         tdir = self.targetdir + '/filtvcp_2step/'
+    #     else:
+    #         tdir = self.targetdir + '/filtvc_2step/'
+    #
+    #     outfiles = [tdir + '/' + os.path.basename(x) for x in self.files]
+    #
+    #     if not os.path.exists(tdir):
+    #
+    #         try:
+    #             os.makedirs(tdir)
+    #         except:
+    #             print('Issues creating subdirectory {}'.format(tdir))
+    #             raise
+    #
+    #     # Path to s-grid
+    #     self.sgrid = tdir + 'sgrid.tif'
+    #
+    #     self.initRasters(tdir)
+    #
+    #     # S-grid needs to be initialized separately
+    #     initGDAL(self.ref_file,tdir,'sgrid.tif',dt='float32')
+    #
+    #     for yo, ys, xo, xs in iterateBlocks(self.nrows,self.ncols,self.bsize):
+    #
+    #         arr = np.zeros((ys*xs,self.nfiles),dtype='double')
+    #         wts = arr.copy()
+    #         sarr = np.zeros((ys*xs),dtype='double')
+    #
+    #         arr_helper = arr.view()
+    #         arr_helper.shape = (ys,xs,self.nfiles)
+    #
+    #         for fix in range(self.nfiles):
+    #
+    #             ds = gdal.Open(self.files[fix])
+    #
+    #             arr_helper[...,fix] = ds.ReadAsArray(xoff=xo,xsize=xs,yoff=yo,ysize=ys)
+    #
+    #             ds = None
+    #
+    #         wts[...] = (arr != self.nodata) * 1
+    #
+    #         ndix = np.sum(arr != self.nodata,1)>0 #70
+    #         mapIX = np.where(ndix)[0]
+    #
+    #         if len(mapIX) == 0:
+    #             continue # skip bc no data in block
+    #
+    #
+    #         arr[np.logical_not(ndix),:]  = self.nodata
+    #
+    #         for r in mapIX:
+    #
+    #             z, sopt = ws2d_vc(arr[r,...],wts[r,...],srange_arr)
+    #
+    #             srange_lim = srange[srange <= np.log10(sopt)]
+    #
+    #             if len(srange_lim)==1:
+    #                 srange_lim = array.array('d',np.concatenate([srange_lim-0.2,srange_lim]))
+    #             else:
+    #                 srange_lim = array.array('d',srange_lim)
+    #
+    #             if p:
+    #
+    #                 arr[r,...], sarr[r] = ws2doptvp(arr[r,...],wts[r,...],srange_lim,p)
+    #
+    #             else:
+    #
+    #                 arr[r,...], sarr[r] = ws2doptv(arr[r,...],wts[r,...],srange_lim)
+    #
+    #
+    #         for fix in range(self.nfiles):
+    #
+    #             ds = gdal.Open(outfiles[fix],gdal.GA_Update)
+    #
+    #             ds_b = ds.GetRasterBand(1)
+    #
+    #             ds_b.WriteArray(arr_helper[...,fix].round(),xo,yo)
+    #             ds_b.FlushCache()
+    #
+    #             ds_b = None
+    #             ds = None
+    #
+    #
+    #         # Convert s values in grid to log10(s)
+    #         sarr[sarr>0] = np.log10(sarr[sarr>0])
+    #
+    #         # Write s-values to grid
+    #         ds = gdal.Open(self.sgrid,gdal.GA_Update)
+    #
+    #         ds_b = ds.GetRasterBand(1)
+    #
+    #         ds_b.WriteArray(sarr.reshape(ys,xs),xo,yo)
+    #         ds_b.FlushCache()
+    #
+    #         ds_b = None
+    #         ds = None
+    #
+    #     with open(tdir + '/filtvc_2step_config.txt','w') as thefile:
+    #
+    #         if p:
+    #
+    #             thefile.write('Running asymmetric whittaker smoother with V-curve optimization\n')
+    #             thefile.write('\n')
+    #             thefile.write('Timestamp: {}\n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
+    #             thefile.write('\n')
+    #             thefile.write('Sgrid: {}\n'.format(self.sgrid))
+    #             thefile.write('P value: {}\n'.format(p))
+    #             thefile.write('Nodata value: {}\n'.format(self.nodata))
+    #             thefile.write('\n')
+    #
+    #         else:
+    #
+    #             thefile.write('Running whittaker smoother with V-curve optimization\n')
+    #             thefile.write('\n')
+    #             thefile.write('Timestamp: {}\n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
+    #             thefile.write('\n')
+    #             thefile.write('Sgrid: {}\n'.format(self.sgrid))
+    #             thefile.write('Nodata value: {}\n'.format(self.nodata))
+    #             thefile.write('\n')
 
 
 def main():
@@ -512,8 +516,7 @@ def main():
     parser.add_argument("-p","--pvalue", help='Value for asymmetric smoothing (float required)', metavar='', type = float)
     parser.add_argument("-b","--blocksize", help='Processing block side length (default 256)',default = 256, metavar='', type = int)
     parser.add_argument("--nodata", help='NoData value', metavar='', type = float)
-    parser.add_argument("--vcurve", help='Use V-curve for s value optimization',action='store_true')
-    parser.add_argument("--twostep", help='Use 2-step V-curve for s value optimization',action='store_true')
+    parser.add_argument("--soptimize", help='Use V-curve (with p if supplied) for s value optimization',action='store_true')
 
     # fail and print help if no arguments supplied
     if len(sys.argv)==1:
@@ -538,7 +541,7 @@ def main():
     rts = RTS(files=fls,targetdir = args.targetdir,bsize= args.blocksize, nodata=args.nodata)
 
     # V-curve optimization is triggered by either supplying the soptimize flag or a s-range
-    if args.vcurve:
+    if args.soptimize:
 
         # Parse s-range or use default
         if args.srange:
@@ -555,32 +558,32 @@ def main():
             print('\nRunning asymmetric whittaker smoother with V-curve optimization ... \n')
 
             # Execute asymmetric whittaker with V-curve optimization
-            rts.ws2d_vc(srange=srange,p=args.pvalue)
+            rts.ws2dopt(srange=srange,p=args.pvalue)
 
         else:
 
             print('\nRunning whittaker smoother with V-curve optimization ... \n')
 
             # Execute whittaker with V-curve optimization
-            rts.ws2d_vc(srange=srange)
+            rts.ws2dopt(srange=srange)
 
-    elif args.twostep:
-
-        if args.srange:
-            try:
-                assert len(args.srange) == 3
-                srange = np.linspace(float(args.srange[0]),float(args.srange[1]),abs((args.srange[0]-args.srange[1]))/float(args.srange[2]) + 1.0)
-            except (IndexError,TypeError,AssertionError):
-                raise SystemExit('Error with s value array values. Expected three values of float log10(s) -  smin smax sstep !')
-        else:
-            srange = np.linspace(0.0,4.0,41.0)
-
-
-
-        print('\nRunning whittaker smoother with 2-step V-curve optimization ... \n')
-
-        # Execute asymmetric whittaker with V-curve optimization
-        rts.ws2d_vcOpt(srange=srange,p=args.pvalue)
+    # elif args.twostep:
+    #
+    #     if args.srange:
+    #         try:
+    #             assert len(args.srange) == 3
+    #             srange = np.linspace(float(args.srange[0]),float(args.srange[1]),abs((args.srange[0]-args.srange[1]))/float(args.srange[2]) + 1.0)
+    #         except (IndexError,TypeError,AssertionError):
+    #             raise SystemExit('Error with s value array values. Expected three values of float log10(s) -  smin smax sstep !')
+    #     else:
+    #         srange = np.linspace(0.0,4.0,41.0)
+    #
+    #
+    #
+    #     print('\nRunning whittaker smoother with 2-step V-curve optimization ... \n')
+    #
+    #     # Execute asymmetric whittaker with V-curve optimization
+    #     rts.ws2d_vcOpt(srange=srange,p=args.pvalue)
 
     else:
 

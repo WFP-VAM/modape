@@ -14,7 +14,7 @@ def main():
     parser = argparse.ArgumentParser(description="MODIS product table")
     parser.add_argument("--product", help='MODIS product ID',metavar='')
     parser.add_argument("--resolution", help='Filter for pixel size',type=str,metavar='')
-    parser.add_argument("--parameter", help='Filter for VAM parameter',metavar='')
+    parser.add_argument("--vampc", help='Filter for VAM product code',metavar='')
 
     args = parser.parse_args()
 
@@ -44,12 +44,12 @@ def main():
             raise SystemExit('Resolution not valid! (possible: 250,500,1000,5600)')
 
     # Subset table by parameter
-    if args.parameter and not args.product:
+    if args.vampc and not args.product:
         d = dict(zip(['VIM','VEM','LTD','LTN'],['Vegetation Indices','Vegetation Indices','Temperature, Emissivity','Temperature, Emissivity']))
         try:
-            tbl = tbl[tbl['product'] == d[args.parameter.upper()]]
+            tbl = tbl[tbl['product'] == d[args.vampc.upper()]]
         except:
-            raise SystemExit('Parameter not valid! (possible: VIM, VEM, LTD, LTN)')
+            raise SystemExit('VAM product code not valid! (possible: VIM, VEM, LTD, LTN)')
 
 
     # print results

@@ -28,7 +28,7 @@ def main():
         raise SystemExit('File not found!')
 
     # Message head
-    msg_head = "WSMTK info tool - {}".format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+    msg_head = "MODAPE info tool - {}".format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
 
     # Read metadata
     try:

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from __future__ import print_function
-from wsmtk.modis import MODISsmth5
-from wsmtk.utils import init_parameters, Pool
+from modape.modis import MODISsmth5
+from modape.utils import init_parameters, Pool
 import shutil
 import os
 import sys
@@ -163,8 +163,8 @@ def main():
     parser.add_argument("-p","--pvalue", help='Value for asymmetric smoothing (float required)', metavar='', type = float)
     parser.add_argument("-d","--targetdir", help='Target directory for smoothed output',default=os.getcwd(),metavar='')
     parser.add_argument("--startdate", help='Startdate for temporal interpolation (format YYYY-MM-DD or YYYYJJJ)',metavar='')
-    parser.add_argument("--vc", help='Use V-curve for s value optimization',action='store_true')
-    parser.add_argument("--vcp", help='Use asymmetric V-curve for s value optimization',action='store_true')
+    parser.add_argument("--optv", help='Use V-curve for s value optimization',action='store_true')
+    parser.add_argument("--optvp", help='Use asymmetric V-curve for s value optimization',action='store_true')
     #parser.add_argument("--twostep", help='Use 2-step V-curve for s value optimization',action='store_true')
     parser.add_argument("--parallel-tiles", help='Number of tiles processed in parallel (default = None)',default=1,type=int,metavar='')
     parser.add_argument("--nworkers", help='Number of worker processes used per tile (default is number is 1 - no concurrency)',default=1, metavar='', type = int)
@@ -221,7 +221,7 @@ def main():
 
     if args.parallel_tiles > 1:
 
-        if args.vc:
+        if args.optv:
 
             if not args.srange:
 
@@ -244,7 +244,7 @@ def main():
             if not args.quiet:
                 print('[{}]: Done.'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
 
-        elif args.vcp:
+        elif args.optvp:
 
             processing_dict['srange'] = args.srange
 
@@ -297,7 +297,15 @@ def main():
 
     else:
 
-        if args.vc:
+        if args.optv:
+
+            if not args.srange:
+
+                srange = np.linspace(-1.0,1.0,11.0)
+
+            else:
+
+                srange = args.srange
 
             if not args.quiet:
                 print('\nRunning whittaker smoother V-curve optimization ... \n')
@@ -315,7 +323,7 @@ def main():
                 if not smt_h5.exists:
                     smt_h5.create()
 
-                smt_h5.ws2d_vc(args.srange)
+                smt_h5.ws2d_vc(srange)
 
                 if not args.quiet:
                     bar.next()
@@ -324,7 +332,7 @@ def main():
                 bar.finish()
                 print('[{}]: Done.'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
 
-        elif args.vcp:
+        elif args.optvp:
 
             if not args.quiet:
                 print('\nRunning whittaker smoother asymmetric V-curve optimization ... \n')

@@ -24,16 +24,16 @@ ext_modules = []
 
 if USE_CYTHON:
     ext_modules += [
-        Extension("wsmtk.whittaker", ["wsmtk/_whittaker.pyx"],extra_compile_args = ["-O3", "-ffast-math"])]
+        Extension("modape.whittaker", ["modape/_whittaker.pyx"],extra_compile_args = ["-O3", "-ffast-math"])]
     cmdclass.update({'build_ext': build_ext })
 else:
     ext_modules += [
-        Extension("wsmtk.whittaker", ["wsmtk/_whittaker.c"],extra_compile_args = ["-O3", "-ffast-math"])]
+        Extension("modape.whittaker", ["modape/_whittaker.c"],extra_compile_args = ["-O3", "-ffast-math"])]
 
 
 setup(
-    name='wsmtk',
-    description='Whittaker Smoothing Toolkit',
+    name='modape',
+    description='MODIS Assimilation and Processing Engine',
     version=_version.__version__,
     author='Valentin Pesendorfer',
     author_email='valentin.pesendorfer@wfp.org',
@@ -41,14 +41,14 @@ setup(
     include_dirs=[numpy.get_include()],
     entry_points={
     'console_scripts':[
-    'downloadMODIS=wsmtk.downloadMODIS:main',
-    'processMODIS=wsmtk.processMODIS:main',
-    'windowMODIS=wsmtk.windowMODIS:main',
-    'smoothMODIS=wsmtk.smoothMODIS:main',
-    'infoMODIS=wsmtk.infoMODIS:main',
-    'producttableMODIS=wsmtk.producttableMODIS:main',
-    'smoothCSV=wsmtk.smoothCSV:main',
-    'smoothRTS=wsmtk.smoothRTS:main',
+    'downloadMODIS=modape.downloadMODIS:main',
+    'processMODIS=modape.processMODIS:main',
+    'windowMODIS=modape.windowMODIS:main',
+    'smoothMODIS=modape.smoothMODIS:main',
+    'infoMODIS=modape.infoMODIS:main',
+    'producttableMODIS=modape.producttableMODIS:main',
+    'smoothCSV=modape.smoothCSV:main',
+    'smoothRTS=modape.smoothRTS:main',
     ]
     },
     packages=find_packages(),
@@ -56,7 +56,7 @@ setup(
     ext_modules=ext_modules,
     include_package_data=True,
     classifiers=[
-    'Development Status :: 3 - Alpha',
+    'Development Status :: 4 - Beta',
     'Programming Language :: Python :: 2.7',
     'Programming Language :: Python :: 3',
 ],

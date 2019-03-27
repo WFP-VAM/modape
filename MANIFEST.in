@@ -1,2 +1,2 @@
 include README.rst
-recursive-include wsmtk/data * 
+recursive-include modape/data * 

@@ -1,9 +1,10 @@
 #!/usr/bin/env python
+
 import os
 import pandas as pd
 import numpy as np
 import argparse
-from wsmtk.whittaker import ws2d, ws2d_vc, ws2d_vc_asy
+from modape.whittaker import ws2d, ws2doptv, ws2doptvp
 import array
 import time
 
@@ -25,8 +26,8 @@ def main():
     In addition to the region code, the output filename contains a suffix which indicates the smoothing method used:
 
         - fixed s: filt0.csv
-        - V-curve: filtvc.csv
-        - asymmetric V-curve: filtvcp.csv
+        - V-curve: filtoptv.csv
+        - asymmetric V-curve: filtoptvp.csv
 
     The resulting CSV is created in the directory the input file is located.
     '''
@@ -101,7 +102,7 @@ def main():
         # If asymmetric V-curve
         if args.pvalue:
 
-            outname = outname + 'filtvcp.csv'
+            outname = outname + 'filtoptvp.csv'
 
             resdf = pd.DataFrame(resdf['ID'].append(pd.Series('pvalue'),ignore_index=True),columns=['ID'])
 
@@ -113,13 +114,13 @@ def main():
 
                 tmparr[...] = val[2:]
 
-                val[2:], sopt = ws2d_vc_asy(tmparr,np.array((tmparr > 0)*1,dtype='double'),srange,args.pvalue)
+                val[2:], sopt = ws2doptvp(tmparr,np.array((tmparr > 0)*1,dtype='double'),srange,args.pvalue)
 
                 resdf[c] =  pd.concat([pd.Series(val),pd.Series([sopt,np.log10(sopt)]),pd.Series(args.pvalue)],ignore_index=True)
 
         else:
 
-            outname = outname + 'filtvc.csv'
+            outname = outname + 'filtoptv.csv'
 
             print('\nSmoothing using V-curve optimization with smin:{}, smax:{}, sstep:{}.\n\nWriting to file: {}\n'
             .format(args.srange[0],args.srange[1],args.srange[2],outname))
@@ -130,7 +131,7 @@ def main():
 
                 tmparr[...] = val[2:]
 
-                val[2:], sopt = ws2d_vc(tmparr,np.array((tmparr > 0)*1,dtype='double'),srange)
+                val[2:], sopt = ws2doptv(tmparr,np.array((tmparr > 0)*1,dtype='double'),srange)
 
                 resdf[c] =  pd.concat([pd.Series(val),pd.Series([sopt,np.log10(sopt)])],ignore_index=True)
 

@@ -6,7 +6,7 @@ import ctypes
 import multiprocessing
 import multiprocessing.pool
 import array
-from wsmtk.whittaker import lag1corr, ws2d, ws2d_vc, ws2d_vc_asy
+from modape.whittaker import lag1corr, ws2d, ws2doptv, ws2doptvp
 import pickle
 import os
 from cryptography.fernet import Fernet
@@ -205,9 +205,9 @@ class Credentials:
         '''Retrieve credentials from disk'''
 
         try:
-            u, p = pload('wsmtk.cred.pkl')
+            u, p = pload('modape.cred.pkl')
 
-            k = pload('wsmtk.key.pkl')
+            k = pload('modape.key.pkl')
 
             cipher_suite = Fernet(k)
 
@@ -232,9 +232,9 @@ class Credentials:
 
             p = cipher_suite.encrypt(self.password.encode())
 
-            pdump((u,p),'wsmtk.cred.pkl')
+            pdump((u,p),'modape.cred.pkl')
 
-            pdump(k,'wsmtk.key.pkl')
+            pdump(k,'modape.key.pkl')
 
         except:
 
@@ -248,12 +248,12 @@ class Credentials:
         '''Remove all credential files on disk'''
 
         try:
-            os.remove('wsmtk.cred.pkl')
+            os.remove('modape.cred.pkl')
         except FileNotFoundError:
             pass
 
         try:
-            os.remove('wsmtk.key.pkl')
+            os.remove('modape.key.pkl')
         except FileNotFoundError:
             pass
 
@@ -472,11 +472,11 @@ def execute_ws2d_vc(ix):
 
     if not parameters['p']:
 
-        arr_raw[ix,:], arr_sgrid[ix] = ws2d_vc(y = arr_raw[ix,:], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1,dtype='double'), llas = array.array('d',parameters['srange']))
+        arr_raw[ix,:], arr_sgrid[ix] = ws2doptv(y = arr_raw[ix,:], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1,dtype='double'), llas = array.array('d',parameters['srange']))
 
     else:
 
-        if not parameters['srange']:
+        if not type(parameters['srange']) is np.ndarray:
 
             lc = lag1corr(arr_raw[ix,:-1],arr_raw[ix,1:],int(parameters['nd']))
 
@@ -489,7 +489,11 @@ def execute_ws2d_vc(ix):
             else:
                 srange = np.linspace(-1.0,1.0,11.0)
 
-        arr_raw[ix,:], arr_sgrid[ix] = ws2d_vc_asy(y = arr_raw[ix,:], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1,dtype='double'), llas = array.array('d',srange), p = parameters['p'])
+        else:
+
+            srange = parameters['srange']
+
+        arr_raw[ix,:], arr_sgrid[ix] = ws2doptvp(y = arr_raw[ix,:], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1,dtype='double'), llas = array.array('d',srange), p = parameters['p'])
 
     if parameters['shared_array_smooth']:
 
@@ -499,9 +503,10 @@ def execute_ws2d_vc(ix):
         arr_smooth[ix,:] = z2[parameters['dix']]
 
 def execute_ws2d_vcOpt(ix):
-    '''Execute whittaker smoother with V-curve 2step-optimization of s in worker.'''
+    '''DEPRECATED!
+    Execute whittaker smoother with V-curve 2step-optimization of s in worker.'''
 
-    z, lopt =  ws2d_vc(y = arr_raw[ix,:], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1,dtype='double'), llas = array.array('d',parameters['srange']))
+    z, lopt =  ws2doptvp(y = arr_raw[ix,:], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1,dtype='double'), llas = array.array('d',parameters['srange']))
 
     srange_lim = parameters['srange'][parameters['srange'] <= np.log10(lopt)]
 
@@ -510,10 +515,10 @@ def execute_ws2d_vcOpt(ix):
 
     if parameters['p']:
 
-        arr_raw[ix,:], arr_sgrid[ix] = ws2d_vc_asy(y = arr_raw[ix,:], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1,dtype='double'), llas = array.array('d',srange_lim), p = parameters['p'])
+        arr_raw[ix,:], arr_sgrid[ix] = ws2doptvp(y = arr_raw[ix,:], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1,dtype='double'), llas = array.array('d',srange_lim), p = parameters['p'])
     else:
 
-        arr_raw[ix,:], arr_sgrid[ix] = ws2d_vc(y = arr_raw[ix,:], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1,dtype='double'), llas = array.array('d',srange_lim))
+        arr_raw[ix,:], arr_sgrid[ix] = ws2doptv(y = arr_raw[ix,:], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1,dtype='double'), llas = array.array('d',srange_lim))
 
     if parameters['shared_array_smooth']:
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from __future__ import print_function
-from wsmtk.modis import MODISquery
+from modape.modis import MODISquery
 import os
 import sys
 import argparse
@@ -8,7 +8,7 @@ import datetime
 import pickle
 import re
 import ogr
-from wsmtk.utils import Credentials, pload
+from modape.utils import Credentials, pload
 
 
 try:
