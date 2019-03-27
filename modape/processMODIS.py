@@ -7,7 +7,6 @@ import glob
 import argparse
 import re
 import traceback
-from progress.bar import Bar
 import time
 from contextlib import contextmanager, closing
 import multiprocessing as mp
@@ -162,18 +161,12 @@ def main():
         if not args.quiet:
             print('\n\n[{}]: Start processing ... \n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
 
-            bar = Bar('Processing',fill='=',max=len(groups),suffix='%(percent)d%%  ')
-            bar.goto(0)
 
         for g in groups:
 
             run_process(processing_dict[g])
 
-            if not args.quiet:
-                bar.next()
-
         if not args.quiet:
-            bar.finish()
             print('\n[{}]: Done.'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
 
 if __name__ == '__main__':

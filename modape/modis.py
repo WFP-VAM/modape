@@ -8,7 +8,6 @@ import time
 import datetime
 from subprocess import Popen, check_output
 import h5py
-from progress.bar import Bar
 from progress.spinner import Spinner
 from modape.utils import *
 from modape.whittaker import lag1corr, ws2d, ws2doptv, ws2doptvp
@@ -472,10 +471,6 @@ class MODISrawh5:
 
                 # preallocate array
                 arr = np.zeros((self.chunks[0],n),dtype=self.datatype[1])
-
-                #bar = Bar('Processing',fill='=',max=self.nfiles,suffix='%(percent)d%%  ')
-
-                #bar.goto(0)
 
                 # Open all files and keep reference in handler
 

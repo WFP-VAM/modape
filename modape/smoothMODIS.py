@@ -12,7 +12,6 @@ import argparse
 import multiprocessing
 import numpy as np
 import time
-from progress.bar import Bar
 from contextlib import contextmanager, closing
 
 def initfun(pdict_):
@@ -309,8 +308,6 @@ def main():
 
             if not args.quiet:
                 print('\nRunning whittaker smoother V-curve optimization ... \n')
-                bar = Bar('Processing',fill='=',max=len(files),suffix='%(percent)d%%  ')
-                bar.goto(0)
 
             for h5 in files:
 
@@ -325,19 +322,13 @@ def main():
 
                 smt_h5.ws2d_vc(srange)
 
-                if not args.quiet:
-                    bar.next()
-
             if not args.quiet:
-                bar.finish()
                 print('[{}]: Done.'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
 
         elif args.optvp:
 
             if not args.quiet:
                 print('\nRunning whittaker smoother asymmetric V-curve optimization ... \n')
-                bar = Bar('Processing',fill='=',max=len(files),suffix='%(percent)d%%  ')
-                bar.goto(0)
 
             for h5 in files:
 
@@ -369,19 +360,13 @@ def main():
 
                 smt_h5.ws2d_vc(args.srange,pv)
 
-                if not args.quiet:
-                    bar.next()
-
             if not args.quiet:
-                bar.finish()
                 print('[{}]: Done.'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
 
         elif args.svalue:
 
             if not args.quiet:
                 print('\nRunning whittaker smoother with fixed s value ... \n')
-                bar = Bar('Processing',fill='=',max=len(files),suffix='%(percent)d%%  ')
-                bar.goto(0)
 
             for h5 in files:
 
@@ -396,19 +381,13 @@ def main():
 
                 smt_h5.ws2d(args.svalue)
 
-                if not args.quiet:
-                    bar.next()
-
             if not args.quiet:
-                bar.finish()
                 print('[{}]: Done.'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
 
         else:
 
             if not args.quiet:
                 print('\nRunning whittaker smoother with s value from grid ... \n')
-                bar = Bar('Processing',fill='=',max=len(files),suffix='%(percent)d%%  ')
-                bar.goto(0)
 
             for h5 in files:
 
@@ -423,11 +402,7 @@ def main():
 
                 smt_h5.ws2d_sgrid()
 
-                if not args.quiet:
-                    bar.next()
-
             if not args.quiet:
-                bar.finish()
                 print('[{}]: Done.'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
 
     print('\n[{}]: smoothMODIS.py finished successfully.\n'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
