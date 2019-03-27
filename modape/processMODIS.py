@@ -1,15 +1,19 @@
 #!/usr/bin/env python
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
-from modape.modis import MODISrawh5
-import os
-import sys
-import glob
+
 import argparse
-import re
-import traceback
-import time
 from contextlib import contextmanager, closing
+import glob
 import multiprocessing as mp
+import os
+import re
+import sys
+import time
+import traceback
+
+from modape.modis import MODISrawh5
 
 
 def run_process(pdict):

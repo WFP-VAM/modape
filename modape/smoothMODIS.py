@@ -1,18 +1,24 @@
 #!/usr/bin/env python
+
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
+
+import argparse
+import datetime
+from contextlib import contextmanager, closing
+import glob
+import multiprocessing
+import os
+import re
+import shutil
+import sys
+import time
+
+import numpy as np
+
 from modape.modis import MODISsmth5
 from modape.utils import init_parameters, Pool
-import shutil
-import os
-import sys
-import glob
-import re
-import datetime
-import argparse
-import multiprocessing
-import numpy as np
-import time
-from contextlib import contextmanager, closing
 
 def initfun(pdict_):
     '''Initfun for worker'''

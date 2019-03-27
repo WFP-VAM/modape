@@ -1,16 +1,25 @@
 #!/usr/bin/env python
+
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
-from modape.modis import MODIStiles, MODISmosaic
-import glob
-import re
-import os
-import sys
-import gdal
+
 import argparse
 import datetime
-import numpy as np
+import glob
+import os
 import pickle
+import re
+import sys
 
+import numpy as np
+
+from modape.modis import MODIStiles, MODISmosaic
+
+try:
+    import gdal
+except ImportError:
+    from osgeo import gdal
 
 def main():
     '''Create mosaics (or subsets) from smoothed MODIS HDF5 files.

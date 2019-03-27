@@ -1,15 +1,19 @@
 #!/usr/bin/env python
+
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
-from modape.modis import MODISquery
-import os
-import sys
+
 import argparse
 import datetime
+import os
 import pickle
 import re
-import ogr
-from modape.utils import Credentials, pload
+import sys
 
+from modape.modis import MODISquery
+from modape.utils import Credentials, pload
+import ogr
 
 try:
     range = xrange

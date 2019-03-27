@@ -1,16 +1,25 @@
 #!/usr/bin/env python
+
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
-from modape.whittaker import *
-from modape.utils import dtype_GDNP
-import glob
-import re
-import os
-import sys
-import gdal
+
 import argparse
-import time
-import numpy as np
 import array
+import glob
+import os
+import re
+import sys
+import time
+
+import numpy as np
+try:
+    import gdal
+except ImportError:
+    from osgeo import gdal
+
+from modape.utils import dtype_GDNP
+from modape.whittaker import *
 
 # assign xrange to range if py2
 try:

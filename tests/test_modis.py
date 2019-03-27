@@ -1,13 +1,21 @@
-import unittest
-from unittest.mock import patch, Mock
-import uuid
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import os
 import re
 import shutil
-import gdal
-import h5py
-import fake
+import unittest
+from unittest.mock import patch, Mock
+import uuid
 
+import h5py
+try:
+    import gdal
+except ImportError:
+    from osgeo import gdal
+
+import fake
 from modape.modis import MODISquery, MODISrawh5, MODISsmth5
 
 def create_gdal(x,y):

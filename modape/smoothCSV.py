@@ -1,12 +1,18 @@
 #!/usr/bin/env python
 
-import os
-import pandas as pd
-import numpy as np
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import argparse
-from modape.whittaker import ws2d, ws2doptv, ws2doptvp
 import array
+import os
 import time
+
+import numpy as np
+import pandas as pd
+
+from modape.whittaker import ws2d, ws2doptv, ws2doptvp
 
 try:
     range = xrange

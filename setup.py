@@ -1,12 +1,10 @@
 #!/usr/bin/env python
 
-#from distutils.core import setup
-#from distutils.extension import Extension
 from setuptools import setup, Extension, find_packages
+
 import numpy
 import _version
 USE_CYTHON = 'auto'
-
 
 if USE_CYTHON:
     try:

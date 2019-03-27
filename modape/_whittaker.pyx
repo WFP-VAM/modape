@@ -1,13 +1,14 @@
 #cython: boundscheck=True
 #cython: wraparound=False
 #cython: cdivision=True
-from cpython.array cimport array, clone
 
+from cpython.array cimport array, clone
+from libc.math cimport log, pow, sqrt
 cimport numpy as np
 import numpy as np
+
 tFloat = np.double
 ctypedef np.double_t dtype_t
-from libc.math cimport log, pow, sqrt
 
 cpdef lag1corr(np.ndarray[dtype_t] data1, np.ndarray[dtype_t] data2, double nd):
 

@@ -1,8 +1,14 @@
-import unittest
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+import array
 import os
 import pickle
+import unittest
+
 import numpy as np
-import array
+
 from modape.whittaker import *
 
 class TestWhittaker(unittest.TestCase):

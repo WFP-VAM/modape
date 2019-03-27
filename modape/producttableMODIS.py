@@ -1,8 +1,14 @@
 #!/usr/bin/env python
-import pickle
-import os
-import pandas as pd
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import argparse
+import os
+import pickle
+
+import pandas as pd
 
 def main():
     '''Print MODIS product table.

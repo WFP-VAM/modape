@@ -1,11 +1,15 @@
 #!/usr/bin/env python
+
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
-import h5py
-import sys,os
-import time
+
 import argparse
+import os
+import sys
+import time
 
-
+import h5py
 
 def main():
     '''Info tool for processed MODIS HDF5 files.

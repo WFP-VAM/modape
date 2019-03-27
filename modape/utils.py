@@ -1,15 +1,24 @@
-import numpy as np
-import datetime
-import requests
-import gdal
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+import array
+from cryptography.fernet import Fernet
 import ctypes
+import datetime
 import multiprocessing
 import multiprocessing.pool
-import array
-from modape.whittaker import lag1corr, ws2d, ws2doptv, ws2doptvp
-import pickle
 import os
-from cryptography.fernet import Fernet
+import pickle
+
+import numpy as np
+import requests
+try:
+    import gdal
+except ImportError:
+    from osgeo import gdal
+
+from modape.whittaker import lag1corr, ws2d, ws2doptv, ws2doptvp
 
 # assign xrange to range if py2
 try:

@@ -1,29 +1,35 @@
-from __future__ import print_function, division
-import numpy as np
-import requests
-from bs4 import BeautifulSoup
-import re
-import sys, os
-import time
-import datetime
-from subprocess import Popen, check_output
-import h5py
-from progress.spinner import Spinner
-from modape.utils import *
-from modape.whittaker import lag1corr, ws2d, ws2doptv, ws2doptvp
-from contextlib import contextmanager, closing
-import warnings
-import itertools
-import bisect
-import gc
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import array
+import bisect
+from contextlib import contextmanager, closing
+import datetime
+import gc
+import itertools
 import multiprocessing as mp
+import os
+import re
+from subprocess import Popen, check_output
+import sys
+import time
 import traceback
 import uuid
+import warnings
+
+from bs4 import BeautifulSoup
+import h5py
+import numpy as np
+from progress.spinner import Spinner
+import requests
 try:
     import gdal
 except ImportError:
     from osgeo import gdal
+
+from modape.utils import *
+from modape.whittaker import lag1corr, ws2d, ws2doptv, ws2doptvp
 
 try:
     range = xrange
