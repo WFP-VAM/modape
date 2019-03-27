@@ -1214,7 +1214,7 @@ class MODISsmth5:
 
                     for r in mapIX:
 
-                        if not srange:
+                        if not type(srange) is np.ndarray:
 
                             lc = lag1corr(arr_raw[r,:-1],arr_raw[r,1:],nodata)
 

@@ -299,6 +299,14 @@ def main():
 
         if args.optv:
 
+            if not args.srange:
+
+                srange = np.linspace(-1.0,1.0,11.0)
+
+            else:
+
+                srange = args.srange
+
             if not args.quiet:
                 print('\nRunning whittaker smoother V-curve optimization ... \n')
                 bar = Bar('Processing',fill='=',max=len(files),suffix='%(percent)d%%  ')
@@ -315,7 +323,7 @@ def main():
                 if not smt_h5.exists:
                     smt_h5.create()
 
-                smt_h5.ws2d_vc(args.srange)
+                smt_h5.ws2d_vc(srange)
 
                 if not args.quiet:
                     bar.next()

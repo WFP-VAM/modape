@@ -476,7 +476,7 @@ def execute_ws2d_vc(ix):
 
     else:
 
-        if not parameters['srange']:
+        if not type(parameters['srange']) is np.ndarray:
 
             lc = lag1corr(arr_raw[ix,:-1],arr_raw[ix,1:],int(parameters['nd']))
 
@@ -488,6 +488,10 @@ def execute_ws2d_vc(ix):
 
             else:
                 srange = np.linspace(-1.0,1.0,11.0)
+
+        else:
+
+            srange = parameters['srange']
 
         arr_raw[ix,:], arr_sgrid[ix] = ws2doptvp(y = arr_raw[ix,:], w = np.array((arr_raw[ix,:] != parameters['nd']) * 1,dtype='double'), llas = array.array('d',srange), p = parameters['p'])
 
