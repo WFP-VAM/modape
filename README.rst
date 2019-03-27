@@ -1,7 +1,7 @@
 MODAPE
 =====
 
-The **M**\ ODIS **A**\ ssimilation and **P**\ rocessing\ **E**\ ngine combines a state-of-the art whittaker smoother, implemented as fast C-extension through Cython and including a V-curve optimization of the smoothing parameter, with a HDF5 based processing chain optimized for MODIS data.
+The **M**\ ODIS **A**\ ssimilation and **P**\ rocessing **E**\ ngine combines a state-of-the art whittaker smoother, implemented as fast C-extension through Cython and including a V-curve optimization of the smoothing parameter, with a HDF5 based processing chain optimized for MODIS data.
 
 The sub-module ``modape.whittaker`` includes the following variations of the whittaker smoother with 2nd order differences:
 
