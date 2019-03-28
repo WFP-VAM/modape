@@ -30,7 +30,7 @@ MODIS processing chain:
 
 Dependencies:
 
-wsmtk depends on these packages:
+modape depends on these packages:
 
 - numpy
 - gdal
