@@ -84,7 +84,7 @@ def iterateBlocks(rows,cols,n):
             yield (ri,min(n,rows-ri),ci,min(n,cols-ci))
 
 
-class RTS:
+class RTS(object):
     '''Class for raster timeseries for smoothing.'''
 
     def __init__(self,files,targetdir,bsize=256,nodata=None):

@@ -39,7 +39,7 @@ except NameError:
 # turn off BeautifulSoup warnings
 warnings.filterwarnings("ignore", category=UserWarning, module='bs4')
 
-class MODISquery:
+class MODISquery(object):
     '''Class for querying and downloading MODIS data.'''
 
     def __init__(self,url,begindate,enddate,username=None,password=None,targetdir=os.getcwd(),global_flag=None,aria2=False, tile_filter=None):
@@ -246,7 +246,7 @@ class MODISquery:
 
 
 
-class MODISrawh5:
+class MODISrawh5(object):
     '''Class for raw MODIS data collected into HDF5 file, ready for smoothing.
 
     For MOD/MYD 13 products, MOD and MYD are interleaved into a combined MXD.
@@ -532,7 +532,7 @@ class MODISrawh5:
         return("MODISrawh5 object: %s - %s files - exists on disk: %s" % (self.outname, self.nfiles, self.exists))
 
 
-class MODISsmth5:
+class MODISsmth5(object):
     '''Class for smoothed MODIS data collected into HDF5 file.'''
 
     def __init__(self,rawfile,startdate=None,tempint=None,nsmooth=0,nupdate=0,targetdir=os.getcwd(),nworkers=1):
@@ -1500,7 +1500,7 @@ class MODISsmth5:
                             smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]]
 
 
-class MODIStiles:
+class MODIStiles(object):
     '''Class for MODIS tiles.
 
     Converts AOI coordinates to MODIS tile numbers by extracting values from MODIS_TILES.tif.
@@ -1556,7 +1556,7 @@ class MODIStiles:
         self.tiles = ["h{}v{}".format(*x.split('.')) for x in tiles]
 
 
-class MODISmosaic:
+class MODISmosaic(object):
     '''Class for mosaic of MODIS tiles.
 
     Moisaics tiles per Product, parameter and timestep. Enables extraction as GeoTiff.

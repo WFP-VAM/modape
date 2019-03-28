@@ -68,7 +68,7 @@ class SessionWithHeaderRedirection(requests.Session):
 
         return
 
-class FileHandler:
+class FileHandler(object):
     ''' Filehandler class to handle GDAL file references'''
 
     def __init__(self, files, sds):
@@ -128,7 +128,7 @@ class Pool(multiprocessing.pool.Pool):
     Process = NoDaemonProcess
 
 
-class DateHelper:
+class DateHelper(object):
 
     def __init__(self,rawdates,rtres,stres,start=None,nupdate=0):
 
@@ -193,7 +193,7 @@ class DateHelper:
         return([self.daily.index(x) for x in self.target])
 
 
-class Credentials:
+class Credentials(object):
     '''Credentials helper class'''
 
     def __init__(self, username = None, password = None):
