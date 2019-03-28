@@ -9,11 +9,11 @@ USE_CYTHON = 'auto'
 if USE_CYTHON:
     try:
         from Cython.Distutils import build_ext
-        if USE_CYTHON=='auto':
-            USE_CYTHON=True
+        if USE_CYTHON == 'auto':
+            USE_CYTHON = True
     except ImportError:
-        if USE_CYTHON=='auto':
-            USE_CYTHON=False
+        if USE_CYTHON == 'auto':
+            USE_CYTHON = False
         else:
             raise
 
@@ -22,12 +22,11 @@ ext_modules = []
 
 if USE_CYTHON:
     ext_modules += [
-        Extension("modape.whittaker", ["modape/_whittaker.pyx"],extra_compile_args = ["-O3", "-ffast-math"])]
-    cmdclass.update({'build_ext': build_ext })
+        Extension("modape.whittaker", ["modape/_whittaker.pyx"], extra_compile_args=["-O3", "-ffast-math"])]
+    cmdclass.update({'build_ext': build_ext})
 else:
     ext_modules += [
-        Extension("modape.whittaker", ["modape/_whittaker.c"],extra_compile_args = ["-O3", "-ffast-math"])]
-
+        Extension("modape.whittaker", ["modape/_whittaker.c"], extra_compile_args=["-O3", "-ffast-math"])]
 
 setup(
     name='modape',
@@ -50,7 +49,7 @@ setup(
     ]
     },
     packages=find_packages(),
-    cmdclass = cmdclass,
+    cmdclass=cmdclass,
     ext_modules=ext_modules,
     include_package_data=True,
     classifiers=[

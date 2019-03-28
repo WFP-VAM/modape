@@ -17,11 +17,11 @@ def main():
     Returns metadata on processed MODIS HDF5 files, both for raw and smoothed files.
     '''
 
-    parser = argparse.ArgumentParser(description="Get MODIS raw/smooth file info")
-    parser.add_argument("file", help='Full path to MODIS h5 file')
+    parser = argparse.ArgumentParser(description='Get MODIS raw/smooth file info')
+    parser.add_argument('file', help='Full path to MODIS h5 file')
 
     # Fail and print help if no arguments supplied
-    if len(sys.argv)==1:
+    if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
         sys.exit(1)
 
@@ -32,13 +32,11 @@ def main():
         raise SystemExit('File not found!')
 
     # Message head
-    msg_head = "MODAPE info tool - {}".format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+    msg_head = 'MODAPE info tool - {}'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()))
 
     # Read metadata
     try:
-
-        with h5py.File(args.file,'r') as h5f:
-
+        with h5py.File(args.file, 'r') as h5f:
             dset = h5f.get('data')
             dts  = h5f.get('dates')
 
@@ -62,7 +60,6 @@ def main():
 
     # If lastrun attribute is not none (aka product is smooth HDF5)
     if lr:
-
         msg = '''
 File: {}
 
@@ -88,11 +85,9 @@ NoData value: {}
 
 Last modified: {}
 
-Last smoothing run: Whittaker smoother with {}\n'''.format(args.file,nrows,ncols,dim[1],startdate,enddate,temporalresolution,resolution,nodata_value,ptstmp,lr)
-
+Last smoothing run: Whittaker smoother with {}\n'''.format(args.file, nrows, ncols, dim[1], startdate, enddate, temporalresolution, resolution, nodata_value, ptstmp, lr)
 
     else:
-
         msg = '''
 File: {}
 
@@ -116,15 +111,11 @@ Spatial resolution: {} m
 
 NoData value: {}
 
-Last modified: {}\n'''.format(args.file,nrows,ncols,dim[1],startdate,enddate,temporalresolution,resolution,nodata_value,ptstmp)
-
+Last modified: {}\n'''.format(args.file, nrows, ncols, dim[1], startdate, enddate, temporalresolution, resolution, nodata_value, ptstmp)
 
     # Print message - header is centered
-    print(' ',msg_head.center(os.get_terminal_size().columns),' ',sep='\n')
+    print(' ', msg_head.center(os.get_terminal_size().columns), ' ', sep='\n')
     print(msg)
-
-
-
 
 if __name__ == '__main__':
     main()
