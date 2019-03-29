@@ -38,7 +38,7 @@ def main():
     parser.add_argument('--region', help='region 3 letter region code (default is \'reg\')', default='reg', metavar='')
     parser.add_argument('-b','--begin-date', help='Start date (YYYYMM)', default=datetime.date(2000,1,1).strftime('%Y%m'), metavar='')
     parser.add_argument('-e','--end-date', help='End date (YYYYMM)', default=datetime.date.today().strftime('%Y%m'), metavar='')
-    parser.add_argument('--vpc', help='VAM product code', metavar='')
+    parser.add_argument('--vampc', help='VAM product code', metavar='')
     parser.add_argument('-d','--targetdir', help='Target directory for GeoTIFFs (default current directory)', default=os.getcwd(), metavar='')
     parser.add_argument('--sgrid', help='Extract (mosaic of) s value grid(s))', action='store_true')
 
@@ -113,8 +113,8 @@ def main():
         h5files = [x for x in h5files if re.search(tileRX, x)]
 
     # Filter for product code
-    if args.vpc:
-        h5files = [x for x in h5files if args.vpc in x]
+    if args.vampc:
+        h5files = [x for x in h5files if args.vampc in x]
 
     # Assert that there are results
     assert len(h5files) > 0, '\nNo processed MODIS HDF5 files found for combination of product/tile (and VAM product code)'

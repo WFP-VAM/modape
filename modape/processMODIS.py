@@ -24,14 +24,14 @@ def run_process(pdict):
         pdict: dictionary with processing parameters for tile
     '''
 
-    for vpc in pdict['vampc']:
+    for vam_product_code in pdict['vam_product_code']:
         try:
-            rh5 = MODISrawh5(pdict['files'], vpc=vpc, targetdir=pdict['targetdir'], interleave=pdict['interleave'])
+            rh5 = MODISrawh5(pdict['files'], vam_product_code=vam_product_code, targetdir=pdict['targetdir'], interleave=pdict['interleave'])
             if not rh5.exists:
                 rh5.create(compression=pdict['compression'], chunk=pdict['chunksize'])
             rh5.update()
         except Exception as e:
-            print('\nError processing product {}, product code {}. \n\n Traceback:\n'.format(rh5.product, vpc))
+            print('\nError processing product {}, product code {}. \n\n Traceback:\n'.format(rh5.product, vam_product_code))
             traceback.print_exc()
         print('\n')
 
@@ -98,13 +98,13 @@ def main():
 
         if args.all_vampc:
             if re.match(vimvem, g.split('.*')[0]):
-                processing_dict[g]['vampc'] = ['VIM', 'VEM']
+                processing_dict[g]['vam_product_code'] = ['VIM', 'VEM']
             elif re.match(lst, g.split('.*')[0]):
-                processing_dict[g]['vampc'] = ['LTD', 'LTN']
+                processing_dict[g]['vam_product_code'] = ['LTD', 'LTN']
             else:
                 raise ValueError('No VAM product code implemented for {}'.format(g.split('.*')[0]))
         else:
-            processing_dict[g]['vampc'] = [None]
+            processing_dict[g]['vam_product_code'] = [None]
 
     if args.parallel_tiles > 1:
         if not args.quiet:

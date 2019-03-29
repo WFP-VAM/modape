@@ -89,7 +89,7 @@ class TestMODIS(unittest.TestCase):
         query = MODISquery(url='http://tiled-test.query', begindate='2000-01-01', enddate='2000-04-30')
 
         self.assertFalse(query.global_flag)
-        self.assertEqual(query.modisURLs, urls)
+        self.assertEqual(query.modis_urls, urls)
         self.assertEqual(query.tiles, ['h18v06'])
         self.assertEqual(query.results, 5)
         del query, urls
@@ -103,7 +103,7 @@ class TestMODIS(unittest.TestCase):
         query = MODISquery(url='http://global-test.query/', begindate='2002-07-01',enddate='2002-08-15', global_flag=True)
 
         self.assertTrue(query.global_flag)
-        self.assertEqual(query.modisURLs, urls)
+        self.assertEqual(query.modis_urls, urls)
         self.assertEqual(query.results, 5)
 
         try:

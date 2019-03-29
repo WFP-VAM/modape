@@ -32,35 +32,34 @@ def main():
         raise SystemExit('File not found!')
 
     # Message head
-    msg_head = 'MODAPE info tool - {}'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()))
+    message_head = 'MODAPE info tool - {}'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()))
 
     # Read metadata
     try:
         with h5py.File(args.file, 'r') as h5f:
             dset = h5f.get('data')
-            dts  = h5f.get('dates')
-
+            dates  = h5f.get('dates')
             dim = dset.shape
-            startdate = dts[0].decode()
-            enddate = dts[-1].decode()
+            startdate = dates[0].decode()
+            enddate = dates[-1].decode()
             temporalresolution = dset.attrs['temporalresolution']
             resolution = dset.attrs['resolution']
             nodata_value = dset.attrs['nodata']
-            ptstmp = dset.attrs['processingtimestamp']
+            processing_timestamp = dset.attrs['processingtimestamp']
             ncols = dset.attrs['RasterXSize'].item()
             nrows = dset.attrs['RasterYSize'].item()
 
             # If reading lastrun fails, it's assumed the product is a raw HDF5 file
             try:
-                lr = dset.attrs['lastrun']
+                last_run = dset.attrs['lastrun']
             except KeyError:
-                lr = None
+                last_run = None
     except:
         raise SystemExit('Error reading file information.')
 
     # If lastrun attribute is not none (aka product is smooth HDF5)
-    if lr:
-        msg = '''
+    if last_run:
+        message = '''
 File: {}
 
 Type: MODIS smoothed HDF5
@@ -85,10 +84,10 @@ NoData value: {}
 
 Last modified: {}
 
-Last smoothing run: Whittaker smoother with {}\n'''.format(args.file, nrows, ncols, dim[1], startdate, enddate, temporalresolution, resolution, nodata_value, ptstmp, lr)
+Last smoothing run: Whittaker smoother with {}\n'''.format(args.file, nrows, ncols, dim[1], startdate, enddate, temporalresolution, resolution, nodata_value, processing_timestamp, last_run)
 
     else:
-        msg = '''
+        message = '''
 File: {}
 
 Type: MODIS raw daily HDF5
@@ -111,11 +110,11 @@ Spatial resolution: {} m
 
 NoData value: {}
 
-Last modified: {}\n'''.format(args.file, nrows, ncols, dim[1], startdate, enddate, temporalresolution, resolution, nodata_value, ptstmp)
+Last modified: {}\n'''.format(args.file, nrows, ncols, dim[1], startdate, enddate, temporalresolution, resolution, nodata_value, processing_timestamp)
 
     # Print message - header is centered
-    print(' ', msg_head.center(os.get_terminal_size().columns), ' ', sep='\n')
-    print(msg)
+    print(' ', message_head.center(os.get_terminal_size().columns), ' ', sep='\n')
+    print(message)
 
 if __name__ == '__main__':
     main()

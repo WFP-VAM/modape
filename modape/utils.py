@@ -267,7 +267,7 @@ def dtype_GDNP(dt):
     dt_tuple = [(k, v) for k, v in dt_dict.items() if k == dt or v == dt]
     return(dt_tuple[0])
 
-def LDOM(x):
+def ldom(x):
     '''Get last day of month.
 
     Args:

@@ -72,38 +72,38 @@ def main():
     this_dir, this_filename = os.path.split(__file__)
     product_table = pload(os.path.join(this_dir, 'data', 'MODIS_V6_PT.pkl'))
 
-    for p in args.product:
+    for product in args.product:
 
         # Handle ? wildcard
-        if '?' in p:
-            patt = re.compile(p.replace('?','.{1,2}') + '$')
-            p = [x for x in product_table if re.match(patt, x)]
+        if '?' in product:
+            pattern = re.compile(product.replace('?','.{1,2}') + '$')
+            product = [x for x in product_table if re.match(pattern, x)]
         else:
-            p = [p]
+            product = [product] # enable iteration
 
-        for p2 in p:
+        for product_subset in product:
 
             # Load product info from table
             try:
-                product_table_sub = product_table[p2]
+                product_table_subset = product_table[product_subset]
             except KeyError:
                 if len(args.product) > 1:
-                    print('Product {} not recognized. Skipping ...'.format(p2))
+                    print('Product {} not recognized. Skipping ...'.format(product_subset))
                     continue
                 else:
-                    raise SystemExit('Product {} not recognized!'.format(p2))
+                    raise SystemExit('Product {} not recognized!'.format(product_subset))
 
             # If resolution is bigger than 1km, the product is global
-            global_flag = int(product_table_sub['pixel_size']) > 1000
+            global_flag = int(product_table_subset['pixel_size']) > 1000
 
             # If global, select corresponding base URL
             if global_flag:
-                if 'MOD' in p2:
-                    queryURL = 'https://e4ftl01.cr.usgs.gov/MOLT/{}.006/'.format(p2)
-                elif 'MYD' in p2:
-                    queryURL = 'https://e4ftl01.cr.usgs.gov/MOLA/{}.006/'.format(p2)
-                elif 'MCD' in p2:
-                    queryURL = 'https://e4ftl01.cr.usgs.gov/MOTA/{}.006/'.format(p2)
+                if 'MOD' in product_subset:
+                    query_url = 'https://e4ftl01.cr.usgs.gov/MOLT/{}.006/'.format(product_subset)
+                elif 'MYD' in product_subset:
+                    query_url = 'https://e4ftl01.cr.usgs.gov/MOLA/{}.006/'.format(product_subset)
+                elif 'MCD' in product_subset:
+                    query_url = 'https://e4ftl01.cr.usgs.gov/MOTA/{}.006/'.format(product_subset)
                 else:
                     raise SystemExit('Product {} not recognized. Available: MOD*, MYD*, MCD*')
             else:
@@ -113,26 +113,25 @@ def main():
                     # cast to lowercase
                     tiles = [x.lower() for x in args.tile_filter]
 
-                    with open(os.path.join(this_dir, 'data', 'ModlandTiles_bbx.pkl'),'rb') as bbx_raw:
-                        bbx = pickle.load(bbx_raw)
+                    with open(os.path.join(this_dir, 'data', 'ModlandTiles_bbx.pkl'),'rb') as bbox_raw:
+                        bbox = pickle.load(bbox_raw)
 
                     if len(tiles) == 1:
-                        h,v = re.findall('\d+', tiles[0])
-                        bbx_sel = bbx[(bbx.ih == int(h)) & (bbx.iv == int(v))]
+                        h_indicator, v_indicator = re.findall('\d+', tiles[0])
+                        bbox_selection = bbox[(bbox.ih == int(h_indicator)) & (bbox.iv == int(v_indicator))]
 
                         # roi is approx. center point of tile
-                        args.roi = [bbx_sel.lat_max.values[0] - 5, bbx_sel.lon_max.values[0] - (bbx_sel.lon_max.values[0] - bbx_sel.lon_min.values[0])/2]
+                        args.roi = [bbox_selection.lat_max.values[0] - 5, bbox_selection.lon_max.values[0] - (bbox_selection.lon_max.values[0] - bbox_selection.lon_min.values[0])/2]
                     elif len(tiles) > 1:
-                        h = list(set([re.findall('\d+',x.split('v')[0])[0] for x in tiles]))
-                        v = list(set([re.findall('\d+',x.split('v')[1])[0] for x in tiles]))
+                        h_indicator = list(set([re.findall('\d+',x.split('v')[0])[0] for x in tiles]))
+                        v_indicator = list(set([re.findall('\d+',x.split('v')[1])[0] for x in tiles]))
 
                         # aoi is bbox including all tiles from tile_filter, plus 1 degree buffer
-                        bbx_sel = bbx.query('|'.join(['ih == {}'.format(int(x)) for x in h])).query('|'.join(['iv == {}'.format(int(x)) for x in v]))
-                        args.roi = [min(bbx_sel.lon_min.values)-1, min(bbx_sel.lat_min.values)-1, max(bbx_sel.lon_max.values)+1,max(bbx_sel.lat_max.values)+1]
+                        bbox_selection = bbox.query('|'.join(['ih == {}'.format(int(x)) for x in h_indicator])).query('|'.join(['iv == {}'.format(int(x)) for x in v_indicator]))
+                        args.roi = [min(bbox_selection.lon_min.values)-1, min(bbox_selection.lat_min.values)-1, max(bbox_selection.lon_max.values)+1,max(bbox_selection.lat_max.values)+1]
 
                     else:
-                        # not happening
-                        pass
+                        pass # not happening
 
                 # Construct query URL
                 try:
@@ -140,21 +139,21 @@ def main():
                         try:
                             ds = ogr.Open(args.roi[0])
                             lyr = ds.GetLayer()
-                            geomcol = ogr.Geometry(ogr.wkbGeometryCollection)
+                            geometry_collection = ogr.Geometry(ogr.wkbGeometryCollection)
 
                             for feature in lyr:
-                                geomcol.AddGeometry(feature.GetGeometryRef())
+                                geometry_collection.AddGeometry(feature.GetGeometryRef())
 
-                            hull = geomcol.ConvexHull()
-                            geom = hull.GetGeometryRef(0)
-                            pointcount = geom.GetPointCount()
-                            crds = []
+                            hull = geometry_collection.ConvexHull()
+                            geometry = hull.GetGeometryRef(0)
+                            point_count = geometry.GetPointCount()
+                            coordinates = []
 
-                            for pt in range(pointcount):
-                                lat, lon, z = geom.GetPoint(pt)
-                                crds.append('{},{}'.format(lon,lat))
+                            for point in range(point_count):
+                                lat, lon, z = geometry.GetPoint(point)
+                                coordinates.append('{},{}'.format(lon,lat))
 
-                            query.append('polygon=' + ','.join(crds))
+                            query.append('polygon=' + ','.join(coordinates))
                             ds = None
                             lyr = None
                         except:
@@ -174,16 +173,16 @@ def main():
                 query.append('version={}'.format(args.collection))
                 query.append('date={}/{}'.format(args.begin_date, args.end_date))
 
-                queryURL = 'https://lpdaacsvc.cr.usgs.gov/services/inventory?product={}&{}'.format(p2, '&'.join(query))
+                query_url = 'https://lpdaacsvc.cr.usgs.gov/services/inventory?product={}&{}'.format(product_subset, '&'.join(query))
 
             # Run query
-            print('\nPRODUCT: {}\n'.format(p2))
-            res = MODISquery(queryURL, targetdir=args.targetdir, begindate=args.begin_date, enddate=args.end_date, global_flag=global_flag, aria2=args.aria2, tile_filter=args.tile_filter)
+            print('\nPRODUCT: {}\n'.format(product_subset))
+            query_result = MODISquery(query_url, targetdir=args.targetdir, begindate=args.begin_date, enddate=args.end_date, global_flag=global_flag, aria2=args.aria2, tile_filter=args.tile_filter)
 
             # If download is True and at least one result, download data
-            if args.download and res.results > 0:
-                res.setCredentials(credentials.username, credentials.password)
-                res.download()
+            if args.download and query_result.results > 0:
+                query_result.setCredentials(credentials.username, credentials.password)
+                query_result.download()
 
 if __name__ == '__main__':
     main()

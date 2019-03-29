@@ -56,12 +56,12 @@ class MODISquery(object):
             aria2 (bool): Use aria2 for downloading rather then python's requests
         '''
 
-        self.queryURL = url
+        self.query_url = url
         self.username = username
         self.password = password
         self.targetdir = targetdir
         self.files = []
-        self.modisURLs = []
+        self.modis_urls = []
         self.begin = datetime.datetime.strptime(begindate, '%Y-%m-%d').date()
         self.end = datetime.datetime.strptime(enddate, '%Y-%m-%d').date()
         self.global_flag = global_flag
@@ -72,7 +72,7 @@ class MODISquery(object):
 
             print('Checking for MODIS products ...', end='')
             try:
-                response = sess.get(self.queryURL)
+                response = sess.get(self.query_url)
                 self.statuscode = response.status_code
                 response.raise_for_status()
             except requests.exceptions.RequestException as e:
@@ -90,19 +90,19 @@ class MODISquery(object):
 
                 for d in dates[dates_ix]:
                     try:
-                        response = sess.get(self.queryURL + d)
+                        response = sess.get(self.query_url + d)
                     except requests.exceptions.RequestException as e:
                         print(e)
-                        print('Error accessing {} - skipping.'.format(self.queryURL + d))
+                        print('Error accessing {} - skipping.'.format(self.query_url + d))
 
                     soup = BeautifulSoup(response.content, features='html.parser')
                     hrefs = soup.find_all('a', href=True)
                     hdf_file = [x.getText() for x in hrefs if re.match(r, x.getText())]
 
                     try:
-                        self.modisURLs.append(self.queryURL + d + hdf_file[0])
+                        self.modis_urls.append(self.query_url + d + hdf_file[0])
                     except IndexError:
-                        print('No HDF file found in {} - skipping.'.format(self.queryURL + d))
+                        print('No HDF file found in {} - skipping.'.format(self.query_url + d))
                         continue
             else:
                 r = re.compile('.+(h\d+v\d+).+')
@@ -110,13 +110,13 @@ class MODISquery(object):
 
                 if tile_filter:
                     tiles = [x.lower() for x in tile_filter]
-                    self.modisURLs = [x for x in urls if any(t in x for t in tiles)]
+                    self.modis_urls = [x for x in urls if any(t in x for t in tiles)]
                 else:
-                    self.modisURLs = urls
+                    self.modis_urls = urls
 
-                self.tiles = list(set([r.search(x).group(1) for x in self.modisURLs]))
+                self.tiles = list(set([r.search(x).group(1) for x in self.modis_urls]))
 
-        self.results = len(self.modisURLs)
+        self.results = len(self.modis_urls)
         print('... done.\n')
 
         # check for results
@@ -169,7 +169,7 @@ class MODISquery(object):
 
             # write URLs of query resuls to disk for WGET
             with open(flist,'w') as thefile:
-                for item in self.modisURLs:
+                for item in self.modis_urls:
                     thefile.write('%s\n' % item)
 
             args = ['aria2c', '--file-allocation=none', '-m', '50', '--retry-wait', '2', '-c', '-x', '10', '-s', '10', '--http-user', self.username, '--http-passwd', self.password, '-d', self.targetdir]
@@ -184,14 +184,14 @@ class MODISquery(object):
             else:
                 os.remove(flist)
 
-            self.files = [self.targetdir + os.path.basename(x) for x in self.modisURLs]
+            self.files = [self.targetdir + os.path.basename(x) for x in self.modis_urls]
 
         # download with requests
         else:
             r = re.compile('.*.hdf$')
             session = SessionWithHeaderRedirection(self.username, self.password)
 
-            for ix,u in enumerate(self.modisURLs):
+            for ix,u in enumerate(self.modis_urls):
                 print('{} of {}'.format(ix+1, self.results))
                 fname = u[u.rfind('/')+1:]
 
@@ -224,28 +224,28 @@ class MODISrawh5(object):
     For MOD/MYD 13 products, MOD and MYD are interleaved into a combined MXD.
     '''
 
-    def __init__(self, files, vpc=None, targetdir=os.getcwd(), interleave=False):
+    def __init__(self, files, vam_product_code=None, targetdir=os.getcwd(), interleave=False):
         '''Create a MODISrawh5 class
 
         Args:
             files ([str]): A list of absolute paths to MODIS raw hdf files to be processed
-            vpc (str): VAM product code to be processed (default VIM/LTD)
+            vam_product_code (str): VAM product code to be processed (default VIM/LTD)
             targetdir (str): Target directory for raw MODIS HDF5 file
         '''
 
         self.targetdir = targetdir
         #self.resdict = dict(zip(['250m','500m','1km','0.05_Deg'],[x/112000 for x in [250,500,1000,5600]])) ## commented for original resolution
-        self.vpcdict = dict(zip(['VIM', 'VEM', 'LTD', 'LTN'], ['NDVI', 'EVI', 'LST_Day', 'LST_Night']))
-        self.dts_regexp = re.compile(r'.+A(\d{7}).+')
-        self.rawdates = [re.findall(self.dts_regexp, x)[0] for x in files]
+        self.vam_product_code_dict = dict(zip(['VIM', 'VEM', 'LTD', 'LTN'], ['NDVI', 'EVI', 'LST_Day', 'LST_Night']))
+        self.dates_regexp = re.compile(r'.+A(\d{7}).+')
+        self.rawdates = [re.findall(self.dates_regexp, x)[0] for x in files]
         self.files = [x for (y, x) in sorted(zip(self.rawdates, files))]
         self.rawdates.sort()
         self.nfiles = len(self.files)
-        self.ref_file = self.files[0]
-        self.ref_file_basename = os.path.basename(self.ref_file)
+        self.reference_file = self.files[0]
+        self.reference_file_basename = os.path.basename(self.reference_file)
 
         # class works only for M.D11 and M.D13 products
-        if not re.match(r'M.D13\w\d', self.ref_file_basename) and not re.match(r'M.D11\w\d', self.ref_file_basename):
+        if not re.match(r'M.D13\w\d', self.reference_file_basename) and not re.match(r'M.D11\w\d', self.reference_file_basename):
             raise SystemExit("Processing only implemented for M*D11 or M*13 products!")
 
         # Patterns for string extraction
@@ -254,29 +254,29 @@ class MODISrawh5(object):
         tpatt = re.compile(r'h\d+v\d+')
 
         # Open reference file
-        ref = gdal.Open(self.ref_file)
+        ref = gdal.Open(self.reference_file)
 
         # When no product is selected, the default is VIM and LTD
-        if not vpc:
-            ref_sds = [x[0] for x in ref.GetSubDatasets() if self.vpcdict['VIM'] in x[0] or self.vpcdict['LTD'] in x[0]][0]
-            self.vpc = [key for key, value in self.vpcdict.items() if value in ref_sds][0]
+        if not vam_product_code:
+            ref_sds = [x[0] for x in ref.GetSubDatasets() if self.vam_product_code_dict['VIM'] in x[0] or self.vam_product_code_dict['LTD'] in x[0]][0]
+            self.vam_product_code = [key for key, value in self.vam_product_code_dict.items() if value in ref_sds][0]
             ref_sds = None
-        elif vpc in self.vpcdict.keys():
-            self.vpc = vpc
+        elif vam_product_code in self.vam_product_code_dict.keys():
+            self.vam_product_code = vam_product_code
         else:
-            raise ValueError('VAM product code string not recognized. Available products are %s.' % [x for x in self.vpcdict.keys()])
+            raise ValueError('VAM product code string not recognized. Available products are %s.' % [x for x in self.vam_product_code_dict.keys()])
         ref = None
 
-        # VAM pproduct code to be included in filename
-        fname_vpc = self.vpc
+        # VAM product code to be included in filename
+        fname_vpc = self.vam_product_code
 
         # check for MOD/MYD interleaving
-        if interleave and self.vpc == 'VIM':
-            self.product = [re.sub(r'M[O|Y]D', 'MXD', re.findall(ppatt, self.ref_file_basename)[0])]
+        if interleave and self.vam_product_code == 'VIM':
+            self.product = [re.sub(r'M[O|Y]D', 'MXD', re.findall(ppatt, self.reference_file_basename)[0])]
             self.temporalresolution = 8
             self.tshift = 8
         else:
-            self.product = re.findall(ppatt, self.ref_file_basename)
+            self.product = re.findall(ppatt, self.reference_file_basename)
             if re.match(r'M[O|Y]D13\w\d', self.product[0]):
                 self.temporalresolution = 16
                 self.tshift = 8
@@ -285,14 +285,14 @@ class MODISrawh5(object):
                 self.tshift = 4
 
                 # LST has specific VAM product codes for the file naming
-                if self.vpc == 'LTD':
+                if self.vam_product_code == 'LTD':
                     if re.match(r'MOD11\w\d', self.product[0]):
                         fname_vpc = 'TDT'
                     elif re.match(r'MYD11\w\d', self.product[0]):
                         fname_vpc = 'TDA'
                     else:
                         pass
-                elif self.vpc == 'LTN':
+                elif self.vam_product_code == 'LTN':
                     if re.match(r'MOD11\w\d', self.product[0]):
                         fname_vpc = 'TNT'
                     elif re.match(r'MYD11\w\d', self.product[0]):
@@ -303,8 +303,8 @@ class MODISrawh5(object):
         # Name of file to be created/updated
         self.outname = '{}/{}/{}.{}.h5'.format(
                                     self.targetdir,
-                                    self.vpc,
-                                    '.'.join(self.product + re.findall(tpatt, self.ref_file_basename) + [re.sub(vpatt,'\\1', self.ref_file_basename)]),
+                                    self.vam_product_code,
+                                    '.'.join(self.product + re.findall(tpatt, self.reference_file_basename) + [re.sub(vpatt,'\\1', self.reference_file_basename)]),
                                     fname_vpc)
 
         self.exists = os.path.isfile(self.outname)
@@ -318,8 +318,8 @@ class MODISrawh5(object):
             chunk (int): Number of pixels per chunk (needs to define equal sized chunks!)
         '''
 
-        ref = gdal.Open(self.ref_file)
-        ref_sds = [x[0] for x in ref.GetSubDatasets() if self.vpcdict[self.vpc] in x[0]][0]
+        ref = gdal.Open(self.reference_file)
+        ref_sds = [x[0] for x in ref.GetSubDatasets() if self.vam_product_code_dict[self.vam_product_code] in x[0]][0]
 
         # reference raster
         rst = gdal.Open(ref_sds)
@@ -391,7 +391,7 @@ class MODISrawh5(object):
         try:
             with h5py.File(self.outname, 'r+', libver='latest') as h5f:
                 dset = h5f.get('data')
-                dts = h5f.get('dates')
+                dates = h5f.get('dates')
                 self.chunks = dset.chunks
                 self.nodata_value = dset.attrs['nodata'].item()
                 self.ncols = dset.attrs['RasterXSize'].item()
@@ -400,7 +400,7 @@ class MODISrawh5(object):
                 dset.attrs['processingtimestamp'] = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
 
                 # Load any existing dates and combine with new dates
-                dates_combined = [x.decode() for x in dts[...] if len(x) > 0 and x.decode() not in self.rawdates]
+                dates_combined = [x.decode() for x in dates[...] if len(x) > 0 and x.decode() not in self.rawdates]
                 [dates_combined.append(x) for x in self.rawdates]
 
                 # New total temporal length
@@ -408,7 +408,7 @@ class MODISrawh5(object):
 
                 # if new total temporal length is bigger than dataset, datasets need to be resized for additional data
                 if n > dset.shape[1]:
-                    dts.resize((n,))
+                    dates.resize((n,))
                     dset.resize((dset.shape[0], n))
 
                 # Sorting index to ensure temporal continuity
@@ -421,7 +421,7 @@ class MODISrawh5(object):
                 arr = np.zeros((self.chunks[0], n), dtype=self.datatype[1])
 
                 # Open all files and keep reference in handler
-                handler = FileHandler(self.files, self.vpcdict[self.vpc])
+                handler = FileHandler(self.files, self.vam_product_code_dict[self.vam_product_code])
                 handler.open()
                 ysize = self.chunks[0]//self.ncols
 
@@ -446,7 +446,7 @@ class MODISrawh5(object):
 
                 # Write back date list
                 dates_combined.sort()
-                dts[...] = [n.encode("ascii", "ignore") for n in dates_combined]
+                dates[...] = [n.encode("ascii", "ignore") for n in dates_combined]
         except:
             print('Error updating {}! File may be corrupt, consider creating the file from scratch, or closer investigation. \n\nError message: \n'.format(self.outname))
             traceback.print_exc()
@@ -485,9 +485,9 @@ class MODISsmth5(object):
         # Get info from raw HDF5
         with h5py.File(self.rawfile,'r') as h5f:
             dset = h5f.get('data')
-            dts = h5f.get('dates')
+            dates = h5f.get('dates')
             rawshape = dset.shape
-            self.rawdates = [x.decode() for x in dts[-self.nsmooth:]]
+            self.rawdates = [x.decode() for x in dates[-self.nsmooth:]]
 
         # Parse tempint to get flag for filename
         try:
@@ -518,7 +518,7 @@ class MODISsmth5(object):
         try:
             with h5py.File(self.rawfile, 'r') as h5f:
                 dset = h5f.get('data')
-                dts = h5f.get('dates')
+                dates = h5f.get('dates')
                 dt = dset.dtype.name
                 cmpr = dset.compression
                 rawshape = dset.shape
@@ -531,7 +531,7 @@ class MODISsmth5(object):
                 rnd = dset.attrs['nodata']
                 rtres = dset.attrs['temporalresolution'].item()
                 tshift = dset.attrs['tshift'].item()
-                firstday = fromjulian(dts[0].decode())
+                firstday = fromjulian(dates[0].decode())
         except Exception as e:
             raise SystemExit('Error reading rawfile {}. File may be corrupt. \n\n Error message: \n\n {}'.format(self.rawfile, e))
 
@@ -574,10 +574,10 @@ class MODISsmth5(object):
 
         with h5py.File(self.rawfile, 'r') as rawh5, h5py.File(self.outname, 'r+') as smth5:
             raw_ds = rawh5.get('data')
-            raw_dts = rawh5.get('dates')
+            raw_dates = rawh5.get('dates')
             rtres = raw_ds.attrs['temporalresolution'].item()
             smt_ds = smth5.get('data')
-            smt_dts = smth5.get('dates')
+            smt_dates = smth5.get('dates')
             rawshape = raw_ds.shape
             rawchunks = raw_ds.chunks
             smoothshape = smt_ds.shape
@@ -598,13 +598,13 @@ class MODISsmth5(object):
 
             # Resize if date list is bigger than shape of smoothed data
             if len(dates.target) > smoothshape[0]:
-                smt_dts.resize((len(dates.target),))
+                smt_dates.resize((len(dates.target),))
                 smt_ds.resize((smoothshape[0], len(dates.target)))
-                smt_dts[...] = [x.encode('ascii', 'ignore') for x in dates.target]
+                smt_dates[...] = [x.encode('ascii', 'ignore') for x in dates.target]
 
             # calculate offsets
-            rawoffset = [x.decode() for x in raw_dts[...]].index(self.rawdates[0])
-            smoothoffset = [x.decode() for x in smt_dts[...]].index(dates.target[0])
+            rawoffset = [x.decode() for x in raw_dates[...]].index(self.rawdates[0])
+            smoothoffset = [x.decode() for x in smt_dates[...]].index(dates.target[0])
 
             if self.nworkers > 1:
                 if self.tinterpolate:
@@ -612,17 +612,17 @@ class MODISsmth5(object):
                     arr_smooth = tonumpyarray(shared_array_smooth)
                     arr_smooth.shape = (smoothchunks[0], len(dates.target))
                     arr_smooth[...] = nodata
-                    vec_dly = dates.getDV(nodata)
+                    vector_daily = dates.getDV(nodata)
 
                     # Shift for interpolation
                     for d in self.rawdates:
-                        vec_dly[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
+                        vector_daily[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
                 else:
-                    vec_dly = None
+                    vector_daily = None
                     shared_array_smooth = None
                     arr_smooth = None
                 shared_array_raw = init_shared(rawchunks[0] * len(self.rawdates))
-                parameters = init_parameters(rdim=(rawchunks[0], len(self.rawdates)),sdim=(smoothchunks[0], len(dates.target)), nd=nodata, s=s, shared_array_smooth=shared_array_smooth, vec_dly=vec_dly, dix=dix)
+                parameters = init_parameters(rdim=(rawchunks[0], len(self.rawdates)),sdim=(smoothchunks[0], len(dates.target)), nd=nodata, s=s, shared_array_smooth=shared_array_smooth, vec_dly=vector_daily, dix=dix)
                 arr_raw = tonumpyarray(shared_array_raw)
                 arr_raw.shape = (rawchunks[0], len(self.rawdates))
 
@@ -656,11 +656,11 @@ class MODISsmth5(object):
 
                 if self.tinterpolate:
                     arr_smooth = np.zeros((smoothchunks[0], len(dates.target)), dtype='double')
-                    vec_dly = dates.getDV(nodata)
+                    vector_daily = dates.getDV(nodata)
 
                     # Shift for interpolation
                     for d in self.rawdates:
-                        vec_dly[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
+                        vector_daily[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
                 else:
                     arr_smooth = None
 
@@ -685,7 +685,7 @@ class MODISsmth5(object):
                     for r in mapIX:
                         arr_raw[r, :] = ws2d(y=arr_raw[r, :], lmda=10**s, w=wts[r, :])
                         if self.tinterpolate:
-                            z2 = vec_dly.copy()
+                            z2 = vector_daily.copy()
                             z2[z2 != nodata] = arr_raw[r, :]
                             z2[...] = ws2d(y=z2, lmda=0.0001, w=np.array((z2 != nodata) * 1, dtype='double'))
                             arr_smooth[r, :] = z2[dix]
@@ -712,10 +712,10 @@ class MODISsmth5(object):
 
         with h5py.File(self.rawfile, 'r') as rawh5, h5py.File(self.outname, 'r+') as smth5:
             raw_ds = rawh5.get('data')
-            raw_dts = rawh5.get('dates')
+            raw_dates = rawh5.get('dates')
             rtres = raw_ds.attrs['temporalresolution'].item()
             smt_ds = smth5.get('data')
-            smt_dts = smth5.get('dates')
+            smt_dates = smth5.get('dates')
             smt_sgrid = smth5.get('sgrid')
             rawshape = raw_ds.shape
             rawchunks = raw_ds.chunks
@@ -738,13 +738,13 @@ class MODISsmth5(object):
 
             # Resize if date list is bigger than shape of smoothed data
             if len(dates.target) > smoothshape[0]:
-                smt_dts.resize((len(dates.target),))
+                smt_dates.resize((len(dates.target),))
                 smt_ds.resize((smoothshape[0], len(dates.target)))
-                smt_dts[...] = [x.encode('ascii', 'ignore') for x in dates.target]
+                smt_dates[...] = [x.encode('ascii', 'ignore') for x in dates.target]
 
             # calculate offsets
-            rawoffset = [x.decode() for x in raw_dts[...]].index(self.rawdates[0])
-            smoothoffset = [x.decode() for x in smt_dts[...]].index(dates.target[0])
+            rawoffset = [x.decode() for x in raw_dates[...]].index(self.rawdates[0])
+            smoothoffset = [x.decode() for x in smt_dates[...]].index(dates.target[0])
 
             if self.nworkers > 1:
                 if self.tinterpolate:
@@ -752,17 +752,17 @@ class MODISsmth5(object):
                     arr_smooth = tonumpyarray(shared_array_smooth)
                     arr_smooth.shape = (smoothchunks[0], len(dates.target))
                     arr_smooth[...] = nodata
-                    vec_dly = dates.getDV(nodata)
+                    vector_daily = dates.getDV(nodata)
 
                     # Shift for interpolation
                     for d in self.rawdates:
-                        vec_dly[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
+                        vector_daily[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
                 else:
-                    vec_dly = None
+                    vector_daily = None
                     shared_array_smooth = None
                     arr_smooth = None
                 shared_array_raw = init_shared(rawchunks[0] * len(self.rawdates))
-                parameters = init_parameters(rdim=(rawchunks[0], len(self.rawdates)),sdim=(smoothchunks[0], len(dates.target)), nd=nodata, shared_array_smooth=shared_array_smooth, vec_dly=vec_dly, dix=dix)
+                parameters = init_parameters(rdim=(rawchunks[0], len(self.rawdates)),sdim=(smoothchunks[0], len(dates.target)), nd=nodata, shared_array_smooth=shared_array_smooth, vec_dly=vector_daily, dix=dix)
                 parameters['shared_array_sgrid'] = init_shared(rawchunks[0])
                 arr_raw = tonumpyarray(shared_array_raw)
                 arr_raw.shape = (rawchunks[0], len(self.rawdates))
@@ -801,11 +801,11 @@ class MODISsmth5(object):
                 wts = arr_raw.copy()
                 if self.tinterpolate:
                     arr_smooth = np.zeros((smoothchunks[0], len(dates.target)), dtype='double')
-                    vec_dly = dates.getDV(nodata)
+                    vector_daily = dates.getDV(nodata)
 
                     # Shift for interpolation
                     for d in self.rawdates:
-                        vec_dly[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
+                        vector_daily[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
                 else:
                     arr_smooth = None
 
@@ -830,7 +830,7 @@ class MODISsmth5(object):
                     for r in mapIX:
                         arr_raw[r, :] = ws2d(y=arr_raw[r, :], lmda=10**arr_sgrid[r], w = wts[r, :])
                         if self.tinterpolate:
-                            z2 = vec_dly.copy()
+                            z2 = vector_daily.copy()
                             z2[z2 != nodata] = arr_raw[r, :]
                             z2[...] = ws2d(y=z2, lmda=0.0001, w=np.array((z2 != nodata)*1, dtype='double'))
                             arr_smooth[r, :] = z2[dix]
@@ -860,10 +860,10 @@ class MODISsmth5(object):
 
         with h5py.File(self.rawfile, 'r') as rawh5, h5py.File(self.outname, 'r+') as smth5:
             raw_ds = rawh5.get('data')
-            raw_dts = rawh5.get('dates')
+            raw_dates = rawh5.get('dates')
             rtres = raw_ds.attrs['temporalresolution'].item()
             smt_ds = smth5.get('data')
-            smt_dts = smth5.get('dates')
+            smt_dates = smth5.get('dates')
             smt_sgrid = smth5.get('sgrid')
             rawshape = raw_ds.shape
             rawchunks = raw_ds.chunks
@@ -890,13 +890,13 @@ class MODISsmth5(object):
 
             # Resize if date list is bigger than shape of smoothed data
             if len(dates.target) > smoothshape[0]:
-                smt_dts.resize((len(dates.target),))
+                smt_dates.resize((len(dates.target),))
                 smt_ds.resize((smoothshape[0], len(dates.target)))
-                smt_dts[...] = [x.encode('ascii', 'ignore') for x in dates.target]
+                smt_dates[...] = [x.encode('ascii', 'ignore') for x in dates.target]
 
             # calculate offsets
-            rawoffset = [x.decode() for x in raw_dts[...]].index(self.rawdates[0])
-            smoothoffset = [x.decode() for x in smt_dts[...]].index(dates.target[0])
+            rawoffset = [x.decode() for x in raw_dates[...]].index(self.rawdates[0])
+            smoothoffset = [x.decode() for x in smt_dates[...]].index(dates.target[0])
 
             if self.nworkers > 1:
                 if self.tinterpolate:
@@ -904,17 +904,17 @@ class MODISsmth5(object):
                     arr_smooth = tonumpyarray(shared_array_smooth)
                     arr_smooth.shape = (smoothchunks[0], len(dates.target))
                     arr_smooth[...] = nodata
-                    vec_dly = dates.getDV(nodata)
+                    vector_daily = dates.getDV(nodata)
 
                     # Shift for interpolation
                     for d in self.rawdates:
-                        vec_dly[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
+                        vector_daily[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
                 else:
-                    vec_dly = None
+                    vector_daily = None
                     shared_array_smooth = None
                     arr_smooth = None
                 shared_array_raw = init_shared(rawchunks[0] * len(self.rawdates))
-                parameters = init_parameters(rdim=(rawchunks[0], len(self.rawdates)), sdim=(smoothchunks[0], len(dates.target)), nd=nodata, p=p, shared_array_smooth=shared_array_smooth, vec_dly=vec_dly, dix=dix, srange=srange)
+                parameters = init_parameters(rdim=(rawchunks[0], len(self.rawdates)), sdim=(smoothchunks[0], len(dates.target)), nd=nodata, p=p, shared_array_smooth=shared_array_smooth, vec_dly=vector_daily, dix=dix, srange=srange)
                 parameters['shared_array_sgrid'] = init_shared(rawchunks[0])
                 arr_raw = tonumpyarray(shared_array_raw)
                 arr_raw.shape = (rawchunks[0], len(self.rawdates))
@@ -953,11 +953,11 @@ class MODISsmth5(object):
 
                 if self.tinterpolate:
                     arr_smooth = np.zeros((smoothchunks[0], len(dates.target)), dtype='double')
-                    vec_dly = dates.getDV(nodata)
+                    vector_daily = dates.getDV(nodata)
 
                     # Shift for interpolation
                     for d in self.rawdates:
-                        vec_dly[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
+                        vector_daily[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
                 else:
                     arr_smooth = None
                 for br in range(0, rawshape[0], rawchunks[0]):
@@ -992,7 +992,7 @@ class MODISsmth5(object):
                             arr_raw[r, :], arr_sgrid[r] = ws2doptv(y=arr_raw[r, :], w=np.array((arr_raw[r, :] != nodata)*1, dtype='double'), llas=array.array('d' ,sr))
 
                         if self.tinterpolate:
-                            z2 = vec_dly.copy()
+                            z2 = vector_daily.copy()
                             z2[z2 != nodata] = arr_raw[r, :]
                             z2[...] = ws2d(y=z2, lmda=0.0001, w=np.array((z2 != nodata)*1, dtype='double'))
                             arr_smooth[r, :] = z2[dix]
@@ -1125,10 +1125,10 @@ class MODISmosaic(object):
             raise
 
         # Create temporal index from dates available and min max input
-        dts_dt = [fromjulian(x) for x in self.dates]
+        dates_dt = [fromjulian(x) for x in self.dates]
         datemin_p = datetime.datetime.strptime(datemin, '%Y%m').date()
         datemax_p = datetime.datetime.strptime(datemax, '%Y%m').date()
-        self.tempIX = np.flatnonzero(np.array([x >= datemin_p and x <= datemax_p for x in dts_dt]))
+        self.tempIX = np.flatnonzero(np.array([x >= datemin_p and x <= datemax_p for x in dates_dt]))
 
     def getArray(self, dataset, ix, dt):
         '''Reads values for mosaic into array.

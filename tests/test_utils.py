@@ -52,7 +52,7 @@ class TestUtils(unittest.TestCase):
         self.assertFalse(os.path.exists('modape.key.pkl'))
 
     def test_fj_ldom(self):
-        test_day = LDOM(fromjulian('2016032'))
+        test_day = ldom(fromjulian('2016032'))
 
         self.assertEqual(test_day.year, 2016)
         self.assertEqual(test_day.month, 2)

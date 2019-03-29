@@ -348,7 +348,7 @@ optional arguments:
   -h, --help     show this help message and exit
   --product      MODIS product ID
   --resolution   Filter for pixel size
-  --vpc          Filter for VAM product code
+  --vampc          Filter for VAM product code
 
 ```
 **Usage example:**
