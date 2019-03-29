@@ -485,7 +485,7 @@ class MODISrawh5(object):
 
     def __str__(self):
         '''String to be displayed wen printing an instance of the class object'''
-        return('MODISrawh5 object: {} - {} files - exists on disk: {}'.format(self.outname, self.nfiles, self.exists))
+        return 'MODISrawh5 object: {} - {} files - exists on disk: {}'.format(self.outname, self.nfiles, self.exists)
 
 
 class MODISsmth5(object):
@@ -1266,7 +1266,7 @@ class MODISmosaic(object):
             except Exception as e:
                 print('Error reading data from file {} to array! Error message {}:\n'.format(h5f, e))
                 raise
-        return(array)
+        return array
 
     def getArrayGlobal(self, dataset, ix, dt):
         '''Reads values for global mosaic into array.
@@ -1293,7 +1293,7 @@ class MODISmosaic(object):
             except Exception as e:
                 print('Error reading data from file {} to array! Error message {}:\n'.format(h5f, e))
                 raise
-        return(array)
+        return array
 
     @contextmanager
     def getRaster(self, dataset, ix):
