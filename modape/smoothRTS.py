@@ -330,7 +330,10 @@ def main():
         raise ValueError('No files found in {} with pattern {}, please check input.'.format(args.path, args.pattern))
 
     # Create raster timeseries object
-    rts = RTS(files=fls, targetdir=args.targetdir, bsize=args.blocksize, nodata=args.nodata)
+    rts = RTS(files=fls,
+              targetdir=args.targetdir,
+              bsize=args.blocksize,
+              nodata=args.nodata)
 
     # V-curve optimization is triggered by either supplying the soptimize flag or a s-range
     if args.soptimize:
@@ -338,7 +341,9 @@ def main():
         if args.srange:
             try:
                 assert len(args.srange) == 3
-                srange = np.linspace(float(args.srange[0]), float(args.srange[1]), abs((args.srange[0]-args.srange[1]))/float(args.srange[2]) + 1.0)
+                srange = np.linspace(float(args.srange[0]),
+                                     float(args.srange[1]),
+                                     abs((args.srange[0]-args.srange[1]))/float(args.srange[2]) + 1.0)
             except (IndexError, TypeError, AssertionError):
                 raise SystemExit('Error with s value array values. Expected three values of float log10(s) -  smin smax sstep !')
         else:

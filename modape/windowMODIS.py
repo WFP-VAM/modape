@@ -126,11 +126,17 @@ def main():
         h5files_vpc = [x for x in h5files if vam_code in x] # Subset files for vam_code
 
         # Get mosaic
-        mosaic = MODISmosaic(files=h5files_vpc, datemin=args.begin_date, datemax=args.end_date, global_flag=global_flag)
+        mosaic = MODISmosaic(files=h5files_vpc,
+                             datemin=args.begin_date,
+                             datemax=args.end_date,
+                             global_flag=global_flag)
 
         # Extract s-grid if True
         if args.sgrid:
-            filename = '{}/{}{}_sgrid.tif'.format(args.targetdir, args.region.lower(), vam_code.lower())
+            filename = '{}/{}{}_sgrid.tif'.format(args.targetdir,
+                                                  args.region.lower(),
+                                                  vam_code.lower())
+
             print('Processing file {}'.format(filename))
             with mosaic.getRaster(dset, None) as mosaic_ropen:
                 # Subset if bbox was supplied
@@ -182,7 +188,12 @@ def main():
         else:
             # If the dataset is not s-grid, we need to iterate over dates
             for ix in mosaic.tempIX:
-                filename = '{}/{}{}{}j{}.tif'.format(args.targetdir, args.region.lower(), vam_code.lower(), mosaic.dates[ix][0:4], mosaic.dates[ix][4:7])
+                filename = '{}/{}{}{}j{}.tif'.format(args.targetdir,
+                                                     args.region.lower(),
+                                                     vam_code.lower(),
+                                                     mosaic.dates[ix][0:4],
+                                                     mosaic.dates[ix][4:7])
+
                 print('Processing file {}'.format(filename))
 
                 with mosaic.getRaster(dset,ix) as mosaic_ropen:
@@ -221,7 +232,8 @@ def main():
                             creationOptions=['COMPRESS=LZW', 'PREDICTOR=2'],
                             )
 
-                            ds = gdal.Warp(filename,
+                            ds = gdal.Warp(
+                            filename,
                             mosaic_ropen.raster,
                             options=wopt,
                             )

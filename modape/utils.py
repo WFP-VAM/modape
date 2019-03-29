@@ -148,10 +148,10 @@ class DateHelper(object):
             self.target = self.target[-nupdate:]
 
     def getDV(self,nd):
-        return(np.full(len(self.daily), nd, dtype='double'))
+        return np.full(len(self.daily), nd, dtype='double')
 
     def getDIX(self):
-        return([self.daily.index(x) for x in self.target])
+        return [self.daily.index(x) for x in self.target]
 
 
 class Credentials(object):
@@ -265,7 +265,7 @@ def dtype_GDNP(dt):
     }
 
     dt_tuple = [(k, v) for k, v in dt_dict.items() if k == dt or v == dt]
-    return(dt_tuple[0])
+    return dt_tuple[0]
 
 def ldom(x):
     '''Get last day of month.
@@ -284,7 +284,7 @@ def ldom(x):
         yr +=1
     else:
         mn += 1
-    return(datetime.date(yr, mn, 1) - datetime.timedelta(days=1))
+    return datetime.date(yr, mn, 1) - datetime.timedelta(days=1)
 
 def txx(x):
     '''Converts tempint integer to flag.'''
@@ -310,7 +310,7 @@ def tvec(yr,step):
     start = fromjulian('{}001'.format(yr)) + datetime.timedelta()
     tdiff = fromjulian('{}001'.format(yr+1)) - start
     tv = [(start + datetime.timedelta(x)).strftime('%Y%j') for x in range(0, tdiff.days, step)]
-    return(tv)
+    return tv
 
 def pentvec(yr):
     '''Create pentadal date vector for given year with fixed days.'''
@@ -322,7 +322,7 @@ def pentvec(yr):
                 t.append(datetime.datetime.strptime('{}{:02d}{}'.format(yr, m, d),'%Y%m%d').date().strftime('%Y%j'))
             except ValueError:
                 pass
-    return(t)
+    return t
 
 def dekvec(yr):
     '''Create dekadal date vector for given year with fixed days.'''
@@ -386,33 +386,47 @@ def execute_ws2d(ix):
         ix ([int]): List of indices as integer
     '''
 
-    arr_raw[ix, :] = ws2d(y=arr_raw[ix, :], lmda=10**parameters['s'], w=np.array((arr_raw[ix, :] != parameters['nd'])*1, dtype='double'))
+    arr_raw[ix, :] = ws2d(y=arr_raw[ix, :],
+                          lmda=10**parameters['s'],
+                          w=np.array((arr_raw[ix, :] != parameters['nd'])*1, dtype='double'))
 
     if parameters['shared_array_smooth']:
         z2 = parameters['vec_dly'].copy()
         z2[z2 != parameters['nd']] = arr_raw[ix, :]
-        z2[...] = ws2d(y=z2, lmda=0.0001, w=np.array((z2 != parameters['nd'])*1,dtype='double'))
+        z2[...] = ws2d(y=z2,
+                       lmda=0.0001,
+                       w=np.array((z2 != parameters['nd'])*1,dtype='double'))
+
         arr_smooth[ix,:] = z2[parameters['dix']]
 
 def execute_ws2d_sgrid(ix):
     '''Execute whittaker smoother with s from grid in worker.'''
 
-    arr_raw[ix, :] = ws2d(y=arr_raw[ix, :], lmda=10**arr_sgrid[ix], w=np.array((arr_raw[ix, :] != parameters['nd'])*1, dtype='double'))
+    arr_raw[ix, :] = ws2d(y=arr_raw[ix, :],
+                          lmda=10**arr_sgrid[ix],
+                          w=np.array((arr_raw[ix, :] != parameters['nd'])*1, dtype='double'))
 
     if parameters['shared_array_smooth']:
         z2 = parameters['vec_dly'].copy()
         z2[z2 != parameters['nd']] = arr_raw[ix, :]
-        z2[...] = ws2d(y=z2, lmda=0.0001, w=np.array((z2 != parameters['nd'])*1, dtype='double'))
+        z2[...] = ws2d(y=z2,
+                       lmda=0.0001,
+                       w=np.array((z2 != parameters['nd'])*1, dtype='double'))
+
         arr_smooth[ix, :] = z2[parameters['dix']]
 
 def execute_ws2d_vc(ix):
     '''Execute whittaker smoother with V-curve optimization of s in worker.'''
 
     if not parameters['p']:
-        arr_raw[ix, :], arr_sgrid[ix] = ws2doptv(y=arr_raw[ix, :], w=np.array((arr_raw[ix, :] != parameters['nd'])*1,dtype='double'), llas=array.array('d',parameters['srange']))
+        arr_raw[ix, :], arr_sgrid[ix] = ws2doptv(y=arr_raw[ix, :],
+                                                 w=np.array((arr_raw[ix, :] != parameters['nd'])*1,dtype='double'),
+                                                 llas=array.array('d',parameters['srange']))
     else:
         if not type(parameters['srange']) is np.ndarray:
-            lc = lag1corr(arr_raw[ix, :-1], arr_raw[ix, 1:], int(parameters['nd']))
+            lc = lag1corr(arr_raw[ix, :-1],
+                          arr_raw[ix, 1:],
+                          int(parameters['nd']))
             if lc > 0.5:
                 srange = np.linspace(-2.0, 1.0, 16.0)
             elif lc <= 0.5:
@@ -422,10 +436,15 @@ def execute_ws2d_vc(ix):
         else:
             srange = parameters['srange']
 
-        arr_raw[ix, :], arr_sgrid[ix] = ws2doptvp(y=arr_raw[ix, :], w=np.array((arr_raw[ix, :] != parameters['nd'])*1, dtype='double'), llas=array.array('d', srange), p=parameters['p'])
+        arr_raw[ix, :], arr_sgrid[ix] = ws2doptvp(y=arr_raw[ix, :],
+                                                  w=np.array((arr_raw[ix, :] != parameters['nd'])*1, dtype='double'),
+                                                  llas=array.array('d', srange),
+                                                  p=parameters['p'])
 
     if parameters['shared_array_smooth']:
         z2 = parameters['vec_dly'].copy()
         z2[z2 != parameters['nd']] = arr_raw[ix, :]
-        z2[...] = ws2d(y=z2, lmda=0.0001, w=np.array((z2 != parameters['nd'])*1, dtype='double'))
+        z2[...] = ws2d(y=z2,
+                       lmda=0.0001,
+                       w=np.array((z2 != parameters['nd'])*1, dtype='double'))
         arr_smooth[ix, :] = z2[parameters['dix']]

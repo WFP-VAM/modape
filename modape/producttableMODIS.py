@@ -46,7 +46,11 @@ def main():
             raise ValueError('Resolution not valid! (possible: 250,500,1000,5600)')
     # Subset table by parameter
     if args.vampc and not args.product:
-        d = dict(zip(['VIM', 'VEM', 'LTD', 'LTN'],['Vegetation Indices', 'Vegetation Indices', 'Temperature, Emissivity', 'Temperature, Emissivity']))
+        d = dict(zip(['VIM', 'VEM', 'LTD', 'LTN'],
+                     ['Vegetation Indices',
+                     'Vegetation Indices',
+                     'Temperature, Emissivity',
+                     'Temperature, Emissivity']))
         try:
             tbl = tbl[tbl['product'] == d[args.vampc.upper()]]
         except:

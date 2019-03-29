@@ -26,9 +26,13 @@ def run_process(pdict):
 
     for vam_product_code in pdict['vam_product_code']:
         try:
-            rh5 = MODISrawh5(pdict['files'], vam_product_code=vam_product_code, targetdir=pdict['targetdir'], interleave=pdict['interleave'])
+            rh5 = MODISrawh5(pdict['files'],
+                             vam_product_code=vam_product_code,
+                             targetdir=pdict['targetdir'],
+                             interleave=pdict['interleave'])
             if not rh5.exists:
-                rh5.create(compression=pdict['compression'], chunk=pdict['chunksize'])
+                rh5.create(compression=pdict['compression'],
+                           chunk=pdict['chunksize'])
             rh5.update()
         except Exception as e:
             print('\nError processing product {}, product code {}. \n\n Traceback:\n'.format(rh5.product, vam_product_code))

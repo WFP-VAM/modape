@@ -59,7 +59,10 @@ def main():
     resdf = pd.DataFrame(index=range(len(df)+2)) #result dataframe, +2 for Sopt
 
     # Add ID column
-    resdf['ID'] = pd.concat([pd.Series(['Lon','Lat']),pd.Series(np.linspace(1,len(df)-2,len(df)-2)),pd.Series(['Sopt','logSopt'])],ignore_index=True)
+    resdf['ID'] = pd.concat([pd.Series(['Lon','Lat']),
+                             pd.Series(np.linspace(1,len(df)-2,len(df)-2)),
+                             pd.Series(['Sopt','logSopt'])],
+                             ignore_index=True)
     tmparr = np.zeros(len(df)-2,dtype='double') # Initialize array
 
 
@@ -73,13 +76,18 @@ def main():
             val = df[c].values
             tmparr[...] = val[2:]
             val[2:] = ws2d(tmparr, s, np.array((tmparr > 0)*1, dtype='double'))
-            resdf[c] =  pd.concat([pd.Series(val), pd.Series([s, np.log10(s)])], ignore_index=True)
+            resdf[c] =  pd.concat([pd.Series(val),
+                                   pd.Series([s, np.log10(s)])],
+                                   ignore_index=True)
     else:
         if args.srange:
             if len(args.srange) != 3:
                 raise ValueError('Expected 3 inputs for S range: smin smax step!')
             try:
-                srange = array.array('d', np.linspace(args.srange[0], args.srange[1], args.srange[1]/args.srange[2]+1))
+                srange = array.array('d',
+                                     np.linspace(args.srange[0],
+                                     args.srange[1],
+                                     args.srange[1]/args.srange[2]+1))
             except:
                 print('Error parsing S range values')
                 raise
@@ -89,7 +97,9 @@ def main():
 
         if args.pvalue:
             outname = outname + 'filtoptvp.csv'
-            resdf = pd.DataFrame(resdf['ID'].append(pd.Series('pvalue'), ignore_index=True), columns=['ID'])
+            resdf = pd.DataFrame(resdf['ID'].append(pd.Series('pvalue'),
+                                 ignore_index=True),
+                                 columns=['ID'])
 
             print('\nSmoothing using asymmetric V-curve optimization with smin:{}, smax:{}, sstep:{} and pvalue:{}.\n\nWriting to file: {}\n'
             .format(args.srange[0], args.srange[1], args.srange[2], args.pvalue, outname))
@@ -97,8 +107,16 @@ def main():
             for c in df.columns[1:]:
                 val = df[c].values
                 tmparr[...] = val[2:]
-                val[2:], sopt = ws2doptvp(tmparr, np.array((tmparr > 0)*1, dtype='double'), srange, args.pvalue)
-                resdf[c] =  pd.concat([pd.Series(val), pd.Series([sopt, np.log10(sopt)]), pd.Series(args.pvalue)], ignore_index=True)
+
+                val[2:], sopt = ws2doptvp(tmparr,
+                                          np.array((tmparr > 0)*1, dtype='double'),
+                                          srange,
+                                          args.pvalue)
+
+                resdf[c] =  pd.concat([pd.Series(val),
+                                       pd.Series([sopt, np.log10(sopt)]),
+                                       pd.Series(args.pvalue)],
+                                       ignore_index=True)
         else:
             outname = outname + 'filtoptv.csv'
             print('\nSmoothing using V-curve optimization with smin:{}, smax:{}, sstep:{}.\n\nWriting to file: {}\n'
@@ -108,7 +126,9 @@ def main():
                 val = df[c].values
                 tmparr[...] = val[2:]
                 val[2:], sopt = ws2doptv(tmparr, np.array((tmparr > 0)*1, dtype='double'), srange)
-                resdf[c] =  pd.concat([pd.Series(val), pd.Series([sopt, np.log10(sopt)])], ignore_index=True)
+                resdf[c] =  pd.concat([pd.Series(val),
+                                       pd.Series([sopt, np.log10(sopt)])],
+                                       ignore_index=True)
 
     # Write to disk
     resdf.to_csv(outname, index=False)

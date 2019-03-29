@@ -37,7 +37,13 @@ def run_ws2d(h5):
         print('Raw HDF5 {} not found! Please check path.'.format(h5))
 
     else:
-        smt_h5 = MODISsmth5(rawfile=h5, startdate=pdict['startdate'], tempint=pdict['tempint'], nsmooth=pdict['nsmooth'], nupdate=pdict['nupdate'], targetdir=pdict['targetdir'], nworkers=pdict['nworkers'])
+        smt_h5 = MODISsmth5(rawfile=h5,
+                            startdate=pdict['startdate'],
+                            tempint=pdict['tempint'],
+                            nsmooth=pdict['nsmooth'],
+                            nupdate=pdict['nupdate'],
+                            targetdir=pdict['targetdir'],
+                            nworkers=pdict['nworkers'])
 
         if not smt_h5.exists:
             smt_h5.create()
@@ -53,7 +59,13 @@ def run_ws2d_sgrid(h5):
     if not os.path.isfile(h5):
         print('Raw HDF5 {} not found! Please check path.'.format(h5))
     else:
-        smt_h5 = MODISsmth5(rawfile=h5, startdate=pdict['startdate'], tempint=pdict['tempint'], nsmooth=pdict['nsmooth'], nupdate=pdict['nupdate'], targetdir=pdict['targetdir'], nworkers=pdict['nworkers'])
+        smt_h5 = MODISsmth5(rawfile=h5,
+                            startdate=pdict['startdate'],
+                            tempint=pdict['tempint'],
+                            nsmooth=pdict['nsmooth'],
+                            nupdate=pdict['nupdate'],
+                            targetdir=pdict['targetdir'],
+                            nworkers=pdict['nworkers'])
 
         if not smt_h5.exists:
             smt_h5.create()
@@ -69,7 +81,13 @@ def run_ws2d_vc(h5):
     if not os.path.isfile(h5):
         print('Raw HDF5 {} not found! Please check path.'.format(h5))
     else:
-        smt_h5 = MODISsmth5(rawfile=h5, startdate=pdict['startdate'], tempint=pdict['tempint'], nsmooth=pdict['nsmooth'], nupdate=pdict['nupdate'], targetdir=pdict['targetdir'], nworkers=pdict['nworkers'])
+        smt_h5 = MODISsmth5(rawfile=h5,
+                            startdate=pdict['startdate'],
+                            tempint=pdict['tempint'],
+                            nsmooth=pdict['nsmooth'],
+                            nupdate=pdict['nupdate'],
+                            targetdir=pdict['targetdir'],
+                            nworkers=pdict['nworkers'])
 
         if not smt_h5.exists:
             smt_h5.create()
@@ -85,7 +103,13 @@ def run_ws2d_vcp(h5):
     if not os.path.isfile(h5):
         print('Raw HDF5 {} not found! Please check path.'.format(h5))
     else:
-        smt_h5 = MODISsmth5(rawfile=h5, startdate=pdict['startdate'], tempint=pdict['tempint'], nsmooth=pdict['nsmooth'], nupdate=pdict['nupdate'], targetdir=pdict['targetdir'], nworkers=pdict['nworkers'])
+        smt_h5 = MODISsmth5(rawfile=h5,
+                            startdate=pdict['startdate'],
+                            tempint=pdict['tempint'],
+                            nsmooth=pdict['nsmooth'],
+                            nupdate=pdict['nupdate'],
+                            targetdir=pdict['targetdir'],
+                            nworkers=pdict['nworkers'])
 
         if not smt_h5.exists:
             smt_h5.create()
@@ -158,7 +182,9 @@ def main():
     if args.srange:
         try:
             assert len(args.srange) == 3
-            args.srange = np.linspace(float(args.srange[0]), float(args.srange[1]), abs((float(args.srange[0])-float(args.srange[1])))/float(args.srange[2]) + 1.0)
+            args.srange = np.linspace(float(args.srange[0]),
+                                      float(args.srange[1]),
+                                      abs((float(args.srange[0])-float(args.srange[1])))/float(args.srange[2]) + 1.0)
         except (IndexError, TypeError, AssertionError):
             raise ValueError('Error with s value array values. Expected three values of float log10(s) -  smin smax sstep !')
 
@@ -178,7 +204,12 @@ def main():
                 raise ValueError('Error parsing startdate. Please check format!')
 
     # prepare processing dict
-    processing_dict = init_parameters(tempint=args.tempint, nsmooth=args.nsmooth, nupdate=args.nupdate, targetdir=args.targetdir, nworkers=args.nworkers, startdate=args.startdate)
+    processing_dict = init_parameters(tempint=args.tempint,
+                                      nsmooth=args.nsmooth,
+                                      nupdate=args.nupdate,
+                                      targetdir=args.targetdir,
+                                      nworkers=args.nworkers,
+                                      startdate=args.startdate)
 
     if not args.quiet:
         print('\n[{}]: Starting smoothMODIS.py ... \n'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())))
@@ -254,7 +285,13 @@ def main():
                     print('Raw HDF5 {} not found! Please check path.'.format(h5))
                     continue
 
-                smt_h5 = MODISsmth5(rawfile = h5, startdate=args.startdate, tempint=args.tempint, nsmooth=args.nsmooth, nupdate=args.nupdate, targetdir=args.targetdir, nworkers=args.nworkers)
+                smt_h5 = MODISsmth5(rawfile = h5,
+                                    startdate=args.startdate,
+                                    tempint=args.tempint,
+                                    nsmooth=args.nsmooth,
+                                    nupdate=args.nupdate,
+                                    targetdir=args.targetdir,
+                                    nworkers=args.nworkers)
 
                 if not smt_h5.exists:
                     smt_h5.create()
@@ -282,7 +319,13 @@ def main():
                     print('Raw HDF5 {} not found! Please check path.'.format(h5))
                     continue
 
-                smt_h5 = MODISsmth5(rawfile=h5, startdate=args.startdate, tempint=args.tempint, nsmooth=args.nsmooth, nupdate=args.nupdate, targetdir=args.targetdir, nworkers=args.nworkers)
+                smt_h5 = MODISsmth5(rawfile=h5,
+                                    startdate=args.startdate,
+                                    tempint=args.tempint,
+                                    nsmooth=args.nsmooth,
+                                    nupdate=args.nupdate,
+                                    targetdir=args.targetdir,
+                                    nworkers=args.nworkers)
 
                 if not smt_h5.exists:
                     smt_h5.create()
@@ -300,7 +343,13 @@ def main():
                     print('Raw HDF5 {} not found! Please check path.'.format(h5))
                     continue
 
-                smt_h5 = MODISsmth5(rawfile=h5, startdate=args.startdate, tempint=args.tempint, nsmooth=args.nsmooth, nupdate=args.nupdate, targetdir=args.targetdir, nworkers=args.nworkers)
+                smt_h5 = MODISsmth5(rawfile=h5,
+                                    startdate=args.startdate,
+                                    tempint=args.tempint,
+                                    nsmooth=args.nsmooth,
+                                    nupdate=args.nupdate,
+                                    targetdir=args.targetdir,
+                                    nworkers=args.nworkers)
 
                 if not smt_h5.exists:
                     smt_h5.create()
@@ -317,7 +366,13 @@ def main():
                     print('Raw HDF5 {} not found! Please check path.'.format(h5))
                     continue
 
-                smt_h5 = MODISsmth5(rawfile=h5, startdate=args.startdate, tempint=args.tempint, nsmooth=args.nsmooth, nupdate=args.nupdate, targetdir=args.targetdir, nworkers=args.nworkers)
+                smt_h5 = MODISsmth5(rawfile=h5,
+                                    startdate=args.startdate,
+                                    tempint=args.tempint,
+                                    nsmooth=args.nsmooth,
+                                    nupdate=args.nupdate,
+                                    targetdir=args.targetdir,
+                                    nworkers=args.nworkers)
 
                 if not smt_h5.exists:
                     smt_h5.create()
