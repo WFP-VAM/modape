@@ -24,11 +24,15 @@ except NameError:
 def main():
     '''Query and download MODIS products.
 
-    This function allows for querying and downloading MODIS products in bulk. Multiple products can be queried and downloaded with one
-    function call. For downloading data, valid earthdata credentials are required (to register, visit https://urs.earthdata.nasa.gov/users/new).
-    Data download can be performed with python's request module or with external ARIA2 (needs to be available in PATH) if --aria2 flag is added.
+    This function allows for querying and downloading MODIS products in bulk.
+    Multiple products can be queried and downloaded with one
+    function call. For downloading data, valid earthdata credentials are required
+    (to register, visit https://urs.earthdata.nasa.gov/users/new).
+    Data download can be performed with python's request module
+    or with external ARIA2 (needs to be available in PATH) if --aria2 flag is added.
 
-    To query for both MODIS AQUA and TERRA, replace MOD/MYD with M?D. Product IDs also accepted in lowercase.
+    To query for both MODIS AQUA and TERRA, replace MOD/MYD with M?D.
+    Product IDs also accepted in lowercase.
     '''
 
     parser = argparse.ArgumentParser(description='Query and download MODIS products (Earthdata account required for download)')
@@ -42,7 +46,6 @@ def main():
     parser.add_argument('--password', help='Earthdata password (required for download)', metavar='')
     parser.add_argument('-d','--targetdir', help='Destination directory', default=os.getcwd(), metavar='')
     parser.add_argument('--store-credentials', help='Store Earthdata credentials on disk to be used for future downloads (unsecure!)', action='store_true')
-    #parser.add_argument('-v','--verbose', help='Verbosity',action='store_true')
     parser.add_argument('--download', help='Download data', action='store_true')
     parser.add_argument('--aria2', help='Use ARIA2 for downloading', action='store_true')
 
@@ -105,7 +108,8 @@ def main():
                 elif 'MCD' in product_subset:
                     query_url = 'https://e4ftl01.cr.usgs.gov/MOTA/{}.006/'.format(product_subset)
                 else:
-                    raise SystemExit('Product {} not recognized. Available: MOD*, MYD*, MCD*')
+                    raise SystemExit('Product {} not recognized.'
+                                     ' Available: MOD*, MYD*, MCD*')
             else:
                 query = []
                 # if tile_filter and no ROI, limit spatial query
@@ -113,23 +117,29 @@ def main():
                     # cast to lowercase
                     tiles = [x.lower() for x in args.tile_filter]
 
-                    with open(os.path.join(this_dir, 'data', 'ModlandTiles_bbx.pkl'),'rb') as bbox_raw:
+                    with open(os.path.join(this_dir, 'data', 'ModlandTiles_bbx.pkl'), 'rb') as bbox_raw:
                         bbox = pickle.load(bbox_raw)
 
                     if len(tiles) == 1:
                         h_indicator, v_indicator = re.findall('\d+', tiles[0])
-                        bbox_selection = bbox[(bbox.ih == int(h_indicator)) & (bbox.iv == int(v_indicator))]
+                        bbox_selection = bbox[(bbox.ih == int(h_indicator)) &
+                                              (bbox.iv == int(v_indicator))]
 
                         # roi is approx. center point of tile
-                        args.roi = [bbox_selection.lat_max.values[0] - 5, bbox_selection.lon_max.values[0] - (bbox_selection.lon_max.values[0] - bbox_selection.lon_min.values[0])/2]
+                        args.roi = [bbox_selection.lat_max.values[0] - 5,
+                                    bbox_selection.lon_max.values[0] - (bbox_selection.lon_max.values[0] - bbox_selection.lon_min.values[0])/2]
+
                     elif len(tiles) > 1:
                         h_indicator = list(set([re.findall('\d+',x.split('v')[0])[0] for x in tiles]))
                         v_indicator = list(set([re.findall('\d+',x.split('v')[1])[0] for x in tiles]))
 
                         # aoi is bbox including all tiles from tile_filter, plus 1 degree buffer
                         bbox_selection = bbox.query('|'.join(['ih == {}'.format(int(x)) for x in h_indicator])).query('|'.join(['iv == {}'.format(int(x)) for x in v_indicator]))
-                        args.roi = [min(bbox_selection.lon_min.values)-1, min(bbox_selection.lat_min.values)-1, max(bbox_selection.lon_max.values)+1,max(bbox_selection.lat_max.values)+1]
 
+                        args.roi = [min(bbox_selection.lon_min.values)-1,
+                                    min(bbox_selection.lat_min.values)-1,
+                                    max(bbox_selection.lon_max.values)+1,
+                                    max(bbox_selection.lat_max.values)+1]
                     else:
                         pass # not happening
 
@@ -173,11 +183,18 @@ def main():
                 query.append('version={}'.format(args.collection))
                 query.append('date={}/{}'.format(args.begin_date, args.end_date))
 
-                query_url = 'https://lpdaacsvc.cr.usgs.gov/services/inventory?product={}&{}'.format(product_subset, '&'.join(query))
+                query_url = 'https://lpdaacsvc.cr.usgs.gov/services/inventory?product={}&{}'.format(product_subset,
+                                                                                                    '&'.join(query))
 
             # Run query
             print('\nPRODUCT: {}\n'.format(product_subset))
-            query_result = MODISquery(query_url, targetdir=args.targetdir, begindate=args.begin_date, enddate=args.end_date, global_flag=global_flag, aria2=args.aria2, tile_filter=args.tile_filter)
+            query_result = MODISquery(query_url,
+                                      targetdir=args.targetdir,
+                                      begindate=args.begin_date,
+                                      enddate=args.end_date,
+                                      global_flag=global_flag,
+                                      aria2=args.aria2,
+                                      tile_filter=args.tile_filter)
 
             # If download is True and at least one result, download data
             if args.download and query_result.results > 0:
