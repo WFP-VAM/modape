@@ -1,3 +1,4 @@
+# pylint: disable=line-too-long, too-many-statements, import-error, global-variable-undefined
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -35,7 +36,7 @@ class TestUtils(unittest.TestCase):
         self.assertTrue(np.all(dv == -3000))
 
     def test_credentials(self):
-        cred = Credentials(username='testuser',password='testpass')
+        cred = Credentials(username='testuser', password='testpass')
 
         self.assertEqual(cred.username, 'testuser')
         self.assertEqual(cred.password, 'testpass')
@@ -60,27 +61,6 @@ class TestUtils(unittest.TestCase):
 
     def test_tvec(self):
         self.assertEqual(tvec(2003, 8), [x for x in self.dates if '2003' in x])
-
-    def test_mp(self):
-        def _init(arr_):
-            global arr
-            arr = tonumpyarray(arr_)
-
-        def _work(ix):
-            arr[ix] = ix
-        return(mp.current_process().pid)
-
-        arr_shared = init_shared(10)
-
-        pool = mp.Pool(2,initializer=_init, initargs=(arr_shared,))
-
-        res = pool.map(_work, range(10))
-        pool.close()
-        pool = None
-
-        self.assertEqual(arr_shared[0:10] ,[x for x in range(10)])
-        self.assertEqual(len(set(res)), 2)
-        del arr_shared
 
 if __name__ == '__main__':
     unittest.main()
