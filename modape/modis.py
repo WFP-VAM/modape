@@ -1010,8 +1010,8 @@ class MODISsmth5(object):
 
                 pool = mp.Pool(processes=self.nworkers, initializer=init_worker, initargs=(shared_array_raw, parameters))
                 # load raw data
-                for br in range(0,rawshape[0], rawchunks[0]):
-                    for bc in range(0,len(self.rawdates), rawchunks[1]):
+                for br in range(0, rawshape[0], rawchunks[0]):
+                    for bc in range(0, len(self.rawdates), rawchunks[1]):
                         bco = bc + rawoffset
                         arr_raw[:, bc:bc+rawchunks[1]] = raw_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]]
                     ndix = np.sum(arr_raw != -3000, 1) > 0  #70
@@ -1084,7 +1084,7 @@ class MODISsmth5(object):
                         else:
                             arr_raw[r, :], arr_sgrid[r] = ws2doptv(y=arr_raw[r, :],
                                                                    w=np.array((arr_raw[r, :] != nodata)*1, dtype='double'),
-                                                                   llas=array.array('d' ,sr))
+                                                                   llas=array.array('d', sr))
 
                         if self.tinterpolate:
                             z2 = vector_daily.copy()
@@ -1245,8 +1245,8 @@ class MODISmosaic(object):
         # read data from intersecting HDF5 files
         for h5f in self.files:
             # Extract tile ID from filename
-            t_h = re.sub(r'.+(h\d+)(v\d+).+', '\\1',os.path.basename(h5f))
-            t_v = re.sub(r'.+(h\d+)(v\d+).+', '\\2',os.path.basename(h5f))
+            t_h = re.sub(r'.+(h\d+)(v\d+).+', '\\1', os.path.basename(h5f))
+            t_v = re.sub(r'.+(h\d+)(v\d+).+', '\\2', os.path.basename(h5f))
 
             # Caluclate row/column offset
             xoff = self.h_ix.index(t_h) * self.tile_cls
