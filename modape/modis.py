@@ -28,7 +28,9 @@ except ImportError:
 
 from bs4 import BeautifulSoup
 import h5py
-from modape.utils import SessionWithHeaderRedirection, FileHandler, DateHelper, dtype_GDNP, txx, fromjulian, init_shared, tonumpyarray, init_parameters, init_worker, execute_ws2d, execute_ws2d_sgrid, execute_ws2d_vc
+from modape.utils import (SessionWithHeaderRedirection, FileHandler, DateHelper,
+                          dtype_GDNP, txx, fromjulian, init_shared, tonumpyarray,
+                          init_parameters, init_worker, execute_ws2d, execute_ws2d_sgrid, execute_ws2d_vc)
 from modape.whittaker import lag1corr, ws2d, ws2doptv, ws2doptvp
 
 # turn off BeautifulSoup warnings
