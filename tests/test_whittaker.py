@@ -1,3 +1,4 @@
+# pylint: disable=line-too-long, too-many-statements
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -9,7 +10,7 @@ import unittest
 
 import numpy as np
 
-from modape.whittaker import *
+from modape.whittaker import lag1corr, ws2d, ws2doptv, ws2doptvp # pylint: disable=E0611
 
 class TestWhittaker(unittest.TestCase):
 
@@ -31,20 +32,20 @@ class TestWhittaker(unittest.TestCase):
         self.w = None
 
     def test_lag1corr(self):
-        self.assertAlmostEqual(lag1corr(self.y[:-1],self.y[1:], -3000.0),self.data['lag1corr'])
+        self.assertAlmostEqual(lag1corr(self.y[:-1], self.y[1:], -3000.0), self.data['lag1corr'])
 
     def test_ws2d(self):
-        z = np.array(ws2d(self.y, 10, self.w),dtype='double')
+        z = np.array(ws2d(self.y, 10, self.w), dtype='double')
         np.testing.assert_almost_equal(z, self.data['z_ws2d'], 5)
 
 
     def test_ws2dvc(self):
-        z,sopt = ws2doptv(self.y, self.w, array.array('d', np.linspace(-2, 1, 16)))
+        z, sopt = ws2doptv(self.y, self.w, array.array('d', np.linspace(-2, 1, 16)))
         np.testing.assert_almost_equal(z, self.data['z_ws2dvc'], 5)
         self.assertEqual(sopt, self.data['sopt_ws2dvc'])
 
     def test_ws2dvcp(self):
-        z,sopt = ws2doptvp(self.y, self.w, array.array('d', np.linspace(-2, 1, 16)), p=0.90)
+        z, sopt = ws2doptvp(self.y, self.w, array.array('d', np.linspace(-2, 1, 16)), p=0.90)
         np.testing.assert_almost_equal(z, self.data['z_ws2dvcp'], 5)
         self.assertEqual(sopt, self.data['sopt_ws2dvcp'])
 

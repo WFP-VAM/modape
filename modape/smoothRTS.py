@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# pylint: disable=line-too-long, too-many-statements, wildcard-import, C0103, R0205, E0602
 
 from __future__ import absolute_import
 from __future__ import division
@@ -8,7 +9,6 @@ import argparse
 import array
 import glob
 import os
-import re
 import sys
 import time
 
@@ -21,13 +21,7 @@ except ImportError:
 from modape.utils import dtype_GDNP
 from modape.whittaker import *
 
-# assign xrange to range if py2
-try:
-    range = xrange
-except NameError:
-    pass
-
-def initGDAL(x, p, fn=None, dt=None):
+def init_gdal(x, p, fn=None, dt=None):
     '''Initializes empty GeoTIFF based on template.
 
     Args:
@@ -47,7 +41,7 @@ def initGDAL(x, p, fn=None, dt=None):
         dt_new = dtype_GDNP(dt)[0] # Parse datatype
 
     # Create empty copy
-    ds_new = dr.Create(p + fn,ds.RasterXSize, ds.RasterYSize, ds.RasterCount, dt_new)
+    ds_new = dr.Create(p + fn, ds.RasterXSize, ds.RasterYSize, ds.RasterCount, dt_new)
     ds_new.SetGeoTransform(ds.GetGeoTransform())
     ds_new.SetProjection(ds.GetProjection())
     ds_new.GetRasterBand(1).SetNoDataValue(ds.GetRasterBand(1).GetNoDataValue())
@@ -55,7 +49,7 @@ def initGDAL(x, p, fn=None, dt=None):
     dr = None
     ds_new = None
 
-def iterateBlocks(rows,cols,n):
+def iterateBlocks(rows, cols, n):
     '''Generator for blockwise iteration over array.
 
     Args:
@@ -123,7 +117,7 @@ class RTS(object):
         # Iterate over files
         for f in self.files:
             try:
-                initGDAL(f, tdir) # Initialize empty copy
+                init_gdal(f, tdir) # Initialize empty copy
             except AttributeError:
                 print('Error initializing {}! Please check data'.format(f))
                 raise
@@ -157,18 +151,18 @@ class RTS(object):
             # Iterate files to read data
             for fix in range(self.nfiles):
                 ds = gdal.Open(self.files[fix])
-                arr_helper[...,fix] = ds.ReadAsArray(xoff=xo, xsize=xs, yoff=yo, ysize=ys)
+                arr_helper[..., fix] = ds.ReadAsArray(xoff=xo, xsize=xs, yoff=yo, ysize=ys)
                 ds = None
 
             # Data which is not nodata gets weight 1, others 0
             wts[...] = (arr != self.nodata) * 1
-            ndix = np.sum(arr != self.nodata ,1) > 0 #70
+            ndix = np.sum(arr != self.nodata, 1) > 0 #70
             mapIX = np.where(ndix)[0]
 
-            if len(mapIX) == 0:
+            if mapIX.size == 0:
                 continue # skip bc no data in block
 
-            arr[np.logical_not(ndix), :]  = self.nodata
+            arr[np.logical_not(ndix), :] = self.nodata
 
             for r in mapIX:
                 arr[r, ...] = ws2d(arr[r, ...], 10**s, wts[r, ...])
@@ -205,7 +199,7 @@ class RTS(object):
             p (float): P-value for percentile
         '''
 
-        srange_arr = array.array('d',srange)
+        srange_arr = array.array('d', srange)
         if p:
             tdir = self.targetdir + '/filtoptvp/'
         else:
@@ -223,7 +217,7 @@ class RTS(object):
         self.initRasters(tdir)
 
         # S-grid needs to be initialized separately
-        initGDAL(self.ref_file, tdir, 'sgrid.tif', dt='float32')
+        init_gdal(self.ref_file, tdir, 'sgrid.tif', dt='float32')
 
         for yo, ys, xo, xs in iterateBlocks(self.nrows, self.ncols, self.bsize):
             arr = np.zeros((ys*xs, self.nfiles), dtype='double')
@@ -241,14 +235,14 @@ class RTS(object):
             ndix = np.sum(arr != self.nodata, 1) > 0 #70
             mapIX = np.where(ndix)[0]
 
-            if len(mapIX) == 0:
+            if mapIX.size == 0:
                 continue # skip bc no data in block
 
-            arr[np.logical_not(ndix), :]  = self.nodata
+            arr[np.logical_not(ndix), :] = self.nodata
 
             for r in mapIX:
                 if p:
-                    arr[r, ...], sarr[r] = ws2doptvp(arr[r, ...],wts[r, ...], srange_arr, p)
+                    arr[r, ...], sarr[r] = ws2doptvp(arr[r, ...], wts[r, ...], srange_arr, p)
                 else:
                     arr[r, ...], sarr[r] = ws2doptv(arr[r, ...], wts[r, ...], srange_arr)
 
@@ -304,12 +298,12 @@ def main():
 
     parser = argparse.ArgumentParser(description='Extract a window from MODIS products')
     parser.add_argument('path', help='Path containing raster files')
-    parser.add_argument('-P','--pattern', help='Pattern to filter file names', default ='*', metavar='')
-    parser.add_argument('-d','--targetdir', help='Target directory for GeoTIFFs (default current directory)', default=os.getcwd(), metavar='')
-    parser.add_argument('-s','--svalue', help='S value for smoothing (has to be log10(s)', metavar='', type=float)
-    parser.add_argument('-S','--srange', help='S range for V-curve (float log10(s) values as smin smax sstep - default 0.0 4.0 0.1)', nargs='+', metavar='', type=float)
-    parser.add_argument('-p','--pvalue', help='Value for asymmetric smoothing (float required)', metavar='', type=float)
-    parser.add_argument('-b','--blocksize', help='Processing block side length (default 256)',default=256, metavar='', type=int)
+    parser.add_argument('-P', '--pattern', help='Pattern to filter file names', default='*', metavar='')
+    parser.add_argument('-d', '--targetdir', help='Target directory for GeoTIFFs (default current directory)', default=os.getcwd(), metavar='')
+    parser.add_argument('-s', '--svalue', help='S value for smoothing (has to be log10(s)', metavar='', type=float)
+    parser.add_argument('-S', '--srange', help='S range for V-curve (float log10(s) values as smin smax sstep - default 0.0 4.0 0.1)', nargs='+', metavar='', type=float)
+    parser.add_argument('-p', '--pvalue', help='Value for asymmetric smoothing (float required)', metavar='', type=float)
+    parser.add_argument('-b', '--blocksize', help='Processing block side length (default 256)', default=256, metavar='', type=int)
     parser.add_argument('--nodata', help='NoData value', metavar='', type=float)
     parser.add_argument('--soptimize', help='Use V-curve (with p if supplied) for s value optimization', action='store_true')
 
@@ -326,7 +320,7 @@ def main():
     # Find files in path
     fls = [x for x in glob.glob('{}/{}'.format(args.path, args.pattern)) if os.path.isfile(x)]
 
-    if not len(fls) > 0:
+    if not fls:
         raise ValueError('No files found in {} with pattern {}, please check input.'.format(args.path, args.pattern))
 
     # Create raster timeseries object
@@ -366,5 +360,5 @@ def main():
 
     print('\n[{}]: smoothMODIS.py finished successfully.\n'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())))
 
-if __name__=='__main__':
+if __name__ == '__main__':
     main()

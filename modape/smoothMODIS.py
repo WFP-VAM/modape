@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# pylint: disable=line-too-long, too-many-statements
 
 from __future__ import absolute_import
 from __future__ import division
@@ -6,7 +7,6 @@ from __future__ import print_function
 
 import argparse
 import datetime
-from contextlib import contextmanager, closing
 import glob
 import multiprocessing
 import os
@@ -23,7 +23,7 @@ from modape.utils import init_parameters, Pool
 def initfun(pdict_):
     '''Initfun for worker'''
 
-    global pdict
+    global pdict # pylint: disable=W0601, C0103
     pdict = pdict_
 
 def run_ws2d(h5):
@@ -116,7 +116,7 @@ def run_ws2d_vcp(h5):
 
         if not pdict['pvalue']:
             if re.match('M.D13', os.path.basename(h5)):
-                 pdict['pvalue'] = 0.90
+                pdict['pvalue'] = 0.90
             elif re.match('M.D11', os.path.basename(h5)):
                 pdict['pvalue'] = 0.95
             else:
@@ -145,18 +145,18 @@ def main():
 
     parser = argparse.ArgumentParser(description='Smooth, gapfill and interpolate processed raw MODIS HDF5 files')
     parser.add_argument('input', help='Smoothing input - either one or more raw MODIS HDF5 file(s) or path containing raw MODIS HDF5 file(s)', nargs='+', metavar='input')
-    parser.add_argument('-s','--svalue', help='S value for smoothing (has to be log10(s))', metavar='', type = float)
-    parser.add_argument('-S','--srange', help='S value range for V-curve (float log10(s) values as smin smax sstep - default -1.0 1.0 0.2)', nargs='+', metavar='')
-    parser.add_argument('-t','--tempint', help='Value for temporal interpolation (integer required - default is native temporal resolution i.e. no interpolation)', metavar='', type=int)
-    parser.add_argument('-n','--nsmooth', help='Number of raw timesteps used for smoothing', default=0, metavar='', type=int)
-    parser.add_argument('-u','--nupdate', help='Number of smoothed timesteps to be updated in HDF5 file', default=0, metavar='', type=int)
-    parser.add_argument('-p','--pvalue', help='Value for asymmetric smoothing (float required)', metavar='', type=float)
-    parser.add_argument('-d','--targetdir', help='Target directory for smoothed output', default=os.getcwd(), metavar='')
+    parser.add_argument('-s', '--svalue', help='S value for smoothing (has to be log10(s))', metavar='', type=float)
+    parser.add_argument('-S', '--srange', help='S value range for V-curve (float log10(s) values as smin smax sstep - default -1.0 1.0 0.2)', nargs='+', metavar='')
+    parser.add_argument('-t', '--tempint', help='Value for temporal interpolation (integer required - default is native temporal resolution i.e. no interpolation)', metavar='', type=int)
+    parser.add_argument('-n', '--nsmooth', help='Number of raw timesteps used for smoothing', default=0, metavar='', type=int)
+    parser.add_argument('-u', '--nupdate', help='Number of smoothed timesteps to be updated in HDF5 file', default=0, metavar='', type=int)
+    parser.add_argument('-p', '--pvalue', help='Value for asymmetric smoothing (float required)', metavar='', type=float)
+    parser.add_argument('-d', '--targetdir', help='Target directory for smoothed output', default=os.getcwd(), metavar='')
     parser.add_argument('--startdate', help='Startdate for temporal interpolation (format YYYY-MM-DD or YYYYJJJ)', metavar='')
     parser.add_argument('--optv', help='Use V-curve for s value optimization', action='store_true')
     parser.add_argument('--optvp', help='Use asymmetric V-curve for s value optimization', action='store_true')
     parser.add_argument('--parallel-tiles', help='Number of tiles processed in parallel (default = None)', default=1, type=int, metavar='')
-    parser.add_argument('--nworkers', help='Number of worker processes used per tile (default is number is 1 - no concurrency)', default=1, metavar='', type = int)
+    parser.add_argument('--nworkers', help='Number of worker processes used per tile (default is number is 1 - no concurrency)', default=1, metavar='', type=int)
     parser.add_argument('--quiet', help='Be quiet', action='store_true')
 
     # Fail and print help if no arguments supplied
@@ -223,8 +223,8 @@ def main():
             if not args.quiet:
                 print('\nRunning whittaker smoother V-curve optimization ... \n')
 
-            with closing(Pool(processes=args.parallel_tiles, initializer=initfun, initargs=(processing_dict,))) as pool:
-                res = pool.map(run_ws2d_vc, files)
+            pool = Pool(processes=args.parallel_tiles, initializer=initfun, initargs=(processing_dict,))
+            _ = pool.map(run_ws2d_vc, files)
             pool.close()
             pool.join()
 
@@ -238,8 +238,8 @@ def main():
             if not args.quiet:
                 print('\nRunning whittaker smoother asymmetric V-curve optimization ... \n')
 
-            with closing(Pool(processes=args.parallel_tiles, initializer=initfun, initargs=(processing_dict,))) as pool:
-                res = pool.map(run_ws2d_vcp, files)
+            pool = Pool(processes=args.parallel_tiles, initializer=initfun, initargs=(processing_dict,))
+            _ = pool.map(run_ws2d_vcp, files)
             pool.close()
             pool.join()
 
@@ -252,8 +252,9 @@ def main():
             if not args.quiet:
                 print('\nRunning whittaker smoother with fixed s value ... \n')
 
-            with closing(Pool(processes=args.parallel_tiles, initializer=initfun, initargs=(processing_dict,))) as pool:
-                res = pool.map(run_ws2d,files)
+
+            pool = Pool(processes=args.parallel_tiles, initializer=initfun, initargs=(processing_dict,))
+            _ = pool.map(run_ws2d, files)
             pool.close()
             pool.join()
 
@@ -263,8 +264,8 @@ def main():
             if not args.quiet:
                 print('\nRunning whittaker smoother with s value from grid ... \n')
 
-            with closing(Pool(processes=args.parallel_tiles, initializer=initfun, initargs=(processing_dict,))) as pool:
-                res = pool.map(run_ws2d_sgrid, files)
+            pool = Pool(processes=args.parallel_tiles, initializer=initfun, initargs=(processing_dict,))
+            _ = pool.map(run_ws2d_sgrid, files)
             pool.close()
             pool.join()
 
@@ -285,7 +286,7 @@ def main():
                     print('Raw HDF5 {} not found! Please check path.'.format(h5))
                     continue
 
-                smt_h5 = MODISsmth5(rawfile = h5,
+                smt_h5 = MODISsmth5(rawfile=h5,
                                     startdate=args.startdate,
                                     tempint=args.tempint,
                                     nsmooth=args.nsmooth,

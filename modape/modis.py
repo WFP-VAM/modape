@@ -1,13 +1,13 @@
+# pylint: disable=line-too-long, wildcard-import, too-many-statements, E0401, E0611
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
 import array
-import bisect
 from contextlib import contextmanager, closing
 import datetime
 import gc
-import itertools
 import multiprocessing as mp
 import os
 import re
@@ -18,8 +18,6 @@ import traceback
 import uuid
 import warnings
 
-from bs4 import BeautifulSoup
-import h5py
 import numpy as np
 from progress.spinner import Spinner
 import requests
@@ -28,13 +26,10 @@ try:
 except ImportError:
     from osgeo import gdal
 
+from bs4 import BeautifulSoup
+import h5py
 from modape.utils import *
 from modape.whittaker import lag1corr, ws2d, ws2doptv, ws2doptvp
-
-try:
-    range = xrange
-except NameError:
-    pass
 
 # turn off BeautifulSoup warnings
 warnings.filterwarnings('ignore', category=UserWarning, module='bs4')
@@ -87,7 +82,7 @@ class MODISquery(object):
             # results for global products are date directories on server, so need to query separately
             if self.global_flag:
                 r = re.compile('.*.hdf$')
-                dates = np.array([x.getText() for x in soup.findAll('a', href=True) if re.match('\d{4}\.\d{2}\.\d{2}', x.getText())])
+                dates = np.array([x.getText() for x in soup.findAll('a', href=True) if re.match(r'\d{4}\.\d{2}\.\d{2}', x.getText())])
                 dates_parsed = [datetime.datetime.strptime(x, '%Y.%m.%d/').date() for x in dates]
                 dates_ix = np.flatnonzero(np.array([x >= self.begin and x < self.end for x in dates_parsed]))
 
@@ -108,7 +103,7 @@ class MODISquery(object):
                         print('No HDF file found in {} - skipping.'.format(self.query_url + d))
                         continue
             else:
-                r = re.compile('.+(h\d+v\d+).+')
+                r = re.compile(r'.+(h\d+v\d+).+')
                 urls = [x.getText() for x in soup.find_all('url')]
 
                 if tile_filter:
@@ -138,8 +133,8 @@ class MODISquery(object):
             password (str): Earthdata password
         '''
 
-        self.username=username
-        self.password=password
+        self.username = username
+        self.password = password
 
     def download(self):
         '''Downloads MODIS products.
@@ -156,7 +151,7 @@ class MODISquery(object):
         if self.aria2:
             # fail if ARIA2 not installed
             try:
-                temp = check_output(['aria2c', '--version'])
+                _ = check_output(['aria2c', '--version'])
             except:
                 raise SystemExit('ARIA2 download needs ARIA2 to be available in PATH! Please make sure it\'s installed and available in PATH!')
 
@@ -171,21 +166,21 @@ class MODISquery(object):
             flist = self.targetdir + '/{}'.format(str(uuid.uuid4()))
 
             # write URLs of query resuls to disk for WGET
-            with open(flist,'w') as thefile:
+            with open(flist, 'w') as thefile:
                 for item in self.modis_urls:
                     thefile.write('%s\n' % item)
 
             args = [
-            'aria2c',
-            '--file-allocation=none',
-            '-m', '50',
-            '--retry-wait', '2',
-            '-c',
-            '-x', '10',
-            '-s', '10',
-            '--http-user', self.username,
-            '--http-passwd', self.password,
-            '-d', self.targetdir,
+                'aria2c',
+                '--file-allocation=none',
+                '-m', '50',
+                '--retry-wait', '2',
+                '-c',
+                '-x', '10',
+                '-s', '10',
+                '--http-user', self.username,
+                '--http-passwd', self.password,
+                '-d', self.targetdir,
             ]
 
             # execute subprocess
@@ -193,7 +188,7 @@ class MODISquery(object):
             p.wait()
 
             # remove filelist.txt if all downloads are successful
-            if p.returncode is not 0:
+            if p.returncode != 0:
                 print('\nError (error code {}) occured during download, please check files against MODIS URL list ({})!\n'.format(p.returncode, flist))
             else:
                 os.remove(flist)
@@ -202,10 +197,9 @@ class MODISquery(object):
 
         # download with requests
         else:
-            r = re.compile('.*.hdf$')
             session = SessionWithHeaderRedirection(self.username, self.password)
 
-            for ix,u in enumerate(self.modis_urls):
+            for ix, u in enumerate(self.modis_urls):
                 print('{} of {}'.format(ix+1, self.results))
                 fname = u[u.rfind('/')+1:]
 
@@ -266,7 +260,7 @@ class MODISrawh5(object):
 
         # Patterns for string extraction
         ppatt = re.compile(r'M\w{6}')
-        vpatt = re.compile('.+\.(\d{3})\..+')
+        vpatt = re.compile(r'.+\.(\d{3})\..+')
         tpatt = re.compile(r'h\d+v\d+')
 
         # Open reference file
@@ -318,15 +312,15 @@ class MODISrawh5(object):
 
         # Name of file to be created/updated
         self.outname = '{}/{}/{}.{}.h5'.format(
-                                    self.targetdir,
-                                    self.vam_product_code,
-                                    '.'.join(self.product + re.findall(tpatt, self.reference_file_basename) + [re.sub(vpatt,'\\1', self.reference_file_basename)]),
-                                    fname_vpc)
+            self.targetdir,
+            self.vam_product_code,
+            '.'.join(self.product + re.findall(tpatt, self.reference_file_basename) + [re.sub(vpatt, '\\1', self.reference_file_basename)]),
+            fname_vpc)
 
         self.exists = os.path.isfile(self.outname)
         ref = None
 
-    def create(self,compression='gzip', chunk=None):
+    def create(self, compression='gzip', chunk=None):
         '''Creates the HDF5 file.
 
         Args:
@@ -460,7 +454,7 @@ class MODISrawh5(object):
                         arr[..., b1:b1+self.chunks[1]] = dset[b:b+self.chunks[0], b1:b1+self.chunks[1]]
                     del b1
 
-                    for fix,f in enumerate(self.files):
+                    for fix, f in enumerate(self.files):
                         try:
                             arr[..., dates_combined.index(self.rawdates[fix])] = handler.handles[fix].ReadAsArray(xoff=0,
                                                                                                                   yoff=yoff,
@@ -469,7 +463,7 @@ class MODISrawh5(object):
                         except AttributeError:
                             print('Error reading from {}. Using nodata ({}) value.'.format(f, self.nodata_value))
                             arr[..., dates_combined.index(self.rawdates[fix])] = self.nodata_value
-                    arr = arr[...,sort_ix]
+                    arr = arr[..., sort_ix]
 
                     for b1 in range(0, n, self.chunks[1]):
                         dset[b:b+self.chunks[0], b1:b1+self.chunks[1]] = arr[..., b1:b1+self.chunks[1]]
@@ -516,10 +510,9 @@ class MODISsmth5(object):
         self.startdate = startdate
 
         # Get info from raw HDF5
-        with h5py.File(self.rawfile,'r') as h5f:
+        with h5py.File(self.rawfile, 'r') as h5f:
             dset = h5f.get('data')
             dates = h5f.get('dates')
-            rawshape = dset.shape
             self.rawdates = [x.decode() for x in dates[-self.nsmooth:]]
 
         # Parse tempint to get flag for filename
@@ -538,10 +531,10 @@ class MODISsmth5(object):
 
         # Filename for smoothed HDF5
         self.outname = '{}/{}.tx{}.{}.h5'.format(
-                                    self.targetdir,
-                                    '.'.join(os.path.basename(rawfile).split('.')[:-2]),
-                                    txflag,
-                                    os.path.basename(rawfile).split('.')[-2:-1][0])
+            self.targetdir,
+            '.'.join(os.path.basename(rawfile).split('.')[:-2]),
+            txflag,
+            os.path.basename(rawfile).split('.')[-2:-1][0])
         self.exists = os.path.isfile(self.outname)
 
     def create(self):
@@ -563,8 +556,6 @@ class MODISsmth5(object):
                 rres = dset.attrs['resolution']
                 rnd = dset.attrs['nodata']
                 rtres = dset.attrs['temporalresolution'].item()
-                tshift = dset.attrs['tshift'].item()
-                firstday = fromjulian(dates[0].decode())
         except Exception as e:
             raise SystemExit('Error reading rawfile {}. File may be corrupt. \n\n Error message: \n\n {}'.format(self.rawfile, e))
 
@@ -620,7 +611,7 @@ class MODISsmth5(object):
 
         self.exists = True
 
-    def ws2d(self,s):
+    def ws2d(self, s):
         '''Apply whittaker smoother with fixed s-value to data.
 
         Args:
@@ -649,7 +640,7 @@ class MODISsmth5(object):
             dates = DateHelper(rawdates=self.rawdates,
                                rtres=rtres,
                                stres=self.temporalresolution,
-                               start = self.startdate,
+                               start=self.startdate,
                                nupdate=self.nupdate)
 
             if not self.tinterpolate:
@@ -694,28 +685,30 @@ class MODISsmth5(object):
                 arr_raw = tonumpyarray(shared_array_raw)
                 arr_raw.shape = (rawchunks[0], len(self.rawdates))
 
-                with closing(mp.Pool(processes=self.nworkers,initializer = init_worker, initargs = (shared_array_raw,parameters))) as pool:
-                    # load raw data
-                    for br in range(0,rawshape[0], rawchunks[0]):
-                        for bc in range(0,len(self.rawdates), rawchunks[1]):
-                            bco = bc + rawoffset
-                            arr_raw[:, bc:bc+rawchunks[1]] = raw_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]]
-                        ndix = np.sum(arr_raw != -3000, 1) > 0 #70
-                        mapIX = np.where(ndix)[0]
-                        if len(mapIX) == 0:
-                            continue #no data points, skipping to next block
-                        res = pool.map(execute_ws2d, mapIX)
+                pool = mp.Pool(processes=self.nworkers, initializer=init_worker, initargs=(shared_array_raw, parameters))
+                # load raw data
+                for br in range(0, rawshape[0], rawchunks[0]):
+                    for bc in range(0, len(self.rawdates), rawchunks[1]):
+                        bco = bc + rawoffset
+                        arr_raw[:, bc:bc+rawchunks[1]] = raw_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]]
+                    ndix = np.sum(arr_raw != -3000, 1) > 0 #70
+                    mapIX = np.where(ndix)[0]
+                    if mapIX.size == 0:
+                        continue #no data points, skipping to next block
+                    _ = pool.map(execute_ws2d, mapIX)
+                    pool.close()
+                    pool.join()
 
-                        # write back data
-                        if self.tinterpolate:
-                            for bc in range(0, len(dates.target), smoothchunks[1]):
-                                bco = bc + smoothoffset
-                                smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]]
-                            arr_smooth[...] = nodata
-                        else:
-                            for bc in range(0,len(dates.target), smoothchunks[1]):
-                                bco = bc + smoothoffset
-                                smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]]
+                    # write back data
+                    if self.tinterpolate:
+                        for bc in range(0, len(dates.target), smoothchunks[1]):
+                            bco = bc + smoothoffset
+                            smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]]
+                        arr_smooth[...] = nodata
+                    else:
+                        for bc in range(0, len(dates.target), smoothchunks[1]):
+                            bco = bc + smoothoffset
+                            smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]]
             else:
                 arr_raw = np.zeros((rawchunks[0], len(self.rawdates)), dtype='double')
 
@@ -744,10 +737,10 @@ class MODISsmth5(object):
                         arr_raw[:, bc:bc+rawchunks[1]] = raw_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]]
                     wts[...] = (arr_raw != nodata)*1
 
-                    ndix = np.sum(wts,1) > 0 #70
+                    ndix = np.sum(wts, 1) > 0 #70
                     mapIX = np.where(ndix)[0]
 
-                    if len(mapIX) == 0:
+                    if mapIX.size == 0:
                         continue #no data points, skipping to next block
 
                     for r in mapIX:
@@ -762,7 +755,7 @@ class MODISsmth5(object):
 
                     # write back data
                     if self.tinterpolate:
-                        for bc in range(0,len(dates.target), smoothchunks[1]):
+                        for bc in range(0, len(dates.target), smoothchunks[1]):
                             bco = bc + smoothoffset
                             smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]]
                         arr_smooth[...] = nodata
@@ -798,10 +791,10 @@ class MODISsmth5(object):
             smt_ds.attrs['lastrun'] = 'fixed s from grid'
 
             dates = DateHelper(rawdates=self.rawdates,
-                            rtres=rtres,
-                            stres=self.temporalresolution,
-                            start = self.startdate,
-                            nupdate=self.nupdate)
+                               rtres=rtres,
+                               stres=self.temporalresolution,
+                               start = self.startdate,
+                               nupdate=self.nupdate)
 
             if not self.tinterpolate:
                 dates.target = self.rawdates
@@ -847,31 +840,33 @@ class MODISsmth5(object):
                 arr_raw.shape = (rawchunks[0], len(self.rawdates))
                 arr_sgrid = tonumpyarray(parameters['shared_array_sgrid'])
 
-                with closing(mp.Pool(processes=self.nworkers, initializer=init_worker, initargs=(shared_array_raw,parameters))) as pool:
-                    # load raw data
-                    for br in range(0, rawshape[0], rawchunks[0]):
-                        for bc in range(0, len(self.rawdates), rawchunks[1]):
-                            bco = bc + rawoffset
-                            arr_raw[:, bc:bc+rawchunks[1]] = raw_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]]
+                pool = mp.Pool(processes=self.nworkers, initializer=init_worker, initargs=(shared_array_raw, parameters))
+                # load raw data
+                for br in range(0, rawshape[0], rawchunks[0]):
+                    for bc in range(0, len(self.rawdates), rawchunks[1]):
+                        bco = bc + rawoffset
+                        arr_raw[:, bc:bc+rawchunks[1]] = raw_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]]
 
-                        ndix = np.sum(arr_raw != -3000, 1) > 0 #70
-                        mapIX = np.where(ndix)[0]
-                        if len(mapIX) == 0:
-                            continue #no data points, skipping to next block
+                    ndix = np.sum(arr_raw != -3000, 1) > 0 #70
+                    mapIX = np.where(ndix)[0]
+                    if mapIX.size == 0:
+                        continue #no data points, skipping to next block
 
-                        arr_sgrid[...] = smt_sgrid[br:br+rawchunks[0]]
-                        res = pool.map(execute_ws2d_sgrid, mapIX)
+                    arr_sgrid[...] = smt_sgrid[br:br+rawchunks[0]]
+                    _ = pool.map(execute_ws2d_sgrid, mapIX)
+                    pool.close()
+                    pool.join()
 
-                        # write back data
-                        if self.tinterpolate:
-                            for bc in range(0, len(dates.target), smoothchunks[1]):
-                                bco = bc + smoothoffset
-                                smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]]
-                            arr_smooth[...] = nodata
-                        else:
-                            for bc in range(0, len(dates.target), smoothchunks[1]):
-                                bco = bc + smoothoffset
-                                smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]]
+                    # write back data
+                    if self.tinterpolate:
+                        for bc in range(0, len(dates.target), smoothchunks[1]):
+                            bco = bc + smoothoffset
+                            smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]]
+                        arr_smooth[...] = nodata
+                    else:
+                        for bc in range(0, len(dates.target), smoothchunks[1]):
+                            bco = bc + smoothoffset
+                            smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]]
             else:
                 arr_raw = np.zeros((rawchunks[0], len(self.rawdates)), dtype='double')
                 arr_sgrid = np.zeros((rawchunks[0],), dtype='double')
@@ -899,15 +894,15 @@ class MODISsmth5(object):
                         bco = bc + rawoffset
                         arr_raw[:, bc:bc+rawchunks[1]] = raw_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]]
                     wts[...] = (arr_raw != nodata)*1
-                    ndix = np.sum(wts,1) > 0 #70
+                    ndix = np.sum(wts, 1) > 0 #70
                     mapIX = np.where(ndix)[0]
 
-                    if len(mapIX) == 0:
+                    if mapIX.size == 0:
                         continue #no data points, skipping to next block
                     arr_sgrid[...] = smt_sgrid[br:br+rawchunks[0]]
 
                     for r in mapIX:
-                        arr_raw[r, :] = ws2d(y=arr_raw[r, :], lmda=10**arr_sgrid[r], w = wts[r, :])
+                        arr_raw[r, :] = ws2d(y=arr_raw[r, :], lmda=10**arr_sgrid[r], w=wts[r, :])
                         if self.tinterpolate:
                             z2 = vector_daily.copy()
                             z2[z2 != nodata] = arr_raw[r, :]
@@ -964,7 +959,7 @@ class MODISsmth5(object):
             dates = DateHelper(rawdates=self.rawdates,
                                rtres=rtres,
                                stres=self.temporalresolution,
-                               start = self.startdate,
+                               start=self.startdate,
                                nupdate=self.nupdate)
 
             if not self.tinterpolate:
@@ -1012,32 +1007,34 @@ class MODISsmth5(object):
                 arr_raw.shape = (rawchunks[0], len(self.rawdates))
                 arr_sgrid = tonumpyarray(parameters['shared_array_sgrid'])
 
-                with closing(mp.Pool(processes=self.nworkers, initializer=init_worker, initargs=(shared_array_raw, parameters))) as pool:
-                    # load raw data
-                    for br in range(0,rawshape[0], rawchunks[0]):
-                        for bc in range(0,len(self.rawdates), rawchunks[1]):
-                            bco = bc + rawoffset
-                            arr_raw[:, bc:bc+rawchunks[1]] = raw_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]]
-                        ndix = np.sum(arr_raw != -3000, 1) > 0  #70
-                        mapIX = np.where(ndix)[0]
-                        if len(mapIX) == 0:
-                            continue #no data points, skipping to next block
-                        res = pool.map(execute_ws2d_vc, mapIX)
+                pool = mp.Pool(processes=self.nworkers, initializer=init_worker, initargs=(shared_array_raw, parameters))
+                # load raw data
+                for br in range(0,rawshape[0], rawchunks[0]):
+                    for bc in range(0,len(self.rawdates), rawchunks[1]):
+                        bco = bc + rawoffset
+                        arr_raw[:, bc:bc+rawchunks[1]] = raw_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]]
+                    ndix = np.sum(arr_raw != -3000, 1) > 0  #70
+                    mapIX = np.where(ndix)[0]
+                    if mapIX.size == 0:
+                        continue #no data points, skipping to next block
+                    _ = pool.map(execute_ws2d_vc, mapIX)
+                    pool.close()
+                    pool.join()
 
-                        # write back data
-                        arr_sgrid[arr_sgrid > 0] = np.log10(arr_sgrid[arr_sgrid > 0])
-                        smt_sgrid[br:br+rawchunks[0]] = arr_sgrid[...]
-                        arr_sgrid[...] = 0
+                    # write back data
+                    arr_sgrid[arr_sgrid > 0] = np.log10(arr_sgrid[arr_sgrid > 0])
+                    smt_sgrid[br:br+rawchunks[0]] = arr_sgrid[...]
+                    arr_sgrid[...] = 0
 
-                        if self.tinterpolate:
-                            for bc in range(0,len(dates.target),smoothchunks[1]):
-                                bco = bc + smoothoffset
-                                smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]]
-                            arr_smooth[...] = nodata
-                        else:
-                            for bc in range(0, len(dates.target), smoothchunks[1]):
-                                bco = bc + smoothoffset
-                                smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]]
+                    if self.tinterpolate:
+                        for bc in range(0, len(dates.target), smoothchunks[1]):
+                            bco = bc + smoothoffset
+                            smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]]
+                        arr_smooth[...] = nodata
+                    else:
+                        for bc in range(0, len(dates.target), smoothchunks[1]):
+                            bco = bc + smoothoffset
+                            smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]]
             else:
                 arr_raw = np.zeros((rawchunks[0], len(self.rawdates)), dtype='double')
                 arr_sgrid = np.zeros((rawchunks[0],), dtype='double')
@@ -1064,11 +1061,11 @@ class MODISsmth5(object):
                     wts[...] = (arr_raw != nodata)*1
                     ndix = np.sum(wts, 1) > 0 #70
                     mapIX = np.where(ndix)[0]
-                    if len(mapIX) == 0:
+                    if mapIX.size == 0:
                         continue #no data points, skipping to next block
 
                     for r in mapIX:
-                        if not type(srange) is np.ndarray:
+                        if not isinstance(srange, np.ndarray):
                             lc = lag1corr(arr_raw[r, :-1], arr_raw[r, 1:], nodata)
                             if lc <= 0.5:
                                 sr = np.linspace(-2.0, 1.0, 16.0)
@@ -1092,8 +1089,8 @@ class MODISsmth5(object):
                             z2 = vector_daily.copy()
                             z2[z2 != nodata] = arr_raw[r, :]
                             z2[...] = ws2d(y=z2,
-                                        lmda=0.0001,
-                                        w=np.array((z2 != nodata)*1, dtype='double'))
+                                           lmda=0.0001,
+                                           w=np.array((z2 != nodata)*1, dtype='double'))
                             arr_smooth[r, :] = z2[dix]
                         else:
                             pass
@@ -1129,7 +1126,7 @@ class MODIStiles(object):
         self.aoi = aoi
 
         # Load MODIS_TILES.tif from data directory
-        this_dir, this_filename = os.path.split(__file__)
+        this_dir, _ = os.path.split(__file__)
         ds = gdal.Open(os.path.join(this_dir, 'data', 'MODIS_TILES.tif'))
 
         # Try to catch TIFF issues
@@ -1172,16 +1169,16 @@ class MODISmosaic(object):
             global_flag (bool): Flag if mosaic is global product
         '''
 
-        tile_re = re.compile('.+(h\d+v\d+).+') # Regular expression for tile ID
+        tile_re = re.compile(r'.+(h\d+v\d+).+') # Regular expression for tile ID
         self.global_flag = global_flag
         self.tiles = [re.sub(tile_re, '\\1', os.path.basename(x)) for x in files]
         self.tiles.sort()
         self.files = files
 
         # Extract tile IDs
-        self.h_ix = list(set([re.sub('(h\d+)(v\d+)', '\\1',x) for x in self.tiles]))
+        self.h_ix = list(set([re.sub(r'(h\d+)(v\d+)', '\\1', x) for x in self.tiles]))
         self.h_ix.sort()
-        self.v_ix = list(set([re.sub('(h\d+)(v\d+)', '\\2',x) for x in self.tiles]))
+        self.v_ix = list(set([re.sub(r'(h\d+)(v\d+)', '\\2', x) for x in self.tiles]))
         self.v_ix.sort()
 
         # get referece tile identifiers
@@ -1218,7 +1215,7 @@ class MODISmosaic(object):
                 dset = h5f.get('data')
                 gt_temp_h = dset.attrs['geotransform']
                 dset = None
-            self.gt = [y for x in [gt_temp_h[0:3] ,gt_temp_v[3:6]] for y in x]
+            self.gt = [y for x in [gt_temp_h[0:3], gt_temp_v[3:6]] for y in x]
         except Exception as e:
             print('\nError reading referece file {} for mosaic! Error message: {}\n'.format(ref, e))
             raise
@@ -1247,8 +1244,8 @@ class MODISmosaic(object):
         # read data from intersecting HDF5 files
         for h5f in self.files:
             # Extract tile ID from filename
-            t_h = re.sub('.+(h\d+)(v\d+).+', '\\1',os.path.basename(h5f))
-            t_v = re.sub('.+(h\d+)(v\d+).+', '\\2',os.path.basename(h5f))
+            t_h = re.sub(r'.+(h\d+)(v\d+).+', '\\1',os.path.basename(h5f))
+            t_v = re.sub(r'.+(h\d+)(v\d+).+', '\\2',os.path.basename(h5f))
 
             # Caluclate row/column offset
             xoff = self.h_ix.index(t_h) * self.tile_cls
@@ -1262,7 +1259,7 @@ class MODISmosaic(object):
                               xoff:(xoff+self.tile_cls)] = h5f_o.get(dataset)[...].reshape(self.tile_rws, self.tile_cls)
                     else:
                         array[yoff:(yoff+self.tile_rws),
-                              xoff:(xoff+self.tile_cls)] = h5f_o.get(dataset)[...,ix].reshape(self.tile_rws, self.tile_cls)
+                              xoff:(xoff+self.tile_cls)] = h5f_o.get(dataset)[..., ix].reshape(self.tile_rws, self.tile_cls)
             except Exception as e:
                 print('Error reading data from file {} to array! Error message {}:\n'.format(h5f, e))
                 raise
@@ -1289,7 +1286,7 @@ class MODISmosaic(object):
                     if dataset == 'sgrid':
                         array[...] = h5f_o.get(dataset)[...].reshape(self.tile_rws, self.tile_cls)
                     else:
-                        array[...] = h5f_o.get(dataset)[...,ix].reshape(self.tile_rws, self.tile_cls)
+                        array[...] = h5f_o.get(dataset)[..., ix].reshape(self.tile_rws, self.tile_cls)
             except Exception as e:
                 print('Error reading data from file {} to array! Error message {}:\n'.format(h5f, e))
                 raise

@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# pylint: disable=line-too-long, too-many-statements
 
 from __future__ import absolute_import
 from __future__ import division
@@ -11,8 +12,6 @@ import os
 import pickle
 import re
 import sys
-
-import numpy as np
 
 from modape.modis import MODIStiles, MODISmosaic
 
@@ -33,13 +32,13 @@ def main():
 
     parser = argparse.ArgumentParser(description='Extract a window from MODIS products')
     parser.add_argument('path', help='Path to processed MODIS h5 files')
-    parser.add_argument('-p','--product', help='MODIS product ID (can be parial match with *)', metavar='')
+    parser.add_argument('-p', '--product', help='MODIS product ID (can be parial match with *)', metavar='')
     parser.add_argument('--roi', help='Region of interest. Can be LAT/LON point or bounding box in format llx lly urx ury', nargs='+', type=float)
     parser.add_argument('--region', help='region 3 letter region code (default is \'reg\')', default='reg', metavar='')
-    parser.add_argument('-b','--begin-date', help='Start date (YYYYMM)', default=datetime.date(2000,1,1).strftime('%Y%m'), metavar='')
-    parser.add_argument('-e','--end-date', help='End date (YYYYMM)', default=datetime.date.today().strftime('%Y%m'), metavar='')
+    parser.add_argument('-b', '--begin-date', help='Start date (YYYYMM)', default=datetime.date(2000, 1, 1).strftime('%Y%m'), metavar='')
+    parser.add_argument('-e', '--end-date', help='End date (YYYYMM)', default=datetime.date.today().strftime('%Y%m'), metavar='')
     parser.add_argument('--vampc', help='VAM product code', metavar='')
-    parser.add_argument('-d','--targetdir', help='Target directory for GeoTIFFs (default current directory)', default=os.getcwd(), metavar='')
+    parser.add_argument('-d', '--targetdir', help='Target directory for GeoTIFFs (default current directory)', default=os.getcwd(), metavar='')
     parser.add_argument('--sgrid', help='Extract (mosaic of) s value grid(s))', action='store_true')
 
     # fail and print help if no arguments supplied
@@ -67,7 +66,7 @@ def main():
         args.roi = [args.roi[i] for i in [0, 3, 2, 1]]
 
     # Load product table
-    this_dir, this_filename = os.path.split(__file__)
+    this_dir, _ = os.path.split(__file__)
 
     with open(os.path.join(this_dir, 'data', 'MODIS_V6_PT.pkl'), 'rb') as table_raw:
         product_table = pickle.load(table_raw)
@@ -76,18 +75,18 @@ def main():
     h5files = glob.glob('{}/{}*h5'.format(args.path, args.product))
 
     # Make sure only compatible files are used for the mosaic
-    if len(h5files) > 0:
-        if len(set([re.sub('h\d{2}v\d{2}.', '', os.path.basename(x)) for x in h5files])) > 1:
+    if h5files:
+        if len(set([re.sub(r'h\d{2}v\d{2}.', '', os.path.basename(x)) for x in h5files])) > 1:
             raise ValueError('\nMultiple product types found! Please specify and/or check product parameter!\n')
     else:
         raise ValueError('\nNo products found in specified path (for specified product) - please check input!\n')
 
     # Extract product ID from referece
-    product_ = re.sub('(M\w{6}).+', '\\1', os.path.basename(h5files[0]))
+    product_ = re.sub(r'(M\w{6}).+', '\\1', os.path.basename(h5files[0]))
 
     # Check if product is global
     if 'MXD' in product_:
-        global_flag = int(product_table[re.sub('MXD', 'MOD',product_)]['pixel_size']) == 5600
+        global_flag = int(product_table[re.sub('MXD', 'MOD', product_)]['pixel_size']) == 5600
     else:
         global_flag = int(product_table[product_]['pixel_size']) == 5600
 
@@ -103,7 +102,7 @@ def main():
     # If the product is not global and there's an ROI, we need to query the intersecting tiles
     if not global_flag and args.roi:
         tiles = MODIStiles(args.roi)
-        if len(tiles.tiles) is 0:
+        if not tiles.tiles:
             raise ValueError('\nNo MODIS tile(s) found for location. Please check coordinates!')
 
         # Regexp for tiles
@@ -117,10 +116,10 @@ def main():
         h5files = [x for x in h5files if args.vampc in x]
 
     # Assert that there are results
-    assert len(h5files) > 0, '\nNo processed MODIS HDF5 files found for combination of product/tile (and VAM product code)'
+    assert h5files, '\nNo processed MODIS HDF5 files found for combination of product/tile (and VAM product code)'
 
     # Iterate over VPCs (could be multiple if unspecified)
-    for vam_code in set([re.sub('.+([^\W\d_]{3}).h5','\\1',x) for x in h5files]):
+    for vam_code in set([re.sub('.+([^\W\d_]{3}).h5', '\\1', x) for x in h5files]):
         print('\n')
 
         h5files_vpc = [x for x in h5files if vam_code in x] # Subset files for vam_code
@@ -143,42 +142,42 @@ def main():
                 try:
                     if args.roi and len(args.roi) > 2:
                         wopt = gdal.WarpOptions(
-                        dstSRS='EPSG:4326',
-                        outputType=mosaic_ropen.dt_gdal[0],
-                        xRes=mosaic_ropen.resolution_degrees,
-                        yRes=mosaic_ropen.resolution_degrees,
-                        srcNodata=mosaic.nodata,
-                        dstNodata=mosaic.nodata,
-                        outputBounds=(args.roi[0], args.roi[3], args.roi[2], args.roi[1]),
-                        resampleAlg='near',
-                        multithread=True,
-                        creationOptions=['COMPRESS=LZW', 'PREDICTOR=2'],
+                            dstSRS='EPSG:4326',
+                            outputType=mosaic_ropen.dt_gdal[0],
+                            xRes=mosaic_ropen.resolution_degrees,
+                            yRes=mosaic_ropen.resolution_degrees,
+                            srcNodata=mosaic.nodata,
+                            dstNodata=mosaic.nodata,
+                            outputBounds=(args.roi[0], args.roi[3], args.roi[2], args.roi[1]),
+                            resampleAlg='near',
+                            multithread=True,
+                            creationOptions=['COMPRESS=LZW', 'PREDICTOR=2'],
                         )
 
                         ds = gdal.Warp(
-                        filename,
-                        mosaic_ropen.raster,
-                        options=wopt,
+                            filename,
+                            mosaic_ropen.raster,
+                            options=wopt,
                         )
 
                         ds = None
                     else:
                         wopt = gdal.WarpOptions(
-                        dstSRS='EPSG:4326',
-                        outputType=mosaic_ropen.dt_gdal[0],
-                        xRes=mosaic_ropen.resolution_degrees,
-                        yRes=mosaic_ropen.resolution_degrees,
-                        srcNodata=mosaic.nodata,
-                        dstNodata=mosaic.nodata,
-                        resampleAlg='near',
-                        multithread=True,
-                        creationOptions=['COMPRESS=LZW', 'PREDICTOR=2'],
+                            dstSRS='EPSG:4326',
+                            outputType=mosaic_ropen.dt_gdal[0],
+                            xRes=mosaic_ropen.resolution_degrees,
+                            yRes=mosaic_ropen.resolution_degrees,
+                            srcNodata=mosaic.nodata,
+                            dstNodata=mosaic.nodata,
+                            resampleAlg='near',
+                            multithread=True,
+                            creationOptions=['COMPRESS=LZW', 'PREDICTOR=2'],
                         )
 
                         ds = gdal.Warp(
-                        filename,
-                        mosaic_ropen.raster,
-                        options=wopt,
+                            filename,
+                            mosaic_ropen.raster,
+                            options=wopt,
                         )
 
                         ds = None
@@ -196,46 +195,46 @@ def main():
 
                 print('Processing file {}'.format(filename))
 
-                with mosaic.getRaster(dset,ix) as mosaic_ropen:
+                with mosaic.getRaster(dset, ix) as mosaic_ropen:
                     try:
                         if args.roi and len(args.roi) > 2:
                             wopt = gdal.WarpOptions(
-                            dstSRS='EPSG:4326',
-                            outputType=mosaic_ropen.dt_gdal[0],
-                            xRes=mosaic_ropen.resolution_degrees,
-                            yRes=mosaic_ropen.resolution_degrees,
-                            srcNodata=mosaic.nodata,
-                            dstNodata=mosaic.nodata,
-                            outputBounds=(args.roi[0], args.roi[3], args.roi[2], args.roi[1]),
-                            resampleAlg='near',
-                            multithread=True,
-                            creationOptions=['COMPRESS=LZW', 'PREDICTOR=2']
+                                dstSRS='EPSG:4326',
+                                outputType=mosaic_ropen.dt_gdal[0],
+                                xRes=mosaic_ropen.resolution_degrees,
+                                yRes=mosaic_ropen.resolution_degrees,
+                                srcNodata=mosaic.nodata,
+                                dstNodata=mosaic.nodata,
+                                outputBounds=(args.roi[0], args.roi[3], args.roi[2], args.roi[1]),
+                                resampleAlg='near',
+                                multithread=True,
+                                creationOptions=['COMPRESS=LZW', 'PREDICTOR=2']
                             )
 
                             ds = gdal.Warp(
-                            filename,
-                            mosaic_ropen.raster,
-                            options=wopt,
+                                filename,
+                                mosaic_ropen.raster,
+                                options=wopt,
                             )
 
                             ds = None
                         else:
                             wopt = gdal.WarpOptions(
-                            dstSRS='EPSG:4326',
-                            outputType=mosaic_ropen.dt_gdal[0],
-                            xRes=mosaic_ropen.resolution_degrees,
-                            yRes=mosaic_ropen.resolution_degrees,
-                            srcNodata=mosaic.nodata,
-                            dstNodata=mosaic.nodata,
-                            resampleAlg='near',
-                            multithread=True,
-                            creationOptions=['COMPRESS=LZW', 'PREDICTOR=2'],
+                                dstSRS='EPSG:4326',
+                                outputType=mosaic_ropen.dt_gdal[0],
+                                xRes=mosaic_ropen.resolution_degrees,
+                                yRes=mosaic_ropen.resolution_degrees,
+                                srcNodata=mosaic.nodata,
+                                dstNodata=mosaic.nodata,
+                                resampleAlg='near',
+                                multithread=True,
+                                creationOptions=['COMPRESS=LZW', 'PREDICTOR=2'],
                             )
 
                             ds = gdal.Warp(
-                            filename,
-                            mosaic_ropen.raster,
-                            options=wopt,
+                                filename,
+                                mosaic_ropen.raster,
+                                options=wopt,
                             )
 
                             ds = None
@@ -243,5 +242,5 @@ def main():
                         print('Error while reading {} data for {}! Please check if dataset exits within file. \n\n Error message:\n\n {}'.format(args.dataset, filename, e))
                 del mosaic_ropen
 
-if __name__=='__main__':
+if __name__ == '__main__':
     main()

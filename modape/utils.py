@@ -1,9 +1,9 @@
+# pylint: disable=line-too-long, too-many-statements, E0611, E0401, W0601
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
 import array
-from cryptography.fernet import Fernet
 import ctypes
 import datetime
 import multiprocessing
@@ -18,13 +18,8 @@ try:
 except ImportError:
     from osgeo import gdal
 
+from cryptography.fernet import Fernet
 from modape.whittaker import lag1corr, ws2d, ws2doptv, ws2doptvp
-
-# assign xrange to range if py2
-try:
-    range = xrange
-except NameError:
-    pass
 
 class SessionWithHeaderRedirection(requests.Session):
     ''' Session class for MODIS query.
@@ -57,7 +52,6 @@ class SessionWithHeaderRedirection(requests.Session):
             redirect_parsed = requests.utils.urlparse(url)
             if (original_parsed.hostname != redirect_parsed.hostname) and redirect_parsed.hostname != self.AUTH_HOST and original_parsed.hostname != self.AUTH_HOST:
                 del headers['Authorization']
-        return
 
 class FileHandler(object):
     ''' Filehandler class to handle GDAL file references'''
@@ -77,7 +71,7 @@ class FileHandler(object):
         '''Open the files and store handle'''
 
         self.handles = []
-        for ix, f in enumerate(self.files):
+        for f in self.files:
 
             # try statement to catch problem with reading file
             try:
@@ -122,16 +116,16 @@ class DateHelper(object):
         else:
             yrmin = int(min([x[:4] for x in rawdates]))
             yrmax = int(max([x[:4] for x in rawdates]))
-            daily_tmp = [y for x in range(yrmin, yrmax+2,1) for y in tvec(x,1)]
+            daily_tmp = [y for x in range(yrmin, yrmax+2,1) for y in tvec(x, 1)]
             stop = (fromjulian(rawdates[-1]) + datetime.timedelta(rtres)).strftime('%Y%j')
             self.daily = daily_tmp[daily_tmp.index(rawdates[0]):daily_tmp.index(stop)+1]
 
             if stres == 5:
-                target_temp = [y for x in range(yrmin, yrmax+1,1) for y in pentvec(x)]
+                target_temp = [y for x in range(yrmin, yrmax+1, 1) for y in pentvec(x)]
             elif stres == 10:
-                target_temp = [y for x in range(yrmin, yrmax+1,1) for y in dekvec(x)]
+                target_temp = [y for x in range(yrmin, yrmax+1, 1) for y in dekvec(x)]
             else:
-                target_temp = [y for x in range(yrmin, yrmax+1,1) for y in tvec(x, stres)]
+                target_temp = [y for x in range(yrmin, yrmax+1, 1) for y in tvec(x, stres)]
             target_temp.sort()
 
             for sd in self.daily:
@@ -147,7 +141,7 @@ class DateHelper(object):
             self.target = target_temp[target_temp.index(start_target):target_temp.index(stop_target)+1]
             self.target = self.target[-nupdate:]
 
-    def getDV(self,nd):
+    def getDV(self, nd):
         return np.full(len(self.daily), nd, dtype='double')
 
     def getDIX(self):
@@ -190,7 +184,7 @@ class Credentials(object):
             cipher_suite = Fernet(k)
             u = cipher_suite.encrypt(self.username.encode())
             p = cipher_suite.encrypt(self.password.encode())
-            pdump((u, p) ,'modape.cred.pkl')
+            pdump((u, p) , 'modape.cred.pkl')
             pdump(k, 'modape.key.pkl')
         except:
             self.destroy()
@@ -238,7 +232,7 @@ def pload(filename):
 
     try:
         with open(filename, 'rb') as pkl:
-            return(pickle.load(pkl))
+            return pickle.load(pkl)
     except FileNotFoundError:
         raise
 
@@ -254,17 +248,17 @@ def dtype_GDNP(dt):
         Tuple with DataType as GDAL integer and string
     '''
 
-    dt_dict={
-    1: 'uint8',
-    2: 'uint16',
-    3: 'int16',
-    4: 'uint32',
-    5: 'int32',
-    6: 'float32',
-    7: 'float64',
+    dt_dict = {
+        1: 'uint8',
+        2: 'uint16',
+        3: 'int16',
+        4: 'uint32',
+        5: 'int32',
+        6: 'float32',
+        7: 'float64',
     }
 
-    dt_tuple = [(k, v) for k, v in dt_dict.items() if k == dt or v == dt]
+    dt_tuple = [(k, v) for k, v in dt_dict.items() if dt in (k, v)]
     return dt_tuple[0]
 
 def ldom(x):
@@ -279,9 +273,9 @@ def ldom(x):
 
     yr = x.year
     mn = x.month
-    if mn is 12:
+    if mn == 12:
         mn = 1
-        yr +=1
+        yr += 1
     else:
         mn += 1
     return datetime.date(yr, mn, 1) - datetime.timedelta(days=1)
@@ -302,9 +296,9 @@ def txx(x):
 def fromjulian(x):
     '''Parses julian date string to datetime object.'''
 
-    return datetime.datetime.strptime(x,'%Y%j').date()
+    return datetime.datetime.strptime(x, '%Y%j').date()
 
-def tvec(yr,step):
+def tvec(yr, step):
     '''Create MODIS-like date vector with given timestep.'''
 
     start = fromjulian('{}001'.format(yr)) + datetime.timedelta()
@@ -319,7 +313,7 @@ def pentvec(yr):
     for m in range(1, 13):
         for d in ['03', '08', '13', '18', '23', '28']:
             try:
-                t.append(datetime.datetime.strptime('{}{:02d}{}'.format(yr, m, d),'%Y%m%d').date().strftime('%Y%j'))
+                t.append(datetime.datetime.strptime('{}{:02d}{}'.format(yr, m, d), '%Y%m%d').date().strftime('%Y%j'))
             except ValueError:
                 pass
     return t
@@ -328,16 +322,16 @@ def dekvec(yr):
     '''Create dekadal date vector for given year with fixed days.'''
 
     return([
-        datetime.datetime.strptime(str(yr)+y+x,'%Y%m%d').date().strftime('%Y%j')
+        datetime.datetime.strptime(str(yr)+y+x, '%Y%m%d').date().strftime('%Y%j')
         for x in ['05', '15', '25'] for y in [str(z).zfill(2)
-        for z in range(1, 13)]
+                                              for z in range(1, 13)]
     ])
 
 
 def init_shared(ncell):
     '''Create shared value array for smoothing.'''
     shared_array_base = multiprocessing.Array(ctypes.c_double, ncell, lock=False)
-    return(shared_array_base)
+    return shared_array_base
 
 def tonumpyarray(shared_array):
     '''Create numpy array from shared memory.'''
@@ -370,14 +364,14 @@ def init_worker(shared_array_, parameters_):
     parameters = parameters_
     arr_raw.shape = parameters['rdim']
     try:
-         arr_sgrid = tonumpyarray(parameters['shared_array_sgrid'])
+        arr_sgrid = tonumpyarray(parameters['shared_array_sgrid'])
     except (KeyError, AttributeError):
-         arr_sgrid = None
+        arr_sgrid = None
     try:
-         arr_smooth = tonumpyarray(parameters['shared_array_smooth'])
-         arr_smooth.shape = parameters['sdim']
+        arr_smooth = tonumpyarray(parameters['shared_array_smooth'])
+        arr_smooth.shape = parameters['sdim']
     except (KeyError, AttributeError):
-         arr_smooth = None
+        arr_smooth = None
 
 def execute_ws2d(ix):
     '''Execute whittaker smoother with fixed s in worker.
@@ -395,9 +389,9 @@ def execute_ws2d(ix):
         z2[z2 != parameters['nd']] = arr_raw[ix, :]
         z2[...] = ws2d(y=z2,
                        lmda=0.0001,
-                       w=np.array((z2 != parameters['nd'])*1,dtype='double'))
+                       w=np.array((z2 != parameters['nd'])*1, dtype='double'))
 
-        arr_smooth[ix,:] = z2[parameters['dix']]
+        arr_smooth[ix, :] = z2[parameters['dix']]
 
 def execute_ws2d_sgrid(ix):
     '''Execute whittaker smoother with s from grid in worker.'''
@@ -421,9 +415,9 @@ def execute_ws2d_vc(ix):
     if not parameters['p']:
         arr_raw[ix, :], arr_sgrid[ix] = ws2doptv(y=arr_raw[ix, :],
                                                  w=np.array((arr_raw[ix, :] != parameters['nd'])*1,dtype='double'),
-                                                 llas=array.array('d',parameters['srange']))
+                                                 llas=array.array('d', parameters['srange']))
     else:
-        if not type(parameters['srange']) is np.ndarray:
+        if not isinstance(parameters['srange'], np.ndarray):
             lc = lag1corr(arr_raw[ix, :-1],
                           arr_raw[ix, 1:],
                           int(parameters['nd']))

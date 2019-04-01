@@ -11,15 +11,9 @@ import pickle
 import re
 import sys
 
+import ogr
 from modape.modis import MODISquery
 from modape.utils import Credentials, pload
-import ogr
-
-try:
-    range = xrange
-except NameError:
-    pass
-
 
 def main():
     '''Query and download MODIS products.
@@ -72,7 +66,7 @@ def main():
     args.product = [x.upper() for x in args.product]
 
     # Load product table
-    this_dir, this_filename = os.path.split(__file__)
+    this_dir, _ = os.path.split(__file__)
     product_table = pload(os.path.join(this_dir, 'data', 'MODIS_V6_PT.pkl'))
 
     for product in args.product:
@@ -160,7 +154,7 @@ def main():
                             coordinates = []
 
                             for point in range(point_count):
-                                lat, lon, z = geometry.GetPoint(point)
+                                lat, lon, _ = geometry.GetPoint(point)
                                 coordinates.append('{},{}'.format(lon,lat))
 
                             query.append('polygon=' + ','.join(coordinates))
@@ -170,9 +164,9 @@ def main():
                             print('\nError reading polygon file. Traceback:\n\n')
                             raise
 
-                    elif len(args.roi) is 2:
+                    elif len(args.roi) == 2:
                         query.append('latitude={}&longitude={}'.format(*args.roi))
-                    elif len(args.roi) is 4:
+                    elif len(args.roi) == 4:
                         query.append('bbox={},{},{},{}'.format(*args.roi))
                     else:
                         raise ValueError('ROI is expected to be point or bounding box coordinates!')

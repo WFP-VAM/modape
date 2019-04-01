@@ -1,10 +1,10 @@
 #!/usr/bin/env python
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
 import argparse
-from contextlib import contextmanager, closing
 import glob
 import multiprocessing as mp
 import os
@@ -74,7 +74,7 @@ def main():
 
     # Regex patterns
     ppatt = re.compile(r'M\w{6}')
-    vpatt = re.compile('.+\.(\d{3})\..+')
+    vpatt = re.compile(r'.+\.(\d{3})\..+')
     tpatt = re.compile(r'h\d+v\d+')
     vimvem = re.compile('M.D13')
     lst = re.compile('M.D11')
@@ -114,8 +114,8 @@ def main():
         if not args.quiet:
             print('\n\n[{}]: Start processing - {} tiles in parallel ...'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()), args.parallel_tiles))
 
-        with closing(mp.Pool(processes=args.parallel_tiles)) as pool:
-            res = pool.map(run_process, [processing_dict[g] for g in groups])
+        pool = mp.Pool(processes=args.parallel_tiles)
+        _ = pool.map(run_process, [processing_dict[g] for g in groups])
         pool.close()
         pool.join()
 

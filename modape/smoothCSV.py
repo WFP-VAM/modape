@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# pylint: disable=line-too-long, too-many-statements
 
 from __future__ import absolute_import
 from __future__ import division
@@ -10,14 +11,9 @@ import os
 import time
 
 import numpy as np
-import pandas as pd
+import pandas as pd # pylint: disable=E0401
 
-from modape.whittaker import ws2d, ws2doptv, ws2doptvp
-
-try:
-    range = xrange
-except NameError:
-    pass
+from modape.whittaker import ws2d, ws2doptv, ws2doptvp # pylint: disable=E0611
 
 def main():
     '''Smooth timeseries in a CSV file.
@@ -40,9 +36,9 @@ def main():
 
     parser = argparse.ArgumentParser(description='Smooth CSV file')
     parser.add_argument('file', help='CSV file')
-    parser.add_argument('-s','--svalue', help='S value for smoothing (has to be log10(s)', metavar='', type=float)
-    parser.add_argument('-S','--srange', help='S range for V-curve (float log10(s) values as smin smax sstep - default 0.0 4.0 0.1)', nargs='+', metavar='', type=float)
-    parser.add_argument('-p','--pvalue', help='Value for asymmetric smoothing (float required)', metavar='', type=float)
+    parser.add_argument('-s', '--svalue', help='S value for smoothing (has to be log10(s)', metavar='', type=float)
+    parser.add_argument('-S', '--srange', help='S range for V-curve (float log10(s) values as smin smax sstep - default 0.0 4.0 0.1)', nargs='+', metavar='', type=float)
+    parser.add_argument('-p', '--pvalue', help='Value for asymmetric smoothing (float required)', metavar='', type=float)
     args = parser.parse_args()
 
     # Check if input file exists
@@ -55,15 +51,15 @@ def main():
     outname = '{}/{}'.format(os.path.dirname(args.file), os.path.basename(args.file)[0:3])
 
 
-    df = pd.read_csv(args.file,header=1) # Read input
+    df = pd.read_csv(args.file, header=1) # Read input
     resdf = pd.DataFrame(index=range(len(df)+2)) #result dataframe, +2 for Sopt
 
     # Add ID column
-    resdf['ID'] = pd.concat([pd.Series(['Lon','Lat']),
-                             pd.Series(np.linspace(1,len(df)-2,len(df)-2)),
-                             pd.Series(['Sopt','logSopt'])],
-                             ignore_index=True)
-    tmparr = np.zeros(len(df)-2,dtype='double') # Initialize array
+    resdf['ID'] = pd.concat([pd.Series(['Lon', 'Lat']),
+                             pd.Series(np.linspace(1, len(df)-2, len(df)-2)),
+                             pd.Series(['Sopt', 'logSopt'])],
+                            ignore_index=True)
+    tmparr = np.zeros(len(df)-2, dtype='double') # Initialize array
 
 
     if args.svalue:
@@ -76,9 +72,9 @@ def main():
             val = df[c].values
             tmparr[...] = val[2:]
             val[2:] = ws2d(tmparr, s, np.array((tmparr > 0)*1, dtype='double'))
-            resdf[c] =  pd.concat([pd.Series(val),
-                                   pd.Series([s, np.log10(s)])],
-                                   ignore_index=True)
+            resdf[c] = pd.concat([pd.Series(val),
+                                  pd.Series([s, np.log10(s)])],
+                                 ignore_index=True)
     else:
         if args.srange:
             if len(args.srange) != 3:
@@ -98,11 +94,11 @@ def main():
         if args.pvalue:
             outname = outname + 'filtoptvp.csv'
             resdf = pd.DataFrame(resdf['ID'].append(pd.Series('pvalue'),
-                                 ignore_index=True),
+                                                    ignore_index=True),
                                  columns=['ID'])
 
             print('\nSmoothing using asymmetric V-curve optimization with smin:{}, smax:{}, sstep:{} and pvalue:{}.\n\nWriting to file: {}\n'
-            .format(args.srange[0], args.srange[1], args.srange[2], args.pvalue, outname))
+                  .format(args.srange[0], args.srange[1], args.srange[2], args.pvalue, outname))
 
             for c in df.columns[1:]:
                 val = df[c].values
@@ -113,26 +109,26 @@ def main():
                                           srange,
                                           args.pvalue)
 
-                resdf[c] =  pd.concat([pd.Series(val),
-                                       pd.Series([sopt, np.log10(sopt)]),
-                                       pd.Series(args.pvalue)],
-                                       ignore_index=True)
+                resdf[c] = pd.concat([pd.Series(val),
+                                      pd.Series([sopt, np.log10(sopt)]),
+                                      pd.Series(args.pvalue)],
+                                     ignore_index=True)
         else:
             outname = outname + 'filtoptv.csv'
             print('\nSmoothing using V-curve optimization with smin:{}, smax:{}, sstep:{}.\n\nWriting to file: {}\n'
-            .format(args.srange[0], args.srange[1], args.srange[2], outname))
+                  .format(args.srange[0], args.srange[1], args.srange[2], outname))
 
             for c in df.columns[1:]:
                 val = df[c].values
                 tmparr[...] = val[2:]
                 val[2:], sopt = ws2doptv(tmparr, np.array((tmparr > 0)*1, dtype='double'), srange)
-                resdf[c] =  pd.concat([pd.Series(val),
-                                       pd.Series([sopt, np.log10(sopt)])],
-                                       ignore_index=True)
+                resdf[c] = pd.concat([pd.Series(val),
+                                      pd.Series([sopt, np.log10(sopt)])],
+                                     ignore_index=True)
 
     # Write to disk
     resdf.to_csv(outname, index=False)
     print('\n[{}]:smoothCSV.py finished.\n'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())))
 
-if __name__=='__main__':
+if __name__ == '__main__':
     main()

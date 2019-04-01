@@ -38,7 +38,7 @@ def main():
     try:
         with h5py.File(args.file, 'r') as h5f:
             dset = h5f.get('data')
-            dates  = h5f.get('dates')
+            dates = h5f.get('dates')
             dim = dset.shape
             startdate = dates[0].decode()
             enddate = dates[-1].decode()
