@@ -423,7 +423,7 @@ class MODISrawh5(object):
 
                 # Load any existing dates and combine with new dates
                 dates_combined = [x.decode() for x in dates[...] if len(x) > 0 and x.decode() not in self.rawdates]
-                [dates_combined.append(x) for x in self.rawdates]
+                _ = [dates_combined.append(x) for x in self.rawdates]
 
                 # New total temporal length
                 n = len(dates_combined)
@@ -511,7 +511,6 @@ class MODISsmth5(object):
 
         # Get info from raw HDF5
         with h5py.File(self.rawfile, 'r') as h5f:
-            dset = h5f.get('data')
             dates = h5f.get('dates')
             self.rawdates = [x.decode() for x in dates[-self.nsmooth:]]
 
@@ -1239,7 +1238,7 @@ class MODISmosaic(object):
         '''
 
         # Initialize array
-        array = np.zeros(((len(self.v_ix) * self.tile_rws), len(self.h_ix) * self.tile_cls), dtype=dt)
+        tiles_array = np.zeros(((len(self.v_ix) * self.tile_rws), len(self.h_ix) * self.tile_cls), dtype=dt)
 
         # read data from intersecting HDF5 files
         for h5f in self.files:
@@ -1255,15 +1254,15 @@ class MODISmosaic(object):
                 with h5py.File(h5f, 'r') as h5f_o:
                     # Dataset 'sgrid' is 2D, so no idex needed
                     if dataset == 'sgrid':
-                        array[yoff:(yoff+self.tile_rws),
-                              xoff:(xoff+self.tile_cls)] = h5f_o.get(dataset)[...].reshape(self.tile_rws, self.tile_cls)
+                        tiles_array[yoff:(yoff+self.tile_rws),
+                                    xoff:(xoff+self.tile_cls)] = h5f_o.get(dataset)[...].reshape(self.tile_rws, self.tile_cls)
                     else:
-                        array[yoff:(yoff+self.tile_rws),
-                              xoff:(xoff+self.tile_cls)] = h5f_o.get(dataset)[..., ix].reshape(self.tile_rws, self.tile_cls)
+                        tiles_array[yoff:(yoff+self.tile_rws),
+                                    xoff:(xoff+self.tile_cls)] = h5f_o.get(dataset)[..., ix].reshape(self.tile_rws, self.tile_cls)
             except Exception as e:
                 print('Error reading data from file {} to array! Error message {}:\n'.format(h5f, e))
                 raise
-        return array
+        return tiles_array
 
     def getArrayGlobal(self, dataset, ix, dt):
         '''Reads values for global mosaic into array.
@@ -1279,18 +1278,18 @@ class MODISmosaic(object):
             Array for mosaic
         '''
 
-        array = np.zeros((self.tile_rws, self.tile_cls), dtype=dt)
+        global_array = np.zeros((self.tile_rws, self.tile_cls), dtype=dt)
         for h5f in self.files:
             try:
                 with h5py.File(h5f, 'r') as h5f_o:
                     if dataset == 'sgrid':
-                        array[...] = h5f_o.get(dataset)[...].reshape(self.tile_rws, self.tile_cls)
+                        global_array[...] = h5f_o.get(dataset)[...].reshape(self.tile_rws, self.tile_cls)
                     else:
-                        array[...] = h5f_o.get(dataset)[..., ix].reshape(self.tile_rws, self.tile_cls)
+                        global_array[...] = h5f_o.get(dataset)[..., ix].reshape(self.tile_rws, self.tile_cls)
             except Exception as e:
                 print('Error reading data from file {} to array! Error message {}:\n'.format(h5f, e))
                 raise
-        return array
+        return global_array
 
     @contextmanager
     def getRaster(self, dataset, ix):
@@ -1310,14 +1309,14 @@ class MODISmosaic(object):
                 self.dt_gdal = dtype_GDNP(self.datatype.name)
         except IndexError:
             print('\n\n Couldn\'t read data type from dataset. Using default Int16!\n')
-            dt_gdal = (3, 'int16')
+            self.dt_gdal = (3, 'int16')
 
         # Use the corresponding getArray function if global_flag
         if self.global_flag:
-            array = self.getArrayGlobal(dataset, ix, self.dt_gdal[1])
+            value_array = self.getArrayGlobal(dataset, ix, self.dt_gdal[1])
         else:
-            array = self.getArray(dataset, ix, self.dt_gdal[1])
-        height, width = array.shape
+            value_array = self.getArray(dataset, ix, self.dt_gdal[1])
+        height, width = value_array.shape
         driver = gdal.GetDriverByName('GTiff')
 
         # Create in-memory dataset with virtual filename driver
@@ -1328,11 +1327,11 @@ class MODISmosaic(object):
         rb.SetNoDataValue(self.nodata)
 
         # Write array
-        rb.WriteArray(array)
+        rb.WriteArray(value_array)
         yield self
 
         # Cleanup to be exectuted when context manager closes after yield
         gdal.Unlink('/vsimem/inmem.tif')
         self.raster = None
         driver = None
-        del array
+        del value_array
