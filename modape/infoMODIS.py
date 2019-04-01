@@ -9,7 +9,7 @@ import os
 import sys
 import time
 
-import h5py
+import h5py ## pylint: disable=import-error
 
 def main():
     '''Info tool for processed MODIS HDF5 files.
@@ -84,7 +84,9 @@ NoData value: {}
 
 Last modified: {}
 
-Last smoothing run: Whittaker smoother with {}\n'''.format(args.file, nrows, ncols, dim[1], startdate, enddate, temporalresolution, resolution, nodata_value, processing_timestamp, last_run)
+Last smoothing run: Whittaker smoother with {}\n'''.format(args.file, nrows, ncols, dim[1],
+                                                           startdate, enddate, temporalresolution, resolution,
+                                                           nodata_value, processing_timestamp, last_run)
 
     else:
         message = '''
@@ -110,7 +112,9 @@ Spatial resolution: {} m
 
 NoData value: {}
 
-Last modified: {}\n'''.format(args.file, nrows, ncols, dim[1], startdate, enddate, temporalresolution, resolution, nodata_value, processing_timestamp)
+Last modified: {}\n'''.format(args.file, nrows, ncols,
+                              dim[1], startdate, enddate, temporalresolution,
+                              resolution, nodata_value, processing_timestamp)
 
     # Print message - header is centered
     print(' ', message_head.center(os.get_terminal_size().columns), ' ', sep='\n')
