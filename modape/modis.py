@@ -114,7 +114,7 @@ class MODISquery(object):
                 else:
                     self.modis_urls = urls
 
-                self.tiles = list(set([r.search(x).group(1) for x in self.modis_urls]))
+                self.tiles = list({r.search(x).group(1) for x in self.modis_urls})
 
         self.results = len(self.modis_urls)
         print('... done.\n')
@@ -439,7 +439,7 @@ class MODISrawh5(object):
                 sort_ix = np.argsort(dates_combined)
 
                 # Manual garbage collect to prevent out of memory
-                [gc.collect() for x in range(3)]
+                _ = [gc.collect() for x in range(3)]
 
                 # preallocate array
                 arr = np.zeros((self.chunks[0], n), dtype=self.datatype[1])
@@ -1177,9 +1177,9 @@ class MODISmosaic(object):
         self.files = files
 
         # Extract tile IDs
-        self.h_ix = list(set([re.sub(r'(h\d+)(v\d+)', '\\1', x) for x in self.tiles]))
+        self.h_ix = list({re.sub(r'(h\d+)(v\d+)', '\\1', x) for x in self.tiles})
         self.h_ix.sort()
-        self.v_ix = list(set([re.sub(r'(h\d+)(v\d+)', '\\2', x) for x in self.tiles]))
+        self.v_ix = list({re.sub(r'(h\d+)(v\d+)', '\\2', x) for x in self.tiles})
         self.v_ix.sort()
 
         # get referece tile identifiers
