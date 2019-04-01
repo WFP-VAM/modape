@@ -1,4 +1,4 @@
-# pylint: disable=line-too-long, wildcard-import, too-many-statements, E0401, E0611
+# pylint: disable=line-too-long, wildcard-import, too-many-statements, useless-object-inheritance
 
 from __future__ import absolute_import, division, print_function
 
@@ -24,12 +24,12 @@ try:
 except ImportError:
     from osgeo import gdal
 
-from bs4 import BeautifulSoup
-import h5py
+from bs4 import BeautifulSoup # pylint: disable=import-error
+import h5py # pylint: disable=import-error
 from modape.utils import (SessionWithHeaderRedirection, FileHandler, DateHelper,
                           dtype_GDNP, txx, fromjulian, init_shared, tonumpyarray,
                           init_parameters, init_worker, execute_ws2d, execute_ws2d_sgrid, execute_ws2d_vc)
-from modape.whittaker import lag1corr, ws2d, ws2doptv, ws2doptvp
+from modape.whittaker import lag1corr, ws2d, ws2doptv, ws2doptvp # pylint: disable=no-name-in-module
 
 # turn off BeautifulSoup warnings
 warnings.filterwarnings('ignore', category=UserWarning, module='bs4')
