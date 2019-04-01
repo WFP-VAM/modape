@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# pylint: disable=line-too-long, too-many-statements,
 
 from __future__ import absolute_import
 from __future__ import division
@@ -38,7 +39,7 @@ def main():
     parser.add_argument('-e', '--end-date', help='End date (YYYY-MM-DD)', default=datetime.date.today().strftime("%Y-%m-%d"), metavar='')
     parser.add_argument('--username', help='Earthdata username (required for download)', metavar='')
     parser.add_argument('--password', help='Earthdata password (required for download)', metavar='')
-    parser.add_argument('-d','--targetdir', help='Destination directory', default=os.getcwd(), metavar='')
+    parser.add_argument('-d', '--targetdir', help='Destination directory', default=os.getcwd(), metavar='')
     parser.add_argument('--store-credentials', help='Store Earthdata credentials on disk to be used for future downloads (unsecure!)', action='store_true')
     parser.add_argument('--download', help='Download data', action='store_true')
     parser.add_argument('--aria2', help='Use ARIA2 for downloading', action='store_true')
@@ -73,7 +74,7 @@ def main():
 
         # Handle ? wildcard
         if '?' in product:
-            pattern = re.compile(product.replace('?','.{1,2}') + '$')
+            pattern = re.compile(product.replace('?', '.{1,2}') + '$')
             product = [x for x in product_table if re.match(pattern, x)]
         else:
             product = [product] # enable iteration
@@ -115,7 +116,7 @@ def main():
                         bbox = pickle.load(bbox_raw)
 
                     if len(tiles) == 1:
-                        h_indicator, v_indicator = re.findall('\d+', tiles[0])
+                        h_indicator, v_indicator = re.findall(r'\d+', tiles[0])
                         bbox_selection = bbox[(bbox.ih == int(h_indicator)) &
                                               (bbox.iv == int(v_indicator))]
 
@@ -124,8 +125,8 @@ def main():
                                     bbox_selection.lon_max.values[0] - (bbox_selection.lon_max.values[0] - bbox_selection.lon_min.values[0])/2]
 
                     elif len(tiles) > 1:
-                        h_indicator = list(set([re.findall('\d+',x.split('v')[0])[0] for x in tiles]))
-                        v_indicator = list(set([re.findall('\d+',x.split('v')[1])[0] for x in tiles]))
+                        h_indicator = list({re.findall(r'\d+', x.split('v')[0])[0] for x in tiles})
+                        v_indicator = list({re.findall(r'\d+', x.split('v')[1])[0] for x in tiles})
 
                         # aoi is bbox including all tiles from tile_filter, plus 1 degree buffer
                         bbox_selection = bbox.query('|'.join(['ih == {}'.format(int(x)) for x in h_indicator])).query('|'.join(['iv == {}'.format(int(x)) for x in v_indicator]))
@@ -155,7 +156,7 @@ def main():
 
                             for point in range(point_count):
                                 lat, lon, _ = geometry.GetPoint(point)
-                                coordinates.append('{},{}'.format(lon,lat))
+                                coordinates.append('{},{}'.format(lon, lat))
 
                             query.append('polygon=' + ','.join(coordinates))
                             ds = None
