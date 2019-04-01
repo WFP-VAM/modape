@@ -1,8 +1,6 @@
 # pylint: disable=line-too-long, wildcard-import, too-many-statements, E0401, E0611
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import array
 from contextlib import contextmanager

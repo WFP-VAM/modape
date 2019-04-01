@@ -1,7 +1,5 @@
 # pylint: disable=line-too-long, too-many-statements, E0611, E0401, W0601
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import array
 import ctypes

@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 # pylint: disable=line-too-long, too-many-statements, wildcard-import, C0103, R0205, E0602
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import argparse
 import array
