@@ -10,6 +10,8 @@ import numpy as np
 tFloat = np.double
 ctypedef np.double_t dtype_t
 
+__all__ = ['lag1corr','ws2d','ws2doptv','ws2doptvp']
+
 cpdef lag1corr(np.ndarray[dtype_t] data1, np.ndarray[dtype_t] data2, double nd):
 
     ## Calculate Lag-1 autocorrelation
