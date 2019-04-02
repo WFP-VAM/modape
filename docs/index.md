@@ -61,7 +61,7 @@ Some of these packages (eg. GDAL) can be difficult to build, especially on windo
 
 The modape module features some executables, which are mainly for handling and smoothing MODIS data, as well as smoothing arbitrary raster timeseries and pixel timeseries inside CSV files.
 
-### downloadMODIS
+### modis_download
 
 **Description:**
 
@@ -79,12 +79,12 @@ Downloading data requires valid Earthdata user credentials (register at https://
 
 The products are downloaded by default to the current working directory, if no target directory has been supplied by specifying `-d, --targetdir`.
 
-**downloadMODIS help:**
+**modis_download help:**
 
 ```
-$ downloadMODIS -h
+$ modis_download -h
 
-usage: downloadMODIS [-h] [--roi ROI [ROI ...]] [--tile-filter  [...]] [-c] [-b] [-e] [--username] [--password] [-d]
+usage: modis_download [-h] [--roi ROI [ROI ...]] [--tile-filter  [...]] [-c] [-b] [-e] [--username] [--password] [-d]
                      [--store-credentials] [--download] [--aria2]
                      product [product ...]
 
@@ -113,9 +113,9 @@ optional arguments:
 
 **Usage example:**
 
-![downloadMODIS]
+![modis_download]
 
-### processMODIS
+### modis_collect
 
 **Description:**
 
@@ -136,12 +136,12 @@ Currently processing is implemented for MODIS vegetation and MODIS LST products.
 The default blocksize for processing is set to (). When specifying a custom blocksize, make sure the number of rows and columns divides evenly by the respective blocksize!
 
 
-**processMODIS help:**
+**modis_collect help:**
 
 ```
-$ processMODIS -h
+$ modis_collect -h
 
-usage: processMODIS [-h] [-d] [-x] [--all-vampc] [-c] [--interleave] [--parallel-tiles] [--quiet] srcdir
+usage: modis_collect [-h] [-d] [-x] [--all-vampc] [-c] [--interleave] [--parallel-tiles] [--quiet] srcdir
 
 Process downloaded RAW MODIS hdf files
 
@@ -160,15 +160,15 @@ optional arguments:
 ```
 **Usage example:**
 
-![processMODIS]
+![modis_collect]
 
-### smoothMODIS
+### modis_smooth
 
 **Description:**
 
 Smooth, gapfill and interpolate raw MODIS HDF5 files.
 
-As mandatory input, raw MODIS HDF5 files (as processed by `processMODIS`) are smoothed, gapfilled and interpolated, using a whittaker filter with 2nd order differences.
+As mandatory input, raw MODIS HDF5 files (as processed by `modis_collect`) are smoothed, gapfilled and interpolated, using a whittaker filter with 2nd order differences.
 
 By default, the standard whittaker smoother will be applied, and if no `s` value is provided (to be provided as `log10(s)` - e.g. 0.1), the function will read a pixel based `s` value from the s-grid.
 
@@ -197,12 +197,12 @@ The temporal flag can have the following values:
 - txd: dekadal (10 daily) data
 - txc: custom interpolation (user input)
 
-**smoothMODIS help:**
+**modis_smooth help:**
 
 ```
-$ smoothMODIS -h
+$ modis_smooth -h
 
-usage: smoothMODIS [-h] [-s] [-S  [...]] [-t] [-n] [-u] [-p] [-d] [--startdate] [--optv] [--optvp] [--parallel-tiles] [--nworkers]
+usage: modis_smooth [-h] [-s] [-S  [...]] [-t] [-n] [-u] [-p] [-d] [--startdate] [--optv] [--optvp] [--parallel-tiles] [--nworkers]
                    [--quiet]
                    input [input ...]
 Smooth, gapfill and interpolate processed raw MODIS HDF5 files
@@ -230,9 +230,9 @@ optional arguments:
 ```
 **Usage example:**
 
-![smoothMODIS]
+![modis_smooth]
 
-### windowMODIS
+### modis_window
 
 **Description:**
 
@@ -259,12 +259,12 @@ e.g. regvim2018j169.tif
 where REGION should be a three letter code for the region (can be defined with `--region`, default is "reg"), VPC is the VAM product code and yyyyjddd is the julian date of the image.
 
 
-**windowMODIS help:**
+**modis_window help:**
 
 ```
-$ windowMODIS -h
+$ modis_window -h
 
-usage: windowMODIS [-h] [-p] [--roi ROI [ROI ...]] [--region] [-b] [-e]
+usage: modis_window [-h] [-p] [--roi ROI [ROI ...]] [--region] [-b] [-e]
                    [--parameter] [-d] [--sgrid]
                    path
 
@@ -288,10 +288,10 @@ optional arguments:
 ```
 **Usage example:**
 
-![windowMODIS]
+![modis_window]
 
 
-### infoMODIS
+### modis_info
 
 **Description:**
 
@@ -309,12 +309,12 @@ Information includes:
 - Last modified
 - Last smoothing run and parameters
 
-**infoMODIS help:**
+**modis_info help:**
 
 ```
-$ infoMODIS -h
+$ modis_info -h
 
-usage: infoMODIS [-h] file
+usage: modis_info [-h] file
 
 Get MODIS raw/smooth file info
 
@@ -327,20 +327,20 @@ optional arguments:
 ```
 **Usage example:**
 
-![infoMODIS]
+![modis_info]
 
-### producttableMODIS
+### modis_product_table
 
 **Description:**
 
 Display the MODIS product table (Version 6.0), optionally filter by product, resolution and parameter.
 
-**producttableMODIS help:**
+**modis_product_table help:**
 
 ```
-$ producttableMODIS -h
+$ modis_product_table -h
 
-usage: producttableMODIS [-h] [--product] [--resolution] [--parameter]
+usage: modis_product_table [-h] [--product] [--resolution] [--parameter]
 
 MODIS product table
 
@@ -353,9 +353,9 @@ optional arguments:
 ```
 **Usage example:**
 
-![producttableMODIS]
+![modis_product_table]
 
-### smoothRTS
+### rts_smooth
 
 **Description:**
 
@@ -381,12 +381,12 @@ The subdirectories are:
 
 The smoothing currently only runs sequential, so big timeseries or big raster datasets can take some time!
 
-**smoothRTS help:**
+**rts_smooth help:**
 
 ```
-$ smoothRTS -h
+$ rts_smooth -h
 
-usage: smoothRTS [-h] [-P] [-d] [-s] [-S  [...]] [-p] [-b] [--nodata]
+usage: rts_smooth [-h] [-P] [-d] [-s] [-S  [...]] [-p] [-b] [--nodata]
                  [--soptimize]
                  path
 
@@ -412,10 +412,10 @@ optional arguments:
 
 **Usage example:**
 
-![smoothRTS]
+![rts_smooth]
 
 
-### smoothCSV
+### csv_smooth
 
 **Description:**
 
@@ -455,12 +455,12 @@ The optimal s (sopt) and log10(sopt) are appended to each column, if a fixed s i
 
 If expectile smoothing is chosen, the p value is also be appended.
 
-**smoothCSV help:**
+**csv_smooth help:**
 
 ```
 $ smooothCSV -h
 
-usage: smoothCSV [-h] [-s] [-S  [...]] [-p] file
+usage: csv_smooth [-h] [-s] [-S  [...]] [-p] file
 
 Smooth CSV file
 
@@ -478,11 +478,11 @@ optional arguments:
 **Usage example:**
 
 
-![smoothCSV]
+![csv_smooth]
 
 ---
 
-Last updated on 2019-03-26
+Last updated on 2019-04-02
 
 Terminal recordings created with [asciinema](https://github.com/asciinema)
 
@@ -494,11 +494,11 @@ valentin.pesendofer@wfp.org
 
 
 
-[downloadMODIS]: img/download.gif
-[processMODIS]: img/process.gif
-[smoothMODIS]: img/smooth.gif
-[windowMODIS]: img/window.gif
-[infoMODIS]: img/info.gif
-[producttableMODIS]: img/ptable.gif
-[smoothRTS]: img/smoothRTS.gif
-[smoothCSV]: img/smoothCSV.gif
+[modis_download]: img/download.gif
+[modis_collect]: img/process.gif
+[modis_smooth]: img/smooth.gif
+[modis_window]: img/window.gif
+[modis_info]: img/info.gif
+[modis_product_table]: img/ptable.gif
+[rts_smooth]: img/rts_smooth.gif
+[csv_smooth]: img/csv_smooth.gif
