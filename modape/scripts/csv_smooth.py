@@ -6,6 +6,7 @@ from __future__ import absolute_import, division, print_function
 import argparse
 import array
 import os
+import sys
 import time
 
 import numpy as np
@@ -37,6 +38,12 @@ def main():
     parser.add_argument('-s', '--svalue', help='S value for smoothing (has to be log10(s)', metavar='', type=float)
     parser.add_argument('-S', '--srange', help='S range for V-curve (float log10(s) values as smin smax sstep - default 0.0 4.0 0.1)', nargs='+', metavar='', type=float)
     parser.add_argument('-p', '--pvalue', help='Value for asymmetric smoothing (float required)', metavar='', type=float)
+
+    # Fail and print help if no arguments supplied
+    if len(sys.argv) == 1:
+        parser.print_help(sys.stderr)
+        sys.exit(0)
+
     args = parser.parse_args()
 
     # Check if input file exists

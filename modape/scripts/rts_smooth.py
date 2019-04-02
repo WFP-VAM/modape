@@ -308,7 +308,7 @@ def main():
     # fail and print help if no arguments supplied
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
-        sys.exit(1)
+        sys.exit(0)
 
     args = parser.parse_args()
     print('\n[{}]: Starting smoothRTS.py ... \n'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())))

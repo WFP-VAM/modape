@@ -20,7 +20,7 @@ def main():
     # Fail and print help if no arguments supplied
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
-        sys.exit(1)
+        sys.exit(0)
 
     args = parser.parse_args()
 
