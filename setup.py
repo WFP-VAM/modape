@@ -38,15 +38,14 @@ setup(
     include_dirs=[numpy.get_include()],
     entry_points={
         'console_scripts':[
-            'downloadMODIS=modape.downloadMODIS:main',
-            'processMODIS=modape.processMODIS:main',
-            'windowMODIS=modape.windowMODIS:main',
-            'smoothMODIS=modape.smoothMODIS:main',
-            'infoMODIS=modape.infoMODIS:main',
-            'producttableMODIS=modape.producttableMODIS:main',
-            'smoothCSV=modape.smoothCSV:main',
-            'smoothRTS=modape.smoothRTS:main',
-            ]
+            'modis_download=modape.scripts.modis_download:main',
+            'modis_collect=modape.scripts.modis_collect:main',
+            'modis_smooth.py=modape.scripts.modis_smooth:main',
+            'modis_info=modape.scripts.modis_info:main',
+            'modis_product_table=modape.scripts.modis_product_table:main',
+            'csv_smooth=modape.scripts.csv_smooth:main',
+            'rts_smooth=modape.scripts.rts_smooth:main',
+        ]
     },
     packages=find_packages(),
     cmdclass=cmdclass,
