@@ -11,17 +11,17 @@ The sub-module ``modape.whittaker`` includes the following variations of the whi
 
 The MODIS processing chain consists of the following executables, which can be called through commandline:
 
-- ``downloadMODIS``: Query and download raw MODIS products (requires Earthdata credentials)
-- ``processMODIS``: Collect raw MODIS data into daily datacubes stored in an HDF5 file
-- ``smoothMODIS``: Smooth, gapfill and interpolate raw MODIS data using the implemented whittaker smoother
-- ``windowMODIS``: Extract mosaic(s) of multiple MODIS tiles, or subset(s) of a global/tiled MODIS product and export it as GeoTIFF raster in WGS1984 coordinate system
+- ``modis_download``: Query and download raw MODIS products (requires Earthdata credentials)
+- ``modis_collect``: Collect raw MODIS data into daily datacubes stored in an HDF5 file
+- ``modis_smooth``: Smooth, gapfill and interpolate raw MODIS data using the implemented whittaker smoother
+- ``modis_window``: Extract mosaic(s) of multiple MODIS tiles, or subset(s) of a global/tiled MODIS product and export it as GeoTIFF raster in WGS1984 coordinate system
 
 Additional executables:
 
-- ``smoothCSV``: Smooth timeseries stored within a CSV file
-- ``smoothRTS``: Smooth a series of raster files stored in a local directory
-- ``infoMODIS``: Retrieve metadata from created HDF5 files
-- ``producttableMODIS``: MODIS Version 6.0 product table
+- ``csv_smooth``: Smooth timeseries stored within a CSV file
+- ``rts_smooth``: Smooth a series of raster files stored in a local directory
+- ``modis_info``: Retrieve metadata from created HDF5 files
+- ``modis_product_table``: MODIS Version 6.0 product table
 
 
 Installation
