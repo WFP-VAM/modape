@@ -1,7 +1,5 @@
 # pylint: disable=line-too-long, too-many-statements, import-error, global-variable-undefined
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import multiprocessing as mp
 import os
