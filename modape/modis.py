@@ -81,7 +81,7 @@ class MODISquery(object):
 
             # results for global products are date directories on server, so need to query separately
             if self.global_flag:
-                r = re.compile('.*.hdf$')
+                regex = re.compile('.*.hdf$')
                 dates = np.array([x.getText() for x in soup.findAll('a', href=True) if re.match(r'\d{4}\.\d{2}\.\d{2}', x.getText())])
                 dates_parsed = [datetime.datetime.strptime(x, '%Y.%m.%d/').date() for x in dates]
                 dates_ix = np.flatnonzero(np.array([x >= self.begin and x < self.end for x in dates_parsed]))
@@ -95,7 +95,7 @@ class MODISquery(object):
 
                     soup = BeautifulSoup(response.content, features='html.parser')
                     hrefs = soup.find_all('a', href=True)
-                    hdf_file = [x.getText() for x in hrefs if re.match(r, x.getText())]
+                    hdf_file = [x.getText() for x in hrefs if re.match(regex, x.getText())]
 
                     try:
                         self.modis_urls.append(self.query_url + d + hdf_file[0])
@@ -184,12 +184,12 @@ class MODISquery(object):
             ]
 
             # execute subprocess
-            p = Popen(args + ['-i', flist])
-            p.wait()
+            process_output = Popen(args + ['-i', flist])
+            process_output.wait()
 
             # remove filelist.txt if all downloads are successful
-            if p.returncode != 0:
-                print('\nError (error code {}) occured during download, please check files against MODIS URL list ({})!\n'.format(p.returncode, flist))
+            if process_output.returncode != 0:
+                print('\nError (error code {}) occured during download, please check files against MODIS URL list ({})!\n'.format(process_output.returncode, flist))
             else:
                 os.remove(flist)
 
@@ -426,12 +426,12 @@ class MODISrawh5(object):
                 _ = [dates_combined.append(x) for x in self.rawdates]
 
                 # New total temporal length
-                n = len(dates_combined)
+                dates_length = len(dates_combined)
 
                 # if new total temporal length is bigger than dataset, datasets need to be resized for additional data
-                if n > dset.shape[1]:
-                    dates.resize((n,))
-                    dset.resize((dset.shape[0], n))
+                if dates_length > dset.shape[1]:
+                    dates.resize((dates_length,))
+                    dset.resize((dset.shape[0], dates_length))
 
                 # Sorting index to ensure temporal continuity
                 sort_ix = np.argsort(dates_combined)
@@ -440,7 +440,7 @@ class MODISrawh5(object):
                 _ = [gc.collect() for x in range(3)]
 
                 # preallocate array
-                arr = np.zeros((self.chunks[0], n), dtype=self.datatype[1])
+                arr = np.zeros((self.chunks[0], dates_length), dtype=self.datatype[1])
 
                 # Open all files and keep reference in handler
                 handler = FileHandler(self.files, self.vam_product_code_dict[self.vam_product_code])
@@ -565,18 +565,18 @@ class MODISsmth5(object):
         dates = DateHelper(rawdates=self.rawdates,
                            rtres=rtres,
                            stres=self.temporalresolution,
-                           start = self.startdate,
+                           start=self.startdate,
                            nupdate=self.nupdate)
 
         if not self.tinterpolate:
             dates.target = self.rawdates
 
-        n = len(dates.target)
+        dates_length = len(dates.target)
 
         try:
             with h5py.File(self.outname, 'x', libver='latest') as h5f:
                 dset = h5f.create_dataset('data',
-                                          shape=(rawshape[0], n),
+                                          shape=(rawshape[0], dates_length),
                                           dtype=dt, maxshape=(rawshape[0], None),
                                           chunks=rawchunks,
                                           compression=cmpr,
@@ -590,7 +590,7 @@ class MODISsmth5(object):
                                    compression=cmpr)
 
                 h5f.create_dataset('dates',
-                                   shape=(n,),
+                                   shape=(dates_length,),
                                    maxshape=(None,),
                                    dtype='S8',
                                    compression=cmpr,
@@ -691,10 +691,10 @@ class MODISsmth5(object):
                         bco = bc + rawoffset
                         arr_raw[:, bc:bc+rawchunks[1]] = raw_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]]
                     ndix = np.sum(arr_raw != -3000, 1) > 0 #70
-                    mapIX = np.where(ndix)[0]
-                    if mapIX.size == 0:
+                    map_index = np.where(ndix)[0]
+                    if map_index.size == 0:
                         continue #no data points, skipping to next block
-                    _ = pool.map(execute_ws2d, mapIX)
+                    _ = pool.map(execute_ws2d, map_index)
                     pool.close()
                     pool.join()
 
@@ -737,12 +737,12 @@ class MODISsmth5(object):
                     wts[...] = (arr_raw != nodata)*1
 
                     ndix = np.sum(wts, 1) > 0 #70
-                    mapIX = np.where(ndix)[0]
+                    map_index = np.where(ndix)[0]
 
-                    if mapIX.size == 0:
+                    if map_index.size == 0:
                         continue #no data points, skipping to next block
 
-                    for r in mapIX:
+                    for r in map_index:
                         arr_raw[r, :] = ws2d(y=arr_raw[r, :], lmda=10**s, w=wts[r, :])
                         if self.tinterpolate:
                             z2 = vector_daily.copy()
@@ -792,7 +792,7 @@ class MODISsmth5(object):
             dates = DateHelper(rawdates=self.rawdates,
                                rtres=rtres,
                                stres=self.temporalresolution,
-                               start = self.startdate,
+                               start=self.startdate,
                                nupdate=self.nupdate)
 
             if not self.tinterpolate:
@@ -847,12 +847,12 @@ class MODISsmth5(object):
                         arr_raw[:, bc:bc+rawchunks[1]] = raw_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]]
 
                     ndix = np.sum(arr_raw != -3000, 1) > 0 #70
-                    mapIX = np.where(ndix)[0]
-                    if mapIX.size == 0:
+                    map_index = np.where(ndix)[0]
+                    if map_index.size == 0:
                         continue #no data points, skipping to next block
 
                     arr_sgrid[...] = smt_sgrid[br:br+rawchunks[0]]
-                    _ = pool.map(execute_ws2d_sgrid, mapIX)
+                    _ = pool.map(execute_ws2d_sgrid, map_index)
                     pool.close()
                     pool.join()
 
@@ -894,13 +894,13 @@ class MODISsmth5(object):
                         arr_raw[:, bc:bc+rawchunks[1]] = raw_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]]
                     wts[...] = (arr_raw != nodata)*1
                     ndix = np.sum(wts, 1) > 0 #70
-                    mapIX = np.where(ndix)[0]
+                    map_index = np.where(ndix)[0]
 
-                    if mapIX.size == 0:
+                    if map_index.size == 0:
                         continue #no data points, skipping to next block
                     arr_sgrid[...] = smt_sgrid[br:br+rawchunks[0]]
 
-                    for r in mapIX:
+                    for r in map_index:
                         arr_raw[r, :] = ws2d(y=arr_raw[r, :], lmda=10**arr_sgrid[r], w=wts[r, :])
                         if self.tinterpolate:
                             z2 = vector_daily.copy()
@@ -1013,10 +1013,10 @@ class MODISsmth5(object):
                         bco = bc + rawoffset
                         arr_raw[:, bc:bc+rawchunks[1]] = raw_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]]
                     ndix = np.sum(arr_raw != -3000, 1) > 0  #70
-                    mapIX = np.where(ndix)[0]
-                    if mapIX.size == 0:
+                    map_index = np.where(ndix)[0]
+                    if map_index.size == 0:
                         continue #no data points, skipping to next block
-                    _ = pool.map(execute_ws2d_vc, mapIX)
+                    _ = pool.map(execute_ws2d_vc, map_index)
                     pool.close()
                     pool.join()
 
@@ -1059,11 +1059,11 @@ class MODISsmth5(object):
                         arr_raw[:, bc:bc+rawchunks[1]] = raw_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]]
                     wts[...] = (arr_raw != nodata)*1
                     ndix = np.sum(wts, 1) > 0 #70
-                    mapIX = np.where(ndix)[0]
-                    if mapIX.size == 0:
+                    map_index = np.where(ndix)[0]
+                    if map_index.size == 0:
                         continue #no data points, skipping to next block
 
-                    for r in mapIX:
+                    for r in map_index:
                         if not isinstance(srange, np.ndarray):
                             lc = lag1corr(arr_raw[r, :-1], arr_raw[r, 1:], nodata)
                             if lc <= 0.5:
