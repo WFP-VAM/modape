@@ -298,7 +298,7 @@ def main():
     parser.add_argument('path', help='Path containing raster files')
     parser.add_argument('-P', '--pattern', help='Pattern to filter file names', default='*', metavar='')
     parser.add_argument('-d', '--targetdir', help='Target directory for GeoTIFFs (default current directory)', default=os.getcwd(), metavar='')
-    parser.add_argument('-s', '--svalue', help='S value for smoothing (has to be log10(s)', metavar='', type=float)
+    parser.add_argument('-s', '--svalue', help='S value for smoothing (has to be log10(s))', metavar='', type=float)
     parser.add_argument('-S', '--srange', help='S range for V-curve (float log10(s) values as smin smax sstep - default 0.0 4.0 0.1)', nargs='+', metavar='', type=float)
     parser.add_argument('-p', '--pvalue', help='Value for asymmetric smoothing (float required)', metavar='', type=float)
     parser.add_argument('-b', '--blocksize', help='Processing block side length (default 256)', default=256, metavar='', type=int)
