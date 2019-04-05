@@ -53,9 +53,8 @@ def main():
     print('\n[{}]: Starting smoothCSV.py ... \n'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())))
 
     # Create filename of output CSV
-    outname = '{}/{}'.format(os.path.dirname(args.file), os.path.basename(args.file)[0:3])
-
-
+    outname = '{}/{}'.format(os.path.dirname(os.path.abspath(args.file)), os.path.basename(args.file)[0:3])
+    
     df = pd.read_csv(args.file, header=1) # Read input
     resdf = pd.DataFrame(index=range(len(df)+2)) #result dataframe, +2 for Sopt
 
@@ -87,8 +86,8 @@ def main():
             try:
                 srange = array.array('d',
                                      np.linspace(args.srange[0],
-                                     args.srange[1],
-                                     args.srange[1]/args.srange[2]+1))
+                                                 args.srange[1],
+                                                 args.srange[1]/args.srange[2]+1))
             except:
                 print('Error parsing S range values')
                 raise
