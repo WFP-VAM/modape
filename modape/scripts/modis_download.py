@@ -66,7 +66,10 @@ def main():
 
     # Load product table
     this_dir, _ = os.path.split(__file__)
-    product_table = pload(os.path.join(this_dir, 'data', 'MODIS_V6_PT.pkl'))
+    package_dir = os.path.abspath(os.path.join(this_dir, os.pardir))
+
+    with open(os.path.join(package_dir, 'data', 'MODIS_V6_PT.pkl'), 'rb') as table_raw:
+        product_table = pickle.load(table_raw)
 
     for product in args.product:
 
