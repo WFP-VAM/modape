@@ -182,7 +182,7 @@ class Credentials(object):
             cipher_suite = Fernet(k)
             u = cipher_suite.encrypt(self.username.encode())
             p = cipher_suite.encrypt(self.password.encode())
-            pdump((u, p) , 'modape.cred.pkl')
+            pdump((u, p), 'modape.cred.pkl')
             pdump(k, 'modape.key.pkl')
         except:
             self.destroy()
