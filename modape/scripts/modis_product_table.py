@@ -16,9 +16,9 @@ def main():
     '''
 
     parser = argparse.ArgumentParser(description='MODIS product table')
-    parser.add_argument('--product', help='MODIS product ID',metavar='')
-    parser.add_argument('--resolution', help='Filter for pixel size',type=str,metavar='')
-    parser.add_argument('--vampc', help='Filter for VAM product code',metavar='')
+    parser.add_argument('--product', help='MODIS product ID', metavar='')
+    parser.add_argument('--resolution', help='Filter for pixel size', type=str, metavar='')
+    parser.add_argument('--vampc', help='Filter for VAM product code', metavar='')
     args = parser.parse_args()
 
     # Load product table
@@ -60,5 +60,5 @@ def main():
         print(tbl)
         print('\n')
 
-if __name__=='__main__':
+if __name__ == '__main__':
     main()
