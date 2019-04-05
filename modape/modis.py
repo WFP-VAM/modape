@@ -450,7 +450,7 @@ class MODISrawh5(object):
                 for b in range(0, dset.shape[0], self.chunks[0]):
                     yoff = b//self.ncols
 
-                    for b1 in range(0, n, self.chunks[1]):
+                    for b1 in range(0, dates_length, self.chunks[1]):
                         arr[..., b1:b1+self.chunks[1]] = dset[b:b+self.chunks[0], b1:b1+self.chunks[1]]
                     del b1
 
@@ -465,7 +465,7 @@ class MODISrawh5(object):
                             arr[..., dates_combined.index(self.rawdates[fix])] = self.nodata_value
                     arr = arr[..., sort_ix]
 
-                    for b1 in range(0, n, self.chunks[1]):
+                    for b1 in range(0, dates_length, self.chunks[1]):
                         dset[b:b+self.chunks[0], b1:b1+self.chunks[1]] = arr[..., b1:b1+self.chunks[1]]
                 handler.close()
 
