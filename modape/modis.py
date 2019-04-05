@@ -695,8 +695,6 @@ class MODISsmth5(object):
                     if map_index.size == 0:
                         continue #no data points, skipping to next block
                     _ = pool.map(execute_ws2d, map_index)
-                    pool.close()
-                    pool.join()
 
                     # write back data
                     if self.tinterpolate:
@@ -708,6 +706,10 @@ class MODISsmth5(object):
                         for bc in range(0, len(dates.target), smoothchunks[1]):
                             bco = bc + smoothoffset
                             smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]]
+                # close pool
+                pool.close()
+                pool.join()
+
             else:
                 arr_raw = np.zeros((rawchunks[0], len(self.rawdates)), dtype='double')
 
@@ -853,8 +855,6 @@ class MODISsmth5(object):
 
                     arr_sgrid[...] = smt_sgrid[br:br+rawchunks[0]]
                     _ = pool.map(execute_ws2d_sgrid, map_index)
-                    pool.close()
-                    pool.join()
 
                     # write back data
                     if self.tinterpolate:
@@ -866,6 +866,10 @@ class MODISsmth5(object):
                         for bc in range(0, len(dates.target), smoothchunks[1]):
                             bco = bc + smoothoffset
                             smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]]
+                # close pool
+                pool.close()
+                pool.join()
+                
             else:
                 arr_raw = np.zeros((rawchunks[0], len(self.rawdates)), dtype='double')
                 arr_sgrid = np.zeros((rawchunks[0],), dtype='double')
@@ -1016,9 +1020,8 @@ class MODISsmth5(object):
                     map_index = np.where(ndix)[0]
                     if map_index.size == 0:
                         continue #no data points, skipping to next block
+
                     _ = pool.map(execute_ws2d_vc, map_index)
-                    pool.close()
-                    pool.join()
 
                     # write back data
                     arr_sgrid[arr_sgrid > 0] = np.log10(arr_sgrid[arr_sgrid > 0])
@@ -1034,6 +1037,10 @@ class MODISsmth5(object):
                         for bc in range(0, len(dates.target), smoothchunks[1]):
                             bco = bc + smoothoffset
                             smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]]
+                # close pool
+                pool.close()
+                pool.join()
+
             else:
                 arr_raw = np.zeros((rawchunks[0], len(self.rawdates)), dtype='double')
                 arr_sgrid = np.zeros((rawchunks[0],), dtype='double')
