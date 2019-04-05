@@ -37,7 +37,7 @@ def main():
     parser.add_argument('-e', '--end-date', help='End date (YYYYMM)', default=datetime.date.today().strftime('%Y%m'), metavar='')
     parser.add_argument('--vampc', help='VAM product code', metavar='')
     parser.add_argument('-d', '--targetdir', help='Target directory for GeoTIFFs (default current directory)', default=os.getcwd(), metavar='')
-    parser.add_argument('--sgrid', help='Extract (mosaic of) s value grid(s))', action='store_true')
+    parser.add_argument('--sgrid', help='Extract (mosaic of) s value grid(s)', action='store_true')
 
     # fail and print help if no arguments supplied
     if len(sys.argv) == 1:
