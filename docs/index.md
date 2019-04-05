@@ -482,7 +482,7 @@ optional arguments:
 
 ---
 
-Last updated on 2019-04-02
+Last updated on 2019-04-07
 
 Terminal recordings created with [asciinema](https://github.com/asciinema)
 
@@ -495,10 +495,10 @@ valentin.pesendofer@wfp.org
 
 
 [modis_download]: img/download.gif
-[modis_collect]: img/process.gif
+[modis_collect]: img/collect.gif
 [modis_smooth]: img/smooth.gif
 [modis_window]: img/window.gif
 [modis_info]: img/info.gif
 [modis_product_table]: img/ptable.gif
-[rts_smooth]: img/rts_smooth.gif
-[csv_smooth]: img/csv_smooth.gif
+[rts_smooth]: img/rts.gif
+[csv_smooth]: img/csv.gif
