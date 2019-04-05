@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+# pylint: disable=invalid-name
 from setuptools import setup, Extension, find_packages
 
 import numpy
@@ -22,11 +22,13 @@ ext_modules = []
 
 if USE_CYTHON:
     ext_modules += [
-        Extension("modape.whittaker", ["modape/_whittaker.pyx"], extra_compile_args=["-O3", "-ffast-math"])]
+        Extension("modape.whittaker",
+                  ["modape/_whittaker.pyx"], extra_compile_args=["-O3", "-ffast-math"])]
     cmdclass.update({'build_ext': build_ext})
 else:
     ext_modules += [
-        Extension("modape.whittaker", ["modape/_whittaker.c"], extra_compile_args=["-O3", "-ffast-math"])]
+        Extension("modape.whittaker",
+                  ["modape/_whittaker.c"], extra_compile_args=["-O3", "-ffast-math"])]
 
 setup(
     name='modape',
@@ -40,7 +42,8 @@ setup(
         'console_scripts':[
             'modis_download=modape.scripts.modis_download:main',
             'modis_collect=modape.scripts.modis_collect:main',
-            'modis_smooth.py=modape.scripts.modis_smooth:main',
+            'modis_smooth=modape.scripts.modis_smooth:main',
+            'modis_window=modape.scripts.modis_window:main',
             'modis_info=modape.scripts.modis_info:main',
             'modis_product_table=modape.scripts.modis_product_table:main',
             'csv_smooth=modape.scripts.csv_smooth:main',
@@ -61,12 +64,12 @@ setup(
     install_requires=[
         'numpy>=1.15.1',
         'gdal>=2',
-        'h5py',
-        'beautifulsoup4',
-        'requests',
-        'progress',
-        'pandas',
-        "cryptography",
+        'h5py>=2.9',
+        'beautifulsoup4>=4.7',
+        'requests>=2',
+        'progress>=1.5',
+        'pandas>=0.24',
+        "cryptography>=2.6",
     ],
     python_requires='>=2.7.11, <4',
 )
