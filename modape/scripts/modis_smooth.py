@@ -173,7 +173,7 @@ def main():
         raise ValueError('No files found to process')
 
     if not os.path.isdir(args.targetdir):
-        print('Targetdir {} doesn\'t exist. Creating ... ', end='')
+        print('Targetdir {} doesn\'t exist. Creating ... '.format(args.targetdir), end='')
         shutil.os.mkdir(args.targetdir)
         print('done.')
 
