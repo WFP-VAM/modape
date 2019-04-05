@@ -75,7 +75,7 @@ def main():
 
     # Make sure only compatible files are used for the mosaic
     if h5files:
-        if len(set([re.sub(r'h\d{2}v\d{2}.', '', os.path.basename(x)) for x in h5files])) > 1:
+        if len({re.sub(r'h\d{2}v\d{2}.', '', os.path.basename(x)) for x in h5files}) > 1:
             raise ValueError('\nMultiple product types found! Please specify and/or check product parameter!\n')
     else:
         raise ValueError('\nNo products found in specified path (for specified product) - please check input!\n')
@@ -105,10 +105,10 @@ def main():
             raise ValueError('\nNo MODIS tile(s) found for location. Please check coordinates!')
 
         # Regexp for tiles
-        tileRX = re.compile('|'.join(tiles.tiles))
+        tile_regexp = re.compile('|'.join(tiles.tiles))
 
         # Files for tile result
-        h5files = [x for x in h5files if re.search(tileRX, x)]
+        h5files = [x for x in h5files if re.search(tile_regexp, x)]
 
     # Filter for product code
     if args.vampc:
@@ -118,7 +118,7 @@ def main():
     assert h5files, '\nNo processed MODIS HDF5 files found for combination of product/tile (and VAM product code)'
 
     # Iterate over VPCs (could be multiple if unspecified)
-    for vam_code in set([re.sub('.+([^\W\d_]{3}).h5', '\\1', x) for x in h5files]):
+    for vam_code in {re.sub(r'.+([^\W\d_]{3}).h5', '\\1', x) for x in h5files}:
         print('\n')
 
         h5files_vpc = [x for x in h5files if vam_code in x] # Subset files for vam_code
