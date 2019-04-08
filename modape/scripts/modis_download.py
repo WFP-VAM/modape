@@ -12,7 +12,7 @@ import sys
 
 import ogr
 from modape.modis import MODISquery
-from modape.utils import Credentials, pload
+from modape.utils import Credentials
 
 def main():
     '''Query and download MODIS products.
@@ -113,7 +113,7 @@ def main():
                     # cast to lowercase
                     tiles = [x.lower() for x in args.tile_filter]
 
-                    with open(os.path.join(this_dir, 'data', 'ModlandTiles_bbx.pkl'), 'rb') as bbox_raw:
+                    with open(os.path.join(package_dir, 'data', 'ModlandTiles_bbx.pkl'), 'rb') as bbox_raw:
                         bbox = pickle.load(bbox_raw)
 
                     if len(tiles) == 1:
