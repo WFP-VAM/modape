@@ -687,10 +687,10 @@ class MODISsmth5(object):
                 pool = mp.Pool(processes=self.nworkers, initializer=init_worker, initargs=(shared_array_raw, parameters))
                 # load raw data
                 for br in range(0, rawshape[0], rawchunks[0]):
-                    for bc in range(0, len(self.rawdates), rawchunks[1]):
+                    for bc in range(0, arr_raw.shape[1], rawchunks[1]):
                         bco = bc + rawoffset
                         arr_raw[:, bc:bc+rawchunks[1]] = raw_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]]
-                    ndix = np.sum(arr_raw != -3000, 1) > 0 #70
+                    ndix = np.sum(arr_raw != nodata, 1) >= (arr_raw.shape[1] * 0.2) # 20%+ data
                     map_index = np.where(ndix)[0]
                     if map_index.size == 0:
                         continue #no data points, skipping to next block
@@ -733,12 +733,12 @@ class MODISsmth5(object):
                         pass
                     wts[...] = 0
 
-                    for bc in range(0, len(self.rawdates), rawchunks[1]):
+                    for bc in range(0, arr_raw.shape[1], rawchunks[1]):
                         bco = bc + rawoffset
                         arr_raw[:, bc:bc+rawchunks[1]] = raw_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]]
                     wts[...] = (arr_raw != nodata)*1
 
-                    ndix = np.sum(wts, 1) > 0 #70
+                    ndix = np.sum(wts, 1) >= (arr_raw.shape[1] * 0.2) # 20%+ data
                     map_index = np.where(ndix)[0]
 
                     if map_index.size == 0:
@@ -844,11 +844,11 @@ class MODISsmth5(object):
                 pool = mp.Pool(processes=self.nworkers, initializer=init_worker, initargs=(shared_array_raw, parameters))
                 # load raw data
                 for br in range(0, rawshape[0], rawchunks[0]):
-                    for bc in range(0, len(self.rawdates), rawchunks[1]):
+                    for bc in range(0, arr_raw.shape[1], rawchunks[1]):
                         bco = bc + rawoffset
                         arr_raw[:, bc:bc+rawchunks[1]] = raw_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]]
 
-                    ndix = np.sum(arr_raw != -3000, 1) > 0 #70
+                    ndix = np.sum(arr_raw != nodata, 1) >= (arr_raw.shape[1] * 0.2) # 20%+ data
                     map_index = np.where(ndix)[0]
                     if map_index.size == 0:
                         continue #no data points, skipping to next block
@@ -893,11 +893,11 @@ class MODISsmth5(object):
                         pass
                     wts[...] = 0
 
-                    for bc in range(0, len(self.rawdates), rawchunks[1]):
+                    for bc in range(0, arr_raw.shape[1], rawchunks[1]):
                         bco = bc + rawoffset
                         arr_raw[:, bc:bc+rawchunks[1]] = raw_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]]
                     wts[...] = (arr_raw != nodata)*1
-                    ndix = np.sum(wts, 1) > 0 #70
+                    ndix = np.sum(wts, 1) >= (arr_raw.shape[1] * 0.2) # 20%+ data
                     map_index = np.where(ndix)[0]
 
                     if map_index.size == 0:
@@ -1013,10 +1013,10 @@ class MODISsmth5(object):
                 pool = mp.Pool(processes=self.nworkers, initializer=init_worker, initargs=(shared_array_raw, parameters))
                 # load raw data
                 for br in range(0, rawshape[0], rawchunks[0]):
-                    for bc in range(0, len(self.rawdates), rawchunks[1]):
+                    for bc in range(0, arr_raw.shape[1], rawchunks[1]):
                         bco = bc + rawoffset
                         arr_raw[:, bc:bc+rawchunks[1]] = raw_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]]
-                    ndix = np.sum(arr_raw != -3000, 1) > 0  #70
+                    ndix = np.sum(arr_raw != nodata, 1) >= (arr_raw.shape[1] * 0.2) # 20%+ data
                     map_index = np.where(ndix)[0]
                     if map_index.size == 0:
                         continue #no data points, skipping to next block
@@ -1061,11 +1061,11 @@ class MODISsmth5(object):
                     except TypeError:
                         pass
                     wts[...] = 0
-                    for bc in range(0, len(self.rawdates), rawchunks[1]):
+                    for bc in range(0, arr_raw.shape[1], rawchunks[1]):
                         bco = bc + rawoffset
                         arr_raw[:, bc:bc+rawchunks[1]] = raw_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]]
                     wts[...] = (arr_raw != nodata)*1
-                    ndix = np.sum(wts, 1) > 0 #70
+                    ndix = np.sum(wts, 1) >= (arr_raw.shape[1] * 0.2) # 20%+ data
                     map_index = np.where(ndix)[0]
                     if map_index.size == 0:
                         continue #no data points, skipping to next block
