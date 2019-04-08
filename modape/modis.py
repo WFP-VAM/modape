@@ -869,7 +869,7 @@ class MODISsmth5(object):
                 # close pool
                 pool.close()
                 pool.join()
-                
+
             else:
                 arr_raw = np.zeros((rawchunks[0], len(self.rawdates)), dtype='double')
                 arr_sgrid = np.zeros((rawchunks[0],), dtype='double')
