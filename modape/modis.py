@@ -1,5 +1,5 @@
 """
-MODIS processing chain classes
+MODIS processing chain classes.
 
 This file contains all the classes used in the MODIS processing chain:
 

@@ -1,6 +1,6 @@
 # pylint: disable=invalid-name, global-variable-undefined, broad-except
 """
-Utility classes and functions used in MODIS processing chain
+Utility classes and functions used in MODIS processing chain.
 
 Author: Valentin Pesendorfer, April 2019
 """
@@ -265,7 +265,7 @@ class Credentials(object):
 def pdump(obj, filename):
     """Pickle dump wrapper.
 
-    Agrs:
+    Args:
         obj: Python object to be pickled
         filename: name of target pickle file
     """
@@ -276,7 +276,7 @@ def pdump(obj, filename):
 def pload(filename):
     """Pickle load wrapper.
 
-    Agrs:
+    Args:
         filename: name of target pickle file
 
     Returns:
