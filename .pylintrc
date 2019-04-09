@@ -34,7 +34,7 @@ limit-inference-results=100
 persistent=yes
 
 # Specify a configuration file.
-rcfile=pylintrc
+rcfile=.pylintrc
 
 # When enabled, pylint would attempt to guess common misconfiguration and emit
 # user-friendly hints instead of false-positive error messages.
