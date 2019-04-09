@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+# pylint: disable=broad-except
 from __future__ import absolute_import, division, print_function
 
 import argparse
@@ -32,7 +32,7 @@ def run_process(pdict):
                 rh5.create(compression=pdict['compression'],
                            chunk=pdict['chunksize'])
             rh5.update()
-        except Exception as e:
+        except Exception as e: # pylint: disable=unused-variable
             print('\nError processing product {}, product code {}. \n\n Traceback:\n'.format(rh5.product, vam_product_code))
             traceback.print_exc()
         print('\n')
@@ -48,14 +48,14 @@ def main():
     '''
 
     parser = argparse.ArgumentParser(description='Process downloaded RAW MODIS hdf files')
-    parser.add_argument('srcdir', help='directory with raw MODIS .hdf files',default=os.getcwd(),metavar='srcdir')
-    parser.add_argument('-d','--targetdir', help='Target directory for PROCESSED MODIS files (default is scrdir)',metavar='')
-    parser.add_argument('-x','--compression', help='Compression for HDF5 files',default='gzip',metavar='')
-    parser.add_argument('-c','--chunksize', help='Number of pixels per block (value needs to result in integer number of blocks)',type=int,metavar='')
-    parser.add_argument('--all-vampc', help='Flag to process all possible VAM product codes',action='store_true')
-    parser.add_argument('--interleave', help='Interleave MOD13 & MYD13 products to MXD (only works for VIM!)',action='store_true')
-    parser.add_argument('--parallel-tiles', help='Number of tiles processed in parallel (default = None)',default=1,type=int,metavar='')
-    parser.add_argument('--quiet', help='Be quiet',action='store_true')
+    parser.add_argument('srcdir', help='directory with raw MODIS .hdf files', default=os.getcwd(), metavar='srcdir')
+    parser.add_argument('-d', '--targetdir', help='Target directory for PROCESSED MODIS files (default is scrdir)', metavar='')
+    parser.add_argument('-x', '--compression', help='Compression for HDF5 files', default='gzip', metavar='')
+    parser.add_argument('-c', '--chunksize', help='Number of pixels per block (value needs to result in integer number of blocks)', type=int, metavar='')
+    parser.add_argument('--all-vampc', help='Flag to process all possible VAM product codes', action='store_true')
+    parser.add_argument('--interleave', help='Interleave MOD13 & MYD13 products to MXD (only works for VIM!)', action='store_true')
+    parser.add_argument('--parallel-tiles', help='Number of tiles processed in parallel (default = None)', default=1, type=int, metavar='')
+    parser.add_argument('--quiet', help='Be quiet', action='store_true')
 
     # Fail and print help if no arguments supplied
     if len(sys.argv) == 1:
@@ -79,41 +79,41 @@ def main():
     processing_dict = {} # processing dictionary
 
     # Seperate input files into group
-    groups = ['.*'.join(re.findall(ppatt, os.path.basename(x)) + re.findall(tpatt, os.path.basename(x)) + [re.sub(vpatt, '\\1',os.path.basename(x))])  for x in files]
+    groups = ['.*'.join(re.findall(ppatt, os.path.basename(x)) + re.findall(tpatt, os.path.basename(x)) + [re.sub(vpatt, '\\1', os.path.basename(x))])  for x in files]
 
     if args.interleave:
-        groups = list(set([re.sub('(M.{1})(D.+)', 'M.'+'\\2',x) if re.match(vimvem, x) else x for x in groups])) # Join MOD13/MYD13
+        groups = list({re.sub('(M.{1})(D.+)', 'M.'+'\\2', x) if re.match(vimvem, x) else x for x in groups}) # Join MOD13/MYD13
     else:
         groups = list(set(groups))
-    for g in groups:
-        gpatt = re.compile(g + '.*hdf')
-        processing_dict[g] = {}
-        processing_dict[g]['targetdir'] = args.targetdir
-        processing_dict[g]['files'] = [x for x in files if re.search(gpatt, x)]
-        processing_dict[g]['interleave'] = args.interleave
+    for group in groups:
+        gpatt = re.compile(group + '.*hdf')
+        processing_dict[group] = {}
+        processing_dict[group]['targetdir'] = args.targetdir
+        processing_dict[group]['files'] = [x for x in files if re.search(gpatt, x)]
+        processing_dict[group]['interleave'] = args.interleave
 
         if args.chunksize:
-            processing_dict[g]['chunksize'] = args.chunksize
+            processing_dict[group]['chunksize'] = args.chunksize
         else:
-            processing_dict[g]['chunksize'] = None
-        processing_dict[g]['compression'] = args.compression
+            processing_dict[group]['chunksize'] = None
+        processing_dict[group]['compression'] = args.compression
 
         if args.all_vampc:
-            if re.match(vimvem, g.split('.*')[0]):
-                processing_dict[g]['vam_product_code'] = ['VIM', 'VEM']
-            elif re.match(lst, g.split('.*')[0]):
-                processing_dict[g]['vam_product_code'] = ['LTD', 'LTN']
+            if re.match(vimvem, group.split('.*')[0]):
+                processing_dict[group]['vam_product_code'] = ['VIM', 'VEM']
+            elif re.match(lst, group.split('.*')[0]):
+                processing_dict[group]['vam_product_code'] = ['LTD', 'LTN']
             else:
-                raise ValueError('No VAM product code implemented for {}'.format(g.split('.*')[0]))
+                raise ValueError('No VAM product code implemented for {}'.format(group.split('.*')[0]))
         else:
-            processing_dict[g]['vam_product_code'] = [None]
+            processing_dict[group]['vam_product_code'] = [None]
 
     if args.parallel_tiles > 1:
         if not args.quiet:
             print('\n\n[{}]: Start processing - {} tiles in parallel ...'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()), args.parallel_tiles))
 
         pool = mp.Pool(processes=args.parallel_tiles)
-        _ = pool.map(run_process, [processing_dict[g] for g in groups])
+        _ = pool.map(run_process, [processing_dict[group] for group in groups])
         pool.close()
         pool.join()
 
@@ -123,8 +123,8 @@ def main():
         if not args.quiet:
             print('\n\n[{}]: Start processing ... \n'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())))
 
-        for g in groups:
-            run_process(processing_dict[g])
+        for group in groups:
+            run_process(processing_dict[group])
         if not args.quiet:
             print('\n[{}]: Done.'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())))
 

@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long, too-many-statements, no-self-use
 from __future__ import absolute_import, division, print_function
 import unittest
 

@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# pylint: disable=line-too-long, too-many-statements, wildcard-import, C0103, R0205, E0602
-
 from __future__ import absolute_import, division, print_function
 
 import argparse
@@ -17,7 +15,7 @@ except ImportError:
     from osgeo import gdal
 
 from modape.utils import dtype_GDNP
-from modape.whittaker import *
+from modape.whittaker import ws2d, ws2doptv, ws2doptvp # pylint: disable=no-name-in-module
 
 def init_gdal(x, p, fn=None, dt=None):
     '''Initializes empty GeoTIFF based on template.
@@ -32,22 +30,22 @@ def init_gdal(x, p, fn=None, dt=None):
     if not fn:
         fn = os.path.basename(x) # same filename if none is supplied
     ds = gdal.Open(x)
-    dr = ds.GetDriver()
+    driver = ds.GetDriver()
     if not dt:
         dt_new = ds.GetRasterBand(1).DataType # same datatype if none is supplied
     else:
         dt_new = dtype_GDNP(dt)[0] # Parse datatype
 
     # Create empty copy
-    ds_new = dr.Create(p + fn, ds.RasterXSize, ds.RasterYSize, ds.RasterCount, dt_new)
+    ds_new = driver.Create(p + fn, ds.RasterXSize, ds.RasterYSize, ds.RasterCount, dt_new)
     ds_new.SetGeoTransform(ds.GetGeoTransform())
     ds_new.SetProjection(ds.GetProjection())
     ds_new.GetRasterBand(1).SetNoDataValue(ds.GetRasterBand(1).GetNoDataValue())
     ds = None
-    dr = None
+    driver = None
     ds_new = None
 
-def iterateBlocks(rows, cols, n):
+def iterate_blocks(rows, cols, n):
     '''Generator for blockwise iteration over array.
 
     Args:
@@ -64,9 +62,9 @@ def iterateBlocks(rows, cols, n):
     '''
 
     # Iterate over rows then columns
-    for ri in range(0, rows, n):
-        for ci in range(0, cols, n):
-            yield (ri, min(n, rows-ri), ci, min(n, cols-ci))
+    for row in range(0, rows, n):
+        for col in range(0, cols, n):
+            yield (row, min(n, rows-row), col, min(n, cols-col))
 
 
 class RTS(object):
@@ -105,7 +103,7 @@ class RTS(object):
         ds = None
         self.targetdir = targetdir
 
-    def initRasters(self, tdir):
+    def init_rasters(self, tdir):
         '''Intitialize empty rasters for smoothed data.
 
         Args:
@@ -137,33 +135,33 @@ class RTS(object):
             except:
                 print('Issues creating subdirectory {}'.format(tdir))
                 raise
-        self.initRasters(tdir) # Initialize rasters
+        self.init_rasters(tdir) # Initialize rasters
 
         # Iterate over blocks
-        for yo, ys, xo, xs in iterateBlocks(self.nrows, self.ncols, self.bsize):
-            arr = np.zeros((ys*xs, self.nfiles), dtype='double') # values array
+        for yo, yd, xo, xd in iterate_blocks(self.nrows, self.ncols, self.bsize):
+            arr = np.zeros((yd*xd, self.nfiles), dtype='double') # values array
             wts = arr.copy() # weights array
             arr_helper = arr.view() # helper
-            arr_helper.shape = (ys, xs, self.nfiles)
+            arr_helper.shape = (yd, xd, self.nfiles)
 
             # Iterate files to read data
             for fix in range(self.nfiles):
                 ds = gdal.Open(self.files[fix])
-                arr_helper[..., fix] = ds.ReadAsArray(xoff=xo, xsize=xs, yoff=yo, ysize=ys)
+                arr_helper[..., fix] = ds.ReadAsArray(xoff=xo, xsize=xd, yoff=yo, ysize=yd)
                 ds = None
 
             # Data which is not nodata gets weight 1, others 0
             wts[...] = (arr != self.nodata) * 1
-            ndix = np.sum(arr != self.nodata, 1) > 0 #70
-            mapIX = np.where(ndix)[0]
+            ndix = np.sum(arr != self.nodata, 1) > 0
+            map_index = np.where(ndix)[0]
 
-            if mapIX.size == 0:
+            if map_index.size == 0:
                 continue # skip bc no data in block
 
             arr[np.logical_not(ndix), :] = self.nodata
 
-            for r in mapIX:
-                arr[r, ...] = ws2d(arr[r, ...], 10**s, wts[r, ...])
+            for ix in map_index:
+                arr[ix, ...] = ws2d(arr[ix, ...], 10**s, wts[ix, ...])
 
             # Write smoothed data to disk
             for fix in range(self.nfiles):
@@ -212,37 +210,37 @@ class RTS(object):
                 raise
 
         self.sgrid = tdir + 'sgrid.tif' # Path to s-grid
-        self.initRasters(tdir)
+        self.init_rasters(tdir)
 
         # S-grid needs to be initialized separately
         init_gdal(self.ref_file, tdir, 'sgrid.tif', dt='float32')
 
-        for yo, ys, xo, xs in iterateBlocks(self.nrows, self.ncols, self.bsize):
-            arr = np.zeros((ys*xs, self.nfiles), dtype='double')
+        for yo, yd, xo, xd in iterate_blocks(self.nrows, self.ncols, self.bsize):
+            arr = np.zeros((yd*xd, self.nfiles), dtype='double')
             wts = arr.copy()
-            sarr = np.zeros((ys*xs), dtype='double')
+            sarr = np.zeros((yd*xd), dtype='double')
             arr_helper = arr.view()
-            arr_helper.shape = (ys, xs, self.nfiles)
+            arr_helper.hape = (yd, xd, self.nfiles)
 
             for fix in range(self.nfiles):
                 ds = gdal.Open(self.files[fix])
-                arr_helper[..., fix] = ds.ReadAsArray(xoff=xo, xsize=xs, yoff=yo, ysize=ys)
+                arr_helper[..., fix] = ds.ReadAsArray(xoff=xo, xsize=xd, yoff=yo, ysize=yd)
                 ds = None
             wts[...] = (arr != self.nodata)*1
 
             ndix = np.sum(arr != self.nodata, 1) > 0 #70
-            mapIX = np.where(ndix)[0]
+            map_index = np.where(ndix)[0]
 
-            if mapIX.size == 0:
+            if map_index.size == 0:
                 continue # skip bc no data in block
 
             arr[np.logical_not(ndix), :] = self.nodata
 
-            for r in mapIX:
+            for ix in map_index:
                 if p:
-                    arr[r, ...], sarr[r] = ws2doptvp(arr[r, ...], wts[r, ...], srange_arr, p)
+                    arr[ix, ...], sarr[ix] = ws2doptvp(arr[ix, ...], wts[ix, ...], srange_arr, p)
                 else:
-                    arr[r, ...], sarr[r] = ws2doptv(arr[r, ...], wts[r, ...], srange_arr)
+                    arr[ix, ...], sarr[ix] = ws2doptv(arr[ix, ...], wts[ix, ...], srange_arr)
 
             for fix in range(self.nfiles):
                 ds = gdal.Open(outfiles[fix], gdal.GA_Update)
@@ -258,7 +256,7 @@ class RTS(object):
             # Write s-values to grid
             ds = gdal.Open(self.sgrid, gdal.GA_Update)
             ds_b = ds.GetRasterBand(1)
-            ds_b.WriteArray(sarr.reshape(ys, xs), xo, yo)
+            ds_b.WriteArray(sarr.reshape(yd, xd), xo, yo)
             ds_b.FlushCache()
             ds_b = None
             ds = None

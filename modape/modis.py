@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long, wildcard-import, too-many-statements, useless-object-inheritance
 
 from __future__ import absolute_import, division, print_function
 
@@ -84,26 +83,26 @@ class MODISquery(object):
                 regex = re.compile('.*.hdf$')
                 dates = np.array([x.getText() for x in soup.findAll('a', href=True) if re.match(r'\d{4}\.\d{2}\.\d{2}', x.getText())])
                 dates_parsed = [datetime.datetime.strptime(x, '%Y.%m.%d/').date() for x in dates]
-                dates_ix = np.flatnonzero(np.array([x >= self.begin and x < self.end for x in dates_parsed]))
+                dates_ix = np.flatnonzero(np.array([self.begin <= x < self.end for x in dates_parsed]))
 
-                for d in dates[dates_ix]:
+                for date_sel in dates[dates_ix]:
                     try:
-                        response = sess.get(self.query_url + d)
+                        response = sess.get(self.query_url + date_sel)
                     except requests.exceptions.RequestException as e:
                         print(e)
-                        print('Error accessing {} - skipping.'.format(self.query_url + d))
+                        print('Error accessing {} - skipping.'.format(self.query_url + date_sel))
 
                     soup = BeautifulSoup(response.content, features='html.parser')
                     hrefs = soup.find_all('a', href=True)
                     hdf_file = [x.getText() for x in hrefs if re.match(regex, x.getText())]
 
                     try:
-                        self.modis_urls.append(self.query_url + d + hdf_file[0])
+                        self.modis_urls.append(self.query_url + date_sel + hdf_file[0])
                     except IndexError:
-                        print('No HDF file found in {} - skipping.'.format(self.query_url + d))
+                        print('No HDF file found in {} - skipping.'.format(self.query_url + date_sel))
                         continue
             else:
-                r = re.compile(r'.+(h\d+v\d+).+')
+                regex = re.compile(r'.+(h\d+v\d+).+')
                 urls = [x.getText() for x in soup.find_all('url')]
 
                 if tile_filter:
@@ -112,7 +111,7 @@ class MODISquery(object):
                 else:
                     self.modis_urls = urls
 
-                self.tiles = list({r.search(x).group(1) for x in self.modis_urls})
+                self.tiles = list({regex.search(x).group(1) for x in self.modis_urls})
 
         self.results = len(self.modis_urls)
         print('... done.\n')
@@ -199,16 +198,16 @@ class MODISquery(object):
         else:
             session = SessionWithHeaderRedirection(self.username, self.password)
 
-            for ix, u in enumerate(self.modis_urls):
+            for ix, url in enumerate(self.modis_urls):
                 print('{} of {}'.format(ix+1, self.results))
-                fname = u[u.rfind('/')+1:]
+                fname = url[url.rfind('/')+1:]
 
                 if os.path.exists('{}/{}'.format(self.targetdir, fname)):
-                    print('\nSkipping {} - {} already exists in {}!\n'.format(u, fname, self.targetdir))
+                    print('\nSkipping {} - {} already exists in {}!\n'.format(url, fname, self.targetdir))
                     continue
 
                 try:
-                    response = session.get(u, stream=True)
+                    response = session.get(url, stream=True)
                     response.raise_for_status()
                     spinner = Spinner('Downloading {} ... '.format(fname))
 
@@ -220,7 +219,7 @@ class MODISquery(object):
                     self.files = self.files + [self.targetdir + fname]
                     print(' done.\n')
                 except requests.exceptions.HTTPError as e:
-                    print('Error downloading {} - skipping. Error message: {}'.format(u, e))
+                    print('Error downloading {} - skipping. Error message: {}'.format(url, e))
                     continue
 
         print('\n[{}]: Downloading finished.'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())))
@@ -665,8 +664,8 @@ class MODISsmth5(object):
                     vector_daily = dates.getDV(nodata)
 
                     # Shift for interpolation
-                    for d in self.rawdates:
-                        vector_daily[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
+                    for rdate in self.rawdates:
+                        vector_daily[dates.daily.index((fromjulian(rdate) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
                 else:
                     vector_daily = None
                     shared_array_smooth = None
@@ -721,8 +720,8 @@ class MODISsmth5(object):
                     vector_daily = dates.getDV(nodata)
 
                     # Shift for interpolation
-                    for d in self.rawdates:
-                        vector_daily[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
+                    for rdate in self.rawdates:
+                        vector_daily[dates.daily.index((fromjulian(rdate) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
                 else:
                     arr_smooth = None
 
@@ -744,13 +743,13 @@ class MODISsmth5(object):
                     if map_index.size == 0:
                         continue #no data points, skipping to next block
 
-                    for r in map_index:
-                        arr_raw[r, :] = ws2d(y=arr_raw[r, :], lmda=10**s, w=wts[r, :])
+                    for ix in map_index:
+                        arr_raw[ix, :] = ws2d(y=arr_raw[ix, :], lmda=10**s, w=wts[ix, :])
                         if self.tinterpolate:
                             z2 = vector_daily.copy()
-                            z2[z2 != nodata] = arr_raw[r, :]
+                            z2[z2 != nodata] = arr_raw[ix, :]
                             z2[...] = ws2d(y=z2, lmda=0.0001, w=np.array((z2 != nodata) * 1, dtype='double'))
-                            arr_smooth[r, :] = z2[dix]
+                            arr_smooth[ix, :] = z2[dix]
                         else:
                             pass
 
@@ -821,8 +820,8 @@ class MODISsmth5(object):
                     vector_daily = dates.getDV(nodata)
 
                     # Shift for interpolation
-                    for d in self.rawdates:
-                        vector_daily[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
+                    for rdate in self.rawdates:
+                        vector_daily[dates.daily.index((fromjulian(rdate) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
                 else:
                     vector_daily = None
                     shared_array_smooth = None
@@ -881,8 +880,8 @@ class MODISsmth5(object):
                     vector_daily = dates.getDV(nodata)
 
                     # Shift for interpolation
-                    for d in self.rawdates:
-                        vector_daily[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
+                    for rdate in self.rawdates:
+                        vector_daily[dates.daily.index((fromjulian(rdate) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
                 else:
                     arr_smooth = None
 
@@ -904,13 +903,13 @@ class MODISsmth5(object):
                         continue #no data points, skipping to next block
                     arr_sgrid[...] = smt_sgrid[br:br+rawchunks[0]]
 
-                    for r in map_index:
-                        arr_raw[r, :] = ws2d(y=arr_raw[r, :], lmda=10**arr_sgrid[r], w=wts[r, :])
+                    for ix in map_index:
+                        arr_raw[ix, :] = ws2d(y=arr_raw[ix, :], lmda=10**arr_sgrid[ix], w=wts[ix, :])
                         if self.tinterpolate:
                             z2 = vector_daily.copy()
-                            z2[z2 != nodata] = arr_raw[r, :]
+                            z2[z2 != nodata] = arr_raw[ix, :]
                             z2[...] = ws2d(y=z2, lmda=0.0001, w=np.array((z2 != nodata)*1, dtype='double'))
-                            arr_smooth[r, :] = z2[dix]
+                            arr_smooth[ix, :] = z2[dix]
                         else:
                             pass
 
@@ -988,8 +987,8 @@ class MODISsmth5(object):
                     vector_daily = dates.getDV(nodata)
 
                     # Shift for interpolation
-                    for d in self.rawdates:
-                        vector_daily[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
+                    for rdate in self.rawdates:
+                        vector_daily[dates.daily.index((fromjulian(rdate) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
                 else:
                     vector_daily = None
                     shared_array_smooth = None
@@ -1051,8 +1050,8 @@ class MODISsmth5(object):
                     vector_daily = dates.getDV(nodata)
 
                     # Shift for interpolation
-                    for d in self.rawdates:
-                        vector_daily[dates.daily.index((fromjulian(d) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
+                    for rdate in self.rawdates:
+                        vector_daily[dates.daily.index((fromjulian(rdate) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
                 else:
                     arr_smooth = None
                 for br in range(0, rawshape[0], rawchunks[0]):
@@ -1070,34 +1069,34 @@ class MODISsmth5(object):
                     if map_index.size == 0:
                         continue #no data points, skipping to next block
 
-                    for r in map_index:
+                    for ix in map_index:
                         if not isinstance(srange, np.ndarray):
-                            lc = lag1corr(arr_raw[r, :-1], arr_raw[r, 1:], nodata)
-                            if lc <= 0.5:
+                            lag_correlation = lag1corr(arr_raw[ix, :-1], arr_raw[ix, 1:], nodata)
+                            if lag_correlation <= 0.5:
                                 sr = np.linspace(-2.0, 1.0, 16.0)
-                            elif lc > 0.5:
+                            elif lag_correlation > 0.5:
                                 sr = np.linspace(0.0, 3.0, 16.0)
                             else:
                                 sr = np.linspace(-1.0, 1.0, 11.0)
                         else:
                             sr = srange
                         if p:
-                            arr_raw[r, :], arr_sgrid[r] = ws2doptvp(y=arr_raw[r, :],
-                                                                    w=np.array((arr_raw[r, :] != nodata)*1, dtype='double'),
-                                                                    llas=array.array('d', sr),
-                                                                    p=p)
+                            arr_raw[ix, :], arr_sgrid[ix] = ws2doptvp(y=arr_raw[ix, :],
+                                                                      w=np.array((arr_raw[ix, :] != nodata)*1, dtype='double'),
+                                                                      llas=array.array('d', sr),
+                                                                      p=p)
                         else:
-                            arr_raw[r, :], arr_sgrid[r] = ws2doptv(y=arr_raw[r, :],
-                                                                   w=np.array((arr_raw[r, :] != nodata)*1, dtype='double'),
-                                                                   llas=array.array('d', sr))
+                            arr_raw[ix, :], arr_sgrid[ix] = ws2doptv(y=arr_raw[ix, :],
+                                                                     w=np.array((arr_raw[ix, :] != nodata)*1, dtype='double'),
+                                                                     llas=array.array('d', sr))
 
                         if self.tinterpolate:
                             z2 = vector_daily.copy()
-                            z2[z2 != nodata] = arr_raw[r, :]
+                            z2[z2 != nodata] = arr_raw[ix, :]
                             z2[...] = ws2d(y=z2,
                                            lmda=0.0001,
                                            w=np.array((z2 != nodata)*1, dtype='double'))
-                            arr_smooth[r, :] = z2[dix]
+                            arr_smooth[ix, :] = z2[dix]
                         else:
                             pass
 
@@ -1116,7 +1115,7 @@ class MODISsmth5(object):
                             bco = bc + smoothoffset
                             smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]]
 
-class MODIStiles(object):
+class MODIStiles(object): # pylint: disable=too-few-public-methods
     '''Class for MODIS tiles.
 
     Converts AOI coordinates to MODIS tile numbers by extracting values from MODIS_TILES.tif.
@@ -1202,7 +1201,7 @@ class MODISmosaic(object):
                 self.tile_cls = dset.attrs['RasterXSize'].item()
                 self.datatype = dset.dtype
                 gt_temp_v = dset.attrs['geotransform']
-                self.pj = dset.attrs['projection']
+                self.prj = dset.attrs['projection']
                 self.nodata = dset.attrs['nodata'].item()
 
                 # If file is global, resolution is already in degrees, otherwhise it's resolution divided with 112000
@@ -1230,9 +1229,9 @@ class MODISmosaic(object):
         dates_dt = [fromjulian(x) for x in self.dates]
         datemin_p = datetime.datetime.strptime(datemin, '%Y%m').date()
         datemax_p = datetime.datetime.strptime(datemax, '%Y%m').date()
-        self.tempIX = np.flatnonzero(np.array([x >= datemin_p and x <= datemax_p for x in dates_dt]))
+        self.temp_index = np.flatnonzero(np.array([datemin_p <= x <= datemax_p for x in dates_dt]))
 
-    def getArray(self, dataset, ix, dt):
+    def get_array(self, dataset, ix, dt):
         '''Reads values for mosaic into array.
 
         Args:
@@ -1271,7 +1270,7 @@ class MODISmosaic(object):
                 raise
         return tiles_array
 
-    def getArrayGlobal(self, dataset, ix, dt):
+    def get_array_global(self, dataset, ix, dt):
         '''Reads values for global mosaic into array.
 
         Since files are global, the array will be a spatial and temporal subset rather than a mosaic.
@@ -1299,7 +1298,7 @@ class MODISmosaic(object):
         return global_array
 
     @contextmanager
-    def getRaster(self, dataset, ix):
+    def get_raster(self, dataset, ix):
         '''Generator for mosaic raster.
 
         This generator can be used within a context manager and will yield an in-memory raster.
@@ -1320,16 +1319,16 @@ class MODISmosaic(object):
 
         # Use the corresponding getArray function if global_flag
         if self.global_flag:
-            value_array = self.getArrayGlobal(dataset, ix, self.dt_gdal[1])
+            value_array = self.get_array_global(dataset, ix, self.dt_gdal[1])
         else:
-            value_array = self.getArray(dataset, ix, self.dt_gdal[1])
+            value_array = self.get_array(dataset, ix, self.dt_gdal[1])
         height, width = value_array.shape
         driver = gdal.GetDriverByName('GTiff')
 
         # Create in-memory dataset with virtual filename driver
         self.raster = driver.Create('/vsimem/inmem.tif', width, height, 1, self.dt_gdal[0])
         self.raster.SetGeoTransform(self.gt)
-        self.raster.SetProjection(self.pj)
+        self.raster.SetProjection(self.prj)
         rb = self.raster.GetRasterBand(1)
         rb.SetNoDataValue(self.nodata)
 

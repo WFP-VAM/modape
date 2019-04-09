@@ -1,6 +1,5 @@
 #!/usr/bin/env python
-# pylint: disable=line-too-long, too-many-statements
-
+# pylint: disable=too-many-branches
 from __future__ import absolute_import, division, print_function
 
 import argparse
@@ -169,7 +168,7 @@ def main():
     else:
         files = args.input
 
-    if len(files) == 0:
+    if not files:
         raise ValueError('No files found to process')
 
     if not os.path.isdir(args.targetdir):
@@ -306,13 +305,13 @@ def main():
             for h5 in files:
                 if not args.pvalue:
                     if re.match('M.D13', os.path.basename(h5)):
-                        pv = 0.90
+                        p = 0.90
                     elif re.match('M.D11', os.path.basename(h5)):
-                        pv = 0.95
+                        p = 0.95
                     else:
-                        pv = 0.50
+                        p = 0.50
                 else:
-                    pv = args.pvalue
+                    p = args.pvalue
 
                 if not os.path.isfile(h5):
                     print('Raw HDF5 {} not found! Please check path.'.format(h5))
@@ -328,7 +327,7 @@ def main():
 
                 if not smt_h5.exists:
                     smt_h5.create()
-                smt_h5.ws2d_vc(args.srange, pv)
+                smt_h5.ws2d_vc(args.srange, p)
 
             if not args.quiet:
                 print('[{}]: Done.'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())))

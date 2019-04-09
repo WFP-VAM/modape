@@ -1,6 +1,5 @@
-# pylint: disable=line-too-long, too-many-statements, import-error
 from __future__ import absolute_import, division, print_function
-
+# pylint: disable=invalid-name, bare-except, unused-argument
 import os
 import re
 import shutil
@@ -8,7 +7,7 @@ import unittest
 from unittest.mock import patch, Mock
 import uuid
 
-import h5py
+import h5py #pylint: disable=import-error
 try:
     import gdal
 except ImportError:
@@ -113,7 +112,7 @@ class TestMODIS(unittest.TestCase):
     @patch('modape.modis.gdal.Dataset.GetMetadataItem', return_value=-3000)
     @patch('modape.modis.gdal.Dataset.GetSubDatasets', return_value=[['NDVI']])
     @patch('modape.modis.gdal.Open', return_value=create_gdal(1200, 1200))
-    def test_rawHDF5(self, mock_ds, mock_sds, mock_nodata):
+    def test_raw_hdf5(self, mock_ds, mock_sds, mock_nodata):
         # Test raw tiled NDVI with 8-day interleaving of MOD/MYD
         rawfiles = [
             'MOD13A2.A2002193.h18v06.006.*.hdf',

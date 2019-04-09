@@ -1,4 +1,4 @@
-# pylint: disable=line-too-long, too-many-statements, E0611, E0401, W0601
+# pylint: disable=invalid-name, global-variable-undefined, broad-except
 from __future__ import absolute_import, division, print_function
 
 import array
@@ -16,8 +16,8 @@ try:
 except ImportError:
     from osgeo import gdal
 
-from cryptography.fernet import Fernet
-from modape.whittaker import lag1corr, ws2d, ws2doptv, ws2doptvp
+from cryptography.fernet import Fernet # pylint: disable=import-error
+from modape.whittaker import lag1corr, ws2d, ws2doptv, ws2doptvp # pylint: disable=no-name-in-module
 
 class SessionWithHeaderRedirection(requests.Session):
     ''' Session class for MODIS query.
@@ -90,7 +90,7 @@ class FileHandler(object):
 # adapted from https://stackoverflow.com/questions/17223301/python-multiprocessing-is-it-possible-to-have-a-pool-inside-of-a-pool/17229030#17229030
 class NoDaemonProcess(multiprocessing.Process):
     # make 'daemon' attribute always return False
-    def _get_daemon(self):
+    def _get_daemon(self): # pylint: disable=no-self-use
         return False
     def _set_daemon(self, value):
         pass
@@ -98,7 +98,7 @@ class NoDaemonProcess(multiprocessing.Process):
 
 # We sub-class multiprocessing.pool.Pool instead of multiprocessing.Pool
 # because the latter is only a wrapper function, not a proper class.
-class Pool(multiprocessing.pool.Pool):
+class Pool(multiprocessing.pool.Pool): # pylint: disable=abstract-method
     Process = NoDaemonProcess
 
 
@@ -114,7 +114,7 @@ class DateHelper(object):
         else:
             yrmin = int(min([x[:4] for x in rawdates]))
             yrmax = int(max([x[:4] for x in rawdates]))
-            daily_tmp = [y for x in range(yrmin, yrmax+2,1) for y in tvec(x, 1)]
+            daily_tmp = [y for x in range(yrmin, yrmax+2, 1) for y in tvec(x, 1)]
             stop = (fromjulian(rawdates[-1]) + datetime.timedelta(rtres)).strftime('%Y%j')
             self.daily = daily_tmp[daily_tmp.index(rawdates[0]):daily_tmp.index(stop)+1]
 
@@ -184,9 +184,9 @@ class Credentials(object):
             p = cipher_suite.encrypt(self.password.encode())
             pdump((u, p), 'modape.cred.pkl')
             pdump(k, 'modape.key.pkl')
-        except:
+        except Exception as e:
             self.destroy()
-            print('Storing Earthdata credentials failed!')
+            print('Storing Earthdata credentials failed! Exception raised: {}'.format(e))
 
     def destroy(self):
         '''Remove all credential files on disk'''
@@ -212,11 +212,8 @@ def pdump(obj, filename):
         None
     '''
 
-    try:
-        with open(filename, 'wb') as pkl:
-            pickle.dump(obj, pkl)
-    except FileNotFoundError:
-        raise
+    with open(filename, 'wb') as pkl:
+        pickle.dump(obj, pkl)
 
 def pload(filename):
     '''Pickle load wrapper
@@ -228,11 +225,8 @@ def pload(filename):
         Pickled object
     '''
 
-    try:
-        with open(filename, 'rb') as pkl:
-            return pickle.load(pkl)
-    except FileNotFoundError:
-        raise
+    with open(filename, 'rb') as pkl:
+        return pickle.load(pkl)
 
 def dtype_GDNP(dt):
     '''GDAL/NP DataType helper.
@@ -279,6 +273,7 @@ def ldom(x):
     return datetime.date(yr, mn, 1) - datetime.timedelta(days=1)
 
 def txx(x):
+    # pylint: disable=no-else-return
     '''Converts tempint integer to flag.'''
 
     if x:
@@ -412,7 +407,7 @@ def execute_ws2d_vc(ix):
 
     if not parameters['p']:
         arr_raw[ix, :], arr_sgrid[ix] = ws2doptv(y=arr_raw[ix, :],
-                                                 w=np.array((arr_raw[ix, :] != parameters['nd'])*1,dtype='double'),
+                                                 w=np.array((arr_raw[ix, :] != parameters['nd'])*1, dtype='double'),
                                                  llas=array.array('d', parameters['srange']))
     else:
         if not isinstance(parameters['srange'], np.ndarray):
