@@ -15,7 +15,7 @@ except ImportError:
     from osgeo import gdal
 
 import fake
-from modape.modis import ModisQuery, ModisRawH5, ModisSmoothH5
+from modape.modis import ModisQuery, ModisRawH5, ModisSmoothH5, modis_tiles
 
 def create_gdal(x, y):
     """Create in-memory gdal dataset for testing.
@@ -252,6 +252,11 @@ class TestMODIS(unittest.TestCase):
         else:
             os.remove('MOD11C2.006.LTD.h5')
             os.remove('MOD11C2.006.txp.LTD.h5')
+
+    def test_modis_tiles(self):
+        """Test modis_tiles."""
+        tiles = modis_tiles([12, 19, 29, 1]) # xmin, ymax, xmax, ymin
+        self.assertEqual(tiles, ['h19v07', 'h19v08', 'h20v07', 'h20v08'])
 
 if __name__ == '__main__':
     unittest.main()
