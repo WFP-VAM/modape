@@ -38,6 +38,7 @@ setup(
     version=_version.__version__,
     author='Valentin Pesendorfer',
     author_email='valentin.pesendorfer@wfp.org',
+    url='http://wfp-vam.github.io/modape',
     long_description=open('README.rst').read(),
     include_dirs=[numpy.get_include()],
     entry_points={
