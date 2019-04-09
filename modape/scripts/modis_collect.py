@@ -13,7 +13,7 @@ import sys
 import time
 import traceback
 
-from modape.modis import MODISrawh5
+from modape.modis import ModisRawH5
 
 def run_process(pdict):
     """Execute processing into raw HDF5 file
@@ -26,7 +26,7 @@ def run_process(pdict):
 
     for vam_product_code in pdict['vam_product_code']:
         try:
-            rh5 = MODISrawh5(pdict['files'],
+            rh5 = ModisRawH5(pdict['files'],
                              vam_product_code=vam_product_code,
                              targetdir=pdict['targetdir'],
                              interleave=pdict['interleave'])

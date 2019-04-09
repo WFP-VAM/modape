@@ -15,7 +15,7 @@ except ImportError:
     from osgeo import gdal
 
 import fake
-from modape.modis import MODISquery, MODISrawh5, MODISsmth5
+from modape.modis import ModisQuery, ModisRawH5, ModisSmoothH5
 
 def create_gdal(x, y):
     """Create in-memory gdal dataset for testing.
@@ -95,7 +95,7 @@ class TestMODIS(unittest.TestCase):
                 "https://e4ftl01.cr.usgs.gov//MODV6_Cmp_B/MOLT/MOD13A2.006/2000.04.06/MOD13A2.A2000097.h18v06.006.2015136035959.hdf",
                 "https://e4ftl01.cr.usgs.gov//MODV6_Cmp_B/MOLT/MOD13A2.006/2000.04.22/MOD13A2.A2000113.h18v06.006.2015137034359.hdf"]
 
-        query = MODISquery(url='http://tiled-test.query', begindate='2000-01-01', enddate='2000-04-30')
+        query = ModisQuery(url='http://tiled-test.query', begindate='2000-01-01', enddate='2000-04-30')
 
         self.assertFalse(query.global_flag)
         self.assertEqual(query.modis_urls, urls)
@@ -109,7 +109,7 @@ class TestMODIS(unittest.TestCase):
                 "http://global-test.query/2002.07.28/MYD11C2.A2002209.006.2015149021240.hdf",
                 "http://global-test.query/2002.08.05/MYD11C2.A2002217.006.2015149021044.hdf"]
 
-        query = MODISquery(url='http://global-test.query/', begindate='2002-07-01', enddate='2002-08-15', global_flag=True)
+        query = ModisQuery(url='http://global-test.query/', begindate='2002-07-01', enddate='2002-08-15', global_flag=True)
 
         self.assertTrue(query.global_flag)
         self.assertEqual(query.modis_urls, urls)
@@ -131,7 +131,7 @@ class TestMODIS(unittest.TestCase):
             'MYD13A2.A2002185.h18v06.006.*.hdf',
             'MYD13A2.A2002201.h18v06.006.*.hdf',
         ]
-        rawh5 = MODISrawh5(files=rawfiles, interleave=True)
+        rawh5 = ModisRawH5(files=rawfiles, interleave=True)
         mock_ds.assert_called_with('MYD13A2.A2002185.h18v06.006.*.hdf')
 
         self.assertEqual(rawh5.nfiles, 4)
@@ -164,7 +164,7 @@ class TestMODIS(unittest.TestCase):
         mock_ds.return_value = create_gdal(7200, 3600)
         mock_sds.return_value = [['LST_Day']]
 
-        rawh5 = MODISrawh5(files=rawfiles)
+        rawh5 = ModisRawH5(files=rawfiles)
         mock_ds.assert_called_with('MYD11C2.A2002185.*.006.*.hdf')
         self.assertEqual(rawh5.nfiles, 4)
         self.assertFalse(rawh5.exists)
@@ -189,7 +189,7 @@ class TestMODIS(unittest.TestCase):
         """Test smooth tiled 10-day NDVI and global 5-day LST Day."""
         try:
             create_h5(fn='MXD13A2.h18v06.006.VIM.h5', x=1200, y=1200, tr=8, ts=8, r=0.009)
-            smth5 = MODISsmth5('MXD13A2.h18v06.006.VIM.h5', tempint=10)
+            smth5 = ModisSmoothH5('MXD13A2.h18v06.006.VIM.h5', tempint=10)
 
             self.assertEqual(os.path.basename(smth5.outname), 'MXD13A2.h18v06.006.txd.VIM.h5')
             self.assertEqual(smth5.rawdates, [
@@ -222,7 +222,7 @@ class TestMODIS(unittest.TestCase):
         # Test smooth global 5-day LST Day
         try:
             create_h5(fn='MOD11C2.006.LTD.h5', x=3600, y=7200, tr=8, ts=4, r=0.05)
-            smth5 = MODISsmth5('MOD11C2.006.LTD.h5', tempint=5)
+            smth5 = ModisSmoothH5('MOD11C2.006.LTD.h5', tempint=5)
 
             self.assertEqual(os.path.basename(smth5.outname), 'MOD11C2.006.txp.LTD.h5')
             self.assertEqual(smth5.rawdates, [

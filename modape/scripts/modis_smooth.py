@@ -15,7 +15,7 @@ import time
 
 import numpy as np
 
-from modape.modis import MODISsmth5
+from modape.modis import ModisSmoothH5
 from modape.utils import init_parameters, Pool
 
 def initfun(pdict_):
@@ -39,7 +39,7 @@ def run_ws2d(h5):
         print('Raw HDF5 {} not found! Please check path.'.format(h5))
 
     else:
-        smt_h5 = MODISsmth5(rawfile=h5,
+        smt_h5 = ModisSmoothH5(rawfile=h5,
                             startdate=pdict['startdate'],
                             tempint=pdict['tempint'],
                             nsmooth=pdict['nsmooth'],
@@ -61,7 +61,7 @@ def run_ws2d_sgrid(h5):
     if not os.path.isfile(h5):
         print('Raw HDF5 {} not found! Please check path.'.format(h5))
     else:
-        smt_h5 = MODISsmth5(rawfile=h5,
+        smt_h5 = ModisSmoothH5(rawfile=h5,
                             startdate=pdict['startdate'],
                             tempint=pdict['tempint'],
                             nsmooth=pdict['nsmooth'],
@@ -83,7 +83,7 @@ def run_ws2d_vc(h5):
     if not os.path.isfile(h5):
         print('Raw HDF5 {} not found! Please check path.'.format(h5))
     else:
-        smt_h5 = MODISsmth5(rawfile=h5,
+        smt_h5 = ModisSmoothH5(rawfile=h5,
                             startdate=pdict['startdate'],
                             tempint=pdict['tempint'],
                             nsmooth=pdict['nsmooth'],
@@ -105,7 +105,7 @@ def run_ws2d_vcp(h5):
     if not os.path.isfile(h5):
         print('Raw HDF5 {} not found! Please check path.'.format(h5))
     else:
-        smt_h5 = MODISsmth5(rawfile=h5,
+        smt_h5 = ModisSmoothH5(rawfile=h5,
                             startdate=pdict['startdate'],
                             tempint=pdict['tempint'],
                             nsmooth=pdict['nsmooth'],
@@ -288,7 +288,7 @@ def main():
                     print('Raw HDF5 {} not found! Please check path.'.format(h5))
                     continue
 
-                smt_h5 = MODISsmth5(rawfile=h5,
+                smt_h5 = ModisSmoothH5(rawfile=h5,
                                     startdate=args.startdate,
                                     tempint=args.tempint,
                                     nsmooth=args.nsmooth,
@@ -322,7 +322,7 @@ def main():
                     print('Raw HDF5 {} not found! Please check path.'.format(h5))
                     continue
 
-                smt_h5 = MODISsmth5(rawfile=h5,
+                smt_h5 = ModisSmoothH5(rawfile=h5,
                                     startdate=args.startdate,
                                     tempint=args.tempint,
                                     nsmooth=args.nsmooth,
@@ -346,7 +346,7 @@ def main():
                     print('Raw HDF5 {} not found! Please check path.'.format(h5))
                     continue
 
-                smt_h5 = MODISsmth5(rawfile=h5,
+                smt_h5 = ModisSmoothH5(rawfile=h5,
                                     startdate=args.startdate,
                                     tempint=args.tempint,
                                     nsmooth=args.nsmooth,
@@ -369,7 +369,7 @@ def main():
                     print('Raw HDF5 {} not found! Please check path.'.format(h5))
                     continue
 
-                smt_h5 = MODISsmth5(rawfile=h5,
+                smt_h5 = ModisSmoothH5(rawfile=h5,
                                     startdate=args.startdate,
                                     tempint=args.tempint,
                                     nsmooth=args.nsmooth,

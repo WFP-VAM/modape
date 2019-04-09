@@ -14,7 +14,7 @@ import pickle
 import re
 import sys
 
-from modape.modis import MODIStiles, MODISmosaic
+from modape.modis import modis_tiles, ModisMosaic
 
 try:
     import gdal
@@ -62,7 +62,7 @@ def main():
     else:
         dset = 'data'
 
-    # If ROI is a bounding box, change order or corner coordinates for MODIStiles
+    # If ROI is a bounding box, change order or corner coordinates for modis_tiles
     if args.roi and len(args.roi) == 4:
         args.roi = [args.roi[i] for i in [0, 3, 2, 1]]
 
@@ -100,12 +100,12 @@ def main():
 
     # If the product is not global and there's an ROI, we need to query the intersecting tiles
     if not global_flag and args.roi:
-        tiles = MODIStiles(args.roi)
-        if not tiles.tiles:
+        tiles = modis_tiles(args.roi)
+        if not tiles:
             raise ValueError('\nNo MODIS tile(s) found for location. Please check coordinates!')
 
         # Regexp for tiles
-        tile_regexp = re.compile('|'.join(tiles.tiles))
+        tile_regexp = re.compile('|'.join(tiles))
 
         # Files for tile result
         h5files = [x for x in h5files if re.search(tile_regexp, x)]
@@ -124,7 +124,7 @@ def main():
         h5files_vpc = [x for x in h5files if vam_code in x] # Subset files for vam_code
 
         # Get mosaic
-        mosaic = MODISmosaic(files=h5files_vpc,
+        mosaic = ModisMosaic(files=h5files_vpc,
                              datemin=args.begin_date,
                              datemax=args.end_date,
                              global_flag=global_flag)

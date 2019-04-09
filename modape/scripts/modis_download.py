@@ -10,7 +10,7 @@ import re
 import sys
 
 import ogr
-from modape.modis import MODISquery
+from modape.modis import ModisQuery
 from modape.utils import Credentials
 
 def main():
@@ -183,7 +183,7 @@ def main():
 
             # Run query
             print('\nPRODUCT: {}\n'.format(product_subset))
-            query_result = MODISquery(query_url,
+            query_result = ModisQuery(query_url,
                                       targetdir=args.targetdir,
                                       begindate=args.begin_date,
                                       enddate=args.end_date,

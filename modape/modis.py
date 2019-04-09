@@ -3,11 +3,11 @@ MODIS processing chain classes.
 
 This file contains all the classes used in the MODIS processing chain:
 
- - MODISquery: query and download raw MODIS HDF files
- - MODISrawh5: HDF5 file object containing raw MODIS data
- - MODISsmth5: HDF5 file object containing smoothed MODIS data
- - MODIStiles: MODIS tiles over AOI
- - MODISmosaic: mosaic of multiple smooth HDF5 files
+ - ModisQuery: query and download raw MODIS HDF files
+ - ModisRawH5: HDF5 file object containing raw MODIS data
+ - ModisSmoothH5: HDF5 file object containing smoothed MODIS data
+ - modis_tiles: MODIS tiles over AOI
+ - ModisMosaic: mosaic of multiple smooth HDF5 files
 
 Author: Valentin Pesendorfer, April 2019
 """
@@ -42,19 +42,19 @@ from modape.utils import (SessionWithHeaderRedirection, FileHandler, DateHelper,
                           init_parameters, init_worker, execute_ws2d, execute_ws2d_sgrid, execute_ws2d_vc)
 from modape.whittaker import lag1corr, ws2d, ws2doptv, ws2doptvp # pylint: disable=no-name-in-module
 
-__all__ = ['MODISquery', 'MODISrawh5', 'MODISsmth5', 'MODIStiles', 'MODISmosaic']
+__all__ = ['ModisQuery', 'ModisRawH5', 'ModisSmoothH5', 'modis_tiles', 'ModisMosaic']
 
 # turn off BeautifulSoup warnings
 warnings.filterwarnings('ignore', category=UserWarning, module='bs4')
 
-class MODISquery(object):
+class ModisQuery(object):
     """Class for querying and downloading MODIS data."""
 
     def __init__(self, url, begindate,
                  enddate, username=None, password=None,
                  targetdir=os.getcwd(), global_flag=None,
                  aria2=False, tile_filter=None):
-        """Creates a MODISquery object.
+        """Creates a ModisQuery object.
 
         Args:
             url: Query URL as created by modis_download.py
@@ -140,7 +140,7 @@ class MODISquery(object):
     def set_credentials(self, username, password):
         """Set Earthdata credentials.
 
-        Sets Earthdata username and password in created MODISquery object.
+        Sets Earthdata username and password in created ModisQuery object.
 
         Args:
             username (str): Earthdata username
@@ -240,7 +240,7 @@ class MODISquery(object):
         print('\n[{}]: Downloading finished.'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())))
 
 
-class MODISrawh5(object):
+class ModisRawH5(object):
     """Class for raw MODIS data collected into HDF5 file, ready for smoothing.
 
     MOD/MYD 13 products can be interleaved into a combined MXD.
@@ -248,7 +248,7 @@ class MODISrawh5(object):
 
     def __init__(self, files, vam_product_code=None,
                  targetdir=os.getcwd(), interleave=False):
-        """Create a MODISrawh5 class
+        """Create a ModisRawH5 class
 
         Args:
             files: A list of absolute paths to MODIS raw hdf files to be processed
@@ -494,19 +494,19 @@ class MODISrawh5(object):
 
     def __str__(self):
         """String to be displayed when printing an instance of the class object"""
-        return 'MODISrawh5 object: {} - {} files - exists on disk: {}'.format(self.outname, self.nfiles, self.exists)
+        return 'ModisRawH5 object: {} - {} files - exists on disk: {}'.format(self.outname, self.nfiles, self.exists)
 
 
-class MODISsmth5(object):
+class ModisSmoothH5(object):
     """Class for smoothed MODIS data collected into HDF5 file."""
 
     def __init__(self, rawfile, startdate=None,
                  tempint=None, nsmooth=0, nupdate=0,
                  targetdir=os.getcwd(), nworkers=1):
-        """Create MODISsmth5 object.
+        """Create ModisSmoothH5 object.
 
         Args:
-            rawfile: Full path to a MODISrawh5 file
+            rawfile: Full path to a ModisRawH5 file
             tempint: Integer specifying temporal interpolation (default is None, so native temporal resolution)
             nsmooth: Number of raw timesteps used for smoothing (default is all)
             nupdate: Number of smoothed timesteps to be updated (default is all)
@@ -1131,57 +1131,15 @@ class MODISsmth5(object):
                             bco = bc + smoothoffset
                             smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]]
 
-class MODIStiles(object): # pylint: disable=too-few-public-methods
-    """Class for MODIS tiles.
 
-    Converts AOI coordinates to MODIS tile numbers by extracting values from MODIS_TILES.tif.
-    """
-
-    def __init__(self, aoi):
-        """Creates MODIStiles object.
-
-        Args:
-            aoi: AOI coordinates, either LAT LON or XMIN, YMAX, XMAX, YMIN
-        """
-
-        self.aoi = aoi
-
-        # Load MODIS_TILES.tif from data directory
-        this_dir, _ = os.path.split(__file__)
-        ds = gdal.Open(os.path.join(this_dir, 'data', 'MODIS_TILES.tif'))
-
-        # Try to catch TIFF issues
-        try:
-            gt = ds.GetGeoTransform()
-        except AttributeError:
-            raise SystemExit('Could not find \'MODIS_TILES.tif\' index raster. Try re-installing the package.')
-
-        # Indices fpr point AOI
-        if len(self.aoi) == 2:
-            xo = int(round((self.aoi[1]-gt[0])/gt[1]))
-            yo = int(round((gt[3]-self.aoi[0])/gt[1]))
-            xd = 1
-            yd = 1
-        # Indices for bounding box AOI
-        elif len(self.aoi) == 4:
-            xo = int(round((self.aoi[0]-gt[0])/gt[1]))
-            yo = int(round((gt[3]-self.aoi[1])/gt[1]))
-            xd = int(round((self.aoi[2] - self.aoi[0])/gt[1]))
-            yd = int(round((self.aoi[1] - self.aoi[3])/gt[1]))
-        tile_extract = ds.ReadAsArray(xo, yo, xd, yd) # Read
-        ds = None
-        tile_tmp = np.unique(tile_extract/100) # Tile IDs are stored as H*100+V
-        tiles = ['{:05.2f}'.format(x) for x in tile_tmp[tile_tmp != 0]]
-        self.tiles = ['h{}v{}'.format(*x.split('.')) for x in tiles]
-
-class MODISmosaic(object):
+class ModisMosaic(object):
     """Class for mosaic of MODIS tiles.
 
     Moisaics tiles per Product, parameter and timestep. Enables extraction as GeoTiff.
     """
 
     def __init__(self, files, datemin, datemax, global_flag):
-        """ Creates MODISmosaic object.
+        """ Creates ModisMosaic object.
 
         Args:
             files: List of paths to files used for creating the mosaic
@@ -1360,3 +1318,44 @@ class MODISmosaic(object):
         self.raster = None
         driver = None
         del value_array
+
+def modis_tiles(aoi):
+    """Function for querying MODIS tiles.
+
+    Converts AOI coordinates to MODIS tile numbers by extracting values from MODIS_TILES.tif.
+
+    Args:
+        aoi: AOI coordinates, either LAT LON or XMIN, YMAX, XMAX, YMIN
+
+    Returns:
+        List of MODIS tile IDs intersecting AOI
+    """
+
+    # Load MODIS_TILES.tif from data directory
+    this_dir, _ = os.path.split(__file__)
+    ds = gdal.Open(os.path.join(this_dir, 'data', 'MODIS_TILES.tif'))
+
+    # Try to catch TIFF issues
+    try:
+        gt = ds.GetGeoTransform()
+    except AttributeError:
+        raise SystemExit('Could not find \'MODIS_TILES.tif\' index raster. Try re-installing the package.')
+
+    # Indices fpr point AOI
+    if len(aoi) == 2:
+        xo = int(round((aoi[1]-gt[0])/gt[1]))
+        yo = int(round((gt[3]-aoi[0])/gt[1]))
+        xd = 1
+        yd = 1
+    # Indices for bounding box AOI
+    elif len(aoi) == 4:
+        xo = int(round((aoi[0]-gt[0])/gt[1]))
+        yo = int(round((gt[3]-aoi[1])/gt[1]))
+        xd = int(round((aoi[2] - aoi[0])/gt[1]))
+        yd = int(round((aoi[1] - aoi[3])/gt[1]))
+    tile_extract = ds.ReadAsArray(xo, yo, xd, yd) # Read
+    ds = None
+    tile_tmp = np.unique(tile_extract/100) # Tile IDs are stored as H*100+V
+    tiles = ['{:05.2f}'.format(x) for x in tile_tmp[tile_tmp != 0]]
+
+    return ['h{}v{}'.format(*x.split('.')) for x in tiles]
