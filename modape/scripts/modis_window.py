@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# pylint: disable=line-too-long, too-many-statements
+# pylint: disable=broad-except
 
 from __future__ import absolute_import, division, print_function
 
@@ -92,11 +92,8 @@ def main():
     # Check if targetdir exists, create if not
     if not os.path.exists(args.targetdir):
         print('\nTarget directory {} does not exist! Creating ... '.format(args.targetdir), end='')
-        try:
-            os.makedirs(args.targetdir)
-            print('done.\n')
-        except:
-            raise
+        os.makedirs(args.targetdir)
+        print('done.\n')
 
     # If the product is not global and there's an ROI, we need to query the intersecting tiles
     if not global_flag and args.roi:
@@ -136,7 +133,7 @@ def main():
                                                   vam_code.lower())
 
             print('Processing file {}'.format(filename))
-            with mosaic.getRaster(dset, None) as mosaic_ropen:
+            with mosaic.get_raster(dset, None) as mosaic_ropen:
                 # Subset if bbox was supplied
                 try:
                     if args.roi and len(args.roi) > 2:
@@ -153,13 +150,13 @@ def main():
                             creationOptions=['COMPRESS=LZW', 'PREDICTOR=2'],
                         )
 
-                        ds = gdal.Warp(
+                        _ = gdal.Warp(
                             filename,
                             mosaic_ropen.raster,
                             options=wopt,
                         )
 
-                        ds = None
+                        _ = None
                     else:
                         wopt = gdal.WarpOptions(
                             dstSRS='EPSG:4326',
@@ -173,19 +170,19 @@ def main():
                             creationOptions=['COMPRESS=LZW', 'PREDICTOR=2'],
                         )
 
-                        ds = gdal.Warp(
+                        _ = gdal.Warp(
                             filename,
                             mosaic_ropen.raster,
                             options=wopt,
                         )
 
-                        ds = None
+                        _ = None
                 except Exception as e:
                     print('Error while reading {} data for {}! Please check if dataset exits within file. \n\n Error message:\n\n {}'.format(args.dataset, filename, e))
             del mosaic_ropen
         else:
             # If the dataset is not s-grid, we need to iterate over dates
-            for ix in mosaic.tempIX:
+            for ix in mosaic.temp_index:
                 filename = '{}/{}{}{}j{}.tif'.format(args.targetdir,
                                                      args.region.lower(),
                                                      vam_code.lower(),
@@ -194,7 +191,7 @@ def main():
 
                 print('Processing file {}'.format(filename))
 
-                with mosaic.getRaster(dset, ix) as mosaic_ropen:
+                with mosaic.get_raster(dset, ix) as mosaic_ropen:
                     try:
                         if args.roi and len(args.roi) > 2:
                             wopt = gdal.WarpOptions(
@@ -210,13 +207,13 @@ def main():
                                 creationOptions=['COMPRESS=LZW', 'PREDICTOR=2']
                             )
 
-                            ds = gdal.Warp(
+                            _ = gdal.Warp(
                                 filename,
                                 mosaic_ropen.raster,
                                 options=wopt,
                             )
 
-                            ds = None
+                            _ = None
                         else:
                             wopt = gdal.WarpOptions(
                                 dstSRS='EPSG:4326',
@@ -230,13 +227,13 @@ def main():
                                 creationOptions=['COMPRESS=LZW', 'PREDICTOR=2'],
                             )
 
-                            ds = gdal.Warp(
+                            _ = gdal.Warp(
                                 filename,
                                 mosaic_ropen.raster,
                                 options=wopt,
                             )
 
-                            ds = None
+                            _ = None
                     except Exception as e:
                         print('Error while reading {} data for {}! Please check if dataset exits within file. \n\n Error message:\n\n {}'.format(args.dataset, filename, e))
                 del mosaic_ropen

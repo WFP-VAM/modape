@@ -1,4 +1,4 @@
-# pylint: disable=line-too-long, too-many-statements
+# pylint: disable=invalid-name
 from __future__ import absolute_import, division, print_function
 
 import array

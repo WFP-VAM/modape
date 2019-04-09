@@ -1,14 +1,13 @@
-# pylint: disable=line-too-long, too-many-statements, import-error, global-variable-undefined
+# pylint: disable=global-variable-undefined, invalid-name
 from __future__ import absolute_import, division, print_function
 
-import multiprocessing as mp
 import os
 import pickle
 import unittest
 
 import numpy as np
 
-from modape.utils import *
+from modape.utils import DateHelper, Credentials, ldom, tvec, fromjulian
 
 class TestUtils(unittest.TestCase):
 

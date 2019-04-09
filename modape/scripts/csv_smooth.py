@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# pylint: disable=line-too-long, too-many-statements
 
 from __future__ import absolute_import, division, print_function
 
@@ -54,7 +53,7 @@ def main():
 
     # Create filename of output CSV
     outname = '{}/{}'.format(os.path.dirname(os.path.abspath(args.file)), os.path.basename(args.file)[0:3])
-    
+
     df = pd.read_csv(args.file, header=1) # Read input
     resdf = pd.DataFrame(index=range(len(df)+2)) #result dataframe, +2 for Sopt
 
@@ -72,13 +71,13 @@ def main():
         print('\nSmoothing using fixed S value {}. Writing to file: {}\n'.format(s, outname))
 
         # Iterate columns (skip 1st)
-        for c in df.columns[1:]:
-            val = df[c].values
+        for col in df.columns[1:]:
+            val = df[col].values
             tmparr[...] = val[2:]
             val[2:] = ws2d(tmparr, s, np.array((tmparr > 0)*1, dtype='double'))
-            resdf[c] = pd.concat([pd.Series(val),
-                                  pd.Series([s, np.log10(s)])],
-                                 ignore_index=True)
+            resdf[col] = pd.concat([pd.Series(val),
+                                    pd.Series([s, np.log10(s)])],
+                                   ignore_index=True)
     else:
         if args.srange:
             if len(args.srange) != 3:
@@ -104,8 +103,8 @@ def main():
             print('\nSmoothing using asymmetric V-curve optimization with smin:{}, smax:{}, sstep:{} and pvalue:{}.\n\nWriting to file: {}\n'
                   .format(args.srange[0], args.srange[1], args.srange[2], args.pvalue, outname))
 
-            for c in df.columns[1:]:
-                val = df[c].values
+            for col in df.columns[1:]:
+                val = df[col].values
                 tmparr[...] = val[2:]
 
                 val[2:], sopt = ws2doptvp(tmparr,
@@ -113,22 +112,22 @@ def main():
                                           srange,
                                           args.pvalue)
 
-                resdf[c] = pd.concat([pd.Series(val),
-                                      pd.Series([sopt, np.log10(sopt)]),
-                                      pd.Series(args.pvalue)],
-                                     ignore_index=True)
+                resdf[col] = pd.concat([pd.Series(val),
+                                        pd.Series([sopt, np.log10(sopt)]),
+                                        pd.Series(args.pvalue)],
+                                       ignore_index=True)
         else:
             outname = outname + 'filtoptv.csv'
             print('\nSmoothing using V-curve optimization with smin:{}, smax:{}, sstep:{}.\n\nWriting to file: {}\n'
                   .format(args.srange[0], args.srange[1], args.srange[2], outname))
 
-            for c in df.columns[1:]:
-                val = df[c].values
+            for col in df.columns[1:]:
+                val = df[col].values
                 tmparr[...] = val[2:]
                 val[2:], sopt = ws2doptv(tmparr, np.array((tmparr > 0)*1, dtype='double'), srange)
-                resdf[c] = pd.concat([pd.Series(val),
-                                      pd.Series([sopt, np.log10(sopt)])],
-                                     ignore_index=True)
+                resdf[col] = pd.concat([pd.Series(val),
+                                        pd.Series([sopt, np.log10(sopt)])],
+                                       ignore_index=True)
 
     # Write to disk
     resdf.to_csv(outname, index=False)

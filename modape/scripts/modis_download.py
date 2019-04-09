@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# pylint: disable=line-too-long, too-many-statements,
 
 from __future__ import absolute_import, division, print_function
 
