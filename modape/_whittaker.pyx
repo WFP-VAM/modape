@@ -1,6 +1,11 @@
 #cython: boundscheck=True
 #cython: wraparound=False
 #cython: cdivision=True
+"""
+Core whittaker functions
+
+Author: Valentin Pesendorfer, April 2019
+"""
 
 from cpython.array cimport array, clone
 from libc.math cimport log, pow, sqrt
@@ -13,9 +18,18 @@ ctypedef np.double_t dtype_t
 __all__ = ['lag1corr','ws2d','ws2doptv','ws2doptvp']
 
 cpdef lag1corr(np.ndarray[dtype_t] data1, np.ndarray[dtype_t] data2, double nd):
+    """Calculates Lag-1 autocorrelation.
 
-    ## Calculate Lag-1 autocorrelation
-    ## adapted from https://stackoverflow.com/a/29194624/5997555
+    Adapted from https://stackoverflow.com/a/29194624/5997555
+
+    Args:
+        data1: fist data series
+        data2: second data series
+        nd: no-data value (will be exluded from calulation)
+
+    Returns:
+        Lag-1 autocorrelation value
+    """
 
     cdef int M, sub
     cdef double sum1, sum2, var_sum1, var_sum2, cross_sum, std1, std2, cross_mean
@@ -90,8 +104,18 @@ cpdef ws2d(np.ndarray[dtype_t] y, double lmda, np.ndarray[dtype_t] w):
         z.data.as_doubles[i] = z.data.as_doubles[i] / d.data.as_doubles[i] - c.data.as_doubles[i] * z.data.as_doubles[i + 1] - e.data.as_doubles[i] * z.data.as_doubles[i + 2]
     return z
 
-cdef ws2d_internal(np.ndarray[dtype_t] y, double lmda, array[double] w):
-    ## internal whittaker function for asymmetric smoothing
+cdef _ws2d(np.ndarray[dtype_t] y, double lmda, array[double] w):
+    """Internal whittaker function for use in asymmetric smoothing.
+
+    Args:
+      y: time-series numpy array
+      lmbda: lambda (s) value
+      w: weights numpy array
+
+    Returns:
+        smoothed time-series array z
+    """
+
     cdef array dbl_array_template = array('d', [])
     cdef int i, i1, i2, m, n
     cdef array z, d, c, e
@@ -134,7 +158,16 @@ cdef ws2d_internal(np.ndarray[dtype_t] y, double lmda, array[double] w):
     return z
 
 cpdef ws2doptv(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[double] llas):
-    ## vcurve
+    """Whittaker smoother with normal V-curve optimization of lambda (S).
+
+    Args:
+        y: time-series numpy array
+        w: weights numpy array
+        llas: array with lambda values to iterate (S-range)
+
+    Returns:
+        Smoothed time-series array z and optimized lambda (S) value lopt
+    """
     cdef array template = array('d', [])
     cdef array fits, pens, diff1, lamids, v, z
     cdef int m, m1, m2, nl, nl1, lix, i, k
@@ -205,7 +238,17 @@ cpdef ws2doptv(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[double] llas)
 
 
 cpdef ws2doptvp(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[double] llas, double p):
-    ## vcurve with asymmetric smoothing
+    """Whittaker smoother with asymmetric V-curve optimization of lambda (S).
+
+    Args:
+        y: time-series numpy array
+        w: weights numpy array
+        llas: array with lambda values to iterate (S-range)
+        p: "Envelope" value
+
+    Returns:
+        Smoothed time-series array z and optimized lambda (S) value lopt
+    """
     cdef array template = array('d', [])
     cdef array fits, pens, diff1, lamids, v, z
     cdef int m, m1, m2, nl, nl1, lix, i, j, k
@@ -246,7 +289,7 @@ cpdef ws2doptvp(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[double] llas
               wa.data.as_doubles[j] = p1
             ww.data.as_doubles[j] = w[j] * wa.data.as_doubles[j]
 
-          znew[0:m] = ws2d_internal(y, l, ww)
+          znew[0:m] = _ws2d(y, l, ww)
           z_tmp = 0.0
           j = 0
           for j in range(m):
@@ -294,5 +337,5 @@ cpdef ws2doptvp(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[double] llas
             k = i
 
     lopt = pow(10, lamids.data.as_doubles[k])
-    z[0:m] = ws2d_internal(y, lopt, ww)
+    z[0:m] = _ws2d(y, lopt, ww)
     return z, lopt

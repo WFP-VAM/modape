@@ -1,4 +1,16 @@
+"""
+MODIS processing chain classes
 
+This file contains all the classes used in the MODIS processing chain:
+
+ - MODISquery: query and download raw MODIS HDF files
+ - MODISrawh5: HDF5 file object containing raw MODIS data
+ - MODISsmth5: HDF5 file object containing smoothed MODIS data
+ - MODIStiles: MODIS tiles over AOI
+ - MODISmosaic: mosaic of multiple smooth HDF5 files
+
+Author: Valentin Pesendorfer, April 2019
+"""
 from __future__ import absolute_import, division, print_function
 
 import array
@@ -30,28 +42,31 @@ from modape.utils import (SessionWithHeaderRedirection, FileHandler, DateHelper,
                           init_parameters, init_worker, execute_ws2d, execute_ws2d_sgrid, execute_ws2d_vc)
 from modape.whittaker import lag1corr, ws2d, ws2doptv, ws2doptvp # pylint: disable=no-name-in-module
 
+__all__ = ['MODISquery', 'MODISrawh5', 'MODISsmth5', 'MODIStiles', 'MODISmosaic']
+
 # turn off BeautifulSoup warnings
 warnings.filterwarnings('ignore', category=UserWarning, module='bs4')
 
 class MODISquery(object):
-    '''Class for querying and downloading MODIS data.'''
+    """Class for querying and downloading MODIS data."""
 
     def __init__(self, url, begindate,
                  enddate, username=None, password=None,
                  targetdir=os.getcwd(), global_flag=None,
                  aria2=False, tile_filter=None):
-        '''Creates a MODISquery object.
+        """Creates a MODISquery object.
 
         Args:
-            url (str): Query URL as created by downloadMODIS.py
-            begindate (str): Begin of period for query as ISO 8601 date string (YYYY-MM-DD)
-            enddate (str): End of period for query as ISO 8601 date string (YYYY-MM-DD)
-            username (str): Earthdata username (only required for download)
-            password (str): Earthdata password (only required for download)
-            targetdir (str): Path to target directory for downloaded files (default cwd)
-            global_flag (bool):Flag indictaing queried product si global file instead of tiled product
-            aria2 (bool): Use aria2 for downloading rather then python's requests
-        '''
+            url: Query URL as created by modis_download.py
+            begindate: Begin of period for query as ISO 8601 date string (YYYY-MM-DD)
+            enddate: End of period for query as ISO 8601 date string (YYYY-MM-DD)
+            username: Earthdata username (only required for download)
+            password: Earthdata password (only required for download)
+            targetdir: Path to target directory for downloaded files (default cwd)
+            global_flag: Boolean flag indictaing queried product is global file instead of tiled product
+            aria2: Boolean flag to use aria2 for downloading instead of python's requests
+            tile_filter: List of MODIS files to query and optionally download
+        """
 
         self.query_url = url
         self.username = username
@@ -122,24 +137,24 @@ class MODISquery(object):
         else:
             print('0 results found. Please check query!')
 
-    def setCredentials(self, username, password):
-        '''Set Earthdata credentials.
+    def set_credentials(self, username, password):
+        """Set Earthdata credentials.
 
         Sets Earthdata username and password in created MODISquery object.
 
         Args:
             username (str): Earthdata username
             password (str): Earthdata password
-        '''
+        """
 
         self.username = username
         self.password = password
 
     def download(self):
-        '''Downloads MODIS products.
+        """Downloads MODIS products.
 
         Download of files found through query, Earthdata username and password required!
-        '''
+        """
 
         if self.username is None or self.password is None:
             raise ValueError('No credentials found. Please run .setCredentials(username,password)!')
@@ -226,20 +241,21 @@ class MODISquery(object):
 
 
 class MODISrawh5(object):
-    '''Class for raw MODIS data collected into HDF5 file, ready for smoothing.
+    """Class for raw MODIS data collected into HDF5 file, ready for smoothing.
 
-    For MOD/MYD 13 products, MOD and MYD are interleaved into a combined MXD.
-    '''
+    MOD/MYD 13 products can be interleaved into a combined MXD.
+    """
 
     def __init__(self, files, vam_product_code=None,
                  targetdir=os.getcwd(), interleave=False):
-        '''Create a MODISrawh5 class
+        """Create a MODISrawh5 class
 
         Args:
-            files ([str]): A list of absolute paths to MODIS raw hdf files to be processed
-            vam_product_code (str): VAM product code to be processed (default VIM/LTD)
-            targetdir (str): Target directory for raw MODIS HDF5 file
-        '''
+            files: A list of absolute paths to MODIS raw hdf files to be processed
+            vam_product_code: VAM product code to be processed (default VIM/LTD)
+            targetdir: Target directory for raw MODIS HDF5 file
+            interleave: Boolean flag if MOD/MYD 13  products should be interleaved
+        """
 
         self.targetdir = targetdir
         #self.resdict = dict(zip(['250m','500m','1km','0.05_Deg'],[x/112000 for x in [250,500,1000,5600]])) ## commented for original resolution
@@ -320,12 +336,12 @@ class MODISrawh5(object):
         ref = None
 
     def create(self, compression='gzip', chunk=None):
-        '''Creates the HDF5 file.
+        """Creates the HDF5 file.
 
         Args:
-            compression (str): Compression method to be used (default = gzip)
-            chunk (int): Number of pixels per chunk (needs to define equal sized chunks!)
-        '''
+            compression: Compression method to be used (default = gzip)
+            chunk: Number of pixels per chunk (needs to define equal sized chunks!)
+        """
 
         ref = gdal.Open(self.reference_file)
         ref_sds = [x[0] for x in ref.GetSubDatasets() if self.vam_product_code_dict[self.vam_product_code] in x[0]][0]
@@ -404,10 +420,10 @@ class MODISrawh5(object):
             raise
 
     def update(self):
-        '''Ingest raw data into MODIS raw HDF5 file.
+        """Update MODIS raw HDF5 file with raw data.
 
-        When a new HDF5 file is created, uodate will also handle the first data ingest.
-        '''
+        When a new HDF5 file is created, update will also handle the first data ingest.
+        """
 
         try:
             with h5py.File(self.outname, 'r+', libver='latest') as h5f:
@@ -477,26 +493,26 @@ class MODISrawh5(object):
             raise
 
     def __str__(self):
-        '''String to be displayed wen printing an instance of the class object'''
+        """String to be displayed when printing an instance of the class object"""
         return 'MODISrawh5 object: {} - {} files - exists on disk: {}'.format(self.outname, self.nfiles, self.exists)
 
 
 class MODISsmth5(object):
-    '''Class for smoothed MODIS data collected into HDF5 file.'''
+    """Class for smoothed MODIS data collected into HDF5 file."""
 
     def __init__(self, rawfile, startdate=None,
                  tempint=None, nsmooth=0, nupdate=0,
                  targetdir=os.getcwd(), nworkers=1):
-        '''Create MODISsmth5 object.
+        """Create MODISsmth5 object.
 
         Args:
-            rawfile (str): Full path to a MODISrawh5 file
-            tempint (int): Integer specifying temporal interpolation (default is None, so native temporal resolution)
-            nsmooth (int): Number of raw timesteps used for smoothing (default is all)
-            nupdate (int): Number of smoothed timesteps to be updated (default is all)
-            targetdir (str): Path to target directory for smoothed HDF5 file
-            nworkers (int): Number of worker processes used in parallel
-        '''
+            rawfile: Full path to a MODISrawh5 file
+            tempint: Integer specifying temporal interpolation (default is None, so native temporal resolution)
+            nsmooth: Number of raw timesteps used for smoothing (default is all)
+            nupdate: Number of smoothed timesteps to be updated (default is all)
+            targetdir: Path to target directory for smoothed HDF5 file
+            nworkers: Number of worker processes used in parallel as integer
+        """
         if nsmooth and nupdate:
             if nsmooth < nupdate:
                 raise ValueError('nsmooth must be bigger or equal (>=) to nupdate!')
@@ -536,7 +552,7 @@ class MODISsmth5(object):
         self.exists = os.path.isfile(self.outname)
 
     def create(self):
-        '''Creates smoothed HDF5 file on disk.'''
+        """Creates smoothed HDF5 file on disk."""
 
         # Try reading info from raw HDF5
         try:
@@ -610,11 +626,11 @@ class MODISsmth5(object):
         self.exists = True
 
     def ws2d(self, s):
-        '''Apply whittaker smoother with fixed s-value to data.
+        """Apply whittaker smoother with fixed s-value to data.
 
         Args:
-            s (float): log10 value of s
-        '''
+            s: log10 value of s (float)
+        """
 
         with h5py.File(self.rawfile, 'r') as rawh5, h5py.File(self.outname, 'r+') as smth5:
             raw_ds = rawh5.get('data')
@@ -765,11 +781,11 @@ class MODISsmth5(object):
                             smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]]
 
     def ws2d_sgrid(self):
-        '''Apply whittaker smootehr with fixed s to data.
+        """Apply whittaker smootehr with fixed s to data.
 
         This fixed s version reads a pixel based s value from file, so it needs
         a previous run of V-curve s-optimization.
-        '''
+        """
 
         with h5py.File(self.rawfile, 'r') as rawh5, h5py.File(self.outname, 'r+') as smth5:
             raw_ds = rawh5.get('data')
@@ -925,14 +941,14 @@ class MODISsmth5(object):
                             smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]]
 
     def ws2d_vc(self, srange, p=None):
-        '''Apply whittaker smoother V-curve optimization of s.
+        """Apply whittaker smoother V-curve optimization of s.
 
         Optionally, p value can be specified to use asymmetric smoothing.
 
         Args:
-            srange (arr): Float32 array of s-values to apply
-            p (float): Percentile value
-        '''
+            srange: array of s-values to apply
+            p: Percentile value (float)
+        """
 
         with h5py.File(self.rawfile, 'r') as rawh5, h5py.File(self.outname, 'r+') as smth5:
             raw_ds = rawh5.get('data')
@@ -1116,17 +1132,17 @@ class MODISsmth5(object):
                             smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]]
 
 class MODIStiles(object): # pylint: disable=too-few-public-methods
-    '''Class for MODIS tiles.
+    """Class for MODIS tiles.
 
     Converts AOI coordinates to MODIS tile numbers by extracting values from MODIS_TILES.tif.
-    '''
+    """
 
     def __init__(self, aoi):
-        '''Creates MODIStiles object.
+        """Creates MODIStiles object.
 
         Args:
-            aoi (str): AOI coordinates, eiher LAT LON or XMIN, YMAX, XMAX, YMIN
-        '''
+            aoi: AOI coordinates, either LAT LON or XMIN, YMAX, XMAX, YMIN
+        """
 
         self.aoi = aoi
 
@@ -1159,20 +1175,20 @@ class MODIStiles(object): # pylint: disable=too-few-public-methods
         self.tiles = ['h{}v{}'.format(*x.split('.')) for x in tiles]
 
 class MODISmosaic(object):
-    '''Class for mosaic of MODIS tiles.
+    """Class for mosaic of MODIS tiles.
 
     Moisaics tiles per Product, parameter and timestep. Enables extraction as GeoTiff.
-    '''
+    """
 
     def __init__(self, files, datemin, datemax, global_flag):
-        ''' Creates MODISmosaic object.
+        """ Creates MODISmosaic object.
 
         Args:
-            files ([str]): List of paths to files used for creating the mosaic
-            datemin (str): Datestring for date of earliest mosaic (format YYYYMM)
-            datemax (str): Datestring for date of latest mosaic (format YYYYMM)
-            global_flag (bool): Flag if mosaic is global product
-        '''
+            files: List of paths to files used for creating the mosaic
+            datemin: Datestring for date of earliest mosaic (format YYYYMM)
+            datemax: Datestring for date of latest mosaic (format YYYYMM)
+            global_flag: Boolean flag if mosaic is global product
+        """
 
         tile_re = re.compile(r'.+(h\d+v\d+).+') # Regular expression for tile ID
         self.global_flag = global_flag
@@ -1232,16 +1248,16 @@ class MODISmosaic(object):
         self.temp_index = np.flatnonzero(np.array([datemin_p <= x <= datemax_p for x in dates_dt]))
 
     def get_array(self, dataset, ix, dt):
-        '''Reads values for mosaic into array.
+        """Reads values for mosaic into array.
 
         Args:
-            dataset (str): Defines dataset to be read from HDF5 file (default is 'data')
-            ix (int): Temporal index
-            dt (str): Datatype (default will be read from file)
+            dataset: Defines dataset to be read from HDF5 file (default is 'data')
+            ix: Temporal index
+            dt: Datatype (default will be read from file)
 
         Returns
             Array for mosaic
-        '''
+        """
 
         # Initialize array
         tiles_array = np.zeros(((len(self.v_ix) * self.tile_rws), len(self.h_ix) * self.tile_cls), dtype=dt)
@@ -1271,18 +1287,18 @@ class MODISmosaic(object):
         return tiles_array
 
     def get_array_global(self, dataset, ix, dt):
-        '''Reads values for global mosaic into array.
+        """Reads values for global mosaic into array.
 
         Since files are global, the array will be a spatial and temporal subset rather than a mosaic.
 
         Args:
-            dataset (str): Defines dataset to be read from HDF5 file (default is 'data')
-            ix (int): Temporal index
-            dt (str): Datatype (default will be read from file)
+            dataset: Defines dataset to be read from HDF5 file (default is 'data')
+            ix: Temporal index
+            dt: Datatype (default will be read from file)
 
         Returns
             Array for mosaic
-        '''
+        """
 
         global_array = np.zeros((self.tile_rws, self.tile_cls), dtype=dt)
         for h5f in self.files:
@@ -1299,14 +1315,17 @@ class MODISmosaic(object):
 
     @contextmanager
     def get_raster(self, dataset, ix):
-        '''Generator for mosaic raster.
+        """Generator for mosaic raster.
 
         This generator can be used within a context manager and will yield an in-memory raster.
 
         Args:
-            dataset (str): Defines dataset to be read from HDF5 file (default is 'data')
-            ix (int): Temporal index
-        '''
+            dataset: Defines dataset to be read from HDF5 file (default is 'data')
+            ix: Temporal index
+
+        Yields:
+            in-memory raster to be passed to GDAL warp
+        """
 
         try:
             if dataset == 'sgrid':

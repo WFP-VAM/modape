@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 # pylint: disable=invalid-name
+"""setup.py for MODAPE"""
+
 from setuptools import setup, Extension, find_packages
 
 import numpy

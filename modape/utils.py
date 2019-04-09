@@ -1,4 +1,9 @@
 # pylint: disable=invalid-name, global-variable-undefined, broad-except
+"""
+Utility classes and functions used in MODIS processing chain
+
+Author: Valentin Pesendorfer, April 2019
+"""
 from __future__ import absolute_import, division, print_function
 
 import array
@@ -19,22 +24,48 @@ except ImportError:
 from cryptography.fernet import Fernet # pylint: disable=import-error
 from modape.whittaker import lag1corr, ws2d, ws2doptv, ws2doptvp # pylint: disable=no-name-in-module
 
+__all__ = [
+    'SessionWithHeaderRedirection',
+    'FileHandler',
+    'NoDaemonProcess',
+    'Pool',
+    'DateHelper',
+    'Credentials',
+    'pdump',
+    'pload',
+    'dtype_GDNP',
+    'ldom',
+    'txx',
+    'fromjulian',
+    'tvec',
+    'pentvec',
+    'dekvec',
+    'init_shared',
+    'tonumpyarray',
+    'init_parameters',
+    'init_worker',
+    'execute_ws2d',
+    'execute_ws2d_sgrid',
+    'execute_ws2d_vc',
+    ]
+
+
 class SessionWithHeaderRedirection(requests.Session):
-    ''' Session class for MODIS query.
+    """Session class for MODIS query.
 
     Overriding requests.Session.rebuild_auth to mantain headers when redirected.
     From https://wiki.earthdata.nasa.gov/display/EL/How+To+Access+Data+With+Python
-    '''
+    """
 
     AUTH_HOST = 'urs.earthdata.nasa.gov'
 
     def __init__(self, username, password):
-        '''Create SessionWithHeaderRedirection instance.
+        """Create SessionWithHeaderRedirection instance.
 
         Args:
-            username (str): Earthdata username
-            password (str): Earthdata password
-        '''
+            username: Earthdata username
+            password: Earthdata password
+        """
 
         super(SessionWithHeaderRedirection, self).__init__()
         self.auth = (username, password)
@@ -51,22 +82,23 @@ class SessionWithHeaderRedirection(requests.Session):
             if (original_parsed.hostname != redirect_parsed.hostname) and redirect_parsed.hostname != self.AUTH_HOST and original_parsed.hostname != self.AUTH_HOST:
                 del headers['Authorization']
 
+
 class FileHandler(object):
-    ''' Filehandler class to handle GDAL file references'''
+    """Filehandler class to handle GDAL file references."""
 
     def __init__(self, files, sds):
-        ''' Create handler instance
+        """Creates handler instance
 
         Args:
-            files (list): List of total file paths
-            sds (str): Subdataset to extract
-        '''
+            files: List of total file paths
+            sds: Subdataset to extract
+        """
 
         self.files = files
         self.sds = sds
 
     def open(self):
-        '''Open the files and store handle'''
+        """Opens the files and store handles."""
 
         self.handles = []
         for f in self.files:
@@ -81,14 +113,18 @@ class FileHandler(object):
                 self.handles.append(None)
 
     def close(self):
-        '''Open the files'''
+        """Closes the files."""
 
         for ii in range(len(self.handles)):
             self.handles[ii] = None
 
 
-# adapted from https://stackoverflow.com/questions/17223301/python-multiprocessing-is-it-possible-to-have-a-pool-inside-of-a-pool/17229030#17229030
 class NoDaemonProcess(multiprocessing.Process):
+    """Class for no-daemon process.
+
+    Enables a process to be spawned by another sub-process.
+    Adapted from https://stackoverflow.com/questions/17223301/python-multiprocessing-is-it-possible-to-have-a-pool-inside-of-a-pool/17229030#17229030
+    """
     # make 'daemon' attribute always return False
     def _get_daemon(self): # pylint: disable=no-self-use
         return False
@@ -96,15 +132,25 @@ class NoDaemonProcess(multiprocessing.Process):
         pass
     daemon = property(_get_daemon, _set_daemon)
 
-# We sub-class multiprocessing.pool.Pool instead of multiprocessing.Pool
-# because the latter is only a wrapper function, not a proper class.
 class Pool(multiprocessing.pool.Pool): # pylint: disable=abstract-method
+    """Processing pool which uses no-deamon processes."""
     Process = NoDaemonProcess
 
 
 class DateHelper(object):
+    """Helper class for handling dates in temporal interpolation."""
 
     def __init__(self, rawdates, rtres, stres, start=None, nupdate=0):
+        """Creates the date lists from input.
+
+        Args:
+             rawdates: list of dates from raw file(s)
+             rtres: raw temporal resolution
+             stres: smooth temporal resolution
+             start: start date for custom interpolation
+             nupdate: number of points in time to be updated in file (backwards)
+            """
+
         if start:
             stop = (fromjulian(rawdates[-1]) + datetime.timedelta(rtres)).strftime('%Y%j')
             tdiff = (fromjulian(stop) - fromjulian(rawdates[0])).days
@@ -140,29 +186,44 @@ class DateHelper(object):
             self.target = self.target[-nupdate:]
 
     def getDV(self, nd):
+        """Gets an array of no-data values in daily timesteps.
+
+        Args:
+            nd: no-data value
+
+        Returns:
+            numpy array with no-data values in daily steps
+        """
+
         return np.full(len(self.daily), nd, dtype='double')
 
     def getDIX(self):
+        """Gets indices of target dates in daily no-data array.
+
+        Returns:
+            list with indices of target dates in no-data array
+        """
+
         return [self.daily.index(x) for x in self.target]
 
 
 class Credentials(object):
-    '''Credentials helper class'''
+    """Credentials helper class"""
 
     def __init__(self, username=None, password=None):
-        '''Create Credentials instance
+        """Creates Credentials instance.
 
         Args:
-            username (str): Earthdata username
-            password (str): Earthdata passsword
-        '''
+            username: Earthdata username
+            password: Earthdata password
+        """
 
         self.username = username
         self.password = password
         self.complete = not (not self.username or not self.password)
 
     def retrieve(self):
-        '''Retrieve credentials from disk'''
+        """Retrieves credentials from disk."""
 
         try:
             u, p = pload('modape.cred.pkl')
@@ -175,7 +236,7 @@ class Credentials(object):
             raise
 
     def store(self):
-        '''Store credentials on disk'''
+        """Stores credentials on disk."""
 
         try:
             k = Fernet.generate_key()
@@ -189,7 +250,7 @@ class Credentials(object):
             print('Storing Earthdata credentials failed! Exception raised: {}'.format(e))
 
     def destroy(self):
-        '''Remove all credential files on disk'''
+        """Removes all credential files on disk."""
 
         try:
             os.remove('modape.cred.pkl')
@@ -202,43 +263,40 @@ class Credentials(object):
             pass
 
 def pdump(obj, filename):
-    '''Pickle dump wrapper
+    """Pickle dump wrapper.
 
     Agrs:
         obj: Python object to be pickled
         filename: name of target pickle file
-
-    Returns:
-        None
-    '''
+    """
 
     with open(filename, 'wb') as pkl:
         pickle.dump(obj, pkl)
 
 def pload(filename):
-    '''Pickle load wrapper
+    """Pickle load wrapper.
 
     Agrs:
         filename: name of target pickle file
 
     Returns:
         Pickled object
-    '''
+    """
 
     with open(filename, 'rb') as pkl:
         return pickle.load(pkl)
 
 def dtype_GDNP(dt):
-    '''GDAL/NP DataType helper.
+    """GDAL/NP DataType helper.
 
     Parses datatype in str or GDAL int.
 
-    Agrs:
-        dt (str/int): DataType
+    Args:
+        dt: DataType (as string or INT)
 
     Returns:
         Tuple with DataType as GDAL integer and string
-    '''
+    """
 
     dt_dict = {
         1: 'uint8',
@@ -254,14 +312,14 @@ def dtype_GDNP(dt):
     return dt_tuple[0]
 
 def ldom(x):
-    '''Get last day of month.
+    """Get last day of month.
 
     Args:
-        x (datetime): Input date
+        x: Input date (as datetime)
 
     Returns:
         Datetime object
-    '''
+    """
 
     yr = x.year
     mn = x.month
@@ -274,7 +332,11 @@ def ldom(x):
 
 def txx(x):
     # pylint: disable=no-else-return
-    '''Converts tempint integer to flag.'''
+    """Converts tempint integer to flag.
+
+    Returns:
+        Temporal interpolation flag for smooth HDF5 filename
+    """
 
     if x:
         if int(x) == 5:
@@ -287,12 +349,27 @@ def txx(x):
         return 'n'
 
 def fromjulian(x):
-    '''Parses julian date string to datetime object.'''
+    """Parses julian date string to datetime object.
+
+    Args:
+        x: julian date as string YYYYJJJ
+
+    Returns:
+        datetime object parsed from julian date
+    """
 
     return datetime.datetime.strptime(x, '%Y%j').date()
 
 def tvec(yr, step):
-    '''Create MODIS-like date vector with given timestep.'''
+    """Create MODIS-like date vector with given timestep.
+
+    Args:
+        yr: year
+        step: timestep
+
+    Returns:
+        list with dates
+    """
 
     start = fromjulian('{}001'.format(yr)) + datetime.timedelta()
     tdiff = fromjulian('{}001'.format(yr+1)) - start
@@ -300,7 +377,14 @@ def tvec(yr, step):
     return tv
 
 def pentvec(yr):
-    '''Create pentadal date vector for given year with fixed days.'''
+    """Create pentadal date vector for given year with fixed days.
+
+    Args:
+        yr: year
+
+    Returns:
+        list of dates
+    """
 
     t = []
     for m in range(1, 13):
@@ -312,7 +396,14 @@ def pentvec(yr):
     return t
 
 def dekvec(yr):
-    '''Create dekadal date vector for given year with fixed days.'''
+    """Create dekadal date vector for given year with fixed days.
+
+    Args:
+        yr: year
+
+    Returns:
+        list of dates
+    """
 
     return([
         datetime.datetime.strptime(str(yr)+y+x, '%Y%m%d').date().strftime('%Y%j')
@@ -322,18 +413,37 @@ def dekvec(yr):
 
 
 def init_shared(ncell):
-    '''Create shared value array for smoothing.'''
+    """Create shared value array for smoothing.
+
+    Args:
+        ncell: number of cells in the array
+
+    Returns:
+        base of shared array
+    """
+
     shared_array_base = multiprocessing.Array(ctypes.c_double, ncell, lock=False)
     return shared_array_base
 
 def tonumpyarray(shared_array):
-    '''Create numpy array from shared memory.'''
+    """Create numpy array from shared memory.
+
+    Args:
+        shared_array: base of shared array
+
+    Returns:
+        numpy array
+    """
     nparray = np.frombuffer(shared_array, dtype=ctypes.c_double)
     assert nparray.base is shared_array
     return nparray
 
 def init_parameters(**kwargs):
-    '''Initialize parameters for smoothing in workers.'''
+    """Initialize parameters for smoothing in workers.
+
+    Returns:
+         dict with kwargs containing processing parameters for worker
+    """
 
     params = {}
     for key, value in kwargs.items():
@@ -341,12 +451,12 @@ def init_parameters(**kwargs):
     return params
 
 def init_worker(shared_array_, parameters_):
-    '''Initialize worker for smoothing.
+    """Initialize worker for smoothing.
 
     Args:
         shared_array_: Object returned by init_shared
         parameters_: Dictionary returned by init_parameters
-    '''
+    """
 
     global arr_raw
     global arr_smooth
@@ -367,11 +477,11 @@ def init_worker(shared_array_, parameters_):
         arr_smooth = None
 
 def execute_ws2d(ix):
-    '''Execute whittaker smoother with fixed s in worker.
+    """Execute whittaker smoother with fixed s in worker.
 
     Args:
-        ix ([int]): List of indices as integer
-    '''
+        ix: Row index for array
+    """
 
     arr_raw[ix, :] = ws2d(y=arr_raw[ix, :],
                           lmda=10**parameters['s'],
@@ -387,7 +497,11 @@ def execute_ws2d(ix):
         arr_smooth[ix, :] = z2[parameters['dix']]
 
 def execute_ws2d_sgrid(ix):
-    '''Execute whittaker smoother with s from grid in worker.'''
+    """Execute whittaker smoother with s from grid in worker.
+
+    Args:
+        ix: Row index for array
+    """
 
     arr_raw[ix, :] = ws2d(y=arr_raw[ix, :],
                           lmda=10**arr_sgrid[ix],
@@ -403,7 +517,15 @@ def execute_ws2d_sgrid(ix):
         arr_smooth[ix, :] = z2[parameters['dix']]
 
 def execute_ws2d_vc(ix):
-    '''Execute whittaker smoother with V-curve optimization of s in worker.'''
+    """Execute whittaker smoother with V-curve optimization of s in worker.
+
+    If no p-Value is supplied, the normal V-curve smoothing (ws2doptv) will be executed.
+    If a p-Value but no srange is supplied, the srange will be determined on a per-pixel
+    basis depending on the lag-1-correlation of the time series.
+
+    Args:
+        ix: Row index for array
+    """
 
     if not parameters['p']:
         arr_raw[ix, :], arr_sgrid[ix] = ws2doptv(y=arr_raw[ix, :],

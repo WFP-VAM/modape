@@ -1,3 +1,4 @@
+"""test_utils.py: Test uilility classes and functions."""
 # pylint: disable=global-variable-undefined, invalid-name
 from __future__ import absolute_import, division, print_function
 
@@ -10,6 +11,7 @@ import numpy as np
 from modape.utils import DateHelper, Credentials, ldom, tvec, fromjulian
 
 class TestUtils(unittest.TestCase):
+    """Test class for testing utils."""
 
     @classmethod
     def setUpClass(cls):
@@ -21,6 +23,7 @@ class TestUtils(unittest.TestCase):
         cls.dates = None
 
     def test_datehelper(self):
+        """Testing DateHelper class."""
         dh = DateHelper(self.dates, 8, 10)
         dix = dh.getDIX()
         dv = dh.getDV(-3000)
@@ -33,6 +36,7 @@ class TestUtils(unittest.TestCase):
         self.assertTrue(np.all(dv == -3000))
 
     def test_credentials(self):
+        """Testing Credentials class."""
         cred = Credentials(username='testuser', password='testpass')
 
         self.assertEqual(cred.username, 'testuser')
@@ -50,6 +54,7 @@ class TestUtils(unittest.TestCase):
         self.assertFalse(os.path.exists('modape.key.pkl'))
 
     def test_fj_ldom(self):
+        """Testing ldom and fromjulian."""
         test_day = ldom(fromjulian('2016032'))
 
         self.assertEqual(test_day.year, 2016)
@@ -57,6 +62,7 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(test_day.day, 29)
 
     def test_tvec(self):
+        """Testing tvec."""
         self.assertEqual(tvec(2003, 8), [x for x in self.dates if '2003' in x])
 
 if __name__ == '__main__':

@@ -1,5 +1,6 @@
+"""test_modis.py: Test MODIS classes and functions."""
 from __future__ import absolute_import, division, print_function
-# pylint: disable=invalid-name, bare-except, unused-argument
+# pylint: disable=invalid-name, bare-except, unused-argument, unnecessary-pass
 import os
 import re
 import shutil
@@ -17,11 +18,17 @@ import fake
 from modape.modis import MODISquery, MODISrawh5, MODISsmth5
 
 def create_gdal(x, y):
+    """Create in-memory gdal dataset for testing.
+
+    Returns:
+        GDAL dataset object
+    """
     driver = gdal.GetDriverByName('GTiff')
     ds = driver.Create('/vsimem/{}.tif'.format(str(uuid.uuid4())), x, y, 1, 3)
     return ds
 
 def create_h5(fn, x, y, tr, ts, r):
+    '''Create HDF5 file for testing.'''
 
     with h5py.File(fn, 'a', driver='core', backing_store=True) as h5f:
         dset = h5f.create_dataset('data', shape=(x*y, 4), dtype='Int16', maxshape=(x*y, None), chunks=((x*y)//25, 10), compression='gzip', fillvalue=-3000)
@@ -36,6 +43,7 @@ def create_h5(fn, x, y, tr, ts, r):
         dset.attrs['resolution'] = r
 
 class TestMODIS(unittest.TestCase):
+    """Test class for MODIS tests."""
 
     @classmethod
     def setUpClass(cls):
@@ -53,13 +61,16 @@ class TestMODIS(unittest.TestCase):
 
     @patch('modape.modis.requests.Session')
     def test_query(self, mocked_get):
-
+        """Test query of MODIS products."""
         class MockRSP:
+            """Mock response."""
 
             def raise_for_status(self):
+                """Mock raise_for_status."""
                 pass
 
             def get(self, *args):
+                """Mock get method."""
                 rsp = Mock()
                 rsp.status_code.return_value = 200
                 rsp.raise_for_status.return_value = None
@@ -113,7 +124,7 @@ class TestMODIS(unittest.TestCase):
     @patch('modape.modis.gdal.Dataset.GetSubDatasets', return_value=[['NDVI']])
     @patch('modape.modis.gdal.Open', return_value=create_gdal(1200, 1200))
     def test_raw_hdf5(self, mock_ds, mock_sds, mock_nodata):
-        # Test raw tiled NDVI with 8-day interleaving of MOD/MYD
+        """Test raw tiled NDVI with 8-day interleaving of MOD/MYD and raw global LST DAY."""
         rawfiles = [
             'MOD13A2.A2002193.h18v06.006.*.hdf',
             'MOD13A2.A2002209.h18v06.006.*.hdf',
@@ -175,7 +186,7 @@ class TestMODIS(unittest.TestCase):
         shutil.rmtree(os.path.dirname(rawh5.outname))
 
     def test_smoothHDF5(self):
-        # Test smooth tiled 10-day NDVI
+        """Test smooth tiled 10-day NDVI and global 5-day LST Day."""
         try:
             create_h5(fn='MXD13A2.h18v06.006.VIM.h5', x=1200, y=1200, tr=8, ts=8, r=0.009)
             smth5 = MODISsmth5('MXD13A2.h18v06.006.VIM.h5', tempint=10)

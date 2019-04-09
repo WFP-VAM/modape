@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 # pylint: disable=broad-except
+"""modis_collect.py: Collect raw MODIS data into HDF5 file."""
+
 from __future__ import absolute_import, division, print_function
 
 import argparse
@@ -14,13 +16,13 @@ import traceback
 from modape.modis import MODISrawh5
 
 def run_process(pdict):
-    '''Execute processing into raw HDF5 file
+    """Execute processing into raw HDF5 file
 
     Little wrapper to execute the processing into a raw HDF5 file. This enables multi-process concurrency.
 
     Args:
         pdict: dictionary with processing parameters for tile
-    '''
+    """
 
     for vam_product_code in pdict['vam_product_code']:
         try:
@@ -38,14 +40,14 @@ def run_process(pdict):
         print('\n')
 
 def main():
-    '''Collect raw MODIS hdf files into a raw MODIS HDF5 file.
+    """Collect raw MODIS hdf files into a raw MODIS HDF5 file.
 
     All MODIS hdf files within srcdir will be collected into a raw MODIS HDF5 file, corresponding to product type and tile.
     If the respective HDF5 file does not exists in the target directory, it will be created. Otherwhise, the file will be
     updated and the data inserted at the proper temporal location within the HDF5 file.
 
     16-day MOD13* and MYD13* products can be interleaved into an 8-day product with the new product ID MXD* by adding the `--interleave` flag.
-    '''
+    """
 
     parser = argparse.ArgumentParser(description='Process downloaded RAW MODIS hdf files')
     parser.add_argument('srcdir', help='directory with raw MODIS .hdf files', default=os.getcwd(), metavar='srcdir')

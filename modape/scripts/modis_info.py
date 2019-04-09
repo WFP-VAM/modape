@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+"""modis_info.py: Return metadata stored in MODIS HDF5 files."""
 
 from __future__ import absolute_import, division, print_function
 import argparse
@@ -9,10 +10,10 @@ import time
 import h5py ## pylint: disable=import-error
 
 def main():
-    '''Info tool for processed MODIS HDF5 files.
+    """Info tool for processed MODIS HDF5 files.
 
     Returns metadata on processed MODIS HDF5 files, both for raw and smoothed files.
-    '''
+    """
 
     parser = argparse.ArgumentParser(description='Get MODIS raw/smooth file info')
     parser.add_argument('file', help='Full path to MODIS h5 file')

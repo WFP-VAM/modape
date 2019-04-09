@@ -1,6 +1,7 @@
 #!/usr/bin/env python
+# pylint: disable=invalid-name
+"""rts_smooth.py: Smooth raster time series."""
 from __future__ import absolute_import, division, print_function
-
 import argparse
 import array
 import glob
@@ -17,15 +18,15 @@ except ImportError:
 from modape.utils import dtype_GDNP
 from modape.whittaker import ws2d, ws2doptv, ws2doptvp # pylint: disable=no-name-in-module
 
-def init_gdal(x, p, fn=None, dt=None):
-    '''Initializes empty GeoTIFF based on template.
+def init_gdal(x, path, fn=None, dt=None):
+    """Initializes empty GeoTIFF based on template.
 
     Args:
-        x (str): Path to template
-        p (str): Target directory
-        fn (str): Output filename (optional)
-        dt (str): Output datatype (optional)
-    '''
+        x: Path to template
+        path: Target directory
+        fn: Output filename (optional)
+        dt: Output datatype (optional)
+    """
 
     if not fn:
         fn = os.path.basename(x) # same filename if none is supplied
@@ -37,7 +38,7 @@ def init_gdal(x, p, fn=None, dt=None):
         dt_new = dtype_GDNP(dt)[0] # Parse datatype
 
     # Create empty copy
-    ds_new = driver.Create(p + fn, ds.RasterXSize, ds.RasterYSize, ds.RasterCount, dt_new)
+    ds_new = driver.Create(path + fn, ds.RasterXSize, ds.RasterYSize, ds.RasterCount, dt_new)
     ds_new.SetGeoTransform(ds.GetGeoTransform())
     ds_new.SetProjection(ds.GetProjection())
     ds_new.GetRasterBand(1).SetNoDataValue(ds.GetRasterBand(1).GetNoDataValue())
@@ -46,7 +47,7 @@ def init_gdal(x, p, fn=None, dt=None):
     ds_new = None
 
 def iterate_blocks(rows, cols, n):
-    '''Generator for blockwise iteration over array.
+    """Generator for blockwise iteration over array.
 
     Args:
         rows (int): Number of rows
@@ -59,7 +60,7 @@ def iterate_blocks(rows, cols, n):
             - Number of rows
             - Start column
             - Number of columns
-    '''
+    """
 
     # Iterate over rows then columns
     for row in range(0, rows, n):
@@ -68,20 +69,20 @@ def iterate_blocks(rows, cols, n):
 
 
 class RTS(object):
-    '''Class for raster timeseries for smoothing.'''
+    """Class for raster timeseries for smoothing."""
 
     def __init__(self, files, targetdir, bsize=256, nodata=None):
-        '''Creates instance of raster timeseries class.
+        """Creates instance of raster timeseries class.
 
         The metadata for the timeseries is extracted from the first file in
-        the directoryself.
+        the directory.
 
         Args:
             files ([str]): List or filepaths to process
             targetdir (str): Target directory for smoothed files
             bsize (int): Side length of processing blocks (default = 256)
             nodata (int): Nodata value (default is read from reference file)
-        '''
+        """
 
         # Select reference file and sort
         self.files = files
@@ -104,11 +105,11 @@ class RTS(object):
         self.targetdir = targetdir
 
     def init_rasters(self, tdir):
-        '''Intitialize empty rasters for smoothed data.
+        """Intitialize empty rasters for smoothed data.
 
         Args:
             tdir (str): Target directory
-        '''
+        """
 
         # Iterate over files
         for f in self.files:
@@ -119,11 +120,11 @@ class RTS(object):
                 raise
 
     def ws2d(self, s):
-        '''Apply whittaker smoother with fixed s-value to data.
+        """Apply whittaker smoother with fixed s-value to data.
 
         Args:
             s (float): log10 value of s
-        '''
+        """
 
         tdir = self.targetdir + '/filt0/'
 
@@ -185,15 +186,15 @@ class RTS(object):
             thefile.write('\n')
 
     def ws2dopt(self, srange, p=None):
-        '''Apply whittaker smoother with V-curve optimization of s to data.
+        """Apply whittaker smoother with V-curve optimization of s to data.
 
         If a p-value is supplied, the asymmetric whittaker smoother will be
         applied.
 
         Args:
-            srange (arr): Float32 array of s-values to apply
+            srange (arr): array of s-values to apply
             p (float): P-value for percentile
-        '''
+        """
 
         srange_arr = array.array('d', srange)
         if p:
@@ -282,15 +283,15 @@ class RTS(object):
                     thefile.write('\n')
 
 def main():
-    '''Apply whittaker smoother to a timeseries of local raster files.
+    """Apply whittaker smoother to a timeseries of local raster files.
 
     Raster files in path are combined to a timeseries and smoothed using the whittaker smoother,
     optionally with V-curve optimization of s.
 
     The user needs to make sure the raster files to be smoothed are identical in dimensions and type.
 
-    Parallel processing is currently not implemented, so big timeseries might take some time!
-    '''
+    Parallel processing is (currently) not implemented, so big timeseries might take some time!
+    """
 
     parser = argparse.ArgumentParser(description='Extract a window from MODIS products')
     parser.add_argument('path', help='Path containing raster files')

@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # pylint: disable=too-many-branches
+"""modis_smooth.py: Smooth raw MODIS HDF5 file."""
 from __future__ import absolute_import, division, print_function
 
 import argparse
@@ -18,17 +19,21 @@ from modape.modis import MODISsmth5
 from modape.utils import init_parameters, Pool
 
 def initfun(pdict_):
-    '''Initfun for worker'''
+    """Initfun for worker.
+
+    Args:
+        pdict: dictionariy with processing parameters
+    """
 
     global pdict # pylint: disable=W0601, C0103
     pdict = pdict_
 
 def run_ws2d(h5):
-    '''Run smoother with fixed s
+    """Run smoother with fixed s.
 
     Args:
-        pdict: dictionary with processing parameters for tile
-    '''
+        h5: path to raw MODIS HDF5 file
+    """
 
     if not os.path.isfile(h5):
         print('Raw HDF5 {} not found! Please check path.'.format(h5))
@@ -48,11 +53,11 @@ def run_ws2d(h5):
         smt_h5.ws2d(pdict['s'])
 
 def run_ws2d_sgrid(h5):
-    '''Run smoother with fixed s from grid
+    """Run smoother with fixed s from grid.
 
     Args:
-        pdict: dictionary with processing parameters for tile
-    '''
+        h5: path to raw MODIS HDF5 file
+    """
     if not os.path.isfile(h5):
         print('Raw HDF5 {} not found! Please check path.'.format(h5))
     else:
@@ -70,11 +75,11 @@ def run_ws2d_sgrid(h5):
         smt_h5.ws2d_sgrid()
 
 def run_ws2d_vc(h5):
-    '''Run smoother with V-curve optimization of s
+    """Run smoother with V-curve optimization of s.
 
     Args:
-        pdict: dictionary with processing parameters for tile
-    '''
+        h5: path to raw MODIS HDF5 file
+    """
     if not os.path.isfile(h5):
         print('Raw HDF5 {} not found! Please check path.'.format(h5))
     else:
@@ -92,11 +97,11 @@ def run_ws2d_vc(h5):
         smt_h5.ws2d_vc(pdict['srange'])
 
 def run_ws2d_vcp(h5):
-    '''Run asymmetric smoother with V-curve optimization of s
+    """Run asymmetric smoother with V-curve optimization of s.
 
     Args:
-        pdict: dictionary with processing parameters for tile
-    '''
+        h5: path to raw MODIS HDF5 file
+    """
     if not os.path.isfile(h5):
         print('Raw HDF5 {} not found! Please check path.'.format(h5))
     else:
@@ -122,9 +127,9 @@ def run_ws2d_vcp(h5):
         smt_h5.ws2d_vc(pdict['srange'], pdict['pvalue'])
 
 def main():
-    '''Smooth, gapfill and interpolate processed raw MODIS HDF5 files.
+    """Smooth, gapfill and interpolate processed raw MODIS HDF5 files.
 
-    The smoothing function takes a previously created raw MODIS HDF file (as created by processMODIS) as input.
+    The smoothing function takes a previously created raw MODIS HDF file (as created by modis_collect) as input.
     The raw data can be smoothed with eiter a fixed s value, a pixel-by-pixel s value read from a previously computed grid or
     V-curve optimization of s (creates or updates the s-grid)
 
@@ -138,7 +143,7 @@ def main():
 
     To speed up processing time, parallel processing can be leveraged, processing a user defined number of tiles in parallel, and for each tile splitting up the task into n worker processes (by default,
     no concurrency is enabled)
-    '''
+    """
 
     parser = argparse.ArgumentParser(description='Smooth, gapfill and interpolate processed raw MODIS HDF5 files')
     parser.add_argument('input', help='Smoothing input - either one or more raw MODIS HDF5 file(s) or path containing raw MODIS HDF5 file(s)', nargs='+', metavar='input')

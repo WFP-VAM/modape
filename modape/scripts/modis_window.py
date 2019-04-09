@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 # pylint: disable=broad-except
+"""modis_window.py: Create mosaics from smooth MODIS HDF5 files and
+   save them as GeoTIFFs.
+"""
 
 from __future__ import absolute_import, division, print_function
 
@@ -19,14 +22,14 @@ except ImportError:
     from osgeo import gdal
 
 def main():
-    '''Create mosaics (or subsets) from smoothed MODIS HDF5 files.
+    """Create mosaics (or subsets) from smoothed MODIS HDF5 files.
 
     Given an ROI and smoothed MODIS files in path, either a mosaic or a subset of smoothed MODIS file(s)
     is created. Depending on the begin-date and end-date parameters, timesteps within the range are written
     to disk as GeoTIFF files.
 
     If ROI is only a point location, the entire intersecting tile or the entire global file will be returned.
-    '''
+    """
 
     parser = argparse.ArgumentParser(description='Extract a window from MODIS products')
     parser.add_argument('path', help='Path to processed MODIS h5 files')

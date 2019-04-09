@@ -193,7 +193,7 @@ def main():
 
             # If download is True and at least one result, download data
             if args.download and query_result.results > 0:
-                query_result.setCredentials(credentials.username, credentials.password)
+                query_result.set_credentials(credentials.username, credentials.password)
                 query_result.download()
 
 if __name__ == '__main__':

@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+"""modis_info.py: Return metadata stored in MODIS HDF5 files."""
 
 from __future__ import absolute_import, division, print_function
 
@@ -9,11 +10,11 @@ import pickle
 import pandas as pd ## pylint: disable=import-error
 
 def main():
-    '''Print MODIS product table.
+    """Print MODIS product table.
 
     Prints either the entire MODIS product table, or a subset filtered by either
     product, resolution or parameter.
-    '''
+    """
 
     parser = argparse.ArgumentParser(description='MODIS product table')
     parser.add_argument('--product', help='MODIS product ID', metavar='')

@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+"""csv_smooth.py: Smooth timeseries in a CSV file."""
 
 from __future__ import absolute_import, division, print_function
 
@@ -14,7 +15,7 @@ import pandas as pd # pylint: disable=E0401
 from modape.whittaker import ws2d, ws2doptv, ws2doptvp # pylint: disable=E0611
 
 def main():
-    '''Smooth timeseries in a CSV file.
+    """Smooth timeseries in a CSV file.
 
     By default, the first row and the first column in the CSV file is skipped. The following three rows should be NAME/ID, LON and LAT.
     Starting row 4, the rows are interpreted as raw data values. Each column starting from number 2, is interpreted as separate timeseries.
@@ -30,7 +31,7 @@ def main():
         - asymmetric V-curve: filtoptvp.csv
 
     The resulting CSV is created in the directory the input file is located.
-    '''
+    """
 
     parser = argparse.ArgumentParser(description='Smooth CSV file')
     parser.add_argument('file', help='CSV file')
