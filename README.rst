@@ -71,13 +71,8 @@ For a more detailed tutorial on how to use the executables, please visit `WFP-VA
 
 CHANGES
 -----
-
-TBD: Initial release
-
-TODO
------
-
-TBD
+- v0.0.1:
+        - initial release
 
 -----
 
