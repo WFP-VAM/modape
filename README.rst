@@ -1,31 +1,34 @@
-wsmtk (WORKING TITLE)
+MODAPE
 =====
 
-The **w**\ hittaker **sm**\ oothing **t**\ ool\ **k**\ it combines a state-of-the art whittaker smoother, implemented as fast C-extension through Cython and including a V-curve optimization of the smoothing parameter, with a HDF5 based processing chain optimized for MODIS data.
+The **M**\ ODIS **A**\ ssimilation and **P**\ rocessing **E**\ ngine combines a state-of-the art whittaker smoother, implemented as fast C-extension through Cython and including a V-curve optimization of the smoothing parameter, with a HDF5 based processing chain optimized for MODIS data.
 
-The sub-module ``wsmtk.whittaker`` includes the following variations of the whittaker smoother with 2nd order differences:
+The sub-module ``modape.whittaker`` includes the following variations of the whittaker smoother with 2nd order differences:
 
-- Whittaker with fixed smoothing parameter (``s``)
-- Whittaker with V-curve optimization of the smoothing parameter (``s``)
-- Whittaker with V-curve optimization of the smoothing parameter (``s``) and expectile smoothing using asymmetric weights
+- **ws2d**: Whittaker with fixed smoothing parameter (``s``)
+- **ws2doptv**: Whittaker with V-curve optimization of the smoothing parameter (``s``)
+- **ws2doptvp**: Whittaker with V-curve optimization of the smoothing parameter (``s``) and expectile smoothing using asymmetric weights
 
 The MODIS processing chain consists of the following executables, which can be called through commandline:
 
-- ``downloadMODIS``: Query and download raw MODIS products (requires Earthdata credentials)
-- ``processMODIS``: Collect raw MODIS data into daily datacubes stored in an HDF5 file
-- ``smoothMODIS``: Smooth, gapfill and interpolate raw MODIS data using the implemented whittaker smoother
-- ``windowMODIS``: Extract mosaic(s) of multiple MODIS tiles, or subset(s) of a global/tiled MODIS product and export it as GeoTIFF raster in WGS1984 coordinate system
+- ``modis_download``: Query and download raw MODIS products (requires Earthdata credentials)
+- ``modis_collect``: Collect raw MODIS data into daily datacubes stored in an HDF5 file
+- ``modis_smooth``: Smooth, gapfill and interpolate raw MODIS data using the implemented whittaker smoother
+- ``modis_window``: Extract mosaic(s) of multiple MODIS tiles, or subset(s) of a global/tiled MODIS product and export it as GeoTIFF raster in WGS1984 coordinate system
 
 Additional executables:
 
-- ``smoothCSV``: Smooth timeseries stored within a CSV file
-- ``smoothRTS``: Smooth a series of raster files stored in a local directory
+- ``csv_smooth``: Smooth timeseries stored within a CSV file
+- ``rts_smooth``: Smooth a series of raster files stored in a local directory
+- ``modis_info``: Retrieve metadata from created HDF5 files
+- ``modis_product_table``: MODIS Version 6.0 product table
+
 
 Installation
 ------------
 **Dependencies:**
 
-wsmtk depends on these packages:
+modape depends on these packages:
 
 - numpy
 - gdal
@@ -35,27 +38,27 @@ wsmtk depends on these packages:
 - progress
 - pandas
 
-Some of these packages (eg. GDAL) can be difficult to build, especially on windows machines. In the latter case it's advisable to download an unofficial binary wheel from `Christoph Gohlke's Unofficial Windows Binaries for Python Extension Packages <https://www.lfd.uci.edu/~gohlke/pythonlibs/>`_ and install it locally with ``pip install`` before installing wsmtk.
+Some of these packages (eg. GDAL) can be difficult to build, especially on windows machines. In the latter case it's advisable to download an unofficial binary wheel from `Christoph Gohlke's Unofficial Windows Binaries for Python Extension Packages <https://www.lfd.uci.edu/~gohlke/pythonlibs/>`_ and install it locally with ``pip install`` before installing modape.
 
 **Installation from github:**
 
 .. code:: bash
 
-    $ git clone https://github.com/WFP-VAM/wsmtk
-    $ cd wsmtk
+    $ git clone https://github.com/WFP-VAM/modape
+    $ cd modape
     $ pip install .
 
 **Installation from PyPi:**
 
 .. code:: bash
 
-    $ pip install wsmtk
+    $ pip install modape
 
 
 Bugs, typos & feature requests
 -----
 
-If you find a bug, see a typo, have some kind of troubles running the module or just simply want to have a feature added, please `submit an issue! <https://github.com/WFP-VAM/wsmtk/issues/new>`_
+If you find a bug, see a typo, have some kind of troubles running the module or just simply want to have a feature added, please `submit an issue! <https://github.com/WFP-VAM/modape/issues/new>`_
 
 
 Usage tutorial
@@ -63,18 +66,13 @@ Usage tutorial
 
 All executables can be called with a ``-h`` flag for detailed usage.
 
-For a more detailed tutorial on how to use the executables, please visit `WFP-VAM.github.io/wsmtk <http://WFP-VAM.github.io/wsmtk>`_.
+For a more detailed tutorial on how to use the executables, please visit `WFP-VAM.github.io/modape <http://WFP-VAM.github.io/modape>`_.
 
 
 CHANGES
 -----
-
-TBD: Initial release
-
-TODO
------
-
-TBD
+- v0.1.0:
+        - initial release
 
 -----
 
