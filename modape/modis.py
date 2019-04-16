@@ -486,7 +486,7 @@ class ModisRawH5(object):
 
                 # Write back date list
                 dates_combined.sort()
-                dates[...] = [n.encode("ascii", "ignore") for n in dates_combined]
+                dates[...] = np.array(dates_combined,dtype='S8')
         except:
             print('Error updating {}! File may be corrupt, consider creating the file from scratch, or closer investigation. \n\nError message: \n'.format(self.outname))
             traceback.print_exc()
@@ -609,7 +609,7 @@ class ModisSmoothH5(object):
                                    maxshape=(None,),
                                    dtype='S8',
                                    compression=cmpr,
-                                   data=[x.encode('ascii', 'ignore') for x in dates.target])
+                                   data=np.array(dates.target, dtype='S8'))
 
                 dset.attrs['geotransform'] = rgt
                 dset.attrs['projection'] = rpj
@@ -665,7 +665,7 @@ class ModisSmoothH5(object):
             if len(dates.target) > smoothshape[0]:
                 smt_dates.resize((len(dates.target),))
                 smt_ds.resize((smoothshape[0], len(dates.target)))
-                smt_dates[...] = [x.encode('ascii', 'ignore') for x in dates.target]
+                smt_dates[...] = np.array(dates.target, dtype='S8')
 
             # calculate offsets
             rawoffset = [x.decode() for x in raw_dates[...]].index(self.rawdates[0])
@@ -821,7 +821,7 @@ class ModisSmoothH5(object):
             if len(dates.target) > smoothshape[0]:
                 smt_dates.resize((len(dates.target),))
                 smt_ds.resize((smoothshape[0], len(dates.target)))
-                smt_dates[...] = [x.encode('ascii', 'ignore') for x in dates.target]
+                smt_dates[...] = np.array(dates.target, dtype='S8')
 
             # calculate offsets
             rawoffset = [x.decode() for x in raw_dates[...]].index(self.rawdates[0])
@@ -988,7 +988,7 @@ class ModisSmoothH5(object):
             if len(dates.target) > smoothshape[0]:
                 smt_dates.resize((len(dates.target),))
                 smt_ds.resize((smoothshape[0], len(dates.target)))
-                smt_dates[...] = [x.encode('ascii', 'ignore') for x in dates.target]
+                smt_dates[...] = np.array(dates.target, dtype='S8')
 
             # calculate offsets
             rawoffset = [x.decode() for x in raw_dates[...]].index(self.rawdates[0])

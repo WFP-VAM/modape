@@ -1,20 +1,20 @@
 MODAPE
 =====
 
-|CI| |version| |pyversions| |downloads| |license|     
+|CI| |version| |pyversions| |downloads| |license|
 
 .. |CI| image:: https://travis-ci.org/WFP-VAM/modape.svg?branch=master
              :target: https://travis-ci.org/WFP-VAM/modape
 
 .. |version| image:: https://img.shields.io/pypi/v/modape.svg
                   :target: https://pypi.org/project/modape/
-   
+
 .. |pyversions| image:: https://img.shields.io/pypi/pyversions/modape.svg
                      :target: https://pypi.org/project/modape/
- 
+
 .. |downloads| image:: https://img.shields.io/pypi/dm/modape.svg
-                    :target: https://pypi.org/project/modape/  
- 
+                    :target: https://pypi.org/project/modape/
+
 .. |license| image:: https://img.shields.io/github/license/WFP-VAM/modape.svg
                   :target: https://github.com/WFP-VAM/modape/blob/master/LICENSE
 |
@@ -89,8 +89,10 @@ For a more detailed tutorial on how to use the executables, please visit `WFP-VA
 
 CHANGES
 -----
+- v0.1.2:
+        - fix issues with pytest and dates in HDF5 for PYTHON 2.7
 - v0.1.1:
-        - minor changes to MANIFEST 
+        - minor changes to MANIFEST
 - v0.1.0:
         - initial release
 
