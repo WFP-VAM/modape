@@ -66,7 +66,7 @@ Usage tutorial
 
 All executables can be called with a ``-h`` flag for detailed usage.
 
-For a more detailed tutorial on how to use the executables, please visit `WFP-VAM.github.io/modape <http://WFP-VAM.github.io/modape>`_.
+For a more detailed tutorial on how to use the executables, please visit `WFP-VAM.github.io/modape <https://wfp-vam.github.io/modape/>`_.
 
 
 CHANGES
