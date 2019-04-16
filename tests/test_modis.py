@@ -11,6 +11,7 @@ except ImportError:
     from mock import patch, MagicMock
 import uuid
 
+import numpy as np
 import h5py #pylint: disable=import-error
 try:
     import gdal
@@ -35,7 +36,7 @@ def create_h5(fn, x, y, tr, ts, r):
 
     with h5py.File(fn, 'a', driver='core', backing_store=True) as h5f:
         dset = h5f.create_dataset('data', shape=(x*y, 4), dtype='Int16', maxshape=(x*y, None), chunks=((x*y)//25, 10), compression='gzip', fillvalue=-3000)
-        h5f.create_dataset('dates', data=[x.encode('ascii') for x in ['2002185', '2002193', '2002201', '2002209']], shape=(4,), maxshape=(None,), dtype='S8', compression='gzip')
+        h5f.create_dataset('dates', shape=(4,), data=np.array(['2002185', '2002193', '2002201', '2002209'], dtype='S8'), maxshape=(None,), dtype='S8', compression='gzip')
         dset.attrs['nodata'] = -3000
         dset.attrs['temporalresolution'] = tr
         dset.attrs['tshift'] = ts
