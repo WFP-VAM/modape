@@ -1,6 +1,24 @@
 MODAPE
 =====
 
+|CI| |version| |pyversions| |downloads| |license|     
+
+.. |CI| image:: https://travis-ci.org/WFP-VAM/modape.svg?branch=master
+             :target: https://travis-ci.org/WFP-VAM/modape
+
+.. |version| image:: https://img.shields.io/pypi/v/modape.svg
+                  :target: https://pypi.org/project/modape/
+   
+.. |pyversions| image:: https://img.shields.io/pypi/pyversions/modape.svg
+                     :target: https://pypi.org/project/modape/
+ 
+.. |downloads| image:: https://img.shields.io/pypi/dm/modape.svg
+                    :target: https://pypi.org/project/modape/  
+ 
+.. |license| image:: https://img.shields.io/github/license/WFP-VAM/modape.svg
+                  :target: https://github.com/WFP-VAM/modape/blob/master/LICENSE
+|
+
 The **M**\ ODIS **A**\ ssimilation and **P**\ rocessing **E**\ ngine combines a state-of-the art whittaker smoother, implemented as fast C-extension through Cython and including a V-curve optimization of the smoothing parameter, with a HDF5 based processing chain optimized for MODIS data.
 
 The sub-module ``modape.whittaker`` includes the following variations of the whittaker smoother with 2nd order differences:
