@@ -482,13 +482,14 @@ optional arguments:
 
 ---
 
-Last updated on 2019-04-07
+Last updated on 2019-04-16 (version: 0.1.1)
 
 Terminal recordings created with [asciinema](https://github.com/asciinema)
 
 created by:
 
-Valentin Pesendorfer, 2018  
+Valentin Pesendorfer, 2018
+ 
 valentin.pesendofer@wfp.org
 
 

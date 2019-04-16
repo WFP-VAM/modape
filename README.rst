@@ -71,6 +71,8 @@ For a more detailed tutorial on how to use the executables, please visit `WFP-VA
 
 CHANGES
 -----
+- v0.1.1:
+        - minor changes to MANIFEST 
 - v0.1.0:
         - initial release
 
