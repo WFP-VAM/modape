@@ -1,6 +1,11 @@
 dist: xenial
+
 language: python
+
 sudo: required
+
+notifications:
+  email: false
 
 addons:
   apt:
