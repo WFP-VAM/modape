@@ -72,7 +72,8 @@ setup(
         'requests>=2',
         'progress>=1.5',
         'pandas>=0.24',
-        "cryptography>=2.6",
+        'cryptography>=2.6',
+        'mock;python_version<"3.0"'
     ],
     python_requires='>=2.7.11, <4',
 )

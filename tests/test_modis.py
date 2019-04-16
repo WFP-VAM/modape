@@ -5,7 +5,10 @@ import os
 import re
 import shutil
 import unittest
-from unittest.mock import patch, Mock
+try:
+    from unittest.mock import patch, MagicMock
+except ImportError:
+    from mock import patch, MagicMock
 import uuid
 
 import h5py #pylint: disable=import-error
@@ -71,17 +74,17 @@ class TestMODIS(unittest.TestCase):
 
             def get(self, *args):
                 """Mock get method."""
-                rsp = Mock()
+                rsp = MagicMock()
                 rsp.status_code.return_value = 200
                 rsp.raise_for_status.return_value = None
 
                 if 'tiled' in args[0]:
                     rsp.content = fake.tiled
 
-                elif re.fullmatch('http://global-test.query/', args[0]):
+                elif args[0] == 'http://global-test.query/':
                     rsp.content = fake.glob
 
-                elif re.fullmatch('http://global-test.query/\\d.+\\.\\d.+\\.\\d.+/', args[0]):
+                elif re.match('http://global-test.query/\\d.+\\.\\d.+\\.\\d.+/', args[0]):
                     rsp.content = fake.mola[args[0]]
                 return rsp
 
