@@ -486,7 +486,7 @@ class ModisRawH5(object):
 
                 # Write back date list
                 dates_combined.sort()
-                dates[...] = np.array(dates_combined,dtype='S8')
+                dates[...] = np.array(dates_combined, dtype='S8')
         except:
             print('Error updating {}! File may be corrupt, consider creating the file from scratch, or closer investigation. \n\nError message: \n'.format(self.outname))
             traceback.print_exc()
@@ -662,7 +662,7 @@ class ModisSmoothH5(object):
             dix = dates.getDIX()
 
             # Resize if date list is bigger than shape of smoothed data
-            if len(dates.target) > smoothshape[0]:
+            if len(dates.target) > smoothshape[1]:
                 smt_dates.resize((len(dates.target),))
                 smt_ds.resize((smoothshape[0], len(dates.target)))
                 smt_dates[...] = np.array(dates.target, dtype='S8')
@@ -814,11 +814,10 @@ class ModisSmoothH5(object):
 
             if not self.tinterpolate:
                 dates.target = self.rawdates
-
             dix = dates.getDIX()
 
             # Resize if date list is bigger than shape of smoothed data
-            if len(dates.target) > smoothshape[0]:
+            if len(dates.target) > smoothshape[1]:
                 smt_dates.resize((len(dates.target),))
                 smt_ds.resize((smoothshape[0], len(dates.target)))
                 smt_dates[...] = np.array(dates.target, dtype='S8')
@@ -985,7 +984,7 @@ class ModisSmoothH5(object):
             dix = dates.getDIX()
 
             # Resize if date list is bigger than shape of smoothed data
-            if len(dates.target) > smoothshape[0]:
+            if len(dates.target) > smoothshape[1]:
                 smt_dates.resize((len(dates.target),))
                 smt_ds.resize((smoothshape[0], len(dates.target)))
                 smt_dates[...] = np.array(dates.target, dtype='S8')

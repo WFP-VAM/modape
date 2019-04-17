@@ -89,10 +89,11 @@ For a more detailed tutorial on how to use the executables, please visit `WFP-VA
 
 CHANGES
 -----
-- v0.1.2:
+- v0.1.1/2/3:
+        - changes to MANIFEST.in
         - fix issues with pytest and dates in HDF5 for PYTHON 2.7
-- v0.1.1:
-        - minor changes to MANIFEST
+        - fix bug for updating smoothed datasets
+
 - v0.1.0:
         - initial release
 
