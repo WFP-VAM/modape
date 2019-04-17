@@ -662,7 +662,7 @@ class ModisSmoothH5(object):
             dix = dates.getDIX()
 
             # Resize if date list is bigger than shape of smoothed data
-            if len(dates.target) > smoothshape[0]:
+            if len(dates.target) > smoothshape[1]:
                 smt_dates.resize((len(dates.target),))
                 smt_ds.resize((smoothshape[0], len(dates.target)))
                 smt_dates[...] = np.array(dates.target, dtype='S8')
@@ -818,7 +818,7 @@ class ModisSmoothH5(object):
             dix = dates.getDIX()
 
             # Resize if date list is bigger than shape of smoothed data
-            if len(dates.target) > smoothshape[0]:
+            if len(dates.target) > smoothshape[1]:
                 smt_dates.resize((len(dates.target),))
                 smt_ds.resize((smoothshape[0], len(dates.target)))
                 smt_dates[...] = np.array(dates.target, dtype='S8')
@@ -985,7 +985,7 @@ class ModisSmoothH5(object):
             dix = dates.getDIX()
 
             # Resize if date list is bigger than shape of smoothed data
-            if len(dates.target) > smoothshape[0]:
+            if len(dates.target) > smoothshape[1]:
                 smt_dates.resize((len(dates.target),))
                 smt_ds.resize((smoothshape[0], len(dates.target)))
                 smt_dates[...] = np.array(dates.target, dtype='S8')
