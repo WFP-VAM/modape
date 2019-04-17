@@ -486,7 +486,7 @@ class ModisRawH5(object):
 
                 # Write back date list
                 dates_combined.sort()
-                dates[...] = np.array(dates_combined,dtype='S8')
+                dates[...] = np.array(dates_combined, dtype='S8')
         except:
             print('Error updating {}! File may be corrupt, consider creating the file from scratch, or closer investigation. \n\nError message: \n'.format(self.outname))
             traceback.print_exc()
@@ -814,7 +814,6 @@ class ModisSmoothH5(object):
 
             if not self.tinterpolate:
                 dates.target = self.rawdates
-
             dix = dates.getDIX()
 
             # Resize if date list is bigger than shape of smoothed data
