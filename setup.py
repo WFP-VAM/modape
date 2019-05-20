@@ -39,7 +39,7 @@ setup(
     author='Valentin Pesendorfer',
     author_email='valentin.pesendorfer@wfp.org',
     url='http://wfp-vam.github.io/modape',
-    long_description=open('README.rst').read(),
+    long_description='''HDF5 based processing chain optimized for MODIS data combined with a State-of-the art whittaker smoother, implemented as fast C-extension through Cython and including a V-curve optimization of the smoothing parameter.\n\nFor more information, please visit: http://github.com/WFP-VAM/modape''',
     include_dirs=[numpy.get_include()],
     entry_points={
         'console_scripts':[
