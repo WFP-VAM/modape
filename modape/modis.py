@@ -273,6 +273,9 @@ class ModisRawH5(object):
         if not re.match(r'M.D13\w\d', self.reference_file_basename) and not re.match(r'M.D11\w\d', self.reference_file_basename):
             raise SystemExit("Processing only implemented for M*D11 or M*13 products!")
 
+        # make sure number of dates is equal to number of files, so no duplicates!
+        assert len(set(self.rawdates)) == self.nfiles, "Number of files not equal to number of derived dates - are there duplicate HDF files?"
+
         # Patterns for string extraction
         ppatt = re.compile(r'M\w{6}')
         vpatt = re.compile(r'.+\.(\d{3})\..+')
