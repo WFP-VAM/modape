@@ -1090,12 +1090,12 @@ class ModisSmoothH5(object):
                     for ix in map_index:
                         if not isinstance(srange, np.ndarray):
                             lag_correlation = lag1corr(arr_raw[ix, :-1], arr_raw[ix, 1:], nodata)
-                            if lag_correlation <= 0.5:
-                                sr = np.linspace(-2.0, 1.0, 16.0)
-                            elif lag_correlation > 0.5:
-                                sr = np.linspace(0.0, 3.0, 16.0)
+                            if lag_correlation > 0.5:
+                                sr = np.linspace(-2, 1.0, 16)
+                            elif lag_correlation <= 0.5:
+                                sr = np.linspace(0, 3.0, 16)
                             else:
-                                sr = np.linspace(-1.0, 1.0, 11.0)
+                                sr = np.linspace(-1, 1, 11)
                         else:
                             sr = srange
                         if p:

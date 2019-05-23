@@ -537,11 +537,11 @@ def execute_ws2d_vc(ix):
                           arr_raw[ix, 1:],
                           int(parameters['nd']))
             if lc > 0.5:
-                srange = np.linspace(-2.0, 1.0, 16.0)
+                srange = np.linspace(-2, 1, 16)
             elif lc <= 0.5:
-                srange = np.linspace(0.0, 3.0, 16.0)
+                srange = np.linspace(0, 3, 16)
             else:
-                srange = np.linspace(-1.0, 1.0, 11.0)
+                srange = np.linspace(-1, 1, 11)
         else:
             srange = parameters['srange']
 

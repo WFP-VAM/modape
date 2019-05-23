@@ -40,12 +40,12 @@ def run_ws2d(h5):
 
     else:
         smt_h5 = ModisSmoothH5(rawfile=h5,
-                            startdate=pdict['startdate'],
-                            tempint=pdict['tempint'],
-                            nsmooth=pdict['nsmooth'],
-                            nupdate=pdict['nupdate'],
-                            targetdir=pdict['targetdir'],
-                            nworkers=pdict['nworkers'])
+                               startdate=pdict['startdate'],
+                               tempint=pdict['tempint'],
+                               nsmooth=pdict['nsmooth'],
+                               nupdate=pdict['nupdate'],
+                               targetdir=pdict['targetdir'],
+                               nworkers=pdict['nworkers'])
 
         if not smt_h5.exists:
             smt_h5.create()
@@ -62,12 +62,12 @@ def run_ws2d_sgrid(h5):
         print('Raw HDF5 {} not found! Please check path.'.format(h5))
     else:
         smt_h5 = ModisSmoothH5(rawfile=h5,
-                            startdate=pdict['startdate'],
-                            tempint=pdict['tempint'],
-                            nsmooth=pdict['nsmooth'],
-                            nupdate=pdict['nupdate'],
-                            targetdir=pdict['targetdir'],
-                            nworkers=pdict['nworkers'])
+                               startdate=pdict['startdate'],
+                               tempint=pdict['tempint'],
+                               nsmooth=pdict['nsmooth'],
+                               nupdate=pdict['nupdate'],
+                               targetdir=pdict['targetdir'],
+                               nworkers=pdict['nworkers'])
 
         if not smt_h5.exists:
             smt_h5.create()
@@ -84,12 +84,12 @@ def run_ws2d_vc(h5):
         print('Raw HDF5 {} not found! Please check path.'.format(h5))
     else:
         smt_h5 = ModisSmoothH5(rawfile=h5,
-                            startdate=pdict['startdate'],
-                            tempint=pdict['tempint'],
-                            nsmooth=pdict['nsmooth'],
-                            nupdate=pdict['nupdate'],
-                            targetdir=pdict['targetdir'],
-                            nworkers=pdict['nworkers'])
+                               startdate=pdict['startdate'],
+                               tempint=pdict['tempint'],
+                               nsmooth=pdict['nsmooth'],
+                               nupdate=pdict['nupdate'],
+                               targetdir=pdict['targetdir'],
+                               nworkers=pdict['nworkers'])
 
         if not smt_h5.exists:
             smt_h5.create()
@@ -106,12 +106,12 @@ def run_ws2d_vcp(h5):
         print('Raw HDF5 {} not found! Please check path.'.format(h5))
     else:
         smt_h5 = ModisSmoothH5(rawfile=h5,
-                            startdate=pdict['startdate'],
-                            tempint=pdict['tempint'],
-                            nsmooth=pdict['nsmooth'],
-                            nupdate=pdict['nupdate'],
-                            targetdir=pdict['targetdir'],
-                            nworkers=pdict['nworkers'])
+                               startdate=pdict['startdate'],
+                               tempint=pdict['tempint'],
+                               nsmooth=pdict['nsmooth'],
+                               nupdate=pdict['nupdate'],
+                               targetdir=pdict['targetdir'],
+                               nworkers=pdict['nworkers'])
 
         if not smt_h5.exists:
             smt_h5.create()
@@ -148,7 +148,7 @@ def main():
     parser = argparse.ArgumentParser(description='Smooth, gapfill and interpolate processed raw MODIS HDF5 files')
     parser.add_argument('input', help='Smoothing input - either one or more raw MODIS HDF5 file(s) or path containing raw MODIS HDF5 file(s)', nargs='+', metavar='input')
     parser.add_argument('-s', '--svalue', help='S value for smoothing (has to be log10(s))', metavar='', type=float)
-    parser.add_argument('-S', '--srange', help='S value range for V-curve (float log10(s) values as smin smax sstep - default -1.0 1.0 0.2)', nargs='+', metavar='')
+    parser.add_argument('-S', '--srange', help='S value range for V-curve (float log10(s) values as smin smax sstep - default -1 1 0)', nargs='+', metavar='')
     parser.add_argument('-t', '--tempint', help='Value for temporal interpolation (integer required - default is native temporal resolution i.e. no interpolation)', metavar='', type=int)
     parser.add_argument('-n', '--nsmooth', help='Number of raw timesteps used for smoothing', default=0, metavar='', type=int)
     parser.add_argument('-u', '--nupdate', help='Number of smoothed timesteps to be updated in HDF5 file', default=0, metavar='', type=int)
@@ -219,7 +219,7 @@ def main():
     if args.parallel_tiles > 1:
         if args.optv:
             if not args.srange:
-                processing_dict['srange'] = np.linspace(-1.0, 1.0, 11.0)
+                processing_dict['srange'] = np.linspace(-1, 1, 11)
             else:
                 processing_dict['srange'] = args.srange
             if not args.quiet:
@@ -276,7 +276,7 @@ def main():
     else:
         if args.optv:
             if not args.srange:
-                srange = np.linspace(-1.0, 1.0, 11.0)
+                srange = np.linspace(-1, 1, 11)
             else:
                 srange = args.srange
 
@@ -289,12 +289,12 @@ def main():
                     continue
 
                 smt_h5 = ModisSmoothH5(rawfile=h5,
-                                    startdate=args.startdate,
-                                    tempint=args.tempint,
-                                    nsmooth=args.nsmooth,
-                                    nupdate=args.nupdate,
-                                    targetdir=args.targetdir,
-                                    nworkers=args.nworkers)
+                                       startdate=args.startdate,
+                                       tempint=args.tempint,
+                                       nsmooth=args.nsmooth,
+                                       nupdate=args.nupdate,
+                                       targetdir=args.targetdir,
+                                       nworkers=args.nworkers)
 
                 if not smt_h5.exists:
                     smt_h5.create()
@@ -323,12 +323,12 @@ def main():
                     continue
 
                 smt_h5 = ModisSmoothH5(rawfile=h5,
-                                    startdate=args.startdate,
-                                    tempint=args.tempint,
-                                    nsmooth=args.nsmooth,
-                                    nupdate=args.nupdate,
-                                    targetdir=args.targetdir,
-                                    nworkers=args.nworkers)
+                                       startdate=args.startdate,
+                                       tempint=args.tempint,
+                                       nsmooth=args.nsmooth,
+                                       nupdate=args.nupdate,
+                                       targetdir=args.targetdir,
+                                       nworkers=args.nworkers)
 
                 if not smt_h5.exists:
                     smt_h5.create()
@@ -347,12 +347,12 @@ def main():
                     continue
 
                 smt_h5 = ModisSmoothH5(rawfile=h5,
-                                    startdate=args.startdate,
-                                    tempint=args.tempint,
-                                    nsmooth=args.nsmooth,
-                                    nupdate=args.nupdate,
-                                    targetdir=args.targetdir,
-                                    nworkers=args.nworkers)
+                                       startdate=args.startdate,
+                                       tempint=args.tempint,
+                                       nsmooth=args.nsmooth,
+                                       nupdate=args.nupdate,
+                                       targetdir=args.targetdir,
+                                       nworkers=args.nworkers)
 
                 if not smt_h5.exists:
                     smt_h5.create()
@@ -370,12 +370,12 @@ def main():
                     continue
 
                 smt_h5 = ModisSmoothH5(rawfile=h5,
-                                    startdate=args.startdate,
-                                    tempint=args.tempint,
-                                    nsmooth=args.nsmooth,
-                                    nupdate=args.nupdate,
-                                    targetdir=args.targetdir,
-                                    nworkers=args.nworkers)
+                                       startdate=args.startdate,
+                                       tempint=args.tempint,
+                                       nsmooth=args.nsmooth,
+                                       nupdate=args.nupdate,
+                                       targetdir=args.targetdir,
+                                       nworkers=args.nworkers)
 
                 if not smt_h5.exists:
                     smt_h5.create()
