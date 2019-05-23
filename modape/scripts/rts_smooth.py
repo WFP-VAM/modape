@@ -338,7 +338,7 @@ def main():
             except (IndexError, TypeError, AssertionError):
                 raise SystemExit('Error with s value array values. Expected three values of float log10(s) -  smin smax sstep !')
         else:
-            srange = np.linspace(0.0, 4.0, 41.0)
+            srange = np.linspace(0, 4, 41)
         if args.pvalue:
             print('\nRunning asymmetric whittaker smoother with V-curve optimization ... \n')
             rts.ws2dopt(srange=srange, p=args.pvalue)
