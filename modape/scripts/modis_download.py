@@ -30,7 +30,7 @@ def main():
 
     parser = argparse.ArgumentParser(description='Query and download MODIS products (Earthdata account required for download)')
     parser.add_argument('product', help='MODIS product ID(s)', nargs='+')
-    parser.add_argument('--roi', help='Region of interest. Can be LAT/LON point, bounding box in format llx,lly,urx,ury or OGR file (shp, geojson - convex hull will be used)', nargs='+', required=False)
+    parser.add_argument('--roi', help='Region of interest. Can be LAT/LON point, bounding box in format llx,lly,urx,ury or OGR file (expects epsg:4326! - shp, geojson - convex hull will be used)', nargs='+', required=False)
     parser.add_argument('--tile-filter', help='MODIS tile filter (download only specified tiles)', nargs='+', required=False, metavar='')
     parser.add_argument('-c', '--collection', help='MODIS collection', default=6, metavar='')
     parser.add_argument('-b', '--begin-date', help='Start date (YYYY-MM-DD)', default='2000-01-01', metavar='')
