@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+"""modis_download.py: Query and download MODIS HDF files."""
 
 from __future__ import absolute_import, division, print_function
 
