@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+"""modis_download.py: Query and download MODIS HDF files."""
 
 from __future__ import absolute_import, division, print_function
 
@@ -29,7 +30,7 @@ def main():
 
     parser = argparse.ArgumentParser(description='Query and download MODIS products (Earthdata account required for download)')
     parser.add_argument('product', help='MODIS product ID(s)', nargs='+')
-    parser.add_argument('--roi', help='Region of interest. Can be LAT/LON point, bounding box in format llx,lly,urx,ury or OGR file (shp, geojson - convex hull will be used)', nargs='+', required=False)
+    parser.add_argument('--roi', help='Region of interest. Can be LAT/LON point, bounding box in format llx,lly,urx,ury or OGR file (expects epsg:4326! - shp, geojson - convex hull will be used)', nargs='+', required=False)
     parser.add_argument('--tile-filter', help='MODIS tile filter (download only specified tiles)', nargs='+', required=False, metavar='')
     parser.add_argument('-c', '--collection', help='MODIS collection', default=6, metavar='')
     parser.add_argument('-b', '--begin-date', help='Start date (YYYY-MM-DD)', default='2000-01-01', metavar='')
@@ -156,7 +157,7 @@ def main():
 
                             for point in range(point_count):
                                 lat, lon, _ = geometry.GetPoint(point)
-                                coordinates.append('{},{}'.format(lon, lat))
+                                coordinates.append('{},{}'.format(lat, lon))
 
                             query.append('polygon=' + ','.join(coordinates))
                             ds = None
