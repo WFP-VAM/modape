@@ -157,7 +157,7 @@ def main():
 
                             for point in range(point_count):
                                 lat, lon, _ = geometry.GetPoint(point)
-                                coordinates.append('{},{}'.format(lon, lat))
+                                coordinates.append('{},{}'.format(lat, lon))
 
                             query.append('polygon=' + ','.join(coordinates))
                             ds = None
