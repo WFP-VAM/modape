@@ -449,7 +449,7 @@ class ModisRawH5(object):
                 # if new total temporal length is bigger than dataset, datasets need to be resized for additional data
                 if dates_length > dset.shape[1]:
                     dates.resize((dates_length,))
-                    dset.resize((dset.shape[1], dates_length))
+                    dset.resize((dset.shape[0], dates_length))
 
                 # Sorting index to ensure temporal continuity
                 sort_ix = np.argsort(dates_combined)
@@ -667,7 +667,7 @@ class ModisSmoothH5(object):
             # Resize if date list is bigger than shape of smoothed data
             if len(dates.target) > smoothshape[1]:
                 smt_dates.resize((len(dates.target),))
-                smt_ds.resize((smoothshape[1], len(dates.target)))
+                smt_ds.resize((smoothshape[0], len(dates.target)))
                 smt_dates[...] = np.array(dates.target, dtype='S8')
 
             # calculate offsets
@@ -822,7 +822,7 @@ class ModisSmoothH5(object):
             # Resize if date list is bigger than shape of smoothed data
             if len(dates.target) > smoothshape[1]:
                 smt_dates.resize((len(dates.target),))
-                smt_ds.resize((smoothshape[1], len(dates.target)))
+                smt_ds.resize((smoothshape[0], len(dates.target)))
                 smt_dates[...] = np.array(dates.target, dtype='S8')
 
             # calculate offsets
@@ -989,7 +989,7 @@ class ModisSmoothH5(object):
             # Resize if date list is bigger than shape of smoothed data
             if len(dates.target) > smoothshape[1]:
                 smt_dates.resize((len(dates.target),))
-                smt_ds.resize((smoothshape[1], len(dates.target)))
+                smt_ds.resize((smoothshape[0], len(dates.target)))
                 smt_dates[...] = np.array(dates.target, dtype='S8')
 
             # calculate offsets
