@@ -89,7 +89,10 @@ For a more detailed tutorial on how to use the executables, please visit `WFP-VA
 
 CHANGES
 -----
--v 0.1.6:
+- v 0.1.7:
+       - fix bug when updating datasets 
+
+- v 0.1.6:
        - fix bug handling ogr AOIs in `modis_download`
        - add `docstring to modis_download`
 
