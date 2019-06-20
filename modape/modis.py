@@ -204,10 +204,11 @@ class ModisQuery(object):
             # remove filelist.txt if all downloads are successful
             if process_output.returncode != 0:
                 print('\nError (error code {}) occured during download, please check files against MODIS URL list ({})!\n'.format(process_output.returncode, flist))
+                self.files = []
             else:
                 os.remove(flist)
 
-            self.files = [self.targetdir + os.path.basename(x) for x in self.modis_urls]
+            self.files = [os.path.join(self.targetdir, os.path.basename(x)) for x in self.modis_urls]
 
         # download with requests
         else:
@@ -231,7 +232,7 @@ class ModisQuery(object):
                             fopen.write(chunk)
                             spinner.next()
 
-                    self.files = self.files + [self.targetdir + fname]
+                    self.files = self.files + [os.path.join(self.targetdir, fname)]
                     print(' done.\n')
                 except requests.exceptions.HTTPError as e:
                     print('Error downloading {} - skipping. Error message: {}'.format(url, e))
