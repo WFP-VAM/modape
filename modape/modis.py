@@ -15,7 +15,7 @@ from __future__ import absolute_import, division, print_function
 
 import array
 from contextlib import contextmanager
-import datetime
+from datetime import datetime, timedelta
 import gc
 import multiprocessing as mp
 import os
@@ -74,8 +74,8 @@ class ModisQuery(object):
         self.targetdir = targetdir
         self.files = []
         self.modis_urls = []
-        self.begin = datetime.datetime.strptime(begindate, '%Y-%m-%d').date()
-        self.end = datetime.datetime.strptime(enddate, '%Y-%m-%d').date()
+        self.begin = datetime.strptime(begindate, '%Y-%m-%d').date()
+        self.end = datetime.strptime(enddate, '%Y-%m-%d').date()
         self.global_flag = global_flag
         self.aria2 = aria2
 
@@ -97,7 +97,7 @@ class ModisQuery(object):
             if self.global_flag:
                 regex = re.compile('.*.hdf$')
                 dates = np.array([x.getText() for x in soup.findAll('a', href=True) if re.match(r'\d{4}\.\d{2}\.\d{2}', x.getText())])
-                dates_parsed = [datetime.datetime.strptime(x, '%Y.%m.%d/').date() for x in dates]
+                dates_parsed = [datetime.strptime(x, '%Y.%m.%d/').date() for x in dates]
                 dates_ix = np.flatnonzero(np.array([self.begin <= x < self.end for x in dates_parsed]))
 
                 for date_sel in dates[dates_ix]:
@@ -684,7 +684,7 @@ class ModisSmoothH5(object):
 
                     # Shift for interpolation
                     for rdate in self.rawdates:
-                        vector_daily[dates.daily.index((fromjulian(rdate) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
+                        vector_daily[dates.daily.index((fromjulian(rdate) + timedelta(tshift)).strftime('%Y%j'))] = -1
                 else:
                     vector_daily = None
                     shared_array_smooth = None
@@ -740,7 +740,7 @@ class ModisSmoothH5(object):
 
                     # Shift for interpolation
                     for rdate in self.rawdates:
-                        vector_daily[dates.daily.index((fromjulian(rdate) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
+                        vector_daily[dates.daily.index((fromjulian(rdate) + timedelta(tshift)).strftime('%Y%j'))] = -1
                 else:
                     arr_smooth = None
 
@@ -839,7 +839,7 @@ class ModisSmoothH5(object):
 
                     # Shift for interpolation
                     for rdate in self.rawdates:
-                        vector_daily[dates.daily.index((fromjulian(rdate) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
+                        vector_daily[dates.daily.index((fromjulian(rdate) + timedelta(tshift)).strftime('%Y%j'))] = -1
                 else:
                     vector_daily = None
                     shared_array_smooth = None
@@ -899,7 +899,7 @@ class ModisSmoothH5(object):
 
                     # Shift for interpolation
                     for rdate in self.rawdates:
-                        vector_daily[dates.daily.index((fromjulian(rdate) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
+                        vector_daily[dates.daily.index((fromjulian(rdate) + timedelta(tshift)).strftime('%Y%j'))] = -1
                 else:
                     arr_smooth = None
 
@@ -1006,7 +1006,7 @@ class ModisSmoothH5(object):
 
                     # Shift for interpolation
                     for rdate in self.rawdates:
-                        vector_daily[dates.daily.index((fromjulian(rdate) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
+                        vector_daily[dates.daily.index((fromjulian(rdate) + timedelta(tshift)).strftime('%Y%j'))] = -1
                 else:
                     vector_daily = None
                     shared_array_smooth = None
@@ -1069,7 +1069,7 @@ class ModisSmoothH5(object):
 
                     # Shift for interpolation
                     for rdate in self.rawdates:
-                        vector_daily[dates.daily.index((fromjulian(rdate) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
+                        vector_daily[dates.daily.index((fromjulian(rdate) + timedelta(tshift)).strftime('%Y%j'))] = -1
                 else:
                     arr_smooth = None
                 for br in range(0, rawshape[0], rawchunks[0]):
@@ -1203,8 +1203,8 @@ class ModisMosaic(object):
 
         # Create temporal index from dates available and min max input
         dates_dt = [fromjulian(x) for x in self.dates]
-        datemin_p = datetime.datetime.strptime(datemin, '%Y%m').date()
-        datemax_p = datetime.datetime.strptime(datemax, '%Y%m').date()
+        datemin_p = datetime.strptime(datemin, '%Y%m').date()
+        datemax_p = datetime.strptime(datemax, '%Y%m').date()
         self.temp_index = np.flatnonzero(np.array([datemin_p <= x <= datemax_p for x in dates_dt]))
 
     def get_array(self, dataset, ix, dt):
