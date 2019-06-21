@@ -19,6 +19,7 @@ from datetime import datetime, timedelta
 import gc
 import multiprocessing as mp
 import os
+from pathlib import Path
 import re
 from subprocess import Popen, check_output
 import sys
@@ -71,7 +72,7 @@ class ModisQuery(object):
         self.query_url = url
         self.username = username
         self.password = password
-        self.targetdir = targetdir
+        self.targetdir = Path(targetdir)
         self.files = []
         self.modis_urls = []
         self.begin = datetime.strptime(begindate, '%Y-%m-%d').date()
@@ -170,14 +171,14 @@ class ModisQuery(object):
                 raise SystemExit('ARIA2 download needs ARIA2 to be available in PATH! Please make sure it\'s installed and available in PATH!')
 
             # if targetdir doesn't exist, create
-            if not os.path.exists(self.targetdir):
+            if not self.targetdir.exists():
                 try:
-                    os.mkdir(self.targetdir)
+                    self.targetdir.mkdir()
                 except FileNotFoundError:
-                    print('\nCould not create target directory {} (Trying to create directories recursively?)\n'.format(self.targetdir))
+                    print('\nCould not create target directory {} (Trying to create directories recursively?)\n'.format(self.targetdir.as_posix()))
                     raise
 
-            flist = self.targetdir + '/{}'.format(str(uuid.uuid4()))
+            flist = self.targetdir.joinpath(str(uuid.uuid4())).as_posix()
 
             # write URLs of query resuls to disk for WGET
             with open(flist, 'w') as thefile:
@@ -194,7 +195,7 @@ class ModisQuery(object):
                 '-s', '10',
                 '--http-user', self.username,
                 '--http-passwd', self.password,
-                '-d', self.targetdir,
+                '-d', self.targetdir.as_posix(),
             ]
 
             # execute subprocess
@@ -207,7 +208,7 @@ class ModisQuery(object):
             else:
                 os.remove(flist)
 
-            self.files = [self.targetdir + os.path.basename(x) for x in self.modis_urls]
+            self.files = [self.targetdir.joinpath(os.path.basename(x)) for x in self.modis_urls]
 
         # download with requests
         else:
@@ -217,8 +218,8 @@ class ModisQuery(object):
                 print('{} of {}'.format(ix+1, self.results))
                 fname = url[url.rfind('/')+1:]
 
-                if os.path.exists('{}/{}'.format(self.targetdir, fname)):
-                    print('\nSkipping {} - {} already exists in {}!\n'.format(url, fname, self.targetdir))
+                if self.targetdir.joinpath(fname).exists():
+                    print('\nSkipping {} - {} already exists in {}!\n'.format(url, fname, self.targetdir.as_posix()))
                     continue
 
                 try:
@@ -231,7 +232,7 @@ class ModisQuery(object):
                             fopen.write(chunk)
                             spinner.next()
 
-                    self.files = self.files + [self.targetdir + fname]
+                    self.files = self.files + [self.targetdir.joinpath(fname)]
                     print(' done.\n')
                 except requests.exceptions.HTTPError as e:
                     print('Error downloading {} - skipping. Error message: {}'.format(url, e))
