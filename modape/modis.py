@@ -258,7 +258,7 @@ class ModisRawH5(object):
             interleave: Boolean flag if MOD/MYD 13  products should be interleaved
         """
 
-        self.targetdir = targetdir
+        self.targetdir = Path(targetdir)
         #self.resdict = dict(zip(['250m','500m','1km','0.05_Deg'],[x/112000 for x in [250,500,1000,5600]])) ## commented for original resolution
         self.vam_product_code_dict = dict(zip(['VIM', 'VEM', 'LTD', 'LTN'],
                                               ['NDVI', 'EVI', 'LST_Day', 'LST_Night']))
@@ -267,11 +267,10 @@ class ModisRawH5(object):
         self.files = [x for (y, x) in sorted(zip(self.rawdates, files))]
         self.rawdates.sort()
         self.nfiles = len(self.files)
-        self.reference_file = self.files[0]
-        self.reference_file_basename = os.path.basename(self.reference_file)
+        self.reference_file = Path(self.files[0])
 
         # class works only for M.D11 and M.D13 products
-        if not re.match(r'M.D13\w\d', self.reference_file_basename) and not re.match(r'M.D11\w\d', self.reference_file_basename):
+        if not re.match(r'M.D13\w\d', self.reference_file.name) and not re.match(r'M.D11\w\d', self.reference_file.name):
             raise SystemExit("Processing only implemented for M*D11 or M*13 products!")
 
         # make sure number of dates is equal to number of files, so no duplicates!
@@ -283,7 +282,7 @@ class ModisRawH5(object):
         tpatt = re.compile(r'h\d+v\d+')
 
         # Open reference file
-        ref = gdal.Open(self.reference_file)
+        ref = gdal.Open(self.reference_file.as_posix())
 
         # When no product is selected, the default is VIM and LTD
         if not vam_product_code:
@@ -301,11 +300,11 @@ class ModisRawH5(object):
 
         # check for MOD/MYD interleaving
         if interleave and self.vam_product_code == 'VIM':
-            self.product = [re.sub(r'M[O|Y]D', 'MXD', re.findall(ppatt, self.reference_file_basename)[0])]
+            self.product = [re.sub(r'M[O|Y]D', 'MXD', re.findall(ppatt, self.reference_file.name)[0])]
             self.temporalresolution = 8
             self.tshift = 8
         else:
-            self.product = re.findall(ppatt, self.reference_file_basename)
+            self.product = re.findall(ppatt, self.reference_file.name)
             if re.match(r'M[O|Y]D13\w\d', self.product[0]):
                 self.temporalresolution = 16
                 self.tshift = 8
@@ -330,13 +329,13 @@ class ModisRawH5(object):
                         pass
 
         # Name of file to be created/updated
-        self.outname = '{}/{}/{}.{}.h5'.format(
-            self.targetdir,
+        self.outname = Path('{}/{}/{}.{}.h5'.format(
+            self.targetdir.as_posix(),
             self.vam_product_code,
-            '.'.join(self.product + re.findall(tpatt, self.reference_file_basename) + [re.sub(vpatt, '\\1', self.reference_file_basename)]),
-            fname_vpc)
+            '.'.join(self.product + re.findall(tpatt, self.reference_file.name) + [re.sub(vpatt, '\\1', self.reference_file.name)]),
+            fname_vpc))
 
-        self.exists = os.path.isfile(self.outname)
+        self.exists = self.outname.exists()
         ref = None
 
     def create(self, compression='gzip', chunk=None):
@@ -347,7 +346,7 @@ class ModisRawH5(object):
             chunk: Number of pixels per chunk (needs to define equal sized chunks!)
         """
 
-        ref = gdal.Open(self.reference_file)
+        ref = gdal.Open(self.reference_file.as_posix())
         ref_sds = [x[0] for x in ref.GetSubDatasets() if self.vam_product_code_dict[self.vam_product_code] in x[0]][0]
 
         # reference raster
@@ -385,16 +384,16 @@ class ModisRawH5(object):
         rst = None
 
         # Create directory if necessary
-        if not os.path.exists(os.path.dirname(self.outname)):
+        if not self.outname.parent.exists():
             # Try statements caches possible error when multiple tiles are processed in parallel
             try:
-                os.makedirs(os.path.dirname(self.outname))
+                self.outname.parent.mkdir()
             except FileExistsError:
                 pass
 
         # Create HDF5 file
         try:
-            with h5py.File(self.outname, 'x', libver='latest') as h5f:
+            with h5py.File(self.outname.as_posix(), 'x', libver='latest') as h5f:
                 dset = h5f.create_dataset('data',
                                           shape=(nrows*ncols, self.nfiles),
                                           dtype=self.datatype[1],
@@ -419,8 +418,8 @@ class ModisRawH5(object):
                 dset.attrs['RasterYSize'] = nrows
             self.exists = True
         except:
-            print('\n\nError creating {}! Check input parameters (especially if compression/filter is available) and try again. Corrupt file will be removed now. \n\nError message: \n'.format(self.outname))
-            os.remove(self.outname)
+            print('\n\nError creating {}! Check input parameters (especially if compression/filter is available) and try again. Corrupt file will be removed now. \n\nError message: \n'.format(self.outname.as_posix()))
+            self.outname.unlink()
             raise
 
     def update(self):
@@ -430,7 +429,7 @@ class ModisRawH5(object):
         """
 
         try:
-            with h5py.File(self.outname, 'r+', libver='latest') as h5f:
+            with h5py.File(self.outname.as_posix(), 'r+', libver='latest') as h5f:
                 dset = h5f.get('data')
                 dates = h5f.get('dates')
                 self.chunks = dset.chunks
@@ -492,13 +491,13 @@ class ModisRawH5(object):
                 dates_combined.sort()
                 dates[...] = np.array(dates_combined, dtype='S8')
         except:
-            print('Error updating {}! File may be corrupt, consider creating the file from scratch, or closer investigation. \n\nError message: \n'.format(self.outname))
+            print('Error updating {}! File may be corrupt, consider creating the file from scratch, or closer investigation. \n\nError message: \n'.format(self.outname.as_posix()))
             traceback.print_exc()
             raise
 
     def __str__(self):
         """String to be displayed when printing an instance of the class object"""
-        return 'ModisRawH5 object: {} - {} files - exists on disk: {}'.format(self.outname, self.nfiles, self.exists)
+        return 'ModisRawH5 object: {} - {} files - exists on disk: {}'.format(self.outname.as_posix(), self.nfiles, self.exists)
 
 
 class ModisSmoothH5(object):
