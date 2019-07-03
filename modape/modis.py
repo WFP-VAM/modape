@@ -501,6 +501,13 @@ class ModisRawH5(object):
 
 
 class ModisSmoothH5(object):
+
+    ##TODO
+    # - Change way smoothoffset is calculated
+    # - change DateHelper
+    # - check bc or bco
+
+
     """Class for smoothed MODIS data collected into HDF5 file."""
 
     def __init__(self, rawfile, startdate=None,
@@ -827,7 +834,7 @@ class ModisSmoothH5(object):
 
             # calculate offsets
             rawoffset = [x.decode() for x in raw_dates[...]].index(self.rawdates[0])
-            smoothoffset = [x.decode() for x in smt_dates[...]].index(dates.target[0])
+            smoothoffset = [x.decode() for x in smt_dates[...]].index(dates.target[-self.nupdate])
 
             if self.nworkers > 1:
                 if self.tinterpolate:
@@ -903,6 +910,8 @@ class ModisSmoothH5(object):
                 else:
                     arr_smooth = None
 
+                print(f'RAWSHAPE: {arr_raw.shape} - SMOOTHSHAPE: {arr_smooth.shape}')
+
                 for br in range(0, rawshape[0], rawchunks[0]):
                     try:
                         arr_smooth[...] = nodata
@@ -912,6 +921,7 @@ class ModisSmoothH5(object):
 
                     for bc in range(0, arr_raw.shape[1], rawchunks[1]):
                         bco = bc + rawoffset
+                        print(f'LOAD RAW BCO {bco}')
                         arr_raw[:, bc:bc+rawchunks[1]] = raw_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]]
                     wts[...] = (arr_raw != nodata)*1
                     ndix = np.sum(wts, 1) >= (arr_raw.shape[1] * 0.2) # 20%+ data
@@ -932,10 +942,13 @@ class ModisSmoothH5(object):
                             pass
 
                     # write back data
+                    print(f'Smoothoffset {smoothoffset}')
                     if self.tinterpolate:
                         for bc in range(0, len(dates.target), smoothchunks[1]):
                             bco = bc + smoothoffset
-                            smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]]
+                            print(dates.target[bc:])
+                            print(dates.target[bco:])
+                            smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_smooth[:, bco:bco+rawchunks[1]]
                         arr_smooth[...] = nodata
                     else:
                         for bc in range(0, len(dates.target), smoothchunks[1]):
