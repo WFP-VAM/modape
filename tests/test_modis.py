@@ -195,7 +195,7 @@ class TestMODIS(unittest.TestCase):
             create_h5(fn='MXD13A2.h18v06.006.VIM.h5', x=1200, y=1200, tr=8, ts=8, r=0.009)
             smth5 = ModisSmoothH5('MXD13A2.h18v06.006.VIM.h5', tempint=10)
 
-            self.assertEqual(os.path.basename(smth5.outname), 'MXD13A2.h18v06.006.txd.VIM.h5')
+            self.assertEqual(smth5.outname.name, 'MXD13A2.h18v06.006.txd.VIM.h5')
             self.assertEqual(smth5.rawdates, [
                 '2002185',
                 '2002193',
@@ -228,7 +228,7 @@ class TestMODIS(unittest.TestCase):
             create_h5(fn='MOD11C2.006.LTD.h5', x=3600, y=7200, tr=8, ts=4, r=0.05)
             smth5 = ModisSmoothH5('MOD11C2.006.LTD.h5', tempint=5)
 
-            self.assertEqual(os.path.basename(smth5.outname), 'MOD11C2.006.txp.LTD.h5')
+            self.assertEqual(smth5.outname.name, 'MOD11C2.006.txp.LTD.h5')
             self.assertEqual(smth5.rawdates, [
                 '2002185',
                 '2002193',
