@@ -521,7 +521,7 @@ class ModisSmoothH5(object):
             if nsmooth < nupdate:
                 raise ValueError('nsmooth must be bigger or equal (>=) to nupdate!')
 
-        self.targetdir = targetdir
+        self.targetdir = Path(targetdir)
         self.rawfile = rawfile
         self.nworkers = nworkers
         self.nupdate = nupdate
@@ -548,12 +548,13 @@ class ModisSmoothH5(object):
             self.temporalresolution = None
 
         # Filename for smoothed HDF5
-        self.outname = '{}/{}.tx{}.{}.h5'.format(
-            self.targetdir,
-            '.'.join(os.path.basename(rawfile).split('.')[:-2]),
+        self.outname = Path('{}/{}.tx{}.{}.h5'.format(
+            self.targetdir.as_posix(),
+            '.'.join(rawfile.name.split('.')[:-2]),
             txflag,
-            os.path.basename(rawfile).split('.')[-2:-1][0])
-        self.exists = os.path.isfile(self.outname)
+            rawfile.name.split('.')[-2:-1][0]))
+
+        self.exists = self.outname.exists()
 
     def create(self):
         """Creates smoothed HDF5 file on disk."""
@@ -592,7 +593,7 @@ class ModisSmoothH5(object):
         dates_length = len(dates.target)
 
         try:
-            with h5py.File(self.outname, 'x', libver='latest') as h5f:
+            with h5py.File(self.outname.as_posix(), 'x', libver='latest') as h5f:
                 dset = h5f.create_dataset('data',
                                           shape=(rawshape[0], dates_length),
                                           dtype=dt, maxshape=(rawshape[0], None),
@@ -622,8 +623,8 @@ class ModisSmoothH5(object):
                 dset.attrs['RasterYSize'] = nrows
                 dset.attrs['RasterXSize'] = ncols
         except:
-            print('\n\nError creating {}! Check input parameters (especially if compression/filter is available) and try again. Corrupt file will be removed now. \n\nError message: \n'.format(self.outname))
-            os.remove(self.outname)
+            print('\n\nError creating {}! Check input parameters (especially if compression/filter is available) and try again. Corrupt file will be removed now. \n\nError message: \n'.format(self.outname.as_posix()))
+            os.remove(self.outname.unlink())
             raise
 
         self.exists = True
@@ -635,7 +636,7 @@ class ModisSmoothH5(object):
             s: log10 value of s (float)
         """
 
-        with h5py.File(self.rawfile, 'r') as rawh5, h5py.File(self.outname, 'r+') as smth5:
+        with h5py.File(self.rawfile, 'r') as rawh5, h5py.File(self.outname.as_posix(), 'r+') as smth5:
             raw_ds = rawh5.get('data')
             raw_dates_all = rawh5.get('dates')
             rtres = raw_ds.attrs['temporalresolution'].item()
@@ -791,7 +792,7 @@ class ModisSmoothH5(object):
         a previous run of V-curve s-optimization.
         """
 
-        with h5py.File(self.rawfile, 'r') as rawh5, h5py.File(self.outname, 'r+') as smth5:
+        with h5py.File(self.rawfile, 'r') as rawh5, h5py.File(self.outname.as_posix(), 'r+') as smth5:
             raw_ds = rawh5.get('data')
             raw_dates_all = rawh5.get('dates')
             rtres = raw_ds.attrs['temporalresolution'].item()
@@ -953,7 +954,7 @@ class ModisSmoothH5(object):
             p: Percentile value (float)
         """
 
-        with h5py.File(self.rawfile, 'r') as rawh5, h5py.File(self.outname, 'r+') as smth5:
+        with h5py.File(self.rawfile, 'r') as rawh5, h5py.File(self.outname.as_posix(), 'r+') as smth5:
             raw_ds = rawh5.get('data')
             raw_dates_all = rawh5.get('dates')
             rtres = raw_ds.attrs['temporalresolution'].item()
