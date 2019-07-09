@@ -6,7 +6,7 @@ Author: Valentin Pesendorfer, April 2019
 """
 from __future__ import absolute_import, division, print_function
 
-import array
+from array import array
 import ctypes
 import datetime
 import multiprocessing
@@ -529,7 +529,7 @@ def execute_ws2d_vc(ix):
     if not parameters['p']:
         arr_raw[ix, :], arr_sgrid[ix] = ws2doptv(y=arr_raw[ix, :],
                                                  w=np.array((arr_raw[ix, :] != parameters['nd'])*1, dtype='double'),
-                                                 llas=array.array('d', parameters['srange']))
+                                                 llas=array('d', parameters['srange']))
     else:
         if not isinstance(parameters['srange'], np.ndarray):
             lc = lag1corr(arr_raw[ix, :-1],
@@ -546,7 +546,7 @@ def execute_ws2d_vc(ix):
 
         arr_raw[ix, :], arr_sgrid[ix] = ws2doptvp(y=arr_raw[ix, :],
                                                   w=np.array((arr_raw[ix, :] != parameters['nd'])*1, dtype='double'),
-                                                  llas=array.array('d', srange),
+                                                  llas=array('d', srange),
                                                   p=parameters['p'])
 
     if parameters['shared_array_smooth']:

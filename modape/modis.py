@@ -13,7 +13,7 @@ Author: Valentin Pesendorfer, April 2019
 """
 from __future__ import absolute_import, division, print_function
 
-import array
+from array import array
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 import gc
@@ -1106,12 +1106,12 @@ class ModisSmoothH5(object):
                         if p:
                             arr_raw[ix, :], arr_sgrid[ix] = ws2doptvp(y=arr_raw[ix, :],
                                                                       w=np.array((arr_raw[ix, :] != nodata)*1, dtype='double'),
-                                                                      llas=array.array('d', sr),
+                                                                      llas=array('d', sr),
                                                                       p=p)
                         else:
                             arr_raw[ix, :], arr_sgrid[ix] = ws2doptv(y=arr_raw[ix, :],
                                                                      w=np.array((arr_raw[ix, :] != nodata)*1, dtype='double'),
-                                                                     llas=array.array('d', sr))
+                                                                     llas=array('d', sr))
 
                         if self.tinterpolate:
                             z2 = vector_daily.copy()

@@ -2,7 +2,7 @@
 # pylint: disable=invalid-name
 from __future__ import absolute_import, division, print_function
 
-import array
+from array import array
 import os
 import pickle
 import unittest
@@ -43,13 +43,13 @@ class TestWhittaker(unittest.TestCase):
 
     def test_ws2dvc(self):
         """Test ws2doptv (V-CURVE) smoothing."""
-        z, sopt = ws2doptv(self.y, self.w, array.array('d', np.linspace(-2, 1, 16)))
+        z, sopt = ws2doptv(self.y, self.w, array('d', np.linspace(-2, 1, 16)))
         np.testing.assert_almost_equal(z, self.data['z_ws2dvc'], 5)
         self.assertEqual(sopt, self.data['sopt_ws2dvc'])
 
     def test_ws2dvcp(self):
         """Test ws2doptvp (V-CURVE with p) smoothing."""
-        z, sopt = ws2doptvp(self.y, self.w, array.array('d', np.linspace(-2, 1, 16)), p=0.90)
+        z, sopt = ws2doptvp(self.y, self.w, array('d', np.linspace(-2, 1, 16)), p=0.90)
         np.testing.assert_almost_equal(z, self.data['z_ws2dvcp'], 5)
         self.assertEqual(sopt, self.data['sopt_ws2dvcp'])
 

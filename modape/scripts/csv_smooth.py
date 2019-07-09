@@ -4,7 +4,7 @@
 from __future__ import absolute_import, division, print_function
 
 import argparse
-import array
+from array import array
 from pathlib import Path
 import sys
 import time
@@ -86,15 +86,14 @@ def main():
             if len(args.srange) != 3:
                 raise ValueError('Expected 3 inputs for S range: smin smax step!')
             try:
-                srange = array.array('d',
-                                     np.linspace(args.srange[0],
-                                                 args.srange[1],
-                                                 args.srange[1]/args.srange[2]+1))
+                srange = array('d', np.linspace(args.srange[0],
+                                                args.srange[1],
+                                                args.srange[1]/args.srange[2]+1))
             except:
                 print('Error parsing S range values')
                 raise
         else:
-            srange = array.array('d', np.linspace(0.0, 4.0, 41))
+            srange = array('d', np.linspace(0.0, 4.0, 41))
             args.srange = [0.0, 4.0, 0.1]
 
         if args.pvalue:
