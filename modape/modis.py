@@ -1222,7 +1222,7 @@ class ModisMosaic(object):
         """
 
         # Initialize array
-        tiles_array = np.zeros(((len(self.v_ix) * self.tile_rws), len(self.h_ix) * self.tile_cls), dtype=dt)
+        tiles_array = np.full(((len(self.v_ix) * self.tile_rws), len(self.h_ix) * self.tile_cls), self.nodata, dtype=dt)
 
         # read data from intersecting HDF5 files
         for h5f in self.files:
@@ -1262,7 +1262,8 @@ class ModisMosaic(object):
             Array for mosaic
         """
 
-        global_array = np.zeros((self.tile_rws, self.tile_cls), dtype=dt)
+        global_array = np.full((self.tile_rws, self.tile_cls), self.nodata, dtype=dt)
+
         for h5f in self.files:
             try:
                 with h5py.File(h5f, 'r') as h5f_o:
