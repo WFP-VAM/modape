@@ -8,8 +8,8 @@ from __future__ import absolute_import, division, print_function
 
 import argparse
 import datetime
-import glob
 import os
+from pathlib import Path
 import pickle
 import re
 import sys
@@ -48,8 +48,18 @@ def main():
         sys.exit(0)
 
     args = parser.parse_args()
-    if not os.path.exists(args.path):
+
+    input_dir = Path(args.path)
+    output_dir = Path(args.targetdir)
+
+    if not input_dir.exists():
         raise SystemExit('directory PATH does not exist!')
+
+    # Check if targetdir exists, create if not
+    if not output_dir.exists():
+        print('\nTarget directory {} does not exist! Creating ... '.format(output_dir.as_posix()), end='')
+        output_dir.mkdir(parents=True)
+        print('done.\n')
 
     if args.product:
         args.product = args.product.upper() # force product code upper
@@ -74,29 +84,25 @@ def main():
         product_table = pickle.load(table_raw)
 
     # List HDF5 files in path
-    h5files = glob.glob('{}/{}*h5'.format(args.path, args.product))
+
+
+    h5files = list(input_dir.glob(args.product + '*h5'))
 
     # Make sure only compatible files are used for the mosaic
     if h5files:
-        if len({re.sub(r'h\d{2}v\d{2}.', '', os.path.basename(x)) for x in h5files}) > 1:
+        if len({re.sub(r'h\d{2}v\d{2}.', '', x.name) for x in h5files}) > 1:
             raise ValueError('\nMultiple product types found! Please specify and/or check product parameter!\n')
     else:
         raise ValueError('\nNo products found in specified path (for specified product) - please check input!\n')
 
     # Extract product ID from referece
-    product_ = re.sub(r'(M\w{6}).+', '\\1', os.path.basename(h5files[0]))
+    product_ = re.sub(r'(M\w{6}).+', '\\1', h5files[0].name)
 
     # Check if product is global
     if 'MXD' in product_:
         global_flag = int(product_table[re.sub('MXD', 'MOD', product_)]['pixel_size']) == 5600
     else:
         global_flag = int(product_table[product_]['pixel_size']) == 5600
-
-    # Check if targetdir exists, create if not
-    if not os.path.exists(args.targetdir):
-        print('\nTarget directory {} does not exist! Creating ... '.format(args.targetdir), end='')
-        os.makedirs(args.targetdir)
-        print('done.\n')
 
     # If the product is not global and there's an ROI, we need to query the intersecting tiles
     if not global_flag and args.roi:
@@ -108,20 +114,20 @@ def main():
         tile_regexp = re.compile('|'.join(tiles))
 
         # Files for tile result
-        h5files = [x for x in h5files if re.search(tile_regexp, x)]
+        h5files = [x for x in h5files if re.search(tile_regexp, x.name)]
 
     # Filter for product code
     if args.vampc:
-        h5files = [x for x in h5files if args.vampc in x]
+        h5files = [x for x in h5files if args.vampc in x.name]
 
     # Assert that there are results
     assert h5files, '\nNo processed MODIS HDF5 files found for combination of product/tile (and VAM product code)'
 
     # Iterate over VPCs (could be multiple if unspecified)
-    for vam_code in {re.sub(r'.+([^\W\d_]{3}).h5', '\\1', x) for x in h5files}:
+    for vam_code in {re.sub(r'.+([^\W\d_]{3}).h5', '\\1', x.name) for x in h5files}:
         print('\n')
 
-        h5files_vpc = [x for x in h5files if vam_code in x] # Subset files for vam_code
+        h5files_vpc = [x.as_posix() for x in h5files if vam_code in x.name] # Subset files for vam_code
 
         # Get mosaic
         mosaic = ModisMosaic(files=h5files_vpc,
@@ -131,9 +137,7 @@ def main():
 
         # Extract s-grid if True
         if args.sgrid:
-            filename = '{}/{}{}_sgrid.tif'.format(args.targetdir,
-                                                  args.region.lower(),
-                                                  vam_code.lower())
+            filename = output_dir.joinpath(args.region.lower() + vam_code.lower() + '_sgrid.tif').as_posix()
 
             print('Processing file {}'.format(filename))
             with mosaic.get_raster(dset, None) as mosaic_ropen:
@@ -186,11 +190,7 @@ def main():
         else:
             # If the dataset is not s-grid, we need to iterate over dates
             for ix in mosaic.temp_index:
-                filename = '{}/{}{}{}j{}.tif'.format(args.targetdir,
-                                                     args.region.lower(),
-                                                     vam_code.lower(),
-                                                     mosaic.dates[ix][0:4],
-                                                     mosaic.dates[ix][4:7])
+                filename = output_dir.joinpath(args.region.lower() + vam_code.lower() + mosaic.dates[ix][0:4] + 'j' + mosaic.dates[ix][4:7] + '.tif').as_posix()
 
                 print('Processing file {}'.format(filename))
 
