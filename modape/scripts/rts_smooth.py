@@ -5,6 +5,7 @@ from __future__ import absolute_import, division, print_function
 import argparse
 from array import array
 import os
+from os.path import basename
 from pathlib import Path
 import sys
 import time
@@ -29,7 +30,7 @@ def init_gdal(x, path, fn=None, dt=None):
     """
 
     if not fn:
-        fn = os.path.basename(x) # same filename if none is supplied
+        fn = basename(x) # same filename if none is supplied
     ds = gdal.Open(x)
     driver = ds.GetDriver()
     if not dt:
@@ -38,7 +39,7 @@ def init_gdal(x, path, fn=None, dt=None):
         dt_new = dtype_GDNP(dt)[0] # Parse datatype
 
     # Create empty copy
-    ds_new = driver.Create(path + fn, ds.RasterXSize, ds.RasterYSize, ds.RasterCount, dt_new)
+    ds_new = driver.Create(path.joinpath(fn).as_posix(), ds.RasterXSize, ds.RasterYSize, ds.RasterCount, dt_new)
     ds_new.SetGeoTransform(ds.GetGeoTransform())
     ds_new.SetProjection(ds.GetProjection())
     ds_new.GetRasterBand(1).SetNoDataValue(ds.GetRasterBand(1).GetNoDataValue())
@@ -90,7 +91,7 @@ class RTS(object):
         self.ref_file = self.files[0]
         self.nfiles = len(self.files)
         self.bsize = bsize
-        ds = gdal.Open(self.ref_file.as_posix())
+        ds = gdal.Open(self.ref_file)
         self.nrows = ds.RasterYSize
         self.ncols = ds.RasterXSize
 
@@ -136,7 +137,7 @@ class RTS(object):
             except:
                 print('Issues creating subdirectory {}'.format(tdir.as_posix()))
                 raise
-        self.init_rasters(tdir.as_posix()) # Initialize rasters
+        self.init_rasters(tdir) # Initialize rasters
 
         # Iterate over blocks
         for yo, yd, xo, xd in iterate_blocks(self.nrows, self.ncols, self.bsize):
@@ -210,8 +211,8 @@ class RTS(object):
                 print('Issues creating subdirectory {}'.format(tdir.as_posix()))
                 raise
 
-        self.sgrid = tdir.joinpath('sgrid.tif') # Path to s-grid
-        self.init_rasters(tdir.as_posix())
+        self.sgrid = tdir.joinpath('sgrid.tif').as_posix() # Path to s-grid
+        self.init_rasters(tdir)
 
         # S-grid needs to be initialized separately
         init_gdal(self.ref_file, tdir, 'sgrid.tif', dt='float32')
