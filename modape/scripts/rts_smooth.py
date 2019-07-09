@@ -3,9 +3,9 @@
 """rts_smooth.py: Smooth raster time series."""
 from __future__ import absolute_import, division, print_function
 import argparse
-import array
-import glob
+from array import array
 import os
+from pathlib import Path
 import sys
 import time
 
@@ -90,7 +90,7 @@ class RTS(object):
         self.ref_file = self.files[0]
         self.nfiles = len(self.files)
         self.bsize = bsize
-        ds = gdal.Open(self.ref_file)
+        ds = gdal.Open(self.ref_file.as_posix())
         self.nrows = ds.RasterYSize
         self.ncols = ds.RasterXSize
 
@@ -102,7 +102,7 @@ class RTS(object):
                 self.nodata = 0 # Set to 0 if read fails
                 print('Failed to read NoData value from files. NoData set to 0.')
         ds = None
-        self.targetdir = targetdir
+        self.targetdir = Path(targetdir)
 
     def init_rasters(self, tdir):
         """Intitialize empty rasters for smoothed data.
@@ -126,17 +126,17 @@ class RTS(object):
             s (float): log10 value of s
         """
 
-        tdir = self.targetdir + '/filt0/'
+        tdir = self.targetdir.joinpath('filt0')
 
         # Create full path filenames for smoothed rasters
-        outfiles = [tdir + '/' + os.path.basename(x) for x in self.files]
-        if not os.path.exists(tdir):
+        outfiles = [tdir.joinpath(Path(x).name).as_posix() for x in self.files]
+        if not tdir.exists():
             try:
-                os.makedirs(tdir)
+                tdir.mkdir(parents=True)
             except:
-                print('Issues creating subdirectory {}'.format(tdir))
+                print('Issues creating subdirectory {}'.format(tdir.as_posix()))
                 raise
-        self.init_rasters(tdir) # Initialize rasters
+        self.init_rasters(tdir.as_posix()) # Initialize rasters
 
         # Iterate over blocks
         for yo, yd, xo, xd in iterate_blocks(self.nrows, self.ncols, self.bsize):
@@ -175,7 +175,7 @@ class RTS(object):
                 ds = None
 
         # Write config text file to disk with processing parameters and info
-        with open(tdir + 'filt0_config.txt', 'w') as thefile:
+        with open(tdir.joinpath('filt0_config.txt').as_posix(), 'w') as thefile:
             thefile.write('Running whittaker smoother with fixed s value\n')
             thefile.write('\n')
             thefile.write('Timestamp: {}\n'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())))
@@ -196,22 +196,22 @@ class RTS(object):
             p (float): P-value for percentile
         """
 
-        srange_arr = array.array('d', srange)
+        srange_arr = array('d', srange)
         if p:
-            tdir = self.targetdir + '/filtoptvp/'
+            tdir = self.targetdir.joinpath('filtoptvp')
         else:
-            tdir = self.targetdir + '/filtoptv/'
-        outfiles = [tdir + '/' + os.path.basename(x) for x in self.files]
+            tdir = self.targetdir.joinpath('filtoptv')
+        outfiles = [tdir.joinpath(Path(x).name).as_posix() for x in self.files]
 
-        if not os.path.exists(tdir):
+        if not tdir.exists():
             try:
-                os.makedirs(tdir)
+                tdir.mkdir(parents=True)
             except:
-                print('Issues creating subdirectory {}'.format(tdir))
+                print('Issues creating subdirectory {}'.format(tdir.as_posix()))
                 raise
 
-        self.sgrid = tdir + 'sgrid.tif' # Path to s-grid
-        self.init_rasters(tdir)
+        self.sgrid = tdir.joinpath('sgrid.tif') # Path to s-grid
+        self.init_rasters(tdir.as_posix())
 
         # S-grid needs to be initialized separately
         init_gdal(self.ref_file, tdir, 'sgrid.tif', dt='float32')
@@ -221,7 +221,7 @@ class RTS(object):
             wts = arr.copy()
             sarr = np.zeros((yd*xd), dtype='double')
             arr_helper = arr.view()
-            arr_helper.hape = (yd, xd, self.nfiles)
+            arr_helper.shape = (yd, xd, self.nfiles)
 
             for fix in range(self.nfiles):
                 ds = gdal.Open(self.files[fix])
@@ -263,7 +263,7 @@ class RTS(object):
             ds = None
 
             if p:
-                with open(tdir + '/filtoptvp_config.txt', 'w') as thefile:
+                with open(tdir.joinpath('filtoptvp_config.txt').as_posix(), 'w') as thefile:
                     thefile.write('Running asymmetric whittaker smoother with V-curve optimization\n')
                     thefile.write('\n')
                     thefile.write('Timestamp: {}\n'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())))
@@ -273,7 +273,7 @@ class RTS(object):
                     thefile.write('Nodata value: {}\n'.format(self.nodata))
                     thefile.write('\n')
             else:
-                with open(tdir + '/filtoptv_config.txt', 'w') as thefile:
+                with open(tdir.joinpath('filtoptv_config.txt').as_posix(), 'w') as thefile:
                     thefile.write('Running whittaker smoother with V-curve optimization\n')
                     thefile.write('\n')
                     thefile.write('Timestamp: {}\n'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())))
@@ -311,11 +311,14 @@ def main():
 
     args = parser.parse_args()
     print('\n[{}]: Starting smoothRTS.py ... \n'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())))
-    if not os.path.exists(args.path):
+
+    input_dir = Path(args.path)
+
+    if not input_dir.exists():
         raise SystemExit('directory PATH does not exist!')
 
     # Find files in path
-    fls = [x for x in glob.glob('{}/{}'.format(args.path, args.pattern)) if os.path.isfile(x)]
+    fls = [x.as_posix() for x in input_dir.glob(args.pattern) if x.is_file()]
 
     if not fls:
         raise ValueError('No files found in {} with pattern {}, please check input.'.format(args.path, args.pattern))
