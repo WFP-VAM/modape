@@ -19,6 +19,7 @@ from datetime import datetime, timedelta
 import gc
 import multiprocessing as mp
 import os
+from os.path import basename
 from pathlib import Path
 import re
 from subprocess import Popen, check_output
@@ -208,7 +209,7 @@ class ModisQuery(object):
             else:
                 os.remove(flist)
 
-            self.files = [self.targetdir.joinpath(os.path.basename(x)) for x in self.modis_urls]
+            self.files = [self.targetdir.joinpath(basename(x)) for x in self.modis_urls]
 
         # download with requests
         else:
@@ -550,9 +551,9 @@ class ModisSmoothH5(object):
         # Filename for smoothed HDF5
         self.outname = Path('{}/{}.tx{}.{}.h5'.format(
             self.targetdir.as_posix(),
-            '.'.join(rawfile.name.split('.')[:-2]),
+            '.'.join(basename(rawfile).split('.')[:-2]),
             txflag,
-            rawfile.name.split('.')[-2:-1][0]))
+            basename(rawfile).split('.')[-2:-1][0]))
 
         self.exists = self.outname.exists()
 
@@ -1154,7 +1155,7 @@ class ModisMosaic(object):
 
         tile_re = re.compile(r'.+(h\d+v\d+).+') # Regular expression for tile ID
         self.global_flag = global_flag
-        self.tiles = [re.sub(tile_re, '\\1', os.path.basename(x)) for x in files]
+        self.tiles = [re.sub(tile_re, '\\1', basename(x)) for x in files]
         self.tiles.sort()
         self.files = files
 
@@ -1227,8 +1228,8 @@ class ModisMosaic(object):
         # read data from intersecting HDF5 files
         for h5f in self.files:
             # Extract tile ID from filename
-            t_h = re.sub(r'.+(h\d+)(v\d+).+', '\\1', os.path.basename(h5f))
-            t_v = re.sub(r'.+(h\d+)(v\d+).+', '\\2', os.path.basename(h5f))
+            t_h = re.sub(r'.+(h\d+)(v\d+).+', '\\1', basename(h5f))
+            t_v = re.sub(r'.+(h\d+)(v\d+).+', '\\2', basename(h5f))
 
             # Caluclate row/column offset
             xoff = self.h_ix.index(t_h) * self.tile_cls
