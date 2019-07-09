@@ -5,7 +5,6 @@ from __future__ import absolute_import, division, print_function
 
 import argparse
 import array
-import os
 from pathlib import Path
 import sys
 import time
