@@ -140,7 +140,7 @@ class Pool(multiprocessing.pool.Pool): # pylint: disable=abstract-method
 class DateHelper(object):
     """Helper class for handling dates in temporal interpolation."""
 
-    def __init__(self, rawdates, rtres, stres, start=None, nupdate=0):
+    def __init__(self, rawdates, rtres, stres, start=None):
         """Creates the date lists from input.
 
         Args:
@@ -156,7 +156,7 @@ class DateHelper(object):
             tdiff = (fromjulian(stop) - fromjulian(rawdates[0])).days
             self.daily = [(fromjulian(rawdates[0]) + datetime.timedelta(x)).strftime('%Y%j') for x in range(tdiff+1)]
             self.target = [self.daily[x] for x in range(self.daily.index(start), len(self.daily), stres)]
-            self.target = self.target[-nupdate:]
+
         else:
             yrmin = int(min([x[:4] for x in rawdates]))
             yrmax = int(max([x[:4] for x in rawdates]))
@@ -183,7 +183,6 @@ class DateHelper(object):
                     del sd
                     break
             self.target = target_temp[target_temp.index(start_target):target_temp.index(stop_target)+1]
-            self.target = self.target[-nupdate:]
 
     def getDV(self, nd):
         """Gets an array of no-data values in daily timesteps.

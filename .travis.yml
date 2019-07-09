@@ -30,7 +30,7 @@ virtualenv:
   system_site_packages: true
 
 install:
-  - pip install --ignore-installed numpy cython
+  - pip install --ignore-installed numpy cython pathlib
   - pip install .
 
 script:
