@@ -140,7 +140,7 @@ class TestMODIS(unittest.TestCase):
 
         self.assertEqual(rawh5.nfiles, 4)
         self.assertFalse(rawh5.exists)
-        self.assertEqual(os.path.basename(rawh5.outname), 'MXD13A2.h18v06.006.VIM.h5')
+        self.assertEqual(rawh5.outname.name, 'MXD13A2.h18v06.006.VIM.h5')
         self.assertEqual(rawh5.temporalresolution, 8)
         self.assertEqual(rawh5.tshift, 8)
         self.assertEqual(rawh5.rawdates, [
@@ -155,7 +155,7 @@ class TestMODIS(unittest.TestCase):
         self.assertEqual(rawh5.nodata_value, -3000)
         self.assertEqual(rawh5.chunks, ((1200*1200)//25, 10))
 
-        shutil.rmtree(os.path.dirname(rawh5.outname))
+        shutil.rmtree(rawh5.outname.parent.name)
 
         # Test raw global LST DAY
         rawfiles = [
@@ -172,7 +172,7 @@ class TestMODIS(unittest.TestCase):
         mock_ds.assert_called_with('MYD11C2.A2002185.*.006.*.hdf')
         self.assertEqual(rawh5.nfiles, 4)
         self.assertFalse(rawh5.exists)
-        self.assertEqual(os.path.basename(rawh5.outname), 'MYD11C2.006.TDA.h5')
+        self.assertEqual(rawh5.outname.name, 'MYD11C2.006.TDA.h5')
         self.assertEqual(rawh5.temporalresolution, 8)
         self.assertEqual(rawh5.tshift, 4)
         self.assertEqual(rawh5.rawdates, [
@@ -187,7 +187,7 @@ class TestMODIS(unittest.TestCase):
         self.assertEqual(rawh5.nodata_value, -3000)
         self.assertEqual(rawh5.chunks, ((3600*7200)//25, 10))
 
-        shutil.rmtree(os.path.dirname(rawh5.outname))
+        shutil.rmtree(rawh5.outname.parent.name)
 
     def test_smoothHDF5(self):
         """Test smooth tiled 10-day NDVI and global 5-day LST Day."""
