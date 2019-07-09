@@ -5,9 +5,9 @@
 from __future__ import absolute_import, division, print_function
 
 import argparse
-import glob
 import multiprocessing as mp
 import os
+from pathlib import Path
 import re
 import sys
 import time
@@ -65,12 +65,17 @@ def main():
         sys.exit(0)
 
     args = parser.parse_args()
-    if not os.path.isdir(args.srcdir):
+
+    input_dir = Path(args.srcdir)
+
+    if not input_dir.exists:
         raise SystemExit('Source directory not a valid path! Please check inputs.targetdir')
     if not args.targetdir:
-        args.targetdir = args.srcdir # default is srcdir
+        args.targetdir = args.srcdir
+    else:
+        pass
 
-    files = glob.glob('{}/*.hdf'.format(args.srcdir))
+    files = input_dir.glob('*hdf')
 
     # Regex patterns
     ppatt = re.compile(r'M\w{6}')
@@ -81,7 +86,9 @@ def main():
     processing_dict = {} # processing dictionary
 
     # Seperate input files into group
-    groups = ['.*'.join(re.findall(ppatt, os.path.basename(x)) + re.findall(tpatt, os.path.basename(x)) + [re.sub(vpatt, '\\1', os.path.basename(x))])  for x in files]
+    groups = ['.*'.join(re.findall(ppatt, x.name) + re.findall(tpatt, x.name) + [re.sub(vpatt, '\\1', x.name)])  for x in files]
+
+    files = [x.as_posix() for x in input_dir.glob('*hdf')]
 
     if args.interleave:
         groups = list({re.sub('(M.{1})(D.+)', 'M.'+'\\2', x) if re.match(vimvem, x) else x for x in groups}) # Join MOD13/MYD13
