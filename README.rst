@@ -86,26 +86,6 @@ All executables can be called with a ``-h`` flag for detailed usage.
 
 For a more detailed tutorial on how to use the executables, please visit `WFP-VAM.github.io/modape <https://wfp-vam.github.io/modape/>`_.
 
-
-CHANGES
------
-- v 0.1.7:
-       - fix bug when updating datasets 
-
-- v 0.1.6:
-       - fix bug handling ogr AOIs in `modis_download`
-       - add `docstring to modis_download`
-
-- v0.1.1/2/3/4/5:
-        - changes to MANIFEST.in
-        - fix issues with pytest and dates in HDF5 for PYTHON 2.7
-        - fix bug for updating smoothed datasets
-        - patch for handling duplicate raw files
-        - patch for srange in sequential processing mode, minor indentation fixes
-
-- v0.1.0:
-        - initial release
-
 -----
 
 References:
