@@ -89,112 +89,67 @@ def main():
     h5files = list(input_dir.glob(args.product + '*h5'))
 
     # Make sure only compatible files are used for the mosaic
-    if h5files:
-        if len({re.sub(r'h\d{2}v\d{2}.', '', x.name) for x in h5files}) > 1:
-            raise ValueError('\nMultiple product types found! Please specify and/or check product parameter!\n')
-    else:
+    if not h5files:
         raise ValueError('\nNo products found in specified path (for specified product) - please check input!\n')
 
-    # Extract product ID from referece
-    product_ = re.sub(r'(M\w{6}).+', '\\1', h5files[0].name)
+    #if len({re.sub(r'h\d{2}v\d{2}.', '', x.name) for x in h5files}) > 1:
+    #raise ValueError('\nMultiple product types found! Please specify and/or check product parameter!\n')
 
-    # Check if product is global
-    if 'MXD' in product_:
-        global_flag = int(product_table[re.sub('MXD', 'MOD', product_)]['pixel_size']) == 5600
-    else:
-        global_flag = int(product_table[product_]['pixel_size']) == 5600
+    groups = {re.sub(r'h\d{2}v\d{2}.', '*', x.name) for x in h5files}
 
-    # If the product is not global and there's an ROI, we need to query the intersecting tiles
-    if not global_flag and args.roi:
-        tiles = modis_tiles(args.roi)
-        if not tiles:
-            raise ValueError('\nNo MODIS tile(s) found for location. Please check coordinates!')
+    for grp in groups:
 
-        # Regexp for tiles
-        tile_regexp = re.compile('|'.join(tiles))
+        h5files_select = [x for x in h5files if re.match(grp, x.name)]
 
-        # Files for tile result
-        h5files = [x for x in h5files if re.search(tile_regexp, x.name)]
+        # Extract product ID from referece
+        product_ = re.sub(r'(M\w{6}).+', '\\1', h5files_select[0].name)
 
-    # Filter for product code
-    if args.vampc:
-        h5files = [x for x in h5files if args.vampc in x.name]
+        print('\nProcessing product {}'.format(product_))
 
-    # Assert that there are results
-    assert h5files, '\nNo processed MODIS HDF5 files found for combination of product/tile (and VAM product code)'
-
-    # Iterate over VPCs (could be multiple if unspecified)
-    for vam_code in {re.sub(r'.+([^\W\d_]{3}).h5', '\\1', x.name) for x in h5files}:
-        print('\n')
-
-        h5files_vpc = [x.as_posix() for x in h5files if vam_code in x.name] # Subset files for vam_code
-
-        # Get mosaic
-        mosaic = ModisMosaic(files=h5files_vpc,
-                             datemin=args.begin_date,
-                             datemax=args.end_date,
-                             global_flag=global_flag)
-
-        # Extract s-grid if True
-        if args.sgrid:
-            filename = output_dir.joinpath(args.region.lower() + vam_code.lower() + '_sgrid.tif').as_posix()
-
-            print('Processing file {}'.format(filename))
-            with mosaic.get_raster(dset, None) as mosaic_ropen:
-                # Subset if bbox was supplied
-                try:
-                    if args.roi and len(args.roi) > 2:
-                        wopt = gdal.WarpOptions(
-                            dstSRS='EPSG:4326',
-                            outputType=mosaic_ropen.dt_gdal[0],
-                            xRes=mosaic_ropen.resolution_degrees,
-                            yRes=mosaic_ropen.resolution_degrees,
-                            srcNodata=mosaic.nodata,
-                            dstNodata=mosaic.nodata,
-                            outputBounds=(args.roi[0], args.roi[3], args.roi[2], args.roi[1]),
-                            resampleAlg='near',
-                            multithread=True,
-                            creationOptions=['COMPRESS=LZW', 'PREDICTOR=2'],
-                        )
-
-                        _ = gdal.Warp(
-                            filename,
-                            mosaic_ropen.raster,
-                            options=wopt,
-                        )
-
-                        _ = None
-                    else:
-                        wopt = gdal.WarpOptions(
-                            dstSRS='EPSG:4326',
-                            outputType=mosaic_ropen.dt_gdal[0],
-                            xRes=mosaic_ropen.resolution_degrees,
-                            yRes=mosaic_ropen.resolution_degrees,
-                            srcNodata=mosaic.nodata,
-                            dstNodata=mosaic.nodata,
-                            resampleAlg='near',
-                            multithread=True,
-                            creationOptions=['COMPRESS=LZW', 'PREDICTOR=2'],
-                        )
-
-                        _ = gdal.Warp(
-                            filename,
-                            mosaic_ropen.raster,
-                            options=wopt,
-                        )
-
-                        _ = None
-                except Exception as e:
-                    print('Error while reading {} data for {}! Please check if dataset exits within file. \n\n Error message:\n\n {}'.format(args.dataset, filename, e))
-            del mosaic_ropen
+        # Check if product is global
+        if 'MXD' in product_:
+            global_flag = int(product_table[re.sub('MXD', 'MOD', product_)]['pixel_size']) == 5600
         else:
-            # If the dataset is not s-grid, we need to iterate over dates
-            for ix in mosaic.temp_index:
-                filename = output_dir.joinpath(args.region.lower() + vam_code.lower() + mosaic.dates[ix][0:4] + 'j' + mosaic.dates[ix][4:7] + '.tif').as_posix()
+            global_flag = int(product_table[product_]['pixel_size']) == 5600
+
+        # If the product is not global and there's an ROI, we need to query the intersecting tiles
+        if not global_flag and args.roi:
+            tiles = modis_tiles(args.roi)
+            if not tiles:
+                raise ValueError('\nNo MODIS tile(s) found for location. Please check coordinates!')
+
+            # Regexp for tiles
+            tile_regexp = re.compile('|'.join(tiles))
+
+            # Files for tile result
+            h5files_select = [x for x in h5files_select if re.search(tile_regexp, x.name)]
+
+        # Filter for product code
+        if args.vampc:
+            h5files_select = [x for x in h5files_select if args.vampc in x.name]
+
+        # Assert that there are results
+        assert h5files_select, '\nNo processed MODIS HDF5 files found for combination of product/tile (and VAM product code)'
+
+        # Iterate over VPCs (could be multiple if unspecified)
+        for vam_code in {re.sub(r'.+([^\W\d_]{3}).h5', '\\1', x.name) for x in h5files_select}:
+            print('\n')
+
+            h5files_select_vpc = [x.as_posix() for x in h5files_select if vam_code in x.name] # Subset files for vam_code
+
+            # Get mosaic
+            mosaic = ModisMosaic(files=h5files_select_vpc,
+                                 datemin=args.begin_date,
+                                 datemax=args.end_date,
+                                 global_flag=global_flag)
+
+            # Extract s-grid if True
+            if args.sgrid:
+                filename = output_dir.joinpath(args.region.lower() + vam_code.lower() + '_sgrid.tif').as_posix()
 
                 print('Processing file {}'.format(filename))
-
-                with mosaic.get_raster(dset, ix) as mosaic_ropen:
+                with mosaic.get_raster(dset, None) as mosaic_ropen:
+                    # Subset if bbox was supplied
                     try:
                         if args.roi and len(args.roi) > 2:
                             wopt = gdal.WarpOptions(
@@ -207,7 +162,7 @@ def main():
                                 outputBounds=(args.roi[0], args.roi[3], args.roi[2], args.roi[1]),
                                 resampleAlg='near',
                                 multithread=True,
-                                creationOptions=['COMPRESS=LZW', 'PREDICTOR=2']
+                                creationOptions=['COMPRESS=LZW', 'PREDICTOR=2'],
                             )
 
                             _ = gdal.Warp(
@@ -240,6 +195,59 @@ def main():
                     except Exception as e:
                         print('Error while reading {} data for {}! Please check if dataset exits within file. \n\n Error message:\n\n {}'.format(args.dataset, filename, e))
                 del mosaic_ropen
+            else:
+                # If the dataset is not s-grid, we need to iterate over dates
+                for ix in mosaic.temp_index:
+                    filename = output_dir.joinpath(args.region.lower() + vam_code.lower() + mosaic.dates[ix][0:4] + 'j' + mosaic.dates[ix][4:7] + '.tif').as_posix()
+
+                    print('Processing file {}'.format(filename))
+
+                    with mosaic.get_raster(dset, ix) as mosaic_ropen:
+                        try:
+                            if args.roi and len(args.roi) > 2:
+                                wopt = gdal.WarpOptions(
+                                    dstSRS='EPSG:4326',
+                                    outputType=mosaic_ropen.dt_gdal[0],
+                                    xRes=mosaic_ropen.resolution_degrees,
+                                    yRes=mosaic_ropen.resolution_degrees,
+                                    srcNodata=mosaic.nodata,
+                                    dstNodata=mosaic.nodata,
+                                    outputBounds=(args.roi[0], args.roi[3], args.roi[2], args.roi[1]),
+                                    resampleAlg='near',
+                                    multithread=True,
+                                    creationOptions=['COMPRESS=LZW', 'PREDICTOR=2']
+                                )
+
+                                _ = gdal.Warp(
+                                    filename,
+                                    mosaic_ropen.raster,
+                                    options=wopt,
+                                )
+
+                                _ = None
+                            else:
+                                wopt = gdal.WarpOptions(
+                                    dstSRS='EPSG:4326',
+                                    outputType=mosaic_ropen.dt_gdal[0],
+                                    xRes=mosaic_ropen.resolution_degrees,
+                                    yRes=mosaic_ropen.resolution_degrees,
+                                    srcNodata=mosaic.nodata,
+                                    dstNodata=mosaic.nodata,
+                                    resampleAlg='near',
+                                    multithread=True,
+                                    creationOptions=['COMPRESS=LZW', 'PREDICTOR=2'],
+                                )
+
+                                _ = gdal.Warp(
+                                    filename,
+                                    mosaic_ropen.raster,
+                                    options=wopt,
+                                )
+
+                                _ = None
+                        except Exception as e:
+                            print('Error while reading {} data for {}! Please check if dataset exits within file. \n\n Error message:\n\n {}'.format(args.dataset, filename, e))
+                    del mosaic_ropen
 
 if __name__ == '__main__':
     main()
