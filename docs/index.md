@@ -285,6 +285,7 @@ optional arguments:
   -d , --targetdir     Target directory for GeoTIFFs (default current
                        directory)
   --sgrid              Extract (mosaic of) s value grid(s))
+  --force-doy          Force filenaming with DOY for 5 & 10 day data
 ```
 **Usage example:**
 
