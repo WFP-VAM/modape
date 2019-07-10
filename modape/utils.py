@@ -410,6 +410,39 @@ def dekvec(yr):
                                               for z in range(1, 13)]
     ])
 
+def date2label(dates, tr):
+    """Get p or d labels for given list of dates
+
+    Args:
+        dates: list of dates
+        tr: temporal resolution (int)
+
+    Returns:
+        list of labels
+    """
+
+    PENTS = dict(zip([3, 8, 13, 18, 23, 28], ['p1', 'p2', 'p3', 'p4', 'p5', 'p6']))
+
+    DEKS = dict(zip([5, 15, 25], ['d1', 'd2', 'd3']))
+
+    if int(tr) == 5:
+
+        try:
+            labels = ['{}{:02d}{}'.format(fromjulian(x).year, fromjulian(x).month, PENTS[fromjulian(x).day]) for x in dates]
+        except KeyError:
+            raise ValueError('Error getting labels from days! Check if supplied temporal resolution matches with dates!')
+
+    elif int(tr) == 10:
+        try:
+            labels = ['{}{:02d}{}'.format(fromjulian(x).year, fromjulian(x).month, DEKS[fromjulian(x).day]) for x in dates]
+        except KeyError:
+            raise ValueError('Error getting labels from days! Check if supplied temporal resolution matches with dates!')
+
+    else:
+        raise ValueError('Temporal resolution has to be 5 or 10!')
+
+    return labels
+
 
 def init_shared(ncell):
     """Create shared value array for smoothing.
