@@ -41,7 +41,7 @@ def main():
     parser.add_argument('--vampc', help='VAM product code', metavar='')
     parser.add_argument('-d', '--targetdir', help='Target directory for GeoTIFFs (default current directory)', default=os.getcwd(), metavar='')
     parser.add_argument('--sgrid', help='Extract (mosaic of) s value grid(s)', action='store_true')
-    parser.add_argument('--force-doy', help='Force filenameing with DOY for 5 & 10 day data', action='store_true')
+    parser.add_argument('--force-doy', help='Force filenaming with DOY for 5 & 10 day data', action='store_true')
 
     # fail and print help if no arguments supplied
     if len(sys.argv) == 1:
