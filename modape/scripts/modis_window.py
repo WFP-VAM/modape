@@ -41,6 +41,7 @@ def main():
     parser.add_argument('--vampc', help='VAM product code', metavar='')
     parser.add_argument('-d', '--targetdir', help='Target directory for GeoTIFFs (default current directory)', default=os.getcwd(), metavar='')
     parser.add_argument('--sgrid', help='Extract (mosaic of) s value grid(s)', action='store_true')
+    parser.add_argument('--force-doy', help='Force filenameing with DOY for 5 & 10 day data', action='store_true')
 
     # fail and print help if no arguments supplied
     if len(sys.argv) == 1:
@@ -84,7 +85,6 @@ def main():
         product_table = pickle.load(table_raw)
 
     # List HDF5 files in path
-
 
     h5files = list(input_dir.glob(args.product + '*h5'))
 
@@ -198,9 +198,15 @@ def main():
             else:
                 # If the dataset is not s-grid, we need to iterate over dates
                 for ix in mosaic.temp_index:
-                    filename = output_dir.joinpath(args.region.lower() + vam_code.lower() + mosaic.dates[ix][0:4] + 'j' + mosaic.dates[ix][4:7] + '.tif').as_posix()
 
-                    print('Processing file {}'.format(filename))
+                    if mosaic.labels and not args.force_doy:
+
+                        filename = output_dir.joinpath(args.region.lower() + vam_code.lower() + mosaic.labels[ix] + '.tif').as_posix()
+
+                    else:
+
+                        filename = output_dir.joinpath(args.region.lower() + vam_code.lower() + mosaic.dates[ix][0:4] + 'j' + mosaic.dates[ix][4:7] + '.tif').as_posix()
+
 
                     with mosaic.get_raster(dset, ix) as mosaic_ropen:
                         try:

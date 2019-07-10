@@ -41,7 +41,8 @@ from bs4 import BeautifulSoup # pylint: disable=import-error
 import h5py # pylint: disable=import-error
 from modape.utils import (SessionWithHeaderRedirection, FileHandler, DateHelper,
                           dtype_GDNP, txx, fromjulian, init_shared, tonumpyarray,
-                          init_parameters, init_worker, execute_ws2d, execute_ws2d_sgrid, execute_ws2d_vc)
+                          init_parameters, init_worker, execute_ws2d, execute_ws2d_sgrid,
+                          execute_ws2d_vc, date2label)
 from modape.whittaker import lag1corr, ws2d, ws2doptv, ws2doptvp # pylint: disable=no-name-in-module
 
 __all__ = ['ModisQuery', 'ModisRawH5', 'ModisSmoothH5', 'modis_tiles', 'ModisMosaic']
@@ -1178,10 +1179,12 @@ class ModisMosaic(object):
                 dset = h5f.get('data')
                 self.tile_rws = dset.attrs['RasterYSize'].item()
                 self.tile_cls = dset.attrs['RasterXSize'].item()
+                temporalresolution = dset.attrs['temporalresolution']
                 self.datatype = dset.dtype
                 gt_temp_v = dset.attrs['geotransform']
                 self.prj = dset.attrs['projection']
                 self.nodata = dset.attrs['nodata'].item()
+                self.labels = []
 
                 # If file is global, resolution is already in degrees, otherwhise it's resolution divided with 112000
                 if self.global_flag:
@@ -1191,6 +1194,10 @@ class ModisMosaic(object):
                     self.resolution_degrees = self.resolution/112000
                 dset = None
                 self.dates = [x.decode() for x in h5f.get('dates')[...]]
+
+                # if dates are either 5 or 10 days, retrive pentad or dekad labels
+                if int(temporalresolution) == 5 or int(temporalresolution) == 10:
+                    self.labels = date2label(self.dates, temporalresolution)
 
             # checking referece tile for h
             ref = [x for x in self.files if ref_tile_h in x][0]
