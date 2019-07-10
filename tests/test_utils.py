@@ -8,7 +8,7 @@ import unittest
 
 import numpy as np
 
-from modape.utils import DateHelper, Credentials, ldom, tvec, fromjulian
+from modape.utils import DateHelper, Credentials, ldom, tvec, fromjulian, date2label
 
 class TestUtils(unittest.TestCase):
     """Test class for testing utils."""
@@ -64,6 +64,33 @@ class TestUtils(unittest.TestCase):
     def test_tvec(self):
         """Testing tvec."""
         self.assertEqual(tvec(2003, 8), [x for x in self.dates if '2003' in x])
+
+    def test_date2label(self):
+        """Testing date2label"""
+        pent_dates = DateHelper(self.dates, 8, 5).target[0:10]
+        self.assertEqual(date2label(pent_dates, 5), ['200206p6',
+                                                     '200207p1',
+                                                     '200207p2',
+                                                     '200207p3',
+                                                     '200207p4',
+                                                     '200207p5',
+                                                     '200207p6',
+                                                     '200208p1',
+                                                     '200208p2',
+                                                     '200208p3'])
+
+        dek_dates = DateHelper(self.dates, 8, 10).target[0:10]
+        self.assertEqual(date2label(dek_dates, 10), ['200207d1',
+                                                     '200207d2',
+                                                     '200207d3',
+                                                     '200208d1',
+                                                     '200208d2',
+                                                     '200208d3',
+                                                     '200209d1',
+                                                     '200209d2',
+                                                     '200209d3',
+                                                     '200210d1'])
+
 
 if __name__ == '__main__':
     unittest.main()

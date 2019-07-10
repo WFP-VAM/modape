@@ -6,7 +6,7 @@ Author: Valentin Pesendorfer, April 2019
 """
 from __future__ import absolute_import, division, print_function
 
-import array
+from array import array
 import ctypes
 import datetime
 import multiprocessing
@@ -140,7 +140,7 @@ class Pool(multiprocessing.pool.Pool): # pylint: disable=abstract-method
 class DateHelper(object):
     """Helper class for handling dates in temporal interpolation."""
 
-    def __init__(self, rawdates, rtres, stres, start=None, nupdate=0):
+    def __init__(self, rawdates, rtres, stres, start=None):
         """Creates the date lists from input.
 
         Args:
@@ -156,7 +156,7 @@ class DateHelper(object):
             tdiff = (fromjulian(stop) - fromjulian(rawdates[0])).days
             self.daily = [(fromjulian(rawdates[0]) + datetime.timedelta(x)).strftime('%Y%j') for x in range(tdiff+1)]
             self.target = [self.daily[x] for x in range(self.daily.index(start), len(self.daily), stres)]
-            self.target = self.target[-nupdate:]
+
         else:
             yrmin = int(min([x[:4] for x in rawdates]))
             yrmax = int(max([x[:4] for x in rawdates]))
@@ -183,7 +183,6 @@ class DateHelper(object):
                     del sd
                     break
             self.target = target_temp[target_temp.index(start_target):target_temp.index(stop_target)+1]
-            self.target = self.target[-nupdate:]
 
     def getDV(self, nd):
         """Gets an array of no-data values in daily timesteps.
@@ -411,6 +410,39 @@ def dekvec(yr):
                                               for z in range(1, 13)]
     ])
 
+def date2label(dates, tr):
+    """Get p or d labels for given list of dates
+
+    Args:
+        dates: list of dates
+        tr: temporal resolution (int)
+
+    Returns:
+        list of labels
+    """
+
+    PENTS = dict(zip([3, 8, 13, 18, 23, 28], ['p1', 'p2', 'p3', 'p4', 'p5', 'p6']))
+
+    DEKS = dict(zip([5, 15, 25], ['d1', 'd2', 'd3']))
+
+    if int(tr) == 5:
+
+        try:
+            labels = ['{}{:02d}{}'.format(fromjulian(x).year, fromjulian(x).month, PENTS[fromjulian(x).day]) for x in dates]
+        except KeyError:
+            raise ValueError('Error getting labels from days! Check if supplied temporal resolution matches with dates!')
+
+    elif int(tr) == 10:
+        try:
+            labels = ['{}{:02d}{}'.format(fromjulian(x).year, fromjulian(x).month, DEKS[fromjulian(x).day]) for x in dates]
+        except KeyError:
+            raise ValueError('Error getting labels from days! Check if supplied temporal resolution matches with dates!')
+
+    else:
+        raise ValueError('Temporal resolution has to be 5 or 10!')
+
+    return labels
+
 
 def init_shared(ncell):
     """Create shared value array for smoothing.
@@ -530,7 +562,7 @@ def execute_ws2d_vc(ix):
     if not parameters['p']:
         arr_raw[ix, :], arr_sgrid[ix] = ws2doptv(y=arr_raw[ix, :],
                                                  w=np.array((arr_raw[ix, :] != parameters['nd'])*1, dtype='double'),
-                                                 llas=array.array('d', parameters['srange']))
+                                                 llas=array('d', parameters['srange']))
     else:
         if not isinstance(parameters['srange'], np.ndarray):
             lc = lag1corr(arr_raw[ix, :-1],
@@ -547,7 +579,7 @@ def execute_ws2d_vc(ix):
 
         arr_raw[ix, :], arr_sgrid[ix] = ws2doptvp(y=arr_raw[ix, :],
                                                   w=np.array((arr_raw[ix, :] != parameters['nd'])*1, dtype='double'),
-                                                  llas=array.array('d', srange),
+                                                  llas=array('d', srange),
                                                   p=parameters['p'])
 
     if parameters['shared_array_smooth']:

@@ -13,12 +13,14 @@ Author: Valentin Pesendorfer, April 2019
 """
 from __future__ import absolute_import, division, print_function
 
-import array
+from array import array
 from contextlib import contextmanager
-import datetime
+from datetime import datetime, timedelta
 import gc
 import multiprocessing as mp
 import os
+from os.path import basename
+from pathlib import Path
 import re
 from subprocess import Popen, check_output
 import sys
@@ -39,7 +41,8 @@ from bs4 import BeautifulSoup # pylint: disable=import-error
 import h5py # pylint: disable=import-error
 from modape.utils import (SessionWithHeaderRedirection, FileHandler, DateHelper,
                           dtype_GDNP, txx, fromjulian, init_shared, tonumpyarray,
-                          init_parameters, init_worker, execute_ws2d, execute_ws2d_sgrid, execute_ws2d_vc)
+                          init_parameters, init_worker, execute_ws2d, execute_ws2d_sgrid,
+                          execute_ws2d_vc, date2label)
 from modape.whittaker import lag1corr, ws2d, ws2doptv, ws2doptvp # pylint: disable=no-name-in-module
 
 __all__ = ['ModisQuery', 'ModisRawH5', 'ModisSmoothH5', 'modis_tiles', 'ModisMosaic']
@@ -71,11 +74,11 @@ class ModisQuery(object):
         self.query_url = url
         self.username = username
         self.password = password
-        self.targetdir = targetdir
+        self.targetdir = Path(targetdir)
         self.files = []
         self.modis_urls = []
-        self.begin = datetime.datetime.strptime(begindate, '%Y-%m-%d').date()
-        self.end = datetime.datetime.strptime(enddate, '%Y-%m-%d').date()
+        self.begin = datetime.strptime(begindate, '%Y-%m-%d').date()
+        self.end = datetime.strptime(enddate, '%Y-%m-%d').date()
         self.global_flag = global_flag
         self.aria2 = aria2
 
@@ -97,7 +100,7 @@ class ModisQuery(object):
             if self.global_flag:
                 regex = re.compile('.*.hdf$')
                 dates = np.array([x.getText() for x in soup.findAll('a', href=True) if re.match(r'\d{4}\.\d{2}\.\d{2}', x.getText())])
-                dates_parsed = [datetime.datetime.strptime(x, '%Y.%m.%d/').date() for x in dates]
+                dates_parsed = [datetime.strptime(x, '%Y.%m.%d/').date() for x in dates]
                 dates_ix = np.flatnonzero(np.array([self.begin <= x < self.end for x in dates_parsed]))
 
                 for date_sel in dates[dates_ix]:
@@ -170,14 +173,14 @@ class ModisQuery(object):
                 raise SystemExit('ARIA2 download needs ARIA2 to be available in PATH! Please make sure it\'s installed and available in PATH!')
 
             # if targetdir doesn't exist, create
-            if not os.path.exists(self.targetdir):
+            if not self.targetdir.exists():
                 try:
-                    os.mkdir(self.targetdir)
+                    self.targetdir.mkdir()
                 except FileNotFoundError:
-                    print('\nCould not create target directory {} (Trying to create directories recursively?)\n'.format(self.targetdir))
+                    print('\nCould not create target directory {} (Trying to create directories recursively?)\n'.format(self.targetdir.as_posix()))
                     raise
 
-            flist = self.targetdir + '/{}'.format(str(uuid.uuid4()))
+            flist = self.targetdir.joinpath(str(uuid.uuid4())).as_posix()
 
             # write URLs of query resuls to disk for WGET
             with open(flist, 'w') as thefile:
@@ -194,7 +197,7 @@ class ModisQuery(object):
                 '-s', '10',
                 '--http-user', self.username,
                 '--http-passwd', self.password,
-                '-d', self.targetdir,
+                '-d', self.targetdir.as_posix(),
             ]
 
             # execute subprocess
@@ -207,7 +210,7 @@ class ModisQuery(object):
             else:
                 os.remove(flist)
 
-            self.files = [self.targetdir + os.path.basename(x) for x in self.modis_urls]
+            self.files = [self.targetdir.joinpath(basename(x)) for x in self.modis_urls]
 
         # download with requests
         else:
@@ -217,8 +220,8 @@ class ModisQuery(object):
                 print('{} of {}'.format(ix+1, self.results))
                 fname = url[url.rfind('/')+1:]
 
-                if os.path.exists('{}/{}'.format(self.targetdir, fname)):
-                    print('\nSkipping {} - {} already exists in {}!\n'.format(url, fname, self.targetdir))
+                if self.targetdir.joinpath(fname).exists():
+                    print('\nSkipping {} - {} already exists in {}!\n'.format(url, fname, self.targetdir.as_posix()))
                     continue
 
                 try:
@@ -231,7 +234,7 @@ class ModisQuery(object):
                             fopen.write(chunk)
                             spinner.next()
 
-                    self.files = self.files + [self.targetdir + fname]
+                    self.files = self.files + [self.targetdir.joinpath(fname)]
                     print(' done.\n')
                 except requests.exceptions.HTTPError as e:
                     print('Error downloading {} - skipping. Error message: {}'.format(url, e))
@@ -257,7 +260,7 @@ class ModisRawH5(object):
             interleave: Boolean flag if MOD/MYD 13  products should be interleaved
         """
 
-        self.targetdir = targetdir
+        self.targetdir = Path(targetdir)
         #self.resdict = dict(zip(['250m','500m','1km','0.05_Deg'],[x/112000 for x in [250,500,1000,5600]])) ## commented for original resolution
         self.vam_product_code_dict = dict(zip(['VIM', 'VEM', 'LTD', 'LTN'],
                                               ['NDVI', 'EVI', 'LST_Day', 'LST_Night']))
@@ -266,11 +269,10 @@ class ModisRawH5(object):
         self.files = [x for (y, x) in sorted(zip(self.rawdates, files))]
         self.rawdates.sort()
         self.nfiles = len(self.files)
-        self.reference_file = self.files[0]
-        self.reference_file_basename = os.path.basename(self.reference_file)
+        self.reference_file = Path(self.files[0])
 
         # class works only for M.D11 and M.D13 products
-        if not re.match(r'M.D13\w\d', self.reference_file_basename) and not re.match(r'M.D11\w\d', self.reference_file_basename):
+        if not re.match(r'M.D13\w\d', self.reference_file.name) and not re.match(r'M.D11\w\d', self.reference_file.name):
             raise SystemExit("Processing only implemented for M*D11 or M*13 products!")
 
         # make sure number of dates is equal to number of files, so no duplicates!
@@ -282,7 +284,7 @@ class ModisRawH5(object):
         tpatt = re.compile(r'h\d+v\d+')
 
         # Open reference file
-        ref = gdal.Open(self.reference_file)
+        ref = gdal.Open(self.reference_file.as_posix())
 
         # When no product is selected, the default is VIM and LTD
         if not vam_product_code:
@@ -300,11 +302,11 @@ class ModisRawH5(object):
 
         # check for MOD/MYD interleaving
         if interleave and self.vam_product_code == 'VIM':
-            self.product = [re.sub(r'M[O|Y]D', 'MXD', re.findall(ppatt, self.reference_file_basename)[0])]
+            self.product = [re.sub(r'M[O|Y]D', 'MXD', re.findall(ppatt, self.reference_file.name)[0])]
             self.temporalresolution = 8
             self.tshift = 8
         else:
-            self.product = re.findall(ppatt, self.reference_file_basename)
+            self.product = re.findall(ppatt, self.reference_file.name)
             if re.match(r'M[O|Y]D13\w\d', self.product[0]):
                 self.temporalresolution = 16
                 self.tshift = 8
@@ -329,13 +331,13 @@ class ModisRawH5(object):
                         pass
 
         # Name of file to be created/updated
-        self.outname = '{}/{}/{}.{}.h5'.format(
-            self.targetdir,
+        self.outname = Path('{}/{}/{}.{}.h5'.format(
+            self.targetdir.as_posix(),
             self.vam_product_code,
-            '.'.join(self.product + re.findall(tpatt, self.reference_file_basename) + [re.sub(vpatt, '\\1', self.reference_file_basename)]),
-            fname_vpc)
+            '.'.join(self.product + re.findall(tpatt, self.reference_file.name) + [re.sub(vpatt, '\\1', self.reference_file.name)]),
+            fname_vpc))
 
-        self.exists = os.path.isfile(self.outname)
+        self.exists = self.outname.exists()
         ref = None
 
     def create(self, compression='gzip', chunk=None):
@@ -346,7 +348,7 @@ class ModisRawH5(object):
             chunk: Number of pixels per chunk (needs to define equal sized chunks!)
         """
 
-        ref = gdal.Open(self.reference_file)
+        ref = gdal.Open(self.reference_file.as_posix())
         ref_sds = [x[0] for x in ref.GetSubDatasets() if self.vam_product_code_dict[self.vam_product_code] in x[0]][0]
 
         # reference raster
@@ -384,16 +386,16 @@ class ModisRawH5(object):
         rst = None
 
         # Create directory if necessary
-        if not os.path.exists(os.path.dirname(self.outname)):
+        if not self.outname.parent.exists():
             # Try statements caches possible error when multiple tiles are processed in parallel
             try:
-                os.makedirs(os.path.dirname(self.outname))
+                self.outname.parent.mkdir()
             except FileExistsError:
                 pass
 
         # Create HDF5 file
         try:
-            with h5py.File(self.outname, 'x', libver='latest') as h5f:
+            with h5py.File(self.outname.as_posix(), 'x', libver='latest') as h5f:
                 dset = h5f.create_dataset('data',
                                           shape=(nrows*ncols, self.nfiles),
                                           dtype=self.datatype[1],
@@ -418,8 +420,8 @@ class ModisRawH5(object):
                 dset.attrs['RasterYSize'] = nrows
             self.exists = True
         except:
-            print('\n\nError creating {}! Check input parameters (especially if compression/filter is available) and try again. Corrupt file will be removed now. \n\nError message: \n'.format(self.outname))
-            os.remove(self.outname)
+            print('\n\nError creating {}! Check input parameters (especially if compression/filter is available) and try again. Corrupt file will be removed now. \n\nError message: \n'.format(self.outname.as_posix()))
+            self.outname.unlink()
             raise
 
     def update(self):
@@ -429,7 +431,7 @@ class ModisRawH5(object):
         """
 
         try:
-            with h5py.File(self.outname, 'r+', libver='latest') as h5f:
+            with h5py.File(self.outname.as_posix(), 'r+', libver='latest') as h5f:
                 dset = h5f.get('data')
                 dates = h5f.get('dates')
                 self.chunks = dset.chunks
@@ -491,16 +493,17 @@ class ModisRawH5(object):
                 dates_combined.sort()
                 dates[...] = np.array(dates_combined, dtype='S8')
         except:
-            print('Error updating {}! File may be corrupt, consider creating the file from scratch, or closer investigation. \n\nError message: \n'.format(self.outname))
+            print('Error updating {}! File may be corrupt, consider creating the file from scratch, or closer investigation. \n\nError message: \n'.format(self.outname.as_posix()))
             traceback.print_exc()
             raise
 
     def __str__(self):
         """String to be displayed when printing an instance of the class object"""
-        return 'ModisRawH5 object: {} - {} files - exists on disk: {}'.format(self.outname, self.nfiles, self.exists)
+        return 'ModisRawH5 object: {} - {} files - exists on disk: {}'.format(self.outname.as_posix(), self.nfiles, self.exists)
 
 
 class ModisSmoothH5(object):
+
     """Class for smoothed MODIS data collected into HDF5 file."""
 
     def __init__(self, rawfile, startdate=None,
@@ -520,7 +523,7 @@ class ModisSmoothH5(object):
             if nsmooth < nupdate:
                 raise ValueError('nsmooth must be bigger or equal (>=) to nupdate!')
 
-        self.targetdir = targetdir
+        self.targetdir = Path(targetdir)
         self.rawfile = rawfile
         self.nworkers = nworkers
         self.nupdate = nupdate
@@ -547,12 +550,13 @@ class ModisSmoothH5(object):
             self.temporalresolution = None
 
         # Filename for smoothed HDF5
-        self.outname = '{}/{}.tx{}.{}.h5'.format(
-            self.targetdir,
-            '.'.join(os.path.basename(rawfile).split('.')[:-2]),
+        self.outname = Path('{}/{}.tx{}.{}.h5'.format(
+            self.targetdir.as_posix(),
+            '.'.join(basename(rawfile).split('.')[:-2]),
             txflag,
-            os.path.basename(rawfile).split('.')[-2:-1][0])
-        self.exists = os.path.isfile(self.outname)
+            basename(rawfile).split('.')[-2:-1][0]))
+
+        self.exists = self.outname.exists()
 
     def create(self):
         """Creates smoothed HDF5 file on disk."""
@@ -583,8 +587,7 @@ class ModisSmoothH5(object):
         dates = DateHelper(rawdates=self.rawdates,
                            rtres=rtres,
                            stres=self.temporalresolution,
-                           start=self.startdate,
-                           nupdate=self.nupdate)
+                           start=self.startdate)
 
         if not self.tinterpolate:
             dates.target = self.rawdates
@@ -592,7 +595,7 @@ class ModisSmoothH5(object):
         dates_length = len(dates.target)
 
         try:
-            with h5py.File(self.outname, 'x', libver='latest') as h5f:
+            with h5py.File(self.outname.as_posix(), 'x', libver='latest') as h5f:
                 dset = h5f.create_dataset('data',
                                           shape=(rawshape[0], dates_length),
                                           dtype=dt, maxshape=(rawshape[0], None),
@@ -622,8 +625,8 @@ class ModisSmoothH5(object):
                 dset.attrs['RasterYSize'] = nrows
                 dset.attrs['RasterXSize'] = ncols
         except:
-            print('\n\nError creating {}! Check input parameters (especially if compression/filter is available) and try again. Corrupt file will be removed now. \n\nError message: \n'.format(self.outname))
-            os.remove(self.outname)
+            print('\n\nError creating {}! Check input parameters (especially if compression/filter is available) and try again. Corrupt file will be removed now. \n\nError message: \n'.format(self.outname.as_posix()))
+            os.remove(self.outname.unlink())
             raise
 
         self.exists = True
@@ -635,9 +638,9 @@ class ModisSmoothH5(object):
             s: log10 value of s (float)
         """
 
-        with h5py.File(self.rawfile, 'r') as rawh5, h5py.File(self.outname, 'r+') as smth5:
+        with h5py.File(self.rawfile, 'r') as rawh5, h5py.File(self.outname.as_posix(), 'r+') as smth5:
             raw_ds = rawh5.get('data')
-            raw_dates = rawh5.get('dates')
+            raw_dates_all = rawh5.get('dates')
             rtres = raw_ds.attrs['temporalresolution'].item()
             smt_ds = smth5.get('data')
             smt_dates = smth5.get('dates')
@@ -657,8 +660,7 @@ class ModisSmoothH5(object):
             dates = DateHelper(rawdates=self.rawdates,
                                rtres=rtres,
                                stres=self.temporalresolution,
-                               start=self.startdate,
-                               nupdate=self.nupdate)
+                               start=self.startdate)
 
             if not self.tinterpolate:
                 dates.target = self.rawdates
@@ -671,8 +673,13 @@ class ModisSmoothH5(object):
                 smt_dates[...] = np.array(dates.target, dtype='S8')
 
             # calculate offsets
-            rawoffset = [x.decode() for x in raw_dates[...]].index(self.rawdates[0])
-            smoothoffset = [x.decode() for x in smt_dates[...]].index(dates.target[0])
+            rawoffset = [x.decode() for x in raw_dates_all[...]].index(self.rawdates[0])
+
+            # if dataset is smaller or equal then nupdate, take index 0
+            try:
+                smoothoffset = [x.decode() for x in smt_dates[...]].index(dates.target[-self.nupdate])
+            except IndexError:
+                smoothoffset = [x.decode() for x in smt_dates[...]].index(dates.target[0])
 
             if self.nworkers > 1:
                 if self.tinterpolate:
@@ -684,7 +691,7 @@ class ModisSmoothH5(object):
 
                     # Shift for interpolation
                     for rdate in self.rawdates:
-                        vector_daily[dates.daily.index((fromjulian(rdate) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
+                        vector_daily[dates.daily.index((fromjulian(rdate) + timedelta(tshift)).strftime('%Y%j'))] = -1
                 else:
                     vector_daily = None
                     shared_array_smooth = None
@@ -716,13 +723,11 @@ class ModisSmoothH5(object):
 
                     # write back data
                     if self.tinterpolate:
-                        for bc in range(0, len(dates.target), smoothchunks[1]):
-                            bco = bc + smoothoffset
-                            smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]]
+                        for bc in range(smoothoffset, len(dates.target), smoothchunks[1]):
+                            smt_ds[br:br+rawchunks[0], bc:bc+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]]
                         arr_smooth[...] = nodata
                     else:
-                        for bc in range(0, len(dates.target), smoothchunks[1]):
-                            bco = bc + smoothoffset
+                        for bc in range(smoothoffset, len(dates.target), smoothchunks[1]):
                             smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]]
                 # close pool
                 pool.close()
@@ -740,7 +745,7 @@ class ModisSmoothH5(object):
 
                     # Shift for interpolation
                     for rdate in self.rawdates:
-                        vector_daily[dates.daily.index((fromjulian(rdate) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
+                        vector_daily[dates.daily.index((fromjulian(rdate) + timedelta(tshift)).strftime('%Y%j'))] = -1
                 else:
                     arr_smooth = None
 
@@ -774,14 +779,13 @@ class ModisSmoothH5(object):
 
                     # write back data
                     if self.tinterpolate:
-                        for bc in range(0, len(dates.target), smoothchunks[1]):
-                            bco = bc + smoothoffset
-                            smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]]
+                        for bc in range(smoothoffset, len(dates.target), smoothchunks[1]):
+                            smt_ds[br:br+rawchunks[0], bc:bc+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]]
                         arr_smooth[...] = nodata
                     else:
-                        for bc in range(0, len(dates.target), smoothchunks[1]):
+                        for bc in range(smoothoffset, len(dates.target), smoothchunks[1]):
                             bco = bc + smoothoffset
-                            smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]]
+                            smt_ds[br:br+rawchunks[0], bc:bc+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]]
 
     def ws2d_sgrid(self):
         """Apply whittaker smootehr with fixed s to data.
@@ -790,9 +794,9 @@ class ModisSmoothH5(object):
         a previous run of V-curve s-optimization.
         """
 
-        with h5py.File(self.rawfile, 'r') as rawh5, h5py.File(self.outname, 'r+') as smth5:
+        with h5py.File(self.rawfile, 'r') as rawh5, h5py.File(self.outname.as_posix(), 'r+') as smth5:
             raw_ds = rawh5.get('data')
-            raw_dates = rawh5.get('dates')
+            raw_dates_all = rawh5.get('dates')
             rtres = raw_ds.attrs['temporalresolution'].item()
             smt_ds = smth5.get('data')
             smt_dates = smth5.get('dates')
@@ -812,8 +816,7 @@ class ModisSmoothH5(object):
             dates = DateHelper(rawdates=self.rawdates,
                                rtres=rtres,
                                stres=self.temporalresolution,
-                               start=self.startdate,
-                               nupdate=self.nupdate)
+                               start=self.startdate)
 
             if not self.tinterpolate:
                 dates.target = self.rawdates
@@ -826,8 +829,13 @@ class ModisSmoothH5(object):
                 smt_dates[...] = np.array(dates.target, dtype='S8')
 
             # calculate offsets
-            rawoffset = [x.decode() for x in raw_dates[...]].index(self.rawdates[0])
-            smoothoffset = [x.decode() for x in smt_dates[...]].index(dates.target[0])
+            rawoffset = [x.decode() for x in raw_dates_all[...]].index(self.rawdates[0])
+
+            # if dataset is smaller or equal then nupdate, take index 0
+            try:
+                smoothoffset = [x.decode() for x in smt_dates[...]].index(dates.target[-self.nupdate])
+            except IndexError:
+                smoothoffset = [x.decode() for x in smt_dates[...]].index(dates.target[0])
 
             if self.nworkers > 1:
                 if self.tinterpolate:
@@ -839,7 +847,7 @@ class ModisSmoothH5(object):
 
                     # Shift for interpolation
                     for rdate in self.rawdates:
-                        vector_daily[dates.daily.index((fromjulian(rdate) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
+                        vector_daily[dates.daily.index((fromjulian(rdate) + timedelta(tshift)).strftime('%Y%j'))] = -1
                 else:
                     vector_daily = None
                     shared_array_smooth = None
@@ -875,14 +883,12 @@ class ModisSmoothH5(object):
 
                     # write back data
                     if self.tinterpolate:
-                        for bc in range(0, len(dates.target), smoothchunks[1]):
-                            bco = bc + smoothoffset
-                            smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]]
+                        for bc in range(smoothoffset, len(dates.target), smoothchunks[1]):
+                            smt_ds[br:br+rawchunks[0], bc:bc+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]]
                         arr_smooth[...] = nodata
                     else:
-                        for bc in range(0, len(dates.target), smoothchunks[1]):
-                            bco = bc + smoothoffset
-                            smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]]
+                        for bc in range(smoothoffset, len(dates.target), smoothchunks[1]):
+                            smt_ds[br:br+rawchunks[0], bc:bc+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]]
                 # close pool
                 pool.close()
                 pool.join()
@@ -899,7 +905,7 @@ class ModisSmoothH5(object):
 
                     # Shift for interpolation
                     for rdate in self.rawdates:
-                        vector_daily[dates.daily.index((fromjulian(rdate) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
+                        vector_daily[dates.daily.index((fromjulian(rdate) + timedelta(tshift)).strftime('%Y%j'))] = -1
                 else:
                     arr_smooth = None
 
@@ -933,14 +939,12 @@ class ModisSmoothH5(object):
 
                     # write back data
                     if self.tinterpolate:
-                        for bc in range(0, len(dates.target), smoothchunks[1]):
-                            bco = bc + smoothoffset
-                            smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]]
+                        for bc in range(smoothoffset, len(dates.target), smoothchunks[1]):
+                            smt_ds[br:br+rawchunks[0], bc:bc+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]]
                         arr_smooth[...] = nodata
                     else:
-                        for bc in range(0, len(dates.target), smoothchunks[1]):
-                            bco = bc + smoothoffset
-                            smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]]
+                        for bc in range(smoothoffset, len(dates.target), smoothchunks[1]):
+                            smt_ds[br:br+rawchunks[0], bc:bc+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]]
 
     def ws2d_vc(self, srange, p=None):
         """Apply whittaker smoother V-curve optimization of s.
@@ -952,9 +956,9 @@ class ModisSmoothH5(object):
             p: Percentile value (float)
         """
 
-        with h5py.File(self.rawfile, 'r') as rawh5, h5py.File(self.outname, 'r+') as smth5:
+        with h5py.File(self.rawfile, 'r') as rawh5, h5py.File(self.outname.as_posix(), 'r+') as smth5:
             raw_ds = rawh5.get('data')
-            raw_dates = rawh5.get('dates')
+            raw_dates_all = rawh5.get('dates')
             rtres = raw_ds.attrs['temporalresolution'].item()
             smt_ds = smth5.get('data')
             smt_dates = smth5.get('dates')
@@ -979,8 +983,7 @@ class ModisSmoothH5(object):
             dates = DateHelper(rawdates=self.rawdates,
                                rtres=rtres,
                                stres=self.temporalresolution,
-                               start=self.startdate,
-                               nupdate=self.nupdate)
+                               start=self.startdate)
 
             if not self.tinterpolate:
                 dates.target = self.rawdates
@@ -993,8 +996,13 @@ class ModisSmoothH5(object):
                 smt_dates[...] = np.array(dates.target, dtype='S8')
 
             # calculate offsets
-            rawoffset = [x.decode() for x in raw_dates[...]].index(self.rawdates[0])
-            smoothoffset = [x.decode() for x in smt_dates[...]].index(dates.target[0])
+            rawoffset = [x.decode() for x in raw_dates_all[...]].index(self.rawdates[0])
+
+            # if dataset is smaller or equal then nupdate, take index 0
+            try:
+                smoothoffset = [x.decode() for x in smt_dates[...]].index(dates.target[-self.nupdate])
+            except IndexError:
+                smoothoffset = [x.decode() for x in smt_dates[...]].index(dates.target[0])
 
             if self.nworkers > 1:
                 if self.tinterpolate:
@@ -1006,7 +1014,7 @@ class ModisSmoothH5(object):
 
                     # Shift for interpolation
                     for rdate in self.rawdates:
-                        vector_daily[dates.daily.index((fromjulian(rdate) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
+                        vector_daily[dates.daily.index((fromjulian(rdate) + timedelta(tshift)).strftime('%Y%j'))] = -1
                 else:
                     vector_daily = None
                     shared_array_smooth = None
@@ -1046,14 +1054,12 @@ class ModisSmoothH5(object):
                     arr_sgrid[...] = 0
 
                     if self.tinterpolate:
-                        for bc in range(0, len(dates.target), smoothchunks[1]):
-                            bco = bc + smoothoffset
-                            smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]]
+                        for bc in range(smoothoffset, len(dates.target), smoothchunks[1]):
+                            smt_ds[br:br+rawchunks[0], bc:bc+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]]
                         arr_smooth[...] = nodata
                     else:
-                        for bc in range(0, len(dates.target), smoothchunks[1]):
-                            bco = bc + smoothoffset
-                            smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]]
+                        for bc in range(smoothoffset, len(dates.target), smoothchunks[1]):
+                            smt_ds[br:br+rawchunks[0], bc:bc+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]]
                 # close pool
                 pool.close()
                 pool.join()
@@ -1069,7 +1075,7 @@ class ModisSmoothH5(object):
 
                     # Shift for interpolation
                     for rdate in self.rawdates:
-                        vector_daily[dates.daily.index((fromjulian(rdate) + datetime.timedelta(tshift)).strftime('%Y%j'))] = -1
+                        vector_daily[dates.daily.index((fromjulian(rdate) + timedelta(tshift)).strftime('%Y%j'))] = -1
                 else:
                     arr_smooth = None
                 for br in range(0, rawshape[0], rawchunks[0]):
@@ -1101,12 +1107,12 @@ class ModisSmoothH5(object):
                         if p:
                             arr_raw[ix, :], arr_sgrid[ix] = ws2doptvp(y=arr_raw[ix, :],
                                                                       w=np.array((arr_raw[ix, :] != nodata)*1, dtype='double'),
-                                                                      llas=array.array('d', sr),
+                                                                      llas=array('d', sr),
                                                                       p=p)
                         else:
                             arr_raw[ix, :], arr_sgrid[ix] = ws2doptv(y=arr_raw[ix, :],
                                                                      w=np.array((arr_raw[ix, :] != nodata)*1, dtype='double'),
-                                                                     llas=array.array('d', sr))
+                                                                     llas=array('d', sr))
 
                         if self.tinterpolate:
                             z2 = vector_daily.copy()
@@ -1124,14 +1130,12 @@ class ModisSmoothH5(object):
                     arr_sgrid[...] = 0
 
                     if self.tinterpolate:
-                        for bc in range(0, len(dates.target), smoothchunks[1]):
-                            bco = bc + smoothoffset
-                            smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]]
+                        for bc in range(smoothoffset, len(dates.target), smoothchunks[1]):
+                            smt_ds[br:br+rawchunks[0], bc:bc+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]]
                         arr_smooth[...] = nodata
                     else:
-                        for bc in range(0, len(dates.target), smoothchunks[1]):
-                            bco = bc + smoothoffset
-                            smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]]
+                        for bc in range(smoothoffset, len(dates.target), smoothchunks[1]):
+                            smt_ds[br:br+rawchunks[0], bc:bc+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]]
 
 
 class ModisMosaic(object):
@@ -1152,7 +1156,7 @@ class ModisMosaic(object):
 
         tile_re = re.compile(r'.+(h\d+v\d+).+') # Regular expression for tile ID
         self.global_flag = global_flag
-        self.tiles = [re.sub(tile_re, '\\1', os.path.basename(x)) for x in files]
+        self.tiles = [re.sub(tile_re, '\\1', basename(x)) for x in files]
         self.tiles.sort()
         self.files = files
 
@@ -1175,10 +1179,12 @@ class ModisMosaic(object):
                 dset = h5f.get('data')
                 self.tile_rws = dset.attrs['RasterYSize'].item()
                 self.tile_cls = dset.attrs['RasterXSize'].item()
+                temporalresolution = dset.attrs['temporalresolution']
                 self.datatype = dset.dtype
                 gt_temp_v = dset.attrs['geotransform']
                 self.prj = dset.attrs['projection']
                 self.nodata = dset.attrs['nodata'].item()
+                self.labels = []
 
                 # If file is global, resolution is already in degrees, otherwhise it's resolution divided with 112000
                 if self.global_flag:
@@ -1188,6 +1194,10 @@ class ModisMosaic(object):
                     self.resolution_degrees = self.resolution/112000
                 dset = None
                 self.dates = [x.decode() for x in h5f.get('dates')[...]]
+
+                # if dates are either 5 or 10 days, retrive pentad or dekad labels
+                if int(temporalresolution) == 5 or int(temporalresolution) == 10:
+                    self.labels = date2label(self.dates, temporalresolution)
 
             # checking referece tile for h
             ref = [x for x in self.files if ref_tile_h in x][0]
@@ -1203,8 +1213,8 @@ class ModisMosaic(object):
 
         # Create temporal index from dates available and min max input
         dates_dt = [fromjulian(x) for x in self.dates]
-        datemin_p = datetime.datetime.strptime(datemin, '%Y%m').date()
-        datemax_p = datetime.datetime.strptime(datemax, '%Y%m').date()
+        datemin_p = datetime.strptime(datemin, '%Y%m').date()
+        datemax_p = datetime.strptime(datemax, '%Y%m').date()
         self.temp_index = np.flatnonzero(np.array([datemin_p <= x <= datemax_p for x in dates_dt]))
 
     def get_array(self, dataset, ix, dt):
@@ -1220,13 +1230,13 @@ class ModisMosaic(object):
         """
 
         # Initialize array
-        tiles_array = np.zeros(((len(self.v_ix) * self.tile_rws), len(self.h_ix) * self.tile_cls), dtype=dt)
+        tiles_array = np.full(((len(self.v_ix) * self.tile_rws), len(self.h_ix) * self.tile_cls), self.nodata, dtype=dt)
 
         # read data from intersecting HDF5 files
         for h5f in self.files:
             # Extract tile ID from filename
-            t_h = re.sub(r'.+(h\d+)(v\d+).+', '\\1', os.path.basename(h5f))
-            t_v = re.sub(r'.+(h\d+)(v\d+).+', '\\2', os.path.basename(h5f))
+            t_h = re.sub(r'.+(h\d+)(v\d+).+', '\\1', basename(h5f))
+            t_v = re.sub(r'.+(h\d+)(v\d+).+', '\\2', basename(h5f))
 
             # Caluclate row/column offset
             xoff = self.h_ix.index(t_h) * self.tile_cls
@@ -1260,7 +1270,8 @@ class ModisMosaic(object):
             Array for mosaic
         """
 
-        global_array = np.zeros((self.tile_rws, self.tile_cls), dtype=dt)
+        global_array = np.full((self.tile_rws, self.tile_cls), self.nodata, dtype=dt)
+
         for h5f in self.files:
             try:
                 with h5py.File(h5f, 'r') as h5f_o:

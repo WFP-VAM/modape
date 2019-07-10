@@ -66,14 +66,15 @@ setup(
     tests_require=['pytest'],
     install_requires=[
         'numpy>=1.15.1',
-        'gdal>=2',
+        'gdal>=2, <3',
         'h5py>=2.9',
         'beautifulsoup4>=4.7',
         'requests>=2',
         'progress>=1.5',
         'pandas>=0.24',
         'cryptography>=2.6',
-        'mock;python_version<"3.0"'
+        'mock;python_version<"3.0"',
+        'pathlib;python_version<"3.0"'
     ],
     python_requires='>=2.7.11, <4',
 )

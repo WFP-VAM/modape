@@ -214,7 +214,7 @@ def main():
                                       startdate=args.startdate)
 
     if not args.quiet:
-        print('\n[{}]: Starting smoothMODIS.py ... \n'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())))
+        print('\n[{}]: Starting modis_smooth.py ... \n'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())))
 
     if args.parallel_tiles > 1:
         if args.optv:
@@ -384,7 +384,7 @@ def main():
             if not args.quiet:
                 print('[{}]: Done.'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())))
 
-    print('\n[{}]: smoothMODIS.py finished successfully.\n'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())))
+    print('\n[{}]: modis_smooth.py finished successfully.\n'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())))
 
 if __name__ == '__main__':
     multiprocessing.freeze_support()
