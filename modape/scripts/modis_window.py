@@ -34,7 +34,7 @@ def main():
     parser = argparse.ArgumentParser(description='Extract a window from MODIS products')
     parser.add_argument('path', help='Path to processed MODIS h5 files')
     parser.add_argument('-p', '--product', help='MODIS product ID (can be parial match with *)', metavar='')
-    parser.add_argument('--roi', help='Region of interest. Can be LAT/LON point or bounding box in format llx lly urx ury', nargs='+', type=float)
+    parser.add_argument('--roi', help='Region of interest. Can be LAT/LON point or bounding box in format llx lly urx ury', nargs='+', type=str)
     parser.add_argument('--region', help='region 3 letter region code (default is \'reg\')', default='reg', metavar='')
     parser.add_argument('-b', '--begin-date', help='Start date (YYYYMM)', default=datetime.date(2000, 1, 1).strftime('%Y%m'), metavar='')
     parser.add_argument('-e', '--end-date', help='End date (YYYYMM)', default=datetime.date.today().strftime('%Y%m'), metavar='')
@@ -76,7 +76,7 @@ def main():
 
     # If ROI is a bounding box, change order or corner coordinates for modis_tiles
     if args.roi and len(args.roi) == 4:
-        args.roi = [args.roi[i] for i in [0, 3, 2, 1]]
+        args.roi = [float(args.roi[i]) for i in [0, 3, 2, 1]]
 
     # Load product table
     this_dir, _ = os.path.split(__file__)
@@ -115,7 +115,7 @@ def main():
 
         # If the product is not global and there's an ROI, we need to query the intersecting tiles
         if not global_flag and args.roi:
-            tiles = modis_tiles(args.roi)
+            tiles = modis_tiles([float(x) for x in args.roi])
             if not tiles:
                 raise ValueError('\nNo MODIS tile(s) found for location. Please check coordinates!')
 
