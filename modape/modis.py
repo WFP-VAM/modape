@@ -207,10 +207,14 @@ class ModisQuery(object):
             # remove filelist.txt if all downloads are successful
             if process_output.returncode != 0:
                 print('\nError (error code {}) occured during download, please check files against MODIS URL list ({})!\n'.format(process_output.returncode, flist))
+                # remove incoplete files
+                for incomplete_file in self.targetdir.glob('*.aria2'):
+                    incomplete_file.unlink()
+                    self.targetdir.joinpath(incomplete_file.stem).unlink()
             else:
                 os.remove(flist)
 
-            self.files = [self.targetdir.joinpath(basename(x)) for x in self.modis_urls]
+            self.files = [self.targetdir.joinpath(basename(x)) for x in self.modis_urls if self.targetdir.joinpath(basename(x)).exists()]
 
         # download with requests
         else:
