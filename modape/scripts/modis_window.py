@@ -42,6 +42,7 @@ def main():
     parser.add_argument('-d', '--targetdir', help='Target directory for GeoTIFFs (default current directory)', default=os.getcwd(), metavar='')
     parser.add_argument('--sgrid', help='Extract (mosaic of) s value grid(s)', action='store_true')
     parser.add_argument('--force-doy', help='Force filenaming with DOY for 5 & 10 day data', action='store_true')
+    parser.add_argument('--overwrite', help='Force overwrite of output', action='store_true')
 
     # fail and print help if no arguments supplied
     if len(sys.argv) == 1:
@@ -145,9 +146,13 @@ def main():
 
             # Extract s-grid if True
             if args.sgrid:
-                filename = output_dir.joinpath(args.region.lower() + vam_code.lower() + '_sgrid.tif').as_posix()
+                filename = output_dir.joinpath(args.region.lower() + vam_code.lower() + '_sgrid.tif')
 
-                print('Processing file {}'.format(filename))
+                if filename.exists() and not args.overwrite:
+                    print('{} exists! Please specify --overwrite if applicable. Skipping ... '.format(filename))
+                    continue
+
+                print('Processing file {}'.format(filename.name))
                 with mosaic.get_raster(dset, None) as mosaic_ropen:
                     # Subset if bbox was supplied
                     try:
@@ -166,7 +171,7 @@ def main():
                             )
 
                             _ = gdal.Warp(
-                                filename,
+                                filename.as_posix(),
                                 mosaic_ropen.raster,
                                 options=wopt,
                             )
@@ -201,12 +206,17 @@ def main():
 
                     if mosaic.labels and not args.force_doy:
 
-                        filename = output_dir.joinpath(args.region.lower() + vam_code.lower() + mosaic.labels[ix] + '.tif').as_posix()
+                        filename = output_dir.joinpath(args.region.lower() + vam_code.lower() + mosaic.labels[ix] + '.tif')
 
                     else:
 
-                        filename = output_dir.joinpath(args.region.lower() + vam_code.lower() + mosaic.dates[ix][0:4] + 'j' + mosaic.dates[ix][4:7] + '.tif').as_posix()
+                        filename = output_dir.joinpath(args.region.lower() + vam_code.lower() + mosaic.dates[ix][0:4] + 'j' + mosaic.dates[ix][4:7] + '.tif')
 
+                    if filename.exists() and not args.overwrite:
+                        print('{} exists! Please specify --overwrite if applicable. Skipping ... '.format(filename))
+                        continue
+
+                    print('Processing file {}'.format(filename.name))
 
                     with mosaic.get_raster(dset, ix) as mosaic_ropen:
                         try:
@@ -225,7 +235,7 @@ def main():
                                 )
 
                                 _ = gdal.Warp(
-                                    filename,
+                                    filename.as_posix(),
                                     mosaic_ropen.raster,
                                     options=wopt,
                                 )
@@ -245,7 +255,7 @@ def main():
                                 )
 
                                 _ = gdal.Warp(
-                                    filename,
+                                    filename.as_posix(),
                                     mosaic_ropen.raster,
                                     options=wopt,
                                 )
