@@ -8,6 +8,8 @@
  - [x] skip existing or overwrite if specified
  - [ ] more flexibility in selecting dates
 
+- `modis_collect`:
+ - [ ] minimum date to AQUA start if --interleave is specified
 
 #### other changes
 
