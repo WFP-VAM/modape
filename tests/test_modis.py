@@ -196,7 +196,7 @@ class TestMODIS(unittest.TestCase):
             smth5 = ModisSmoothH5('MXD13A2.h18v06.006.VIM.h5', tempint=10)
 
             self.assertEqual(smth5.outname.name, 'MXD13A2.h18v06.006.txd.VIM.h5')
-            self.assertEqual(smth5.rawdates, [
+            self.assertEqual(smth5.rawdates_nsmooth, [
                 '2002185',
                 '2002193',
                 '2002201',
