@@ -660,7 +660,7 @@ class ModisSmoothH5(object):
                                stres=self.temporalresolution,
                                start=self.startdate)
 
-            dix = dates.getDIX()
+            dix = dates.getDIX()[-self.nupdate:]
 
             # Resize if date list is bigger than shape of smoothed data
             if dates.target_length > smoothshape[1]:
@@ -722,7 +722,7 @@ class ModisSmoothH5(object):
 
                     # write back data
                     if self.tinterpolate:
-                        for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(self.array_offset, arr_raw.shape[1], smoothchunks[1])):
+                        for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(0, arr_smooth.shape[1], smoothchunks[1])):
                             smt_ds[br:br+smoothchunks[0], bcs:bcs+smoothchunks[1]] = arr_smooth[:, bcr:bcr+smoothchunks[1]]
                         arr_smooth[...] = nodata
                     else:
@@ -779,7 +779,7 @@ class ModisSmoothH5(object):
 
                     # write back data
                     if self.tinterpolate:
-                        for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(self.array_offset, arr_raw.shape[1], smoothchunks[1])):
+                        for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(0, arr_smooth.shape[1], smoothchunks[1])):
                             smt_ds[br:br+smoothchunks[0], bcs:bcs+smoothchunks[1]] = arr_smooth[:, bcr:bcr+smoothchunks[1]]
                         arr_smooth[...] = nodata
                     else:
@@ -819,7 +819,7 @@ class ModisSmoothH5(object):
                                start=self.startdate)
 
 
-            dix = dates.getDIX()
+            dix = dates.getDIX()[-self.nupdate:]
 
             # Resize if date list is bigger than shape of smoothed data
             if len(dates.target) > smoothshape[1]:
@@ -885,7 +885,7 @@ class ModisSmoothH5(object):
 
                     # write back data
                     if self.tinterpolate:
-                        for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(self.array_offset, arr_raw.shape[1], smoothchunks[1])):
+                        for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(0, arr_smooth.shape[1], smoothchunks[1])):
                             smt_ds[br:br+smoothchunks[0], bcs:bcs+smoothchunks[1]] = arr_smooth[:, bcr:bcr+smoothchunks[1]]
                         arr_smooth[...] = nodata
                     else:
@@ -942,7 +942,7 @@ class ModisSmoothH5(object):
 
                     # write back data
                     if self.tinterpolate:
-                        for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(self.array_offset, arr_raw.shape[1], smoothchunks[1])):
+                        for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(0, arr_smooth.shape[1], smoothchunks[1])):
                             smt_ds[br:br+smoothchunks[0], bcs:bcs+smoothchunks[1]] = arr_smooth[:, bcr:bcr+smoothchunks[1]]
                         arr_smooth[...] = nodata
                     else:
@@ -989,7 +989,7 @@ class ModisSmoothH5(object):
                                stres=self.temporalresolution,
                                start=self.startdate)
 
-            dix = dates.getDIX()
+            dix = dates.getDIX()[-self.nupdate:]
 
             # Resize if date list is bigger than shape of smoothed data
             if dates.target_length > smoothshape[1]:
@@ -1059,7 +1059,7 @@ class ModisSmoothH5(object):
                     arr_sgrid[...] = 0
 
                     if self.tinterpolate:
-                        for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(self.array_offset, arr_raw.shape[1], smoothchunks[1])):
+                        for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(0, arr_smooth.shape[1], smoothchunks[1])):
                             smt_ds[br:br+smoothchunks[0], bcs:bcs+smoothchunks[1]] = arr_smooth[:, bcr:bcr+smoothchunks[1]]
                         arr_smooth[...] = nodata
                     else:
@@ -1136,7 +1136,7 @@ class ModisSmoothH5(object):
                     arr_sgrid[...] = 0
 
                     if self.tinterpolate:
-                        for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(self.array_offset, arr_raw.shape[1], smoothchunks[1])):
+                        for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(0, arr_smooth.shape[1], smoothchunks[1])):
                             smt_ds[br:br+smoothchunks[0], bcs:bcs+smoothchunks[1]] = arr_smooth[:, bcr:bcr+smoothchunks[1]]
                         arr_smooth[...] = nodata
                     else:
