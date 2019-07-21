@@ -740,7 +740,7 @@ class ModisSmoothH5(object):
                 wts = arr_raw.copy()
 
                 if self.tinterpolate:
-                    arr_smooth = np.zeros((smoothchunks[0], dates.target_length), dtype='double')
+                    arr_smooth = np.zeros((smoothchunks[0], new_dim), dtype='double')
                     vector_daily = dates.getDV(nodata)
 
                     # Shift for interpolation
@@ -903,7 +903,7 @@ class ModisSmoothH5(object):
                 # Create weights array
                 wts = arr_raw.copy()
                 if self.tinterpolate:
-                    arr_smooth = np.zeros((smoothchunks[0], dates.target_length), dtype='double')
+                    arr_smooth = np.zeros((smoothchunks[0], new_dim), dtype='double')
                     vector_daily = dates.getDV(nodata)
 
                     # Shift for interpolation
@@ -1076,7 +1076,7 @@ class ModisSmoothH5(object):
                 wts = arr_raw.copy() # Create weights array
 
                 if self.tinterpolate:
-                    arr_smooth = np.zeros((smoothchunks[0], dates.target_length), dtype='double')
+                    arr_smooth = np.zeros((smoothchunks[0], new_dim), dtype='double')
                     vector_daily = dates.getDV(nodata)
 
                     # Shift for interpolation
