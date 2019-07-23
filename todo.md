@@ -4,6 +4,7 @@
 
 - `ModisQuery`:
  - [ ] make dates optional
+ - [ ] rework downloading (possibly disable requests dl)
 
 - `modis_window`:
  - [ ] more flexibility in selecting dates
