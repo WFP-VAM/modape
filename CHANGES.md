@@ -1,6 +1,11 @@
 # CHANGES
 
 - ## v 0.2
+  - #### v 0.2.1:
+    - Re-designing update of datasets (fix issue #66)
+    - Remove incomplete downloads with aria2 in case of fail
+    - Return filenames in `ModisQuery` only when files are on disk
+    - Make overwrite of tiffs in `modis_window` optional with a flag
   - #### v 0.2.0:
     - greater changes and fixes to updating smooth datasets (fix issue #58)
     - change from `os` to `pathlib` for most path operations
