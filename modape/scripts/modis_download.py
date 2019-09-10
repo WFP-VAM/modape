@@ -9,7 +9,9 @@ import os
 from pathlib import Path
 import pickle
 import re
+from subprocess import check_output
 import sys
+import warnings
 
 import ogr
 from modape.modis import ModisQuery
@@ -41,7 +43,7 @@ def main():
     parser.add_argument('-d', '--targetdir', help='Destination directory', default=os.getcwd(), metavar='')
     parser.add_argument('--store-credentials', help='Store Earthdata credentials on disk to be used for future downloads (unsecure!)', action='store_true')
     parser.add_argument('--download', help='Download data', action='store_true')
-    parser.add_argument('--aria2', help='Use ARIA2 for downloading', action='store_true')
+    parser.add_argument('--aria2', help='DEPRACATED! Use ARIA2 for downloading', action='store_true')
 
     # fail and print help if no arguments supplied
     if len(sys.argv) == 1:
@@ -51,6 +53,18 @@ def main():
     args = parser.parse_args()
 
     credentials = Credentials(args.username, args.password)
+
+    if args.download:
+        warnings.simplefilter('default')
+
+        warnings.warn("Download only possible with ARIA2! Flag --aria2 will be removed in future release.", DeprecationWarning)
+
+        #fail if ARIA2 not installed
+        try:
+            _ = check_output(['aria2c', '--version'])
+        except:
+            raise SystemExit('For downloading, ARIA2 to be available in PATH! Please make sure it\'s installed and available in PATH!')
+
 
     # Check for credentials if download is True
     if args.download & (not credentials.complete):
@@ -188,7 +202,6 @@ def main():
                                       begindate=args.begin_date,
                                       enddate=args.end_date,
                                       global_flag=global_flag,
-                                      aria2=args.aria2,
                                       tile_filter=args.tile_filter)
 
             # If download is True and at least one result, download data

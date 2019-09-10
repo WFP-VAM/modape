@@ -13,18 +13,15 @@ import os
 from os.path import basename
 from pathlib import Path
 import re
-from subprocess import Popen, check_output
+from subprocess import Popen
 import sys
 import time
 import uuid
 import warnings
 
 import numpy as np
-from progress.spinner import Spinner
 import requests
 from bs4 import BeautifulSoup # pylint: disable=import-error
-
-from modape.utils import SessionWithHeaderRedirection
 
 # turn off BeautifulSoup warnings
 warnings.filterwarnings('ignore', category=UserWarning, module='bs4')
@@ -35,7 +32,7 @@ class ModisQuery(object):
     def __init__(self, url, begindate,
                  enddate, username=None, password=None,
                  targetdir=os.getcwd(), global_flag=None,
-                 aria2=False, tile_filter=None):
+                 tile_filter=None):
         """Creates a ModisQuery object.
 
         Args:
@@ -59,7 +56,6 @@ class ModisQuery(object):
         self.begin = datetime.strptime(begindate, '%Y-%m-%d').date()
         self.end = datetime.strptime(enddate, '%Y-%m-%d').date()
         self.global_flag = global_flag
-        self.aria2 = aria2
 
         # query for products using session object
         with requests.Session() as sess:
@@ -143,84 +139,48 @@ class ModisQuery(object):
 
         print('[{}]: Downloading products to {} ...\n'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()), self.targetdir))
 
-        # download using ARIA2 if True
-        if self.aria2:
-            # fail if ARIA2 not installed
+        # if targetdir doesn't exist, create
+        if not self.targetdir.exists():
             try:
-                _ = check_output(['aria2c', '--version'])
-            except:
-                raise SystemExit('ARIA2 download needs ARIA2 to be available in PATH! Please make sure it\'s installed and available in PATH!')
+                self.targetdir.mkdir()
+            except FileNotFoundError:
+                print('\nCould not create target directory {} (Trying to create directories recursively?)\n'.format(self.targetdir.as_posix()))
+                raise
 
-            # if targetdir doesn't exist, create
-            if not self.targetdir.exists():
-                try:
-                    self.targetdir.mkdir()
-                except FileNotFoundError:
-                    print('\nCould not create target directory {} (Trying to create directories recursively?)\n'.format(self.targetdir.as_posix()))
-                    raise
+        flist = self.targetdir.joinpath(str(uuid.uuid4())).as_posix()
 
-            flist = self.targetdir.joinpath(str(uuid.uuid4())).as_posix()
+        # write URLs of query resuls to disk for WGET
+        with open(flist, 'w') as thefile:
+            for item in self.modis_urls:
+                thefile.write('%s\n' % item)
 
-            # write URLs of query resuls to disk for WGET
-            with open(flist, 'w') as thefile:
-                for item in self.modis_urls:
-                    thefile.write('%s\n' % item)
+        args = [
+            'aria2c',
+            '--file-allocation=none',
+            '-m', '50',
+            '--retry-wait', '2',
+            '-c',
+            '-x', '10',
+            '-s', '10',
+            '--http-user', self.username,
+            '--http-passwd', self.password,
+            '-d', self.targetdir.as_posix(),
+        ]
 
-            args = [
-                'aria2c',
-                '--file-allocation=none',
-                '-m', '50',
-                '--retry-wait', '2',
-                '-c',
-                '-x', '10',
-                '-s', '10',
-                '--http-user', self.username,
-                '--http-passwd', self.password,
-                '-d', self.targetdir.as_posix(),
-            ]
+        # execute subprocess
+        process_output = Popen(args + ['-i', flist])
+        process_output.wait()
 
-            # execute subprocess
-            process_output = Popen(args + ['-i', flist])
-            process_output.wait()
-
-            # remove filelist.txt if all downloads are successful
-            if process_output.returncode != 0:
-                print('\nError (error code {}) occured during download, please check files against MODIS URL list ({})!\n'.format(process_output.returncode, flist))
-                # remove incoplete files
-                for incomplete_file in self.targetdir.glob('*.aria2'):
-                    incomplete_file.unlink()
-                    self.targetdir.joinpath(incomplete_file.stem).unlink()
-            else:
-                os.remove(flist)
-
-            self.files = [self.targetdir.joinpath(basename(x)) for x in self.modis_urls if self.targetdir.joinpath(basename(x)).exists()]
-
-        # download with requests
+        # remove filelist.txt if all downloads are successful
+        if process_output.returncode != 0:
+            print('\nError (error code {}) occured during download, please check files against MODIS URL list ({})!\n'.format(process_output.returncode, flist))
+            # remove incoplete files
+            for incomplete_file in self.targetdir.glob('*.aria2'):
+                incomplete_file.unlink()
+                self.targetdir.joinpath(incomplete_file.stem).unlink()
         else:
-            session = SessionWithHeaderRedirection(self.username, self.password)
+            os.remove(flist)
 
-            for ix, url in enumerate(self.modis_urls):
-                print('{} of {}'.format(ix+1, self.results))
-                fname = url[url.rfind('/')+1:]
-
-                if self.targetdir.joinpath(fname).exists():
-                    print('\nSkipping {} - {} already exists in {}!\n'.format(url, fname, self.targetdir.as_posix()))
-                    continue
-
-                try:
-                    response = session.get(url, stream=True)
-                    response.raise_for_status()
-                    spinner = Spinner('Downloading {} ... '.format(fname))
-
-                    with open(fname, 'wb') as fopen:
-                        for chunk in response.iter_content(chunk_size=1024*1024):
-                            fopen.write(chunk)
-                            spinner.next()
-
-                    self.files = self.files + [self.targetdir.joinpath(fname)]
-                    print(' done.\n')
-                except requests.exceptions.HTTPError as e:
-                    print('Error downloading {} - skipping. Error message: {}'.format(url, e))
-                    continue
+        self.files = [self.targetdir.joinpath(basename(x)) for x in self.modis_urls if self.targetdir.joinpath(basename(x)).exists()]
 
         print('\n[{}]: Downloading finished.'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())))
