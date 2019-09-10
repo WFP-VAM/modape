@@ -156,7 +156,6 @@ class DateHelper(object):
             tdiff = (fromjulian(stop) - fromjulian(rawdates[0])).days
             self.daily = [(fromjulian(rawdates[0]) + datetime.timedelta(x)).strftime('%Y%j') for x in range(tdiff+1)]
             self.target = [self.daily[x] for x in range(self.daily.index(start), len(self.daily), stres)]
-
         else:
             yrmin = int(min([x[:4] for x in rawdates]))
             yrmax = int(max([x[:4] for x in rawdates]))
@@ -164,25 +163,31 @@ class DateHelper(object):
             stop = (fromjulian(rawdates[-1]) + datetime.timedelta(rtres)).strftime('%Y%j')
             self.daily = daily_tmp[daily_tmp.index(rawdates[0]):daily_tmp.index(stop)+1]
 
-            if stres == 5:
-                target_temp = [y for x in range(yrmin, yrmax+1, 1) for y in pentvec(x)]
-            elif stres == 10:
-                target_temp = [y for x in range(yrmin, yrmax+1, 1) for y in dekvec(x)]
-            else:
-                target_temp = [y for x in range(yrmin, yrmax+1, 1) for y in tvec(x, stres)]
-            target_temp.sort()
+            if stres != rtres:
 
-            for sd in self.daily:
-                if sd in target_temp:
-                    start_target = sd
-                    del sd
-                    break
-            for sd in reversed(self.daily):
-                if sd in target_temp:
-                    stop_target = sd
-                    del sd
-                    break
-            self.target = target_temp[target_temp.index(start_target):target_temp.index(stop_target)+1]
+                if stres == 5:
+                    target_temp = [y for x in range(yrmin, yrmax+1, 1) for y in pentvec(x)]
+                elif stres == 10:
+                    target_temp = [y for x in range(yrmin, yrmax+1, 1) for y in dekvec(x)]
+                else:
+                    target_temp = [y for x in range(yrmin, yrmax+1, 1) for y in tvec(x, stres)]
+                target_temp.sort()
+
+                for sd in self.daily:
+                    if sd in target_temp:
+                        start_target = sd
+                        del sd
+                        break
+                for sd in reversed(self.daily):
+                    if sd in target_temp:
+                        stop_target = sd
+                        del sd
+                        break
+                self.target = target_temp[target_temp.index(start_target):target_temp.index(stop_target)+1]
+
+            else:
+                self.target = rawdates
+        self.target_length = len(self.target)
 
     def getDV(self, nd):
         """Gets an array of no-data values in daily timesteps.
