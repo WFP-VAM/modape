@@ -1,5 +1,11 @@
 # CHANGES
 
+- ## v 0.3
+  - #### v 0.3.0:
+    - split `modis.py` into separate sub-modules
+    - MODIS download only possible using `aria2`
+    
+
 - ## v 0.2
   - #### v 0.2.1:
     - Re-designing update of datasets (fix issue #66)
