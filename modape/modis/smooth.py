@@ -48,12 +48,13 @@ class ModisSmoothH5(object):
         self.nworkers = nworkers
         self.nupdate = nupdate
         self.nsmooth = nsmooth
+        self.array_offset = nsmooth - nupdate
         self.startdate = startdate
 
         # Get info from raw HDF5
         with h5py.File(self.rawfile, 'r') as h5f:
             dates = h5f.get('dates')
-            self.rawdates = [x.decode() for x in dates[-self.nsmooth:]]
+            self.rawdates_nsmooth = [x.decode() for x in dates[-self.nsmooth:]]
 
         # Parse tempint to get flag for filename
         try:
@@ -85,7 +86,7 @@ class ModisSmoothH5(object):
         try:
             with h5py.File(self.rawfile, 'r') as h5f:
                 dset = h5f.get('data')
-                dates = h5f.get('dates')
+                raw_dates_all = [x.decode() for x in h5f.get('dates')[...]]
                 dt = dset.dtype.name
                 cmpr = dset.compression
                 rawshape = dset.shape
@@ -104,13 +105,10 @@ class ModisSmoothH5(object):
         if not self.temporalresolution:
             self.temporalresolution = rtres
 
-        dates = DateHelper(rawdates=self.rawdates,
+        dates = DateHelper(rawdates=raw_dates_all,
                            rtres=rtres,
                            stres=self.temporalresolution,
                            start=self.startdate)
-
-        if not self.tinterpolate:
-            dates.target = self.rawdates
 
         dates_length = len(dates.target)
 
@@ -160,7 +158,7 @@ class ModisSmoothH5(object):
 
         with h5py.File(self.rawfile, 'r') as rawh5, h5py.File(self.outname.as_posix(), 'r+') as smth5:
             raw_ds = rawh5.get('data')
-            raw_dates_all = rawh5.get('dates')
+            raw_dates_all = [x.decode() for x in rawh5.get('dates')[...]]
             rtres = raw_ds.attrs['temporalresolution'].item()
             smt_ds = smth5.get('data')
             smt_dates = smth5.get('dates')
@@ -177,23 +175,22 @@ class ModisSmoothH5(object):
             smt_ds.attrs['lastrun'] = "fixed s: log10(sopt) = {}".format(s)
             smt_ds.attrs['log10sopt'] = s
 
-            dates = DateHelper(rawdates=self.rawdates,
+            dates = DateHelper(rawdates=raw_dates_all,
                                rtres=rtres,
                                stres=self.temporalresolution,
                                start=self.startdate)
 
-            if not self.tinterpolate:
-                dates.target = self.rawdates
-            dix = dates.getDIX()
+            dix = dates.getDIX()[-self.nupdate:]
 
             # Resize if date list is bigger than shape of smoothed data
-            if len(dates.target) > smoothshape[1]:
-                smt_dates.resize((len(dates.target),))
-                smt_ds.resize((smoothshape[0], len(dates.target)))
+            if dates.target_length > smoothshape[1]:
+                smt_dates.resize((dates.target_length,))
+                smt_ds.resize((smoothshape[0], dates.target_length))
                 smt_dates[...] = np.array(dates.target, dtype='S8')
+                smoothshape = smt_ds.shape
 
             # calculate offsets
-            rawoffset = [x.decode() for x in raw_dates_all[...]].index(self.rawdates[0])
+            rawoffset = raw_dates_all.index(self.rawdates_nsmooth[0])
 
             # if dataset is smaller or equal then nupdate, take index 0
             try:
@@ -201,25 +198,27 @@ class ModisSmoothH5(object):
             except IndexError:
                 smoothoffset = [x.decode() for x in smt_dates[...]].index(dates.target[0])
 
+            new_dim = smoothshape[1] - smoothoffset
+
             if self.nworkers > 1:
                 if self.tinterpolate:
-                    shared_array_smooth = init_shared(smoothchunks[0] * len(dates.target))
+                    shared_array_smooth = init_shared(smoothchunks[0] * new_dim)
                     arr_smooth = tonumpyarray(shared_array_smooth)
-                    arr_smooth.shape = (smoothchunks[0], len(dates.target))
+                    arr_smooth.shape = (smoothchunks[0], new_dim)
                     arr_smooth[...] = nodata
                     vector_daily = dates.getDV(nodata)
 
                     # Shift for interpolation
-                    for rdate in self.rawdates:
+                    for rdate in self.rawdates_nsmooth:
                         vector_daily[dates.daily.index((fromjulian(rdate) + timedelta(tshift)).strftime('%Y%j'))] = -1
                 else:
                     vector_daily = None
                     shared_array_smooth = None
                     arr_smooth = None
-                shared_array_raw = init_shared(rawchunks[0] * len(self.rawdates))
+                shared_array_raw = init_shared(rawchunks[0] * len(self.rawdates_nsmooth))
 
-                parameters = init_parameters(rdim=(rawchunks[0], len(self.rawdates)),
-                                             sdim=(smoothchunks[0], len(dates.target)),
+                parameters = init_parameters(rdim=(rawchunks[0], len(self.rawdates_nsmooth)),
+                                             sdim=(smoothchunks[0], new_dim),
                                              nd=nodata,
                                              s=s,
                                              shared_array_smooth=shared_array_smooth,
@@ -227,7 +226,7 @@ class ModisSmoothH5(object):
                                              dix=dix)
 
                 arr_raw = tonumpyarray(shared_array_raw)
-                arr_raw.shape = (rawchunks[0], len(self.rawdates))
+                arr_raw.shape = (rawchunks[0], len(self.rawdates_nsmooth))
 
                 pool = mp.Pool(processes=self.nworkers, initializer=init_worker, initargs=(shared_array_raw, parameters))
                 # load raw data
@@ -243,28 +242,29 @@ class ModisSmoothH5(object):
 
                     # write back data
                     if self.tinterpolate:
-                        for bc in range(smoothoffset, len(dates.target), smoothchunks[1]):
-                            smt_ds[br:br+rawchunks[0], bc:bc+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]]
+                        for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(0, arr_smooth.shape[1], smoothchunks[1])):
+                            smt_ds[br:br+smoothchunks[0], bcs:bcs+smoothchunks[1]] = arr_smooth[:, bcr:bcr+smoothchunks[1]]
                         arr_smooth[...] = nodata
                     else:
-                        for bc in range(smoothoffset, len(dates.target), smoothchunks[1]):
-                            smt_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]]
+                        for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(self.array_offset, arr_raw.shape[1], smoothchunks[1])):
+                            smt_ds[br:br+smoothchunks[0], bcs:bcs+smoothchunks[1]] = arr_raw[:, bcr:bcr+smoothchunks[1]]
+
                 # close pool
                 pool.close()
                 pool.join()
 
             else:
-                arr_raw = np.zeros((rawchunks[0], len(self.rawdates)), dtype='double')
+                arr_raw = np.zeros((rawchunks[0], len(self.rawdates_nsmooth)), dtype='double')
 
                 # Create weights array
                 wts = arr_raw.copy()
 
                 if self.tinterpolate:
-                    arr_smooth = np.zeros((smoothchunks[0], len(dates.target)), dtype='double')
+                    arr_smooth = np.zeros((smoothchunks[0], new_dim), dtype='double')
                     vector_daily = dates.getDV(nodata)
 
                     # Shift for interpolation
-                    for rdate in self.rawdates:
+                    for rdate in self.rawdates_nsmooth:
                         vector_daily[dates.daily.index((fromjulian(rdate) + timedelta(tshift)).strftime('%Y%j'))] = -1
                 else:
                     arr_smooth = None
@@ -299,13 +299,12 @@ class ModisSmoothH5(object):
 
                     # write back data
                     if self.tinterpolate:
-                        for bc in range(smoothoffset, len(dates.target), smoothchunks[1]):
-                            smt_ds[br:br+rawchunks[0], bc:bc+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]]
+                        for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(0, arr_smooth.shape[1], smoothchunks[1])):
+                            smt_ds[br:br+smoothchunks[0], bcs:bcs+smoothchunks[1]] = arr_smooth[:, bcr:bcr+smoothchunks[1]]
                         arr_smooth[...] = nodata
                     else:
-                        for bc in range(smoothoffset, len(dates.target), smoothchunks[1]):
-                            bco = bc + smoothoffset
-                            smt_ds[br:br+rawchunks[0], bc:bc+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]]
+                        for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(self.array_offset, arr_raw.shape[1], smoothchunks[1])):
+                            smt_ds[br:br+rawchunks[0], bcs:bcs+smoothchunks[1]] = arr_raw[:, bcr:bcr+smoothchunks[1]]
 
     def ws2d_sgrid(self):
         """Apply whittaker smootehr with fixed s to data.
@@ -316,7 +315,8 @@ class ModisSmoothH5(object):
 
         with h5py.File(self.rawfile, 'r') as rawh5, h5py.File(self.outname.as_posix(), 'r+') as smth5:
             raw_ds = rawh5.get('data')
-            raw_dates_all = rawh5.get('dates')
+            raw_dates_all = [x.decode() for x in rawh5.get('dates')[...]]
+            rtres = raw_ds.attrs['temporalresolution'].item()
             rtres = raw_ds.attrs['temporalresolution'].item()
             smt_ds = smth5.get('data')
             smt_dates = smth5.get('dates')
@@ -333,23 +333,23 @@ class ModisSmoothH5(object):
             smt_ds.attrs['processingtimestamp'] = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
             smt_ds.attrs['lastrun'] = 'fixed s from grid'
 
-            dates = DateHelper(rawdates=self.rawdates,
+            dates = DateHelper(rawdates=raw_dates_all,
                                rtres=rtres,
                                stres=self.temporalresolution,
                                start=self.startdate)
 
-            if not self.tinterpolate:
-                dates.target = self.rawdates
-            dix = dates.getDIX()
+
+            dix = dates.getDIX()[-self.nupdate:]
 
             # Resize if date list is bigger than shape of smoothed data
             if len(dates.target) > smoothshape[1]:
-                smt_dates.resize((len(dates.target),))
-                smt_ds.resize((smoothshape[0], len(dates.target)))
+                smt_dates.resize((dates.target_length,))
+                smt_ds.resize((smoothshape[0], dates.target_length))
                 smt_dates[...] = np.array(dates.target, dtype='S8')
+                smoothshape = smt_ds.shape
 
             # calculate offsets
-            rawoffset = [x.decode() for x in raw_dates_all[...]].index(self.rawdates[0])
+            rawoffset = raw_dates_all.index(self.rawdates_nsmooth[0])
 
             # if dataset is smaller or equal then nupdate, take index 0
             try:
@@ -357,25 +357,27 @@ class ModisSmoothH5(object):
             except IndexError:
                 smoothoffset = [x.decode() for x in smt_dates[...]].index(dates.target[0])
 
+            new_dim = smoothshape[1] - smoothoffset
+
             if self.nworkers > 1:
                 if self.tinterpolate:
-                    shared_array_smooth = init_shared(smoothchunks[0] * len(dates.target))
+                    shared_array_smooth = init_shared(smoothchunks[0] * new_dim)
                     arr_smooth = tonumpyarray(shared_array_smooth)
-                    arr_smooth.shape = (smoothchunks[0], len(dates.target))
+                    arr_smooth.shape = (smoothchunks[0], new_dim)
                     arr_smooth[...] = nodata
                     vector_daily = dates.getDV(nodata)
 
                     # Shift for interpolation
-                    for rdate in self.rawdates:
+                    for rdate in self.rawdates_nsmooth:
                         vector_daily[dates.daily.index((fromjulian(rdate) + timedelta(tshift)).strftime('%Y%j'))] = -1
                 else:
                     vector_daily = None
                     shared_array_smooth = None
                     arr_smooth = None
-                shared_array_raw = init_shared(rawchunks[0] * len(self.rawdates))
+                shared_array_raw = init_shared(rawchunks[0] * len(self.rawdates_nsmooth))
 
-                parameters = init_parameters(rdim=(rawchunks[0], len(self.rawdates)),
-                                             sdim=(smoothchunks[0], len(dates.target)),
+                parameters = init_parameters(rdim=(rawchunks[0], len(self.rawdates_nsmooth)),
+                                             sdim=(smoothchunks[0], new_dim),
                                              nd=nodata,
                                              shared_array_smooth=shared_array_smooth,
                                              vec_dly=vector_daily,
@@ -383,7 +385,7 @@ class ModisSmoothH5(object):
 
                 parameters['shared_array_sgrid'] = init_shared(rawchunks[0])
                 arr_raw = tonumpyarray(shared_array_raw)
-                arr_raw.shape = (rawchunks[0], len(self.rawdates))
+                arr_raw.shape = (rawchunks[0], len(self.rawdates_nsmooth))
                 arr_sgrid = tonumpyarray(parameters['shared_array_sgrid'])
 
                 pool = mp.Pool(processes=self.nworkers, initializer=init_worker, initargs=(shared_array_raw, parameters))
@@ -403,28 +405,29 @@ class ModisSmoothH5(object):
 
                     # write back data
                     if self.tinterpolate:
-                        for bc in range(smoothoffset, len(dates.target), smoothchunks[1]):
-                            smt_ds[br:br+rawchunks[0], bc:bc+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]]
+                        for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(0, arr_smooth.shape[1], smoothchunks[1])):
+                            smt_ds[br:br+smoothchunks[0], bcs:bcs+smoothchunks[1]] = arr_smooth[:, bcr:bcr+smoothchunks[1]]
                         arr_smooth[...] = nodata
                     else:
-                        for bc in range(smoothoffset, len(dates.target), smoothchunks[1]):
-                            smt_ds[br:br+rawchunks[0], bc:bc+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]]
+                        for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(self.array_offset, arr_raw.shape[1], smoothchunks[1])):
+                            smt_ds[br:br+smoothchunks[0], bcs:bcs+smoothchunks[1]] = arr_raw[:, bcr:bcr+smoothchunks[1]]
+
                 # close pool
                 pool.close()
                 pool.join()
 
             else:
-                arr_raw = np.zeros((rawchunks[0], len(self.rawdates)), dtype='double')
+                arr_raw = np.zeros((rawchunks[0], len(self.rawdates_nsmooth)), dtype='double')
                 arr_sgrid = np.zeros((rawchunks[0],), dtype='double')
 
                 # Create weights array
                 wts = arr_raw.copy()
                 if self.tinterpolate:
-                    arr_smooth = np.zeros((smoothchunks[0], len(dates.target)), dtype='double')
+                    arr_smooth = np.zeros((smoothchunks[0], new_dim), dtype='double')
                     vector_daily = dates.getDV(nodata)
 
                     # Shift for interpolation
-                    for rdate in self.rawdates:
+                    for rdate in self.rawdates_nsmooth:
                         vector_daily[dates.daily.index((fromjulian(rdate) + timedelta(tshift)).strftime('%Y%j'))] = -1
                 else:
                     arr_smooth = None
@@ -459,12 +462,12 @@ class ModisSmoothH5(object):
 
                     # write back data
                     if self.tinterpolate:
-                        for bc in range(smoothoffset, len(dates.target), smoothchunks[1]):
-                            smt_ds[br:br+rawchunks[0], bc:bc+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]]
+                        for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(0, arr_smooth.shape[1], smoothchunks[1])):
+                            smt_ds[br:br+smoothchunks[0], bcs:bcs+smoothchunks[1]] = arr_smooth[:, bcr:bcr+smoothchunks[1]]
                         arr_smooth[...] = nodata
                     else:
-                        for bc in range(smoothoffset, len(dates.target), smoothchunks[1]):
-                            smt_ds[br:br+rawchunks[0], bc:bc+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]]
+                        for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(self.array_offset, arr_raw.shape[1], smoothchunks[1])):
+                            smt_ds[br:br+rawchunks[0], bcs:bcs+smoothchunks[1]] = arr_raw[:, bcr:bcr+smoothchunks[1]]
 
     def ws2d_vc(self, srange, p=None):
         """Apply whittaker smoother V-curve optimization of s.
@@ -478,7 +481,8 @@ class ModisSmoothH5(object):
 
         with h5py.File(self.rawfile, 'r') as rawh5, h5py.File(self.outname.as_posix(), 'r+') as smth5:
             raw_ds = rawh5.get('data')
-            raw_dates_all = rawh5.get('dates')
+            raw_dates_all = [x.decode() for x in rawh5.get('dates')[...]]
+            rtres = raw_ds.attrs['temporalresolution'].item()
             rtres = raw_ds.attrs['temporalresolution'].item()
             smt_ds = smth5.get('data')
             smt_dates = smth5.get('dates')
@@ -500,23 +504,22 @@ class ModisSmoothH5(object):
             else:
                 smt_ds.attrs['lastrun'] = 'V-curve optimization of s'
 
-            dates = DateHelper(rawdates=self.rawdates,
+            dates = DateHelper(rawdates=raw_dates_all,
                                rtres=rtres,
                                stres=self.temporalresolution,
                                start=self.startdate)
 
-            if not self.tinterpolate:
-                dates.target = self.rawdates
-            dix = dates.getDIX()
+            dix = dates.getDIX()[-self.nupdate:]
 
             # Resize if date list is bigger than shape of smoothed data
-            if len(dates.target) > smoothshape[1]:
-                smt_dates.resize((len(dates.target),))
-                smt_ds.resize((smoothshape[0], len(dates.target)))
+            if dates.target_length > smoothshape[1]:
+                smt_dates.resize((dates.target_length,))
+                smt_ds.resize((smoothshape[0], dates.target_length))
                 smt_dates[...] = np.array(dates.target, dtype='S8')
+                smoothshape = smt_ds.shape
 
             # calculate offsets
-            rawoffset = [x.decode() for x in raw_dates_all[...]].index(self.rawdates[0])
+            rawoffset = raw_dates_all.index(self.rawdates_nsmooth[0])
 
             # if dataset is smaller or equal then nupdate, take index 0
             try:
@@ -524,25 +527,27 @@ class ModisSmoothH5(object):
             except IndexError:
                 smoothoffset = [x.decode() for x in smt_dates[...]].index(dates.target[0])
 
+            new_dim = smoothshape[1] - smoothoffset
+
             if self.nworkers > 1:
                 if self.tinterpolate:
-                    shared_array_smooth = init_shared(smoothchunks[0] * len(dates.target))
+                    shared_array_smooth = init_shared(smoothchunks[0] * new_dim)
                     arr_smooth = tonumpyarray(shared_array_smooth)
-                    arr_smooth.shape = (smoothchunks[0], len(dates.target))
+                    arr_smooth.shape = (smoothchunks[0], new_dim)
                     arr_smooth[...] = nodata
                     vector_daily = dates.getDV(nodata)
 
                     # Shift for interpolation
-                    for rdate in self.rawdates:
+                    for rdate in self.rawdates_nsmooth:
                         vector_daily[dates.daily.index((fromjulian(rdate) + timedelta(tshift)).strftime('%Y%j'))] = -1
                 else:
                     vector_daily = None
                     shared_array_smooth = None
                     arr_smooth = None
-                shared_array_raw = init_shared(rawchunks[0] * len(self.rawdates))
+                shared_array_raw = init_shared(rawchunks[0] * len(self.rawdates_nsmooth))
 
-                parameters = init_parameters(rdim=(rawchunks[0], len(self.rawdates)),
-                                             sdim=(smoothchunks[0], len(dates.target)),
+                parameters = init_parameters(rdim=(rawchunks[0], len(self.rawdates_nsmooth)),
+                                             sdim=(smoothchunks[0], new_dim),
                                              nd=nodata,
                                              p=p,
                                              shared_array_smooth=shared_array_smooth,
@@ -552,7 +557,7 @@ class ModisSmoothH5(object):
 
                 parameters['shared_array_sgrid'] = init_shared(rawchunks[0])
                 arr_raw = tonumpyarray(shared_array_raw)
-                arr_raw.shape = (rawchunks[0], len(self.rawdates))
+                arr_raw.shape = (rawchunks[0], len(self.rawdates_nsmooth))
                 arr_sgrid = tonumpyarray(parameters['shared_array_sgrid'])
 
                 pool = mp.Pool(processes=self.nworkers, initializer=init_worker, initargs=(shared_array_raw, parameters))
@@ -574,27 +579,28 @@ class ModisSmoothH5(object):
                     arr_sgrid[...] = 0
 
                     if self.tinterpolate:
-                        for bc in range(smoothoffset, len(dates.target), smoothchunks[1]):
-                            smt_ds[br:br+rawchunks[0], bc:bc+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]]
+                        for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(0, arr_smooth.shape[1], smoothchunks[1])):
+                            smt_ds[br:br+smoothchunks[0], bcs:bcs+smoothchunks[1]] = arr_smooth[:, bcr:bcr+smoothchunks[1]]
                         arr_smooth[...] = nodata
                     else:
-                        for bc in range(smoothoffset, len(dates.target), smoothchunks[1]):
-                            smt_ds[br:br+rawchunks[0], bc:bc+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]]
+                        for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(self.array_offset, arr_raw.shape[1], smoothchunks[1])):
+                            smt_ds[br:br+smoothchunks[0], bcs:bcs+smoothchunks[1]] = arr_raw[:, bcr:bcr+smoothchunks[1]]
+
                 # close pool
                 pool.close()
                 pool.join()
 
             else:
-                arr_raw = np.zeros((rawchunks[0], len(self.rawdates)), dtype='double')
+                arr_raw = np.zeros((rawchunks[0], len(self.rawdates_nsmooth)), dtype='double')
                 arr_sgrid = np.zeros((rawchunks[0],), dtype='double')
                 wts = arr_raw.copy() # Create weights array
 
                 if self.tinterpolate:
-                    arr_smooth = np.zeros((smoothchunks[0], len(dates.target)), dtype='double')
+                    arr_smooth = np.zeros((smoothchunks[0], new_dim), dtype='double')
                     vector_daily = dates.getDV(nodata)
 
                     # Shift for interpolation
-                    for rdate in self.rawdates:
+                    for rdate in self.rawdates_nsmooth:
                         vector_daily[dates.daily.index((fromjulian(rdate) + timedelta(tshift)).strftime('%Y%j'))] = -1
                 else:
                     arr_smooth = None
@@ -650,9 +656,9 @@ class ModisSmoothH5(object):
                     arr_sgrid[...] = 0
 
                     if self.tinterpolate:
-                        for bc in range(smoothoffset, len(dates.target), smoothchunks[1]):
-                            smt_ds[br:br+rawchunks[0], bc:bc+rawchunks[1]] = arr_smooth[:, bc:bc+rawchunks[1]]
+                        for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(0, arr_smooth.shape[1], smoothchunks[1])):
+                            smt_ds[br:br+smoothchunks[0], bcs:bcs+smoothchunks[1]] = arr_smooth[:, bcr:bcr+smoothchunks[1]]
                         arr_smooth[...] = nodata
                     else:
-                        for bc in range(smoothoffset, len(dates.target), smoothchunks[1]):
-                            smt_ds[br:br+rawchunks[0], bc:bc+rawchunks[1]] = arr_raw[:, bc:bc+rawchunks[1]]
+                        for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(self.array_offset, arr_raw.shape[1], smoothchunks[1])):
+                            smt_ds[br:br+rawchunks[0], bcs:bcs+smoothchunks[1]] = arr_raw[:, bcr:bcr+smoothchunks[1]]
