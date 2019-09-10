@@ -17,6 +17,8 @@ import ogr
 from modape.modis import ModisQuery
 from modape.utils import Credentials
 
+warnings.filterwarnings("default", category=DeprecationWarning)
+
 def main():
     '''Query and download MODIS products.
 
@@ -55,8 +57,6 @@ def main():
     credentials = Credentials(args.username, args.password)
 
     if args.download:
-        warnings.simplefilter('default')
-
         warnings.warn("Download only possible with ARIA2! Flag --aria2 will be removed in future release.", DeprecationWarning)
 
         #fail if ARIA2 not installed
