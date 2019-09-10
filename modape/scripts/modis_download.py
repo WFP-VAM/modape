@@ -6,6 +6,7 @@ from __future__ import absolute_import, division, print_function
 import argparse
 import datetime
 import os
+from pathlib import Path
 import pickle
 import re
 import sys
@@ -65,10 +66,8 @@ def main():
     args.product = [x.upper() for x in args.product]
 
     # Load product table
-    this_dir, _ = os.path.split(__file__)
-    package_dir = os.path.abspath(os.path.join(this_dir, os.pardir))
-
-    with open(os.path.join(package_dir, 'data', 'MODIS_V6_PT.pkl'), 'rb') as table_raw:
+    this_dir = Path(__file__).parent
+    with open(this_dir.parent.joinpath('data', 'MODIS_V6_PT.pkl'), 'rb') as table_raw:
         product_table = pickle.load(table_raw)
 
     for product in args.product:
@@ -113,7 +112,7 @@ def main():
                     # cast to lowercase
                     tiles = [x.lower() for x in args.tile_filter]
 
-                    with open(os.path.join(package_dir, 'data', 'ModlandTiles_bbx.pkl'), 'rb') as bbox_raw:
+                    with open(this_dir.parent.joinpath('data', 'ModlandTiles_bbx.pkl'), 'rb') as bbox_raw:
                         bbox = pickle.load(bbox_raw)
 
                     if len(tiles) == 1:

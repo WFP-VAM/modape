@@ -4,7 +4,7 @@
 from __future__ import absolute_import, division, print_function
 
 import argparse
-import os
+from pathlib import Path
 import pickle
 
 import pandas as pd ## pylint: disable=import-error
@@ -23,10 +23,8 @@ def main():
     args = parser.parse_args()
 
     # Load product table
-    this_dir, _ = os.path.split(__file__)
-    package_dir = os.path.abspath(os.path.join(this_dir, os.pardir))
-
-    with open(os.path.join(package_dir, 'data', 'MODIS_V6_PT.pkl'), 'rb') as table_raw:
+    this_dir = Path(__file__).parent
+    with open(this_dir.parent.joinpath('data', 'MODIS_V6_PT.pkl'), 'rb') as table_raw:
         product_table = pickle.load(table_raw)
 
     tbl = pd.DataFrame(product_table).T

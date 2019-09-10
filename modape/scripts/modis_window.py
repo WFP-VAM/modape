@@ -79,10 +79,8 @@ def main():
         args.roi = [float(args.roi[i]) for i in [0, 3, 2, 1]]
 
     # Load product table
-    this_dir, _ = os.path.split(__file__)
-    package_dir = os.path.abspath(os.path.join(this_dir, os.pardir))
-
-    with open(os.path.join(package_dir, 'data', 'MODIS_V6_PT.pkl'), 'rb') as table_raw:
+    this_dir = Path(__file__).parent
+    with open(this_dir.parent.joinpath('data', 'MODIS_V6_PT.pkl'), 'rb') as table_raw:
         product_table = pickle.load(table_raw)
 
     # List HDF5 files in path
