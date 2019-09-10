@@ -43,7 +43,6 @@ class ModisQuery(object):
             password: Earthdata password (only required for download)
             targetdir: Path to target directory for downloaded files (default cwd)
             global_flag: Boolean flag indictaing queried product is global file instead of tiled product
-            aria2: Boolean flag to use aria2 for downloading instead of python's requests
             tile_filter: List of MODIS files to query and optionally download
         """
 
@@ -88,6 +87,10 @@ class ModisQuery(object):
                     soup = BeautifulSoup(response.content, features='html.parser')
                     hrefs = soup.find_all('a', href=True)
                     hdf_file = [x.getText() for x in hrefs if re.match(regex, x.getText())]
+
+                    # Issue warning if there are multiple HDF
+                    if len(hdf_file) > 1:
+                        warnings.warn("More than 1 HDF files for specific date found for URL: {}".format(self.query_url + date_sel), Warning)
 
                     try:
                         self.modis_urls.append(self.query_url + date_sel + hdf_file[0])
