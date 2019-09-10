@@ -63,7 +63,7 @@ class TestMODIS(unittest.TestCase):
     def tearDown(self):
         pass
 
-    @patch('modape.modis.requests.Session')
+    @patch('modape.modis.download.requests.Session')
     def test_query(self, mocked_get):
         """Test query of MODIS products."""
         class MockRSP:
@@ -124,9 +124,9 @@ class TestMODIS(unittest.TestCase):
         except:
             pass
 
-    @patch('modape.modis.gdal.Dataset.GetMetadataItem', return_value=-3000)
-    @patch('modape.modis.gdal.Dataset.GetSubDatasets', return_value=[['NDVI']])
-    @patch('modape.modis.gdal.Open', return_value=create_gdal(1200, 1200))
+    @patch('modape.modis.collect.gdal.Dataset.GetMetadataItem', return_value=-3000)
+    @patch('modape.modis.collect.gdal.Dataset.GetSubDatasets', return_value=[['NDVI']])
+    @patch('modape.modis.collect.gdal.Open', return_value=create_gdal(1200, 1200))
     def test_raw_hdf5(self, mock_ds, mock_sds, mock_nodata):
         """Test raw tiled NDVI with 8-day interleaving of MOD/MYD and raw global LST DAY."""
         rawfiles = [
@@ -196,7 +196,7 @@ class TestMODIS(unittest.TestCase):
             smth5 = ModisSmoothH5('MXD13A2.h18v06.006.VIM.h5', tempint=10)
 
             self.assertEqual(smth5.outname.name, 'MXD13A2.h18v06.006.txd.VIM.h5')
-            self.assertEqual(smth5.rawdates_nsmooth, [
+            self.assertEqual(smth5.rawdates, [
                 '2002185',
                 '2002193',
                 '2002201',
@@ -229,7 +229,7 @@ class TestMODIS(unittest.TestCase):
             smth5 = ModisSmoothH5('MOD11C2.006.LTD.h5', tempint=5)
 
             self.assertEqual(smth5.outname.name, 'MOD11C2.006.txp.LTD.h5')
-            self.assertEqual(smth5.rawdates_nsmooth, [
+            self.assertEqual(smth5.rawdates, [
                 '2002185',
                 '2002193',
                 '2002201',
