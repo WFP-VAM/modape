@@ -20,7 +20,7 @@ try:
 except ImportError:
     from osgeo import gdal
 import h5py # pylint: disable=import-error
-from modape.utils import dtype_GDNP
+from modape.utils import dtype_GDNP, FileHandler
 
 class ModisRawH5(object):
     """Class for raw MODIS data collected into HDF5 file, ready for smoothing.
