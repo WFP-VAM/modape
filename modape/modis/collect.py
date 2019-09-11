@@ -165,12 +165,7 @@ class ModisRawH5(object):
         rst = None
 
         # Create directory if necessary
-        if not self.outname.parent.exists():
-            # Try statements caches possible error when multiple tiles are processed in parallel
-            try:
-                self.outname.parent.mkdir()
-            except FileExistsError:
-                pass
+        self.outname.parent.mkdir(parents=True, exist_ok=True)
 
         # Create HDF5 file
         try:
