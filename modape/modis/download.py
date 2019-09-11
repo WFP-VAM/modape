@@ -143,12 +143,7 @@ class ModisQuery(object):
         print('[{}]: Downloading products to {} ...\n'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()), self.targetdir))
 
         # if targetdir doesn't exist, create
-        if not self.targetdir.exists():
-            try:
-                self.targetdir.mkdir()
-            except FileNotFoundError:
-                print('\nCould not create target directory {} (Trying to create directories recursively?)\n'.format(self.targetdir.as_posix()))
-                raise
+        self.targetdir.mkdir(parents=True, exist_ok=True)
 
         flist = self.targetdir.joinpath(str(uuid.uuid4())).as_posix()
 
