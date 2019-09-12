@@ -24,7 +24,7 @@ def main():
 
     # Load product table
     this_dir = Path(__file__).parent
-    with open(this_dir.parent.joinpath('data', 'MODIS_V6_PT.pkl'), 'rb') as table_raw:
+    with open(this_dir.parent.joinpath('data', 'MODIS_V6_PT.pkl').as_posix(), 'rb') as table_raw:
         product_table = pickle.load(table_raw)
 
     tbl = pd.DataFrame(product_table).T

@@ -81,7 +81,7 @@ def main():
 
     # Load product table
     this_dir = Path(__file__).parent
-    with open(this_dir.parent.joinpath('data', 'MODIS_V6_PT.pkl'), 'rb') as table_raw:
+    with open(this_dir.parent.joinpath('data', 'MODIS_V6_PT.pkl').as_posix(), 'rb') as table_raw:
         product_table = pickle.load(table_raw)
 
     for product in args.product:
@@ -126,7 +126,7 @@ def main():
                     # cast to lowercase
                     tiles = [x.lower() for x in args.tile_filter]
 
-                    with open(this_dir.parent.joinpath('data', 'ModlandTiles_bbx.pkl'), 'rb') as bbox_raw:
+                    with open(this_dir.parent.joinpath('data', 'ModlandTiles_bbx.pkl').as_posix(), 'rb') as bbox_raw:
                         bbox = pickle.load(bbox_raw)
 
                     if len(tiles) == 1:
