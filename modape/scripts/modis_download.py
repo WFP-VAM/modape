@@ -134,6 +134,9 @@ def main():
                         bbox_selection = bbox[(bbox.ih == int(h_indicator)) &
                                               (bbox.iv == int(v_indicator))]
 
+                        if bbox_selection.empty:
+                            raise SystemExit('No tile with ID {} found. Please check!'.format(tiles[0]))
+
                         # roi is approx. center point of tile
                         args.roi = [bbox_selection.lat_max.values[0] - 5,
                                     bbox_selection.lon_max.values[0] - (bbox_selection.lon_max.values[0] - bbox_selection.lon_min.values[0])/2]
@@ -144,6 +147,9 @@ def main():
 
                         # aoi is bbox including all tiles from tile_filter, plus 1 degree buffer
                         bbox_selection = bbox.query('|'.join(['ih == {}'.format(int(x)) for x in h_indicator])).query('|'.join(['iv == {}'.format(int(x)) for x in v_indicator]))
+
+                        if bbox_selection.empty:
+                            raise SystemExit('No tiles with IDs {} found. Please check!'.format(' '.join(tiles)))
 
                         args.roi = [min(bbox_selection.lon_min.values)-1,
                                     min(bbox_selection.lat_min.values)-1,
