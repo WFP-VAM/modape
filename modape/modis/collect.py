@@ -13,6 +13,7 @@ from pathlib import Path
 import re
 import time
 import traceback
+import warnings
 
 import numpy as np
 try:
@@ -39,12 +40,19 @@ class ModisRawH5(object):
             interleave: Boolean flag if MOD/MYD 13  products should be interleaved
         """
 
+        # Patterns for string extraction
+        ppatt = re.compile(r'M\w{6}')
+        vpatt = re.compile(r'.+\.(\d{3})\..+')
+        tpatt = re.compile(r'h\d+v\d+')
+        dtspatt = re.compile(r'.+A(\d{7}).+')
+        ptspatt = re.compile(r'.+(\d{13}).+')
+
         self.targetdir = Path(targetdir)
         #self.resdict = dict(zip(['250m','500m','1km','0.05_Deg'],[x/112000 for x in [250,500,1000,5600]])) ## commented for original resolution
         self.vam_product_code_dict = dict(zip(['VIM', 'VEM', 'LTD', 'LTN'],
                                               ['NDVI', 'EVI', 'LST_Day', 'LST_Night']))
-        self.dates_regexp = re.compile(r'.+A(\d{7}).+')
-        self.rawdates = [re.findall(self.dates_regexp, x)[0] for x in files]
+
+        self.rawdates = [re.findall(dtspatt, x)[0] for x in files]
         self.files = [x for (y, x) in sorted(zip(self.rawdates, files))]
         self.rawdates.sort()
         self.nfiles = len(self.files)
@@ -55,12 +63,40 @@ class ModisRawH5(object):
             raise SystemExit("Processing only implemented for M*D11 or M*13 products!")
 
         # make sure number of dates is equal to number of files, so no duplicates!
-        assert len(set(self.rawdates)) == self.nfiles, "Number of files not equal to number of derived dates - are there duplicate HDF files?"
+        processing_timestamps = [int(re.sub(ptspatt, '\\1', x)) for x in self.files]
 
-        # Patterns for string extraction
-        ppatt = re.compile(r'M\w{6}')
-        vpatt = re.compile(r'.+\.(\d{3})\..+')
-        tpatt = re.compile(r'h\d+v\d+')
+        # check for duplicates
+        if len(set(self.rawdates)) != self.nfiles:
+            warnings.warn("Possibly duplicate files in {}! Using files with most recent processing date.".format(self.targetdir.as_posix()), Warning)
+
+            dups = []
+            dt_prev = None
+            for dt in self.rawdates:
+                if dt == dt_prev and dt not in dups:
+                    dups.append(dt)
+                dt_prev = dt
+
+            # Loop over duplicates and exclude files based on processing timestamp
+            to_pop = []
+            for dup in dups:
+                # max TS for duplicate
+                max_ts = max([processing_timestamps[ix] for ix, x in enumerate(self.rawdates) if x == dup])
+
+                for ix, x in enumerate(self.rawdates):
+                    if x == dup and processing_timestamps[ix] != max_ts:
+                        to_pop.append(ix)
+
+            # re-set file-based instance variables after removal of duplicates
+            for ix in sorted(to_pop, reverse=True):
+                del self.files[ix]
+                del self.rawdates[ix]
+                del processing_timestamps[ix]
+
+            self.nfiles = len(self.files)
+            self.reference_file = Path(self.files[0])
+
+            # assert that there are no duplicates now
+            assert len(set(self.rawdates)) == self.nfiles
 
         # Open reference file
         ref = gdal.Open(self.reference_file.as_posix())
