@@ -120,6 +120,22 @@ class ModisRawH5(object):
             self.product = [re.sub(r'M[O|Y]D', 'MXD', re.findall(ppatt, self.reference_file.name)[0])]
             self.temporalresolution = 8
             self.tshift = 8
+
+            # for interleaving, exclude all dates before 1st aqua date
+            ix = 0
+            for x in self.rawdates:
+                start = ix
+                if int(x) >= 2002185:
+                    break
+                ix += 1
+
+            # update instance variables
+            self.files = self.files[start:]
+            self.rawdates = self.rawdates[start:]
+
+            self.nfiles = len(self.files)
+            self.reference_file = Path(self.files[0])
+
         else:
             self.product = re.findall(ppatt, self.reference_file.name)
             if re.match(r'M[O|Y]D13\w\d', self.product[0]):
