@@ -4,7 +4,10 @@
   - #### v 0.3.0:
     - split `modis.py` into separate sub-modules
     - MODIS download only possible using `aria2`
-    
+    - `modis_collect` now handles duplicated `hdf` files by taking file with most recent processing timestamp (issue #68)
+    - When using `--interleave` in `modis_collect`, acquisitions before `2002185` (start of AQUA) are ignored and not collected (issue #65)
+    - minor enhancements
+
 
 - ## v 0.2
   - #### v 0.2.1:
