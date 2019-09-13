@@ -15,7 +15,7 @@ import numpy as np
 tFloat = np.double
 ctypedef np.double_t dtype_t
 
-__all__ = ['lag1corr','ws2d','ws2doptv','ws2doptvp']
+__all__ = ['lag1corr', 'ws2d', 'ws2dp', 'ws2doptv', 'ws2doptvp']
 
 cpdef lag1corr(np.ndarray[dtype_t] data1, np.ndarray[dtype_t] data2, double nd):
     """Calculates Lag-1 autocorrelation.
@@ -156,6 +156,61 @@ cdef _ws2d(np.ndarray[dtype_t] y, double lmda, array[double] w):
     for i in range(m-2, -1, -1):
         z.data.as_doubles[i] = z.data.as_doubles[i] / d.data.as_doubles[i] - c.data.as_doubles[i] * z.data.as_doubles[i + 1] - e.data.as_doubles[i] * z.data.as_doubles[i + 2]
     return z
+
+cpdef ws2dp(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, double lmda, double p):
+  """Whittaker smoother with asymmetric smoothing and fixed lambda (S).
+
+  Args:
+      y: time-series numpy array
+      w: weights numpy array
+      l: smoothing parameter lambda (S)
+      p: "Envelope" value
+
+  Returns:
+      Smoothed time-series array z
+  """
+  cdef array template = array('d', [])
+  cdef int m, i, j
+  cdef double y_tmp, z_tmp, p1
+
+  m = y.shape[0]
+  i = 0
+  j = 0
+  p1 = 1-p
+
+  template = array('d', [])
+  z = clone(template, m, True)
+  znew = clone(template, m, True)
+  wa = clone(template, m, False)
+  ww = clone(template, m, False)
+
+  # Calculate weights
+
+  l = pow(10,lmda)
+
+  for i in range(10):
+      for j in range(m):
+          y_tmp = y[j]
+          z_tmp = z.data.as_doubles[j]
+          if y_tmp > z_tmp:
+              wa.data.as_doubles[j] = p
+          else:
+              wa.data.as_doubles[j] = p1
+          ww.data.as_doubles[j] = w[j] * wa.data.as_doubles[j]
+
+      znew[0:m] = _ws2d(y, l, ww)
+      z_tmp = 0.0
+      j = 0
+      for j in range(m):
+          z_tmp += abs(znew.data.as_doubles[j] - z.data.as_doubles[j])
+
+      if z_tmp == 0.0:
+          break
+
+      z[0:m]= znew[0:m]
+
+  z[0:m] = _ws2d(y, l, ww)
+  return z
 
 cpdef ws2doptv(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[double] llas):
     """Whittaker smoother with normal V-curve optimization of lambda (S).
