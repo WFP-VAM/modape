@@ -157,6 +157,28 @@ class TestMODIS(unittest.TestCase):
 
         shutil.rmtree(rawh5.outname.parent.name)
 
+        # Test handling of duplicate files
+        rawfiles = [
+            'MOD13A2.A2002193.h18v06.006.2019256103823.hdf',
+            'MOD13A2.A2002209.h18v06.006.2019256103823.hdf',
+            'MOD13A2.A2002209.h18v06.006.2018256103823.hdf',
+            'MYD13A2.A2002185.h18v06.006.2019256103823.hdf',
+            'MYD13A2.A2002185.h18v06.006.2018256103823.hdf',
+            'MYD13A2.A2002201.h18v06.006.2019256103823.hdf',
+        ]
+        rawh5 = ModisRawH5(files=rawfiles, interleave=True)
+        mock_ds.assert_called_with('MYD13A2.A2002185.h18v06.006.2019256103823.hdf')
+
+        self.assertEqual(rawh5.nfiles, 4)
+        self.assertEqual(rawh5.temporalresolution, 8)
+        self.assertEqual(rawh5.tshift, 8)
+        self.assertEqual(rawh5.rawdates, [
+            '2002185',
+            '2002193',
+            '2002201',
+            '2002209',
+        ])
+
         # Test raw global LST DAY
         rawfiles = [
             'MYD11C2.A2002193.*.006.2019256103823.hdf',
@@ -188,6 +210,29 @@ class TestMODIS(unittest.TestCase):
         self.assertEqual(rawh5.chunks, ((3600*7200)//25, 10))
 
         shutil.rmtree(rawh5.outname.parent.name)
+
+        # Test handling of duplicate files
+        rawfiles = [
+            'MYD11C2.A2002193.*.006.2019256103823.hdf',
+            'MYD11C2.A2002209.*.006.2019256103823.hdf',
+            'MYD11C2.A2002209.*.006.2018256103823.hdf',
+            'MYD11C2.A2002185.*.006.2019256103823.hdf',
+            'MYD11C2.A2002201.*.006.2019256103823.hdf',
+            'MYD11C2.A2002201.*.006.2018256103823.hdf',
+        ]
+
+        rawh5 = ModisRawH5(files=rawfiles)
+        mock_ds.assert_called_with('MYD11C2.A2002185.*.006.2019256103823.hdf')
+        self.assertEqual(rawh5.nfiles, 4)
+        self.assertEqual(rawh5.outname.name, 'MYD11C2.006.TDA.h5')
+        self.assertEqual(rawh5.temporalresolution, 8)
+        self.assertEqual(rawh5.tshift, 4)
+        self.assertEqual(rawh5.rawdates, [
+            '2002185',
+            '2002193',
+            '2002201',
+            '2002209',
+        ])
 
     def test_smoothHDF5(self):
         """Test smooth tiled 10-day NDVI and global 5-day LST Day."""
