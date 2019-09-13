@@ -130,13 +130,13 @@ class TestMODIS(unittest.TestCase):
     def test_raw_hdf5(self, mock_ds, mock_sds, mock_nodata):
         """Test raw tiled NDVI with 8-day interleaving of MOD/MYD and raw global LST DAY."""
         rawfiles = [
-            'MOD13A2.A2002193.h18v06.006.*.hdf',
-            'MOD13A2.A2002209.h18v06.006.*.hdf',
-            'MYD13A2.A2002185.h18v06.006.*.hdf',
-            'MYD13A2.A2002201.h18v06.006.*.hdf',
+            'MOD13A2.A2002193.h18v06.006.2019256103823.hdf',
+            'MOD13A2.A2002209.h18v06.006.2019256103823.hdf',
+            'MYD13A2.A2002185.h18v06.006.2019256103823.hdf',
+            'MYD13A2.A2002201.h18v06.006.2019256103823.hdf',
         ]
         rawh5 = ModisRawH5(files=rawfiles, interleave=True)
-        mock_ds.assert_called_with('MYD13A2.A2002185.h18v06.006.*.hdf')
+        mock_ds.assert_called_with('MYD13A2.A2002185.h18v06.006.2019256103823.hdf')
 
         self.assertEqual(rawh5.nfiles, 4)
         self.assertFalse(rawh5.exists)
@@ -159,17 +159,17 @@ class TestMODIS(unittest.TestCase):
 
         # Test raw global LST DAY
         rawfiles = [
-            'MYD11C2.A2002193.*.006.*.hdf',
-            'MYD11C2.A2002209.*.006.*.hdf',
-            'MYD11C2.A2002185.*.006.*.hdf',
-            'MYD11C2.A2002201.*.006.*.hdf',
+            'MYD11C2.A2002193.*.006.2019256103823.hdf',
+            'MYD11C2.A2002209.*.006.2019256103823.hdf',
+            'MYD11C2.A2002185.*.006.2019256103823.hdf',
+            'MYD11C2.A2002201.*.006.2019256103823.hdf',
         ]
 
         mock_ds.return_value = create_gdal(7200, 3600)
         mock_sds.return_value = [['LST_Day']]
 
         rawh5 = ModisRawH5(files=rawfiles)
-        mock_ds.assert_called_with('MYD11C2.A2002185.*.006.*.hdf')
+        mock_ds.assert_called_with('MYD11C2.A2002185.*.006.2019256103823.hdf')
         self.assertEqual(rawh5.nfiles, 4)
         self.assertFalse(rawh5.exists)
         self.assertEqual(rawh5.outname.name, 'MYD11C2.006.TDA.h5')
