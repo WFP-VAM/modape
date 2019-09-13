@@ -9,7 +9,7 @@ import unittest
 
 import numpy as np
 
-from modape.whittaker import lag1corr, ws2d, ws2doptv, ws2doptvp # pylint: disable=E0611
+from modape.whittaker import lag1corr, ws2d, ws2dp, ws2doptv, ws2doptvp # pylint: disable=E0611
 
 class TestWhittaker(unittest.TestCase):
     """Test class for core whittaker functions."""
@@ -40,6 +40,10 @@ class TestWhittaker(unittest.TestCase):
         z = np.array(ws2d(self.y, 10, self.w), dtype='double')
         np.testing.assert_almost_equal(z, self.data['z_ws2d'], 5)
 
+    def test_ws2dp(self):
+        """Test ws2dp smoothing."""
+        z = ws2dp(self.y, self.w, np.log10(self.data['sopt_ws2dvcp']), p=0.90)
+        np.testing.assert_almost_equal(z, self.data['z_ws2dp'], 5)
 
     def test_ws2dvc(self):
         """Test ws2doptv (V-CURVE) smoothing."""
