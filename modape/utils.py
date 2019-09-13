@@ -22,7 +22,7 @@ except ImportError:
     from osgeo import gdal
 
 from cryptography.fernet import Fernet # pylint: disable=import-error
-from modape.whittaker import lag1corr, ws2d, ws2doptv, ws2doptvp # pylint: disable=no-name-in-module
+from modape.whittaker import lag1corr, ws2d, ws2dp, ws2doptv, ws2doptvp # pylint: disable=no-name-in-module
 
 __all__ = [
     'SessionWithHeaderRedirection',
@@ -540,9 +540,16 @@ def execute_ws2d_sgrid(ix):
         ix: Row index for array
     """
 
-    arr_raw[ix, :] = ws2d(y=arr_raw[ix, :],
-                          lmda=10**arr_sgrid[ix],
-                          w=np.array((arr_raw[ix, :] != parameters['nd'])*1, dtype='double'))
+    if not parameters['p']:
+
+        arr_raw[ix, :] = ws2d(y=arr_raw[ix, :],
+                              lmda=10**arr_sgrid[ix],
+                              w=np.array((arr_raw[ix, :] != parameters['nd'])*1, dtype='double'))
+    else:
+        arr_raw[ix, :] = ws2dp(y=arr_raw[ix, :],
+                               w=np.array((arr_raw[ix, :] != parameters['nd'])*1, dtype='double'),
+                               lmda=10**arr_sgrid[ix],
+                               p=parameters['p'])
 
     if parameters['shared_array_smooth']:
         z2 = parameters['vec_dly'].copy()

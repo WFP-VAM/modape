@@ -20,7 +20,7 @@ import h5py # pylint: disable=import-error
 
 from modape.utils import (DateHelper, execute_ws2d, execute_ws2d_sgrid, execute_ws2d_vc,
                           fromjulian, init_parameters, init_shared, init_worker, tonumpyarray, txx)
-from modape.whittaker import lag1corr, ws2d, ws2doptv, ws2doptvp # pylint: disable=no-name-in-module
+from modape.whittaker import lag1corr, ws2d, ws2dp, ws2doptv, ws2doptvp # pylint: disable=no-name-in-module
 
 class ModisSmoothH5(object):
 
@@ -174,6 +174,7 @@ class ModisSmoothH5(object):
             smt_ds.attrs['processingtimestamp'] = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
             smt_ds.attrs['lastrun'] = "fixed s: log10(sopt) = {}".format(s)
             smt_ds.attrs['log10sopt'] = s
+            smt_ds.attrs['pvalue'] = None
 
             dates = DateHelper(rawdates=raw_dates_all,
                                rtres=rtres,
@@ -306,7 +307,7 @@ class ModisSmoothH5(object):
                         for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(self.array_offset, arr_raw.shape[1], smoothchunks[1])):
                             smt_ds[br:br+rawchunks[0], bcs:bcs+smoothchunks[1]] = arr_raw[:, bcr:bcr+smoothchunks[1]]
 
-    def ws2d_sgrid(self):
+    def ws2d_sgrid(self, p=None):
         """Apply whittaker smootehr with fixed s to data.
 
         This fixed s version reads a pixel based s value from file, so it needs
@@ -331,7 +332,13 @@ class ModisSmoothH5(object):
 
             # Store run parameters for infotool
             smt_ds.attrs['processingtimestamp'] = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
-            smt_ds.attrs['lastrun'] = 'fixed s from grid'
+
+            if p:
+                smt_ds.attrs['lastrun'] = 'fixed s from grid with p = {}'.format(p)
+                smt_ds.attrs['pvalue'] = p
+            else:
+                smt_ds.attrs['lastrun'] = 'fixed s from grid'
+                smt_ds.attrs['pvalue'] = None
 
             dates = DateHelper(rawdates=raw_dates_all,
                                rtres=rtres,
@@ -381,7 +388,8 @@ class ModisSmoothH5(object):
                                              nd=nodata,
                                              shared_array_smooth=shared_array_smooth,
                                              vec_dly=vector_daily,
-                                             dix=dix)
+                                             dix=dix,
+                                             p=p)
 
                 parameters['shared_array_sgrid'] = init_shared(rawchunks[0])
                 arr_raw = tonumpyarray(shared_array_raw)
@@ -451,7 +459,10 @@ class ModisSmoothH5(object):
                     arr_sgrid[...] = smt_sgrid[br:br+rawchunks[0]]
 
                     for ix in map_index:
-                        arr_raw[ix, :] = ws2d(y=arr_raw[ix, :], lmda=10**arr_sgrid[ix], w=wts[ix, :])
+                        if not p:
+                            arr_raw[ix, :] = ws2d(y=arr_raw[ix, :], lmda=10**arr_sgrid[ix], w=wts[ix, :])
+                        else:
+                            arr_raw[ix, :] = ws2dp(y=arr_raw[ix, :], w=wts[ix, :], lmda=10**arr_sgrid[ix], p=p)
                         if self.tinterpolate:
                             z2 = vector_daily.copy()
                             z2[z2 != nodata] = arr_raw[ix, :]

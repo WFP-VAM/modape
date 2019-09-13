@@ -69,10 +69,18 @@ def run_ws2d_sgrid(h5):
                                targetdir=pdict['targetdir'],
                                nworkers=pdict['nworkers'])
 
+        if not pdict['pvalue']:
+            if re.match('M.D13', os.path.basename(h5)):
+                pdict['pvalue'] = 0.90
+            elif re.match('M.D11', os.path.basename(h5)):
+                pdict['pvalue'] = 0.95
+            else:
+                pdict['pvalue'] = 0.50
+
         if not smt_h5.exists:
             smt_h5.create()
 
-        smt_h5.ws2d_sgrid()
+        smt_h5.ws2d_sgrid(p=pdict['pvalue'])
 
 def run_ws2d_vc(h5):
     """Run smoother with V-curve optimization of s.
@@ -266,6 +274,8 @@ def main():
             if not args.quiet:
                 print('\nRunning whittaker smoother with s value from grid ... \n')
 
+            processing_dict['pvalue'] = args.pvalue
+
             pool = Pool(processes=args.parallel_tiles, initializer=initfun, initargs=(processing_dict,))
             _ = pool.map(run_ws2d_sgrid, files)
             pool.close()
@@ -365,6 +375,17 @@ def main():
                 print('\nRunning whittaker smoother with s value from grid ... \n')
 
             for h5 in files:
+
+                if not args.pvalue:
+                    if re.match('M.D13', os.path.basename(h5)):
+                        p = 0.90
+                    elif re.match('M.D11', os.path.basename(h5)):
+                        p = 0.95
+                    else:
+                        p = 0.50
+                else:
+                    p = args.pvalue
+
                 if not os.path.isfile(h5):
                     print('Raw HDF5 {} not found! Please check path.'.format(h5))
                     continue
@@ -379,7 +400,7 @@ def main():
 
                 if not smt_h5.exists:
                     smt_h5.create()
-                smt_h5.ws2d_sgrid()
+                smt_h5.ws2d_sgrid(p=p)
 
             if not args.quiet:
                 print('[{}]: Done.'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())))
