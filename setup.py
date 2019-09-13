@@ -65,7 +65,7 @@ setup(
     setup_requires=['pytest-runner'],
     tests_require=['pytest'],
     install_requires=[
-        'numpy>=1.15.1',
+        'numpy==1.16.1',
         'gdal>=2, <3',
         'h5py>=2.9',
         'beautifulsoup4>=4.7',
