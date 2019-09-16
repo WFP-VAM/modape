@@ -12,7 +12,10 @@ from datetime import timedelta
 import multiprocessing as mp
 import os
 from os.path import basename
-from pathlib import Path
+try:
+    from pathlib import Path
+except ImportError:
+    from pathlib2 import Path
 import time
 
 import numpy as np

@@ -6,7 +6,10 @@ import argparse
 from array import array
 import os
 from os.path import basename
-from pathlib import Path
+try:
+    from pathlib import Path
+except ImportError:
+    from pathlib2 import Path
 import sys
 import time
 

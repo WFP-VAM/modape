@@ -11,7 +11,10 @@ from __future__ import absolute_import, division, print_function
 from datetime import datetime
 import os
 from os.path import basename
-from pathlib import Path
+try:
+    from pathlib import Path
+except ImportError:
+    from pathlib2 import Path
 import re
 from subprocess import Popen
 import sys

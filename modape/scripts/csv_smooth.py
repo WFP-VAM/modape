@@ -5,7 +5,10 @@ from __future__ import absolute_import, division, print_function
 
 import argparse
 from array import array
-from pathlib import Path
+try:
+    from pathlib import Path
+except ImportError:
+    from pathlib2 import Path
 import sys
 import time
 

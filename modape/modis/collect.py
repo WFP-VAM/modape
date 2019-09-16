@@ -9,7 +9,10 @@ from __future__ import absolute_import, division, print_function
 
 import gc
 import os
-from pathlib import Path
+try:
+    from pathlib import Path
+except ImportError:
+    from pathlib2 import Path
 import re
 import time
 import traceback
