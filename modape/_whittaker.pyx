@@ -189,25 +189,26 @@ cpdef ws2dp(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, double lmda, double p)
   l = pow(10,lmda)
 
   for i in range(10):
-      for j in range(m):
-          y_tmp = y[j]
-          z_tmp = z.data.as_doubles[j]
-          if y_tmp > z_tmp:
-              wa.data.as_doubles[j] = p
-          else:
-              wa.data.as_doubles[j] = p1
-          ww.data.as_doubles[j] = w[j] * wa.data.as_doubles[j]
+    for j in range(m):
+      y_tmp = y[j]
+      z_tmp = z.data.as_doubles[j]
 
-      znew[0:m] = _ws2d(y, l, ww)
-      z_tmp = 0.0
-      j = 0
-      for j in range(m):
-          z_tmp += abs(znew.data.as_doubles[j] - z.data.as_doubles[j])
+      if y_tmp > z_tmp:
+        wa.data.as_doubles[j] = p
+      else:
+        wa.data.as_doubles[j] = p1
+      ww.data.as_doubles[j] = w[j] * wa.data.as_doubles[j]
 
-      if z_tmp == 0.0:
-          break
+    znew[0:m] = _ws2d(y, l, ww)
+    z_tmp = 0.0
+    j = 0
+    for j in range(m):
+      z_tmp += abs(znew.data.as_doubles[j] - z.data.as_doubles[j])
 
-      z[0:m]= znew[0:m]
+    if z_tmp == 0.0:
+      break
+
+    z[0:m]= znew[0:m]
 
   z[0:m] = _ws2d(y, l, ww)
   return z
@@ -392,5 +393,31 @@ cpdef ws2doptvp(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[double] llas
             k = i
 
     lopt = pow(10, lamids.data.as_doubles[k])
+
+    del z
+    z = clone(template, m, True)
+
+    for i in range(10):
+      for j in range(m):
+        y_tmp = y[j]
+        z_tmp = z.data.as_doubles[j]
+
+        if y_tmp > z_tmp:
+          wa.data.as_doubles[j] = p
+        else:
+          wa.data.as_doubles[j] = p1
+        ww.data.as_doubles[j] = w[j] * wa.data.as_doubles[j]
+
+      znew[0:m] = _ws2d(y, lopt, ww)
+      z_tmp = 0.0
+      j = 0
+      for j in range(m):
+        z_tmp += abs(znew.data.as_doubles[j] - z.data.as_doubles[j])
+
+      if z_tmp == 0.0:
+        break
+
+      z[0:m]= znew[0:m]
+
     z[0:m] = _ws2d(y, lopt, ww)
     return z, lopt
