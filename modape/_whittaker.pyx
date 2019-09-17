@@ -5,6 +5,8 @@
 Core whittaker functions
 
 Author: Valentin Pesendorfer, April 2019
+
+updated: September 2019
 """
 
 from cpython.array cimport array, clone
