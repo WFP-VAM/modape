@@ -159,7 +159,7 @@ cdef _ws2d(np.ndarray[dtype_t] y, double lmda, array[double] w):
         z.data.as_doubles[i] = z.data.as_doubles[i] / d.data.as_doubles[i] - c.data.as_doubles[i] * z.data.as_doubles[i + 1] - e.data.as_doubles[i] * z.data.as_doubles[i + 2]
     return z
 
-cpdef ws2dp(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, double lmda, double p):
+cpdef ws2dp(np.ndarray[dtype_t] y, double lmda, np.ndarray[dtype_t] w, double p):
   """Whittaker smoother with asymmetric smoothing and fixed lambda (S).
 
   Args:
@@ -188,8 +188,6 @@ cpdef ws2dp(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, double lmda, double p)
 
   # Calculate weights
 
-  l = pow(10,lmda)
-
   for i in range(10):
     for j in range(m):
       y_tmp = y[j]
@@ -201,7 +199,7 @@ cpdef ws2dp(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, double lmda, double p)
         wa.data.as_doubles[j] = p1
       ww.data.as_doubles[j] = w[j] * wa.data.as_doubles[j]
 
-    znew[0:m] = _ws2d(y, l, ww)
+    znew[0:m] = _ws2d(y, lmda, ww)
     z_tmp = 0.0
     j = 0
     for j in range(m):
@@ -212,7 +210,7 @@ cpdef ws2dp(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, double lmda, double p)
 
     z[0:m]= znew[0:m]
 
-  z[0:m] = _ws2d(y, l, ww)
+  z[0:m] = _ws2d(y, lmda, ww)
   return z
 
 cpdef ws2doptv(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[double] llas):
