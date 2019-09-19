@@ -547,8 +547,8 @@ def execute_ws2d_sgrid(ix):
                               w=np.array((arr_raw[ix, :] != parameters['nd'])*1, dtype='double'))
     else:
         arr_raw[ix, :] = ws2dp(y=arr_raw[ix, :],
-                               w=np.array((arr_raw[ix, :] != parameters['nd'])*1, dtype='double'),
                                lmda=10**arr_sgrid[ix],
+                               w=np.array((arr_raw[ix, :] != parameters['nd'])*1, dtype='double'),
                                p=parameters['p'])
 
     if parameters['shared_array_smooth']:

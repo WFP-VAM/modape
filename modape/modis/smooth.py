@@ -465,7 +465,7 @@ class ModisSmoothH5(object):
                         if not p:
                             arr_raw[ix, :] = ws2d(y=arr_raw[ix, :], lmda=10**arr_sgrid[ix], w=wts[ix, :])
                         else:
-                            arr_raw[ix, :] = ws2dp(y=arr_raw[ix, :], w=wts[ix, :], lmda=10**arr_sgrid[ix], p=p)
+                            arr_raw[ix, :] = ws2dp(y=arr_raw[ix, :], lmda=10**arr_sgrid[ix], w=wts[ix, :], p=p)
                         if self.tinterpolate:
                             z2 = vector_daily.copy()
                             z2[z2 != nodata] = arr_raw[ix, :]
