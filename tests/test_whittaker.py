@@ -42,7 +42,7 @@ class TestWhittaker(unittest.TestCase):
 
     def test_ws2dp(self):
         """Test ws2dp smoothing."""
-        z = ws2dp(self.y, self.w, np.log10(self.data['sopt_ws2dvcp']), p=0.90)
+        z = ws2dp(self.y, np.log10(self.data['sopt_ws2dvcp']), self.w, p=0.90)
         np.testing.assert_almost_equal(z, self.data['z_ws2dp'], 5)
 
     def test_ws2dvc(self):
