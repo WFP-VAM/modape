@@ -4167,7 +4167,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2dp(PyArrayObject *__pyx_v_y, doub
 
 /* Python wrapper */
 static PyObject *__pyx_pw_6modape_9whittaker_5ws2dp(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
-static char __pyx_doc_6modape_9whittaker_4ws2dp[] = "Whittaker smoother with asymmetric smoothing and fixed lambda (S).\n\n  Args:\n      y: time-series numpy array\n      w: weights numpy array\n      l: smoothing parameter lambda (S)\n      p: \"Envelope\" value\n\n  Returns:\n      Smoothed time-series array z\n  ";
+static char __pyx_doc_6modape_9whittaker_4ws2dp[] = "Whittaker smoother with asymmetric smoothing and fixed lambda (S).\n\n  Args:\n      y: time-series numpy array\n      l: smoothing parameter lambda (S)\n      w: weights numpy array\n      p: \"Envelope\" value\n\n  Returns:\n      Smoothed time-series array z\n  ";
 static PyObject *__pyx_pw_6modape_9whittaker_5ws2dp(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
   PyArrayObject *__pyx_v_y = 0;
   double __pyx_v_lmda;

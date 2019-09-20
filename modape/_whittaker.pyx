@@ -164,8 +164,8 @@ cpdef ws2dp(np.ndarray[dtype_t] y, double lmda, np.ndarray[dtype_t] w, double p)
 
   Args:
       y: time-series numpy array
-      w: weights numpy array
       l: smoothing parameter lambda (S)
+      w: weights numpy array
       p: "Envelope" value
 
   Returns:
