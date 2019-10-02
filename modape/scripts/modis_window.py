@@ -7,7 +7,6 @@
 from __future__ import absolute_import, division, print_function
 
 import argparse
-import datetime
 import os
 try:
     from pathlib import Path
@@ -39,8 +38,8 @@ def main():
     parser.add_argument('-p', '--product', help='MODIS product ID (can be parial match with *)', metavar='')
     parser.add_argument('--roi', help='Region of interest. Can be LAT/LON point or bounding box in format llx lly urx ury', nargs='+', type=str)
     parser.add_argument('--region', help='region 3 letter region code (default is \'reg\')', default='reg', metavar='')
-    parser.add_argument('-b', '--begin-date', help='Start date (YYYYMM)', default=datetime.date(2000, 1, 1).strftime('%Y%m'), metavar='')
-    parser.add_argument('-e', '--end-date', help='End date (YYYYMM)', default=datetime.date.today().strftime('%Y%m'), metavar='')
+    parser.add_argument('-b', '--begin-date', help='Start date (YYYYMM)/(YYYY-MM-DD)', default=None, metavar='')
+    parser.add_argument('-e', '--end-date', help='End date (YYYYMM)/(YYYY-MM-DD) - if only YYYMM is provided, all days within MM are included.', default=None, metavar='')
     parser.add_argument('--vampc', help='VAM product code', metavar='')
     parser.add_argument('-d', '--targetdir', help='Target directory for GeoTIFFs (default current directory)', default=os.getcwd(), metavar='')
     parser.add_argument('--sgrid', help='Extract (mosaic of) s value grid(s)', action='store_true')
