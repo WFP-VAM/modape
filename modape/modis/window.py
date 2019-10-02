@@ -24,7 +24,7 @@ except ImportError:
     from osgeo import gdal
 import h5py # pylint: disable=import-error
 
-from modape.utils import date2label, dtype_GDNP, fromjulian
+from modape.utils import date2label, dtype_GDNP, fromjulian, ldom
 
 class ModisMosaic(object):
     """Class for mosaic of MODIS tiles.
@@ -101,8 +101,30 @@ class ModisMosaic(object):
 
         # Create temporal index from dates available and min max input
         dates_dt = [fromjulian(x) for x in self.dates]
-        datemin_p = datetime.strptime(datemin, '%Y%m').date()
-        datemax_p = datetime.strptime(datemax, '%Y%m').date()
+
+        if datemin:
+            try:
+                datemin_p = datetime.strptime(datemin, '%Y%m').date()
+            except ValueError:
+                try:
+                    datemin_p = datetime.strptime(datemin, '%Y-%m-%d').date()
+                except ValueError:
+                    raise ValueError('Invalid begin time specified for mosaic. Accepted formats: {%Y%m, %Y-%m-%d}')
+
+        else:
+            datemin_p = dates_dt[0]
+
+        if datemax:
+            try:
+                datemax_p = ldom(datetime.strptime(datemax, '%Y%m'))
+            except ValueError:
+                try:
+                    datemax_p = datetime.strptime(datemax, '%Y-%m-%d').date()
+                except ValueError:
+                    raise ValueError('Invalid end time specified for mosaic. Accepted formats: {%Y%m, %Y-%m-%d}')
+        else:
+            datemax_p = dates_dt[-1]
+
         self.temp_index = np.flatnonzero(np.array([datemin_p <= x <= datemax_p for x in dates_dt]))
 
     def get_array(self, dataset, ix, dt):
