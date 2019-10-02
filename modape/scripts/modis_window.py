@@ -87,7 +87,13 @@ def main():
 
     # List HDF5 files in path
 
-    h5files = list(input_dir.glob(args.product + '*h5'))
+    if not input_dir.is_file():
+
+        h5files = list(input_dir.glob(args.product + '*h5'))
+
+    else:
+
+        h5files = [input_dir]
 
     # Make sure only compatible files are used for the mosaic
     if not h5files:
