@@ -8,7 +8,6 @@ import datetime
 import glob
 import multiprocessing
 import os
-import re
 import shutil
 import sys
 import time
