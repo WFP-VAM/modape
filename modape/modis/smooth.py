@@ -177,7 +177,10 @@ class ModisSmoothH5(object):
             smt_ds.attrs['processingtimestamp'] = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
             smt_ds.attrs['lastrun'] = "fixed s: log10(sopt) = {}".format(s)
             smt_ds.attrs['log10sopt'] = s
-            smt_ds.attrs['pvalue'] = None
+            try:
+                del smt_ds.attrs['pvalue']
+            except KeyError:
+                pass
 
             dates = DateHelper(rawdates=raw_dates_all,
                                rtres=rtres,
@@ -341,7 +344,11 @@ class ModisSmoothH5(object):
                 smt_ds.attrs['pvalue'] = p
             else:
                 smt_ds.attrs['lastrun'] = 'fixed s from grid'
-                smt_ds.attrs['pvalue'] = None
+                try:
+                    del smt_ds.attrs['pvalue']
+                except KeyError:
+                    pass
+
 
             dates = DateHelper(rawdates=raw_dates_all,
                                rtres=rtres,
@@ -517,6 +524,10 @@ class ModisSmoothH5(object):
                 smt_ds.attrs['pvalue'] = p
             else:
                 smt_ds.attrs['lastrun'] = 'V-curve optimization of s'
+                try:
+                    del smt_ds.attrs['pvalue']
+                except KeyError:
+                    pass
 
             dates = DateHelper(rawdates=raw_dates_all,
                                rtres=rtres,
