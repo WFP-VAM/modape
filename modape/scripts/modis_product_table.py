@@ -5,9 +5,9 @@ from __future__ import absolute_import, division, print_function
 
 import argparse
 try:
-    from pathlib import Path
-except ImportError:
     from pathlib2 import Path
+except ImportError:
+    from pathlib import Path
 import pickle
 
 import pandas as pd ## pylint: disable=import-error

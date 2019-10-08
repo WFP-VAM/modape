@@ -8,9 +8,9 @@ import argparse
 import multiprocessing as mp
 import os
 try:
-    from pathlib import Path
-except ImportError:
     from pathlib2 import Path
+except ImportError:
+    from pathlib import Path
 import re
 import sys
 import time
