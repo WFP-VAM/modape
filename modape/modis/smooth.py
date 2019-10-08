@@ -13,9 +13,9 @@ import multiprocessing as mp
 import os
 from os.path import basename
 try:
-    from pathlib import Path
-except ImportError:
     from pathlib2 import Path
+except ImportError:
+    from pathlib import Path
 import time
 
 import numpy as np

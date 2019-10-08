@@ -11,9 +11,9 @@ from contextlib import contextmanager
 from datetime import datetime
 from os.path import basename
 try:
-    from pathlib import Path
-except ImportError:
     from pathlib2 import Path
+except ImportError:
+    from pathlib import Path
 import re
 
 

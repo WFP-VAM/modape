@@ -9,9 +9,9 @@ from __future__ import absolute_import, division, print_function
 import argparse
 import os
 try:
-    from pathlib import Path
-except ImportError:
     from pathlib2 import Path
+except ImportError:
+    from pathlib import Path
 import pickle
 import re
 import sys

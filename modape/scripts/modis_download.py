@@ -7,9 +7,9 @@ import argparse
 import datetime
 import os
 try:
-    from pathlib import Path
-except ImportError:
     from pathlib2 import Path
+except ImportError:
+    from pathlib import Path
 import pickle
 import re
 from subprocess import check_output
