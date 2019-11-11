@@ -8,7 +8,6 @@ import datetime
 import glob
 import multiprocessing
 import os
-import re
 import shutil
 import sys
 import time
@@ -72,7 +71,7 @@ def run_ws2d_sgrid(h5):
         if not smt_h5.exists:
             smt_h5.create()
 
-        smt_h5.ws2d_sgrid()
+        smt_h5.ws2d_sgrid(p=pdict['pvalue'])
 
 def run_ws2d_vc(h5):
     """Run smoother with V-curve optimization of s.
@@ -116,14 +115,6 @@ def run_ws2d_vcp(h5):
         if not smt_h5.exists:
             smt_h5.create()
 
-        if not pdict['pvalue']:
-            if re.match('M.D13', os.path.basename(h5)):
-                pdict['pvalue'] = 0.90
-            elif re.match('M.D11', os.path.basename(h5)):
-                pdict['pvalue'] = 0.95
-            else:
-                pdict['pvalue'] = 0.50
-
         smt_h5.ws2d_vc(pdict['srange'], pdict['pvalue'])
 
 def main():
@@ -152,7 +143,7 @@ def main():
     parser.add_argument('-t', '--tempint', help='Value for temporal interpolation (integer required - default is native temporal resolution i.e. no interpolation)', metavar='', type=int)
     parser.add_argument('-n', '--nsmooth', help='Number of raw timesteps used for smoothing', default=0, metavar='', type=int)
     parser.add_argument('-u', '--nupdate', help='Number of smoothed timesteps to be updated in HDF5 file', default=0, metavar='', type=int)
-    parser.add_argument('-p', '--pvalue', help='Value for asymmetric smoothing (float required)', metavar='', type=float)
+    parser.add_argument('-p', '--pvalue', help='Value for asymmetric smoothing (float required)', metavar='', type=float, default=0.90)
     parser.add_argument('-d', '--targetdir', help='Target directory for smoothed output', default=os.getcwd(), metavar='')
     parser.add_argument('--startdate', help='Startdate for temporal interpolation (format YYYY-MM-DD or YYYYJJJ)', metavar='')
     parser.add_argument('--optv', help='Use V-curve for s value optimization', action='store_true')
@@ -266,6 +257,8 @@ def main():
             if not args.quiet:
                 print('\nRunning whittaker smoother with s value from grid ... \n')
 
+            processing_dict['pvalue'] = args.pvalue
+
             pool = Pool(processes=args.parallel_tiles, initializer=initfun, initargs=(processing_dict,))
             _ = pool.map(run_ws2d_sgrid, files)
             pool.close()
@@ -308,16 +301,6 @@ def main():
                 print('\nRunning whittaker smoother asymmetric V-curve optimization ... \n')
 
             for h5 in files:
-                if not args.pvalue:
-                    if re.match('M.D13', os.path.basename(h5)):
-                        p = 0.90
-                    elif re.match('M.D11', os.path.basename(h5)):
-                        p = 0.95
-                    else:
-                        p = 0.50
-                else:
-                    p = args.pvalue
-
                 if not os.path.isfile(h5):
                     print('Raw HDF5 {} not found! Please check path.'.format(h5))
                     continue
@@ -332,7 +315,7 @@ def main():
 
                 if not smt_h5.exists:
                     smt_h5.create()
-                smt_h5.ws2d_vc(args.srange, p)
+                smt_h5.ws2d_vc(args.srange, args.pvalue)
 
             if not args.quiet:
                 print('[{}]: Done.'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())))
@@ -365,6 +348,7 @@ def main():
                 print('\nRunning whittaker smoother with s value from grid ... \n')
 
             for h5 in files:
+
                 if not os.path.isfile(h5):
                     print('Raw HDF5 {} not found! Please check path.'.format(h5))
                     continue
@@ -379,7 +363,7 @@ def main():
 
                 if not smt_h5.exists:
                     smt_h5.create()
-                smt_h5.ws2d_sgrid()
+                smt_h5.ws2d_sgrid(p=args.pvalue)
 
             if not args.quiet:
                 print('[{}]: Done.'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())))

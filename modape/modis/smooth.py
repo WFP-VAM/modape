@@ -1,510 +1,29 @@
 """
-MODIS processing chain classes.
+MODIS smooth HDF5 class.
 
-This file contains all the classes used in the MODIS processing chain:
-
- - ModisQuery: query and download raw MODIS HDF files
- - ModisRawH5: HDF5 file object containing raw MODIS data
- - ModisSmoothH5: HDF5 file object containing smoothed MODIS data
- - modis_tiles: MODIS tiles over AOI
- - ModisMosaic: mosaic of multiple smooth HDF5 files
+This file contains the class representing a smoothed MODIS HDF5 file.
 
 Author: Valentin Pesendorfer, April 2019
 """
 from __future__ import absolute_import, division, print_function
 
 from array import array
-from contextlib import contextmanager
-from datetime import datetime, timedelta
-import gc
+from datetime import timedelta
 import multiprocessing as mp
 import os
 from os.path import basename
-from pathlib import Path
-import re
-from subprocess import Popen, check_output
-import sys
+try:
+    from pathlib2 import Path
+except ImportError:
+    from pathlib import Path
 import time
-import traceback
-import uuid
-import warnings
 
 import numpy as np
-from progress.spinner import Spinner
-import requests
-try:
-    import gdal
-except ImportError:
-    from osgeo import gdal
-
-from bs4 import BeautifulSoup # pylint: disable=import-error
 import h5py # pylint: disable=import-error
-from modape.utils import (SessionWithHeaderRedirection, FileHandler, DateHelper,
-                          dtype_GDNP, txx, fromjulian, init_shared, tonumpyarray,
-                          init_parameters, init_worker, execute_ws2d, execute_ws2d_sgrid,
-                          execute_ws2d_vc, date2label)
-from modape.whittaker import lag1corr, ws2d, ws2doptv, ws2doptvp # pylint: disable=no-name-in-module
 
-__all__ = ['ModisQuery', 'ModisRawH5', 'ModisSmoothH5', 'modis_tiles', 'ModisMosaic']
-
-# turn off BeautifulSoup warnings
-warnings.filterwarnings('ignore', category=UserWarning, module='bs4')
-
-class ModisQuery(object):
-    """Class for querying and downloading MODIS data."""
-
-    def __init__(self, url, begindate,
-                 enddate, username=None, password=None,
-                 targetdir=os.getcwd(), global_flag=None,
-                 aria2=False, tile_filter=None):
-        """Creates a ModisQuery object.
-
-        Args:
-            url: Query URL as created by modis_download.py
-            begindate: Begin of period for query as ISO 8601 date string (YYYY-MM-DD)
-            enddate: End of period for query as ISO 8601 date string (YYYY-MM-DD)
-            username: Earthdata username (only required for download)
-            password: Earthdata password (only required for download)
-            targetdir: Path to target directory for downloaded files (default cwd)
-            global_flag: Boolean flag indictaing queried product is global file instead of tiled product
-            aria2: Boolean flag to use aria2 for downloading instead of python's requests
-            tile_filter: List of MODIS files to query and optionally download
-        """
-
-        self.query_url = url
-        self.username = username
-        self.password = password
-        self.targetdir = Path(targetdir)
-        self.files = []
-        self.modis_urls = []
-        self.begin = datetime.strptime(begindate, '%Y-%m-%d').date()
-        self.end = datetime.strptime(enddate, '%Y-%m-%d').date()
-        self.global_flag = global_flag
-        self.aria2 = aria2
-
-        # query for products using session object
-        with requests.Session() as sess:
-
-            print('Checking for MODIS products ...', end='')
-            try:
-                response = sess.get(self.query_url)
-                self.statuscode = response.status_code
-                response.raise_for_status()
-            except requests.exceptions.RequestException as e:
-                print(e)
-                sys.exit(1)
-
-            soup = BeautifulSoup(response.content, features='html.parser')
-
-            # results for global products are date directories on server, so need to query separately
-            if self.global_flag:
-                regex = re.compile('.*.hdf$')
-                dates = np.array([x.getText() for x in soup.findAll('a', href=True) if re.match(r'\d{4}\.\d{2}\.\d{2}', x.getText())])
-                dates_parsed = [datetime.strptime(x, '%Y.%m.%d/').date() for x in dates]
-                dates_ix = np.flatnonzero(np.array([self.begin <= x < self.end for x in dates_parsed]))
-
-                for date_sel in dates[dates_ix]:
-                    try:
-                        response = sess.get(self.query_url + date_sel)
-                    except requests.exceptions.RequestException as e:
-                        print(e)
-                        print('Error accessing {} - skipping.'.format(self.query_url + date_sel))
-
-                    soup = BeautifulSoup(response.content, features='html.parser')
-                    hrefs = soup.find_all('a', href=True)
-                    hdf_file = [x.getText() for x in hrefs if re.match(regex, x.getText())]
-
-                    try:
-                        self.modis_urls.append(self.query_url + date_sel + hdf_file[0])
-                    except IndexError:
-                        print('No HDF file found in {} - skipping.'.format(self.query_url + date_sel))
-                        continue
-            else:
-                regex = re.compile(r'.+(h\d+v\d+).+')
-                urls = [x.getText() for x in soup.find_all('url')]
-
-                if tile_filter:
-                    tiles = [x.lower() for x in tile_filter]
-                    self.modis_urls = [x for x in urls if any(t in x for t in tiles)]
-                else:
-                    self.modis_urls = urls
-
-                self.tiles = list({regex.search(x).group(1) for x in self.modis_urls})
-
-        self.results = len(self.modis_urls)
-        print('... done.\n')
-
-        # check for results
-        if self.results > 0:
-            print('{} results found.\n'.format(self.results))
-        else:
-            print('0 results found. Please check query!')
-
-    def set_credentials(self, username, password):
-        """Set Earthdata credentials.
-
-        Sets Earthdata username and password in created ModisQuery object.
-
-        Args:
-            username (str): Earthdata username
-            password (str): Earthdata password
-        """
-
-        self.username = username
-        self.password = password
-
-    def download(self):
-        """Downloads MODIS products.
-
-        Download of files found through query, Earthdata username and password required!
-        """
-
-        if self.username is None or self.password is None:
-            raise ValueError('No credentials found. Please run .setCredentials(username,password)!')
-
-        print('[{}]: Downloading products to {} ...\n'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()), self.targetdir))
-
-        # download using ARIA2 if True
-        if self.aria2:
-            # fail if ARIA2 not installed
-            try:
-                _ = check_output(['aria2c', '--version'])
-            except:
-                raise SystemExit('ARIA2 download needs ARIA2 to be available in PATH! Please make sure it\'s installed and available in PATH!')
-
-            # if targetdir doesn't exist, create
-            if not self.targetdir.exists():
-                try:
-                    self.targetdir.mkdir()
-                except FileNotFoundError:
-                    print('\nCould not create target directory {} (Trying to create directories recursively?)\n'.format(self.targetdir.as_posix()))
-                    raise
-
-            flist = self.targetdir.joinpath(str(uuid.uuid4())).as_posix()
-
-            # write URLs of query resuls to disk for WGET
-            with open(flist, 'w') as thefile:
-                for item in self.modis_urls:
-                    thefile.write('%s\n' % item)
-
-            args = [
-                'aria2c',
-                '--file-allocation=none',
-                '-m', '50',
-                '--retry-wait', '2',
-                '-c',
-                '-x', '10',
-                '-s', '10',
-                '--http-user', self.username,
-                '--http-passwd', self.password,
-                '-d', self.targetdir.as_posix(),
-            ]
-
-            # execute subprocess
-            process_output = Popen(args + ['-i', flist])
-            process_output.wait()
-
-            # remove filelist.txt if all downloads are successful
-            if process_output.returncode != 0:
-                print('\nError (error code {}) occured during download, please check files against MODIS URL list ({})!\n'.format(process_output.returncode, flist))
-                # remove incoplete files
-                for incomplete_file in self.targetdir.glob('*.aria2'):
-                    incomplete_file.unlink()
-                    self.targetdir.joinpath(incomplete_file.stem).unlink()
-            else:
-                os.remove(flist)
-
-            self.files = [self.targetdir.joinpath(basename(x)) for x in self.modis_urls if self.targetdir.joinpath(basename(x)).exists()]
-
-        # download with requests
-        else:
-            session = SessionWithHeaderRedirection(self.username, self.password)
-
-            for ix, url in enumerate(self.modis_urls):
-                print('{} of {}'.format(ix+1, self.results))
-                fname = url[url.rfind('/')+1:]
-
-                if self.targetdir.joinpath(fname).exists():
-                    print('\nSkipping {} - {} already exists in {}!\n'.format(url, fname, self.targetdir.as_posix()))
-                    continue
-
-                try:
-                    response = session.get(url, stream=True)
-                    response.raise_for_status()
-                    spinner = Spinner('Downloading {} ... '.format(fname))
-
-                    with open(fname, 'wb') as fopen:
-                        for chunk in response.iter_content(chunk_size=1024*1024):
-                            fopen.write(chunk)
-                            spinner.next()
-
-                    self.files = self.files + [self.targetdir.joinpath(fname)]
-                    print(' done.\n')
-                except requests.exceptions.HTTPError as e:
-                    print('Error downloading {} - skipping. Error message: {}'.format(url, e))
-                    continue
-
-        print('\n[{}]: Downloading finished.'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())))
-
-
-class ModisRawH5(object):
-    """Class for raw MODIS data collected into HDF5 file, ready for smoothing.
-
-    MOD/MYD 13 products can be interleaved into a combined MXD.
-    """
-
-    def __init__(self, files, vam_product_code=None,
-                 targetdir=os.getcwd(), interleave=False):
-        """Create a ModisRawH5 class
-
-        Args:
-            files: A list of absolute paths to MODIS raw hdf files to be processed
-            vam_product_code: VAM product code to be processed (default VIM/LTD)
-            targetdir: Target directory for raw MODIS HDF5 file
-            interleave: Boolean flag if MOD/MYD 13  products should be interleaved
-        """
-
-        self.targetdir = Path(targetdir)
-        #self.resdict = dict(zip(['250m','500m','1km','0.05_Deg'],[x/112000 for x in [250,500,1000,5600]])) ## commented for original resolution
-        self.vam_product_code_dict = dict(zip(['VIM', 'VEM', 'LTD', 'LTN'],
-                                              ['NDVI', 'EVI', 'LST_Day', 'LST_Night']))
-        self.dates_regexp = re.compile(r'.+A(\d{7}).+')
-        self.rawdates = [re.findall(self.dates_regexp, x)[0] for x in files]
-        self.files = [x for (y, x) in sorted(zip(self.rawdates, files))]
-        self.rawdates.sort()
-        self.nfiles = len(self.files)
-        self.reference_file = Path(self.files[0])
-
-        # class works only for M.D11 and M.D13 products
-        if not re.match(r'M.D13\w\d', self.reference_file.name) and not re.match(r'M.D11\w\d', self.reference_file.name):
-            raise SystemExit("Processing only implemented for M*D11 or M*13 products!")
-
-        # make sure number of dates is equal to number of files, so no duplicates!
-        assert len(set(self.rawdates)) == self.nfiles, "Number of files not equal to number of derived dates - are there duplicate HDF files?"
-
-        # Patterns for string extraction
-        ppatt = re.compile(r'M\w{6}')
-        vpatt = re.compile(r'.+\.(\d{3})\..+')
-        tpatt = re.compile(r'h\d+v\d+')
-
-        # Open reference file
-        ref = gdal.Open(self.reference_file.as_posix())
-
-        # When no product is selected, the default is VIM and LTD
-        if not vam_product_code:
-            ref_sds = [x[0] for x in ref.GetSubDatasets() if self.vam_product_code_dict['VIM'] in x[0] or self.vam_product_code_dict['LTD'] in x[0]][0]
-            self.vam_product_code = [key for key, value in self.vam_product_code_dict.items() if value in ref_sds][0]
-            ref_sds = None
-        elif vam_product_code in self.vam_product_code_dict.keys():
-            self.vam_product_code = vam_product_code
-        else:
-            raise ValueError('VAM product code string not recognized. Available products are %s.' % [x for x in self.vam_product_code_dict.keys()])
-        ref = None
-
-        # VAM product code to be included in filename
-        fname_vpc = self.vam_product_code
-
-        # check for MOD/MYD interleaving
-        if interleave and self.vam_product_code == 'VIM':
-            self.product = [re.sub(r'M[O|Y]D', 'MXD', re.findall(ppatt, self.reference_file.name)[0])]
-            self.temporalresolution = 8
-            self.tshift = 8
-        else:
-            self.product = re.findall(ppatt, self.reference_file.name)
-            if re.match(r'M[O|Y]D13\w\d', self.product[0]):
-                self.temporalresolution = 16
-                self.tshift = 8
-            elif re.match(r'M[O|Y]D11\w\d', self.product[0]):
-                self.temporalresolution = 8
-                self.tshift = 4
-
-                # LST has specific VAM product codes for the file naming
-                if self.vam_product_code == 'LTD':
-                    if re.match(r'MOD11\w\d', self.product[0]):
-                        fname_vpc = 'TDT'
-                    elif re.match(r'MYD11\w\d', self.product[0]):
-                        fname_vpc = 'TDA'
-                    else:
-                        pass
-                elif self.vam_product_code == 'LTN':
-                    if re.match(r'MOD11\w\d', self.product[0]):
-                        fname_vpc = 'TNT'
-                    elif re.match(r'MYD11\w\d', self.product[0]):
-                        fname_vpc = 'TNA'
-                    else:
-                        pass
-
-        # Name of file to be created/updated
-        self.outname = Path('{}/{}/{}.{}.h5'.format(
-            self.targetdir.as_posix(),
-            self.vam_product_code,
-            '.'.join(self.product + re.findall(tpatt, self.reference_file.name) + [re.sub(vpatt, '\\1', self.reference_file.name)]),
-            fname_vpc))
-
-        self.exists = self.outname.exists()
-        ref = None
-
-    def create(self, compression='gzip', chunk=None):
-        """Creates the HDF5 file.
-
-        Args:
-            compression: Compression method to be used (default = gzip)
-            chunk: Number of pixels per chunk (needs to define equal sized chunks!)
-        """
-
-        ref = gdal.Open(self.reference_file.as_posix())
-        ref_sds = [x[0] for x in ref.GetSubDatasets() if self.vam_product_code_dict[self.vam_product_code] in x[0]][0]
-
-        # reference raster
-        rst = gdal.Open(ref_sds)
-        ref_sds = None
-        ref = None
-        nrows = rst.RasterYSize
-        ncols = rst.RasterXSize
-
-        # check chunksize
-        if not chunk:
-            self.chunks = ((nrows*ncols)//25, 10) # default
-        else:
-            self.chunks = (chunk, 10)
-
-        # Check if chunksize is OK
-        if not ((nrows*ncols)/self.chunks[0]).is_integer():
-            rst = None # close ref file
-            raise ValueError('\n\nChunksize must result in equal number of chunks. Please adjust chunksize!')
-
-        self.nodata_value = int(rst.GetMetadataItem('_FillValue'))
-
-        # Read datatype
-        dt = rst.GetRasterBand(1).DataType
-
-        # Parse datatype - on error use default Int16
-        try:
-            self.datatype = dtype_GDNP(dt)
-        except IndexError:
-            print('\n\n Couldn\'t read data type from dataset. Using default Int16!\n')
-            self.datatype = (3, 'int16')
-
-        trans = rst.GetGeoTransform()
-        prj = rst.GetProjection()
-        rst = None
-
-        # Create directory if necessary
-        if not self.outname.parent.exists():
-            # Try statements caches possible error when multiple tiles are processed in parallel
-            try:
-                self.outname.parent.mkdir()
-            except FileExistsError:
-                pass
-
-        # Create HDF5 file
-        try:
-            with h5py.File(self.outname.as_posix(), 'x', libver='latest') as h5f:
-                dset = h5f.create_dataset('data',
-                                          shape=(nrows*ncols, self.nfiles),
-                                          dtype=self.datatype[1],
-                                          maxshape=(nrows*ncols, None),
-                                          chunks=self.chunks,
-                                          compression=compression,
-                                          fillvalue=self.nodata_value)
-
-                h5f.create_dataset('dates',
-                                   shape=(self.nfiles,),
-                                   maxshape=(None,),
-                                   dtype='S8',
-                                   compression=compression)
-
-                dset.attrs['geotransform'] = trans
-                dset.attrs['projection'] = prj
-                dset.attrs['resolution'] = trans[1] # res ## commented for original resolution
-                dset.attrs['nodata'] = self.nodata_value
-                dset.attrs['temporalresolution'] = self.temporalresolution
-                dset.attrs['tshift'] = self.tshift
-                dset.attrs['RasterXSize'] = ncols
-                dset.attrs['RasterYSize'] = nrows
-            self.exists = True
-        except:
-            print('\n\nError creating {}! Check input parameters (especially if compression/filter is available) and try again. Corrupt file will be removed now. \n\nError message: \n'.format(self.outname.as_posix()))
-            self.outname.unlink()
-            raise
-
-    def update(self):
-        """Update MODIS raw HDF5 file with raw data.
-
-        When a new HDF5 file is created, update will also handle the first data ingest.
-        """
-
-        try:
-            with h5py.File(self.outname.as_posix(), 'r+', libver='latest') as h5f:
-                dset = h5f.get('data')
-                dates = h5f.get('dates')
-                self.chunks = dset.chunks
-                self.nodata_value = dset.attrs['nodata'].item()
-                self.ncols = dset.attrs['RasterXSize'].item()
-                self.nrows = dset.attrs['RasterYSize'].item()
-                self.datatype = dtype_GDNP(dset.dtype.name)
-                dset.attrs['processingtimestamp'] = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
-
-                # Load any existing dates and combine with new dates
-                dates_combined = [x.decode() for x in dates[...] if len(x) > 0 and x.decode() not in self.rawdates]
-                _ = [dates_combined.append(x) for x in self.rawdates]
-
-                # New total temporal length
-                dates_length = len(dates_combined)
-
-                # if new total temporal length is bigger than dataset, datasets need to be resized for additional data
-                if dates_length > dset.shape[1]:
-                    dates.resize((dates_length,))
-                    dset.resize((dset.shape[0], dates_length))
-
-                # Sorting index to ensure temporal continuity
-                sort_ix = np.argsort(dates_combined)
-
-                # Manual garbage collect to prevent out of memory
-                _ = [gc.collect() for x in range(3)]
-
-                # preallocate array
-                arr = np.zeros((self.chunks[0], dates_length), dtype=self.datatype[1])
-
-                # Open all files and keep reference in handler
-                handler = FileHandler(self.files, self.vam_product_code_dict[self.vam_product_code])
-                handler.open()
-                ysize = self.chunks[0]//self.ncols
-
-                for b in range(0, dset.shape[0], self.chunks[0]):
-                    yoff = b//self.ncols
-
-                    for b1 in range(0, dates_length, self.chunks[1]):
-                        arr[..., b1:b1+self.chunks[1]] = dset[b:b+self.chunks[0], b1:b1+self.chunks[1]]
-                    del b1
-
-                    for fix, f in enumerate(self.files):
-                        try:
-                            arr[..., dates_combined.index(self.rawdates[fix])] = handler.handles[fix].ReadAsArray(xoff=0,
-                                                                                                                  yoff=yoff,
-                                                                                                                  xsize=self.ncols,
-                                                                                                                  ysize=ysize).flatten()
-                        except AttributeError:
-                            print('Error reading from {}. Using nodata ({}) value.'.format(f, self.nodata_value))
-                            arr[..., dates_combined.index(self.rawdates[fix])] = self.nodata_value
-                    arr = arr[..., sort_ix]
-
-                    for b1 in range(0, dates_length, self.chunks[1]):
-                        dset[b:b+self.chunks[0], b1:b1+self.chunks[1]] = arr[..., b1:b1+self.chunks[1]]
-                handler.close()
-
-                # Write back date list
-                dates_combined.sort()
-                dates[...] = np.array(dates_combined, dtype='S8')
-        except:
-            print('Error updating {}! File may be corrupt, consider creating the file from scratch, or closer investigation. \n\nError message: \n'.format(self.outname.as_posix()))
-            traceback.print_exc()
-            raise
-
-    def __str__(self):
-        """String to be displayed when printing an instance of the class object"""
-        return 'ModisRawH5 object: {} - {} files - exists on disk: {}'.format(self.outname.as_posix(), self.nfiles, self.exists)
-
+from modape.utils import (DateHelper, execute_ws2d, execute_ws2d_sgrid, execute_ws2d_vc,
+                          fromjulian, init_parameters, init_shared, init_worker, tonumpyarray, txx)
+from modape.whittaker import lag1corr, ws2d, ws2dp, ws2doptv, ws2doptvp # pylint: disable=no-name-in-module
 
 class ModisSmoothH5(object):
 
@@ -658,6 +177,10 @@ class ModisSmoothH5(object):
             smt_ds.attrs['processingtimestamp'] = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
             smt_ds.attrs['lastrun'] = "fixed s: log10(sopt) = {}".format(s)
             smt_ds.attrs['log10sopt'] = s
+            try:
+                del smt_ds.attrs['pvalue']
+            except KeyError:
+                pass
 
             dates = DateHelper(rawdates=raw_dates_all,
                                rtres=rtres,
@@ -790,7 +313,7 @@ class ModisSmoothH5(object):
                         for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(self.array_offset, arr_raw.shape[1], smoothchunks[1])):
                             smt_ds[br:br+rawchunks[0], bcs:bcs+smoothchunks[1]] = arr_raw[:, bcr:bcr+smoothchunks[1]]
 
-    def ws2d_sgrid(self):
+    def ws2d_sgrid(self, p=None):
         """Apply whittaker smootehr with fixed s to data.
 
         This fixed s version reads a pixel based s value from file, so it needs
@@ -815,7 +338,17 @@ class ModisSmoothH5(object):
 
             # Store run parameters for infotool
             smt_ds.attrs['processingtimestamp'] = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
-            smt_ds.attrs['lastrun'] = 'fixed s from grid'
+
+            if p:
+                smt_ds.attrs['lastrun'] = 'fixed s from grid with p = {}'.format(p)
+                smt_ds.attrs['pvalue'] = p
+            else:
+                smt_ds.attrs['lastrun'] = 'fixed s from grid'
+                try:
+                    del smt_ds.attrs['pvalue']
+                except KeyError:
+                    pass
+
 
             dates = DateHelper(rawdates=raw_dates_all,
                                rtres=rtres,
@@ -865,7 +398,8 @@ class ModisSmoothH5(object):
                                              nd=nodata,
                                              shared_array_smooth=shared_array_smooth,
                                              vec_dly=vector_daily,
-                                             dix=dix)
+                                             dix=dix,
+                                             p=p)
 
                 parameters['shared_array_sgrid'] = init_shared(rawchunks[0])
                 arr_raw = tonumpyarray(shared_array_raw)
@@ -935,7 +469,10 @@ class ModisSmoothH5(object):
                     arr_sgrid[...] = smt_sgrid[br:br+rawchunks[0]]
 
                     for ix in map_index:
-                        arr_raw[ix, :] = ws2d(y=arr_raw[ix, :], lmda=10**arr_sgrid[ix], w=wts[ix, :])
+                        if not p:
+                            arr_raw[ix, :] = ws2d(y=arr_raw[ix, :], lmda=10**arr_sgrid[ix], w=wts[ix, :])
+                        else:
+                            arr_raw[ix, :] = ws2dp(y=arr_raw[ix, :], lmda=10**arr_sgrid[ix], w=wts[ix, :], p=p)
                         if self.tinterpolate:
                             z2 = vector_daily.copy()
                             z2[z2 != nodata] = arr_raw[ix, :]
@@ -987,6 +524,10 @@ class ModisSmoothH5(object):
                 smt_ds.attrs['pvalue'] = p
             else:
                 smt_ds.attrs['lastrun'] = 'V-curve optimization of s'
+                try:
+                    del smt_ds.attrs['pvalue']
+                except KeyError:
+                    pass
 
             dates = DateHelper(rawdates=raw_dates_all,
                                rtres=rtres,
@@ -1146,239 +687,3 @@ class ModisSmoothH5(object):
                     else:
                         for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(self.array_offset, arr_raw.shape[1], smoothchunks[1])):
                             smt_ds[br:br+rawchunks[0], bcs:bcs+smoothchunks[1]] = arr_raw[:, bcr:bcr+smoothchunks[1]]
-
-
-class ModisMosaic(object):
-    """Class for mosaic of MODIS tiles.
-
-    Moisaics tiles per Product, parameter and timestep. Enables extraction as GeoTiff.
-    """
-
-    def __init__(self, files, datemin, datemax, global_flag):
-        """ Creates ModisMosaic object.
-
-        Args:
-            files: List of paths to files used for creating the mosaic
-            datemin: Datestring for date of earliest mosaic (format YYYYMM)
-            datemax: Datestring for date of latest mosaic (format YYYYMM)
-            global_flag: Boolean flag if mosaic is global product
-        """
-
-        tile_re = re.compile(r'.+(h\d+v\d+).+') # Regular expression for tile ID
-        self.global_flag = global_flag
-        self.tiles = [re.sub(tile_re, '\\1', basename(x)) for x in files]
-        self.tiles.sort()
-        self.files = files
-
-        # Extract tile IDs
-        self.h_ix = list({re.sub(r'(h\d+)(v\d+)', '\\1', x) for x in self.tiles})
-        self.h_ix.sort()
-        self.v_ix = list({re.sub(r'(h\d+)(v\d+)', '\\2', x) for x in self.tiles})
-        self.v_ix.sort()
-
-        # get referece tile identifiers
-        ref_tile_h = min([x for x in self.tiles if min(self.h_ix) in x])
-        ref_tile_v = min([x for x in self.tiles if min(self.v_ix) in x])
-
-        # vertical reference tile is top (left)
-        ref = [x for x in self.files if ref_tile_v in x][0]
-
-        # Read metadata from HDF5
-        try:
-            with h5py.File(ref, 'r') as h5f:
-                dset = h5f.get('data')
-                self.tile_rws = dset.attrs['RasterYSize'].item()
-                self.tile_cls = dset.attrs['RasterXSize'].item()
-                temporalresolution = dset.attrs['temporalresolution']
-                self.datatype = dset.dtype
-                gt_temp_v = dset.attrs['geotransform']
-                self.prj = dset.attrs['projection']
-                self.nodata = dset.attrs['nodata'].item()
-                self.labels = []
-
-                # If file is global, resolution is already in degrees, otherwhise it's resolution divided with 112000
-                if self.global_flag:
-                    self.resolution_degrees = dset.attrs['resolution']
-                else:
-                    self.resolution = dset.attrs['resolution']
-                    self.resolution_degrees = self.resolution/112000
-                dset = None
-                self.dates = [x.decode() for x in h5f.get('dates')[...]]
-
-                # if dates are either 5 or 10 days, retrive pentad or dekad labels
-                if int(temporalresolution) == 5 or int(temporalresolution) == 10:
-                    self.labels = date2label(self.dates, temporalresolution)
-
-            # checking referece tile for h
-            ref = [x for x in self.files if ref_tile_h in x][0]
-
-            with h5py.File(ref, 'r') as h5f:
-                dset = h5f.get('data')
-                gt_temp_h = dset.attrs['geotransform']
-                dset = None
-            self.gt = [y for x in [gt_temp_h[0:3], gt_temp_v[3:6]] for y in x]
-        except Exception as e:
-            print('\nError reading referece file {} for mosaic! Error message: {}\n'.format(ref, e))
-            raise
-
-        # Create temporal index from dates available and min max input
-        dates_dt = [fromjulian(x) for x in self.dates]
-        datemin_p = datetime.strptime(datemin, '%Y%m').date()
-        datemax_p = datetime.strptime(datemax, '%Y%m').date()
-        self.temp_index = np.flatnonzero(np.array([datemin_p <= x <= datemax_p for x in dates_dt]))
-
-    def get_array(self, dataset, ix, dt):
-        """Reads values for mosaic into array.
-
-        Args:
-            dataset: Defines dataset to be read from HDF5 file (default is 'data')
-            ix: Temporal index
-            dt: Datatype (default will be read from file)
-
-        Returns
-            Array for mosaic
-        """
-
-        # Initialize array
-        tiles_array = np.full(((len(self.v_ix) * self.tile_rws), len(self.h_ix) * self.tile_cls), self.nodata, dtype=dt)
-
-        # read data from intersecting HDF5 files
-        for h5f in self.files:
-            # Extract tile ID from filename
-            t_h = re.sub(r'.+(h\d+)(v\d+).+', '\\1', basename(h5f))
-            t_v = re.sub(r'.+(h\d+)(v\d+).+', '\\2', basename(h5f))
-
-            # Caluclate row/column offset
-            xoff = self.h_ix.index(t_h) * self.tile_cls
-            yoff = self.v_ix.index(t_v) * self.tile_rws
-
-            try:
-                with h5py.File(h5f, 'r') as h5f_o:
-                    # Dataset 'sgrid' is 2D, so no idex needed
-                    if dataset == 'sgrid':
-                        tiles_array[yoff:(yoff+self.tile_rws),
-                                    xoff:(xoff+self.tile_cls)] = h5f_o.get(dataset)[...].reshape(self.tile_rws, self.tile_cls)
-                    else:
-                        tiles_array[yoff:(yoff+self.tile_rws),
-                                    xoff:(xoff+self.tile_cls)] = h5f_o.get(dataset)[..., ix].reshape(self.tile_rws, self.tile_cls)
-            except Exception as e:
-                print('Error reading data from file {} to array! Error message {}:\n'.format(h5f, e))
-                raise
-        return tiles_array
-
-    def get_array_global(self, dataset, ix, dt):
-        """Reads values for global mosaic into array.
-
-        Since files are global, the array will be a spatial and temporal subset rather than a mosaic.
-
-        Args:
-            dataset: Defines dataset to be read from HDF5 file (default is 'data')
-            ix: Temporal index
-            dt: Datatype (default will be read from file)
-
-        Returns
-            Array for mosaic
-        """
-
-        global_array = np.full((self.tile_rws, self.tile_cls), self.nodata, dtype=dt)
-
-        for h5f in self.files:
-            try:
-                with h5py.File(h5f, 'r') as h5f_o:
-                    if dataset == 'sgrid':
-                        global_array[...] = h5f_o.get(dataset)[...].reshape(self.tile_rws, self.tile_cls)
-                    else:
-                        global_array[...] = h5f_o.get(dataset)[..., ix].reshape(self.tile_rws, self.tile_cls)
-            except Exception as e:
-                print('Error reading data from file {} to array! Error message {}:\n'.format(h5f, e))
-                raise
-        return global_array
-
-    @contextmanager
-    def get_raster(self, dataset, ix):
-        """Generator for mosaic raster.
-
-        This generator can be used within a context manager and will yield an in-memory raster.
-
-        Args:
-            dataset: Defines dataset to be read from HDF5 file (default is 'data')
-            ix: Temporal index
-
-        Yields:
-            in-memory raster to be passed to GDAL warp
-        """
-
-        try:
-            if dataset == 'sgrid':
-                self.dt_gdal = dtype_GDNP('float32') # dtype for sgrid is set to float32
-            else:
-                self.dt_gdal = dtype_GDNP(self.datatype.name)
-        except IndexError:
-            print('\n\n Couldn\'t read data type from dataset. Using default Int16!\n')
-            self.dt_gdal = (3, 'int16')
-
-        # Use the corresponding getArray function if global_flag
-        if self.global_flag:
-            value_array = self.get_array_global(dataset, ix, self.dt_gdal[1])
-        else:
-            value_array = self.get_array(dataset, ix, self.dt_gdal[1])
-        height, width = value_array.shape
-        driver = gdal.GetDriverByName('GTiff')
-
-        # Create in-memory dataset with virtual filename driver
-        self.raster = driver.Create('/vsimem/inmem.tif', width, height, 1, self.dt_gdal[0])
-        self.raster.SetGeoTransform(self.gt)
-        self.raster.SetProjection(self.prj)
-        rb = self.raster.GetRasterBand(1)
-        rb.SetNoDataValue(self.nodata)
-
-        # Write array
-        rb.WriteArray(value_array)
-        yield self
-
-        # Cleanup to be exectuted when context manager closes after yield
-        gdal.Unlink('/vsimem/inmem.tif')
-        self.raster = None
-        driver = None
-        del value_array
-
-def modis_tiles(aoi):
-    """Function for querying MODIS tiles.
-
-    Converts AOI coordinates to MODIS tile numbers by extracting values from MODIS_TILES.tif.
-
-    Args:
-        aoi: AOI coordinates, either LAT LON or XMIN, YMAX, XMAX, YMIN
-
-    Returns:
-        List of MODIS tile IDs intersecting AOI
-    """
-
-    # Load MODIS_TILES.tif from data directory
-    this_dir, _ = os.path.split(__file__)
-    ds = gdal.Open(os.path.join(this_dir, 'data', 'MODIS_TILES.tif'))
-
-    # Try to catch TIFF issues
-    try:
-        gt = ds.GetGeoTransform()
-    except AttributeError:
-        raise SystemExit('Could not find \'MODIS_TILES.tif\' index raster. Try re-installing the package.')
-
-    # Indices fpr point AOI
-    if len(aoi) == 2:
-        xo = int(round((aoi[1]-gt[0])/gt[1]))
-        yo = int(round((gt[3]-aoi[0])/gt[1]))
-        xd = 1
-        yd = 1
-    # Indices for bounding box AOI
-    elif len(aoi) == 4:
-        xo = int(round((aoi[0]-gt[0])/gt[1]))
-        yo = int(round((gt[3]-aoi[1])/gt[1]))
-        xd = int(round((aoi[2] - aoi[0])/gt[1]))
-        yd = int(round((aoi[1] - aoi[3])/gt[1]))
-    tile_extract = ds.ReadAsArray(xo, yo, xd, yd) # Read
-    ds = None
-    tile_tmp = np.unique(tile_extract/100) # Tile IDs are stored as H*100+V
-    tiles = ['{:05.2f}'.format(x) for x in tile_tmp[tile_tmp != 0]]
-
-    return ['h{}v{}'.format(*x.split('.')) for x in tiles]

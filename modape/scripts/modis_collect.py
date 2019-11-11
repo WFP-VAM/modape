@@ -7,7 +7,10 @@ from __future__ import absolute_import, division, print_function
 import argparse
 import multiprocessing as mp
 import os
-from pathlib import Path
+try:
+    from pathlib2 import Path
+except ImportError:
+    from pathlib import Path
 import re
 import sys
 import time
@@ -35,7 +38,7 @@ def run_process(pdict):
                            chunk=pdict['chunksize'])
             rh5.update()
         except Exception as e: # pylint: disable=unused-variable
-            print('\nError processing product {}, product code {}. \n\n Traceback:\n'.format(rh5.product, vam_product_code))
+            print('\nError processing group {}, product code {}. \n\n Traceback:\n'.format(pdict['group_id'], vam_product_code))
             traceback.print_exc()
         print('\n')
 
@@ -100,6 +103,7 @@ def main():
         processing_dict[group]['targetdir'] = args.targetdir
         processing_dict[group]['files'] = [x for x in files if re.search(gpatt, x)]
         processing_dict[group]['interleave'] = args.interleave
+        processing_dict[group]['group_id'] = group.replace('M.', 'MX')
 
         if args.chunksize:
             processing_dict[group]['chunksize'] = args.chunksize

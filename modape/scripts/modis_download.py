@@ -6,13 +6,21 @@ from __future__ import absolute_import, division, print_function
 import argparse
 import datetime
 import os
+try:
+    from pathlib2 import Path
+except ImportError:
+    from pathlib import Path
 import pickle
 import re
+from subprocess import check_output
 import sys
+import warnings
 
 import ogr
 from modape.modis import ModisQuery
 from modape.utils import Credentials
+
+warnings.filterwarnings("default", category=DeprecationWarning)
 
 def main():
     '''Query and download MODIS products.
@@ -40,7 +48,7 @@ def main():
     parser.add_argument('-d', '--targetdir', help='Destination directory', default=os.getcwd(), metavar='')
     parser.add_argument('--store-credentials', help='Store Earthdata credentials on disk to be used for future downloads (unsecure!)', action='store_true')
     parser.add_argument('--download', help='Download data', action='store_true')
-    parser.add_argument('--aria2', help='Use ARIA2 for downloading', action='store_true')
+    parser.add_argument('--aria2', help='DEPRACATED! Use ARIA2 for downloading', action='store_true')
 
     # fail and print help if no arguments supplied
     if len(sys.argv) == 1:
@@ -50,6 +58,16 @@ def main():
     args = parser.parse_args()
 
     credentials = Credentials(args.username, args.password)
+
+    if args.download:
+        warnings.warn("Download only possible with ARIA2! Flag --aria2 will be removed in future release.", DeprecationWarning)
+
+        #fail if ARIA2 not installed
+        try:
+            _ = check_output(['aria2c', '--version'])
+        except:
+            raise SystemExit('For downloading, ARIA2 to be available in PATH! Please make sure it\'s installed and available in PATH!')
+
 
     # Check for credentials if download is True
     if args.download & (not credentials.complete):
@@ -65,10 +83,8 @@ def main():
     args.product = [x.upper() for x in args.product]
 
     # Load product table
-    this_dir, _ = os.path.split(__file__)
-    package_dir = os.path.abspath(os.path.join(this_dir, os.pardir))
-
-    with open(os.path.join(package_dir, 'data', 'MODIS_V6_PT.pkl'), 'rb') as table_raw:
+    this_dir = Path(__file__).parent
+    with open(this_dir.parent.joinpath('data', 'MODIS_V6_PT.pkl').as_posix(), 'rb') as table_raw:
         product_table = pickle.load(table_raw)
 
     for product in args.product:
@@ -113,13 +129,16 @@ def main():
                     # cast to lowercase
                     tiles = [x.lower() for x in args.tile_filter]
 
-                    with open(os.path.join(package_dir, 'data', 'ModlandTiles_bbx.pkl'), 'rb') as bbox_raw:
+                    with open(this_dir.parent.joinpath('data', 'ModlandTiles_bbx.pkl').as_posix(), 'rb') as bbox_raw:
                         bbox = pickle.load(bbox_raw)
 
                     if len(tiles) == 1:
                         h_indicator, v_indicator = re.findall(r'\d+', tiles[0])
                         bbox_selection = bbox[(bbox.ih == int(h_indicator)) &
                                               (bbox.iv == int(v_indicator))]
+
+                        if bbox_selection.empty:
+                            raise SystemExit('No tile with ID {} found. Please check!'.format(tiles[0]))
 
                         # roi is approx. center point of tile
                         args.roi = [bbox_selection.lat_max.values[0] - 5,
@@ -131,6 +150,9 @@ def main():
 
                         # aoi is bbox including all tiles from tile_filter, plus 1 degree buffer
                         bbox_selection = bbox.query('|'.join(['ih == {}'.format(int(x)) for x in h_indicator])).query('|'.join(['iv == {}'.format(int(x)) for x in v_indicator]))
+
+                        if bbox_selection.empty:
+                            raise SystemExit('No tiles with IDs {} found. Please check!'.format(' '.join(tiles)))
 
                         args.roi = [min(bbox_selection.lon_min.values)-1,
                                     min(bbox_selection.lat_min.values)-1,
@@ -189,7 +211,6 @@ def main():
                                       begindate=args.begin_date,
                                       enddate=args.end_date,
                                       global_flag=global_flag,
-                                      aria2=args.aria2,
                                       tile_filter=args.tile_filter)
 
             # If download is True and at least one result, download data

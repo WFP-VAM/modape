@@ -7,9 +7,11 @@
 from __future__ import absolute_import, division, print_function
 
 import argparse
-import datetime
 import os
-from pathlib import Path
+try:
+    from pathlib2 import Path
+except ImportError:
+    from pathlib import Path
 import pickle
 import re
 import sys
@@ -36,8 +38,8 @@ def main():
     parser.add_argument('-p', '--product', help='MODIS product ID (can be parial match with *)', metavar='')
     parser.add_argument('--roi', help='Region of interest. Can be LAT/LON point or bounding box in format llx lly urx ury', nargs='+', type=str)
     parser.add_argument('--region', help='region 3 letter region code (default is \'reg\')', default='reg', metavar='')
-    parser.add_argument('-b', '--begin-date', help='Start date (YYYYMM)', default=datetime.date(2000, 1, 1).strftime('%Y%m'), metavar='')
-    parser.add_argument('-e', '--end-date', help='End date (YYYYMM)', default=datetime.date.today().strftime('%Y%m'), metavar='')
+    parser.add_argument('-b', '--begin-date', help='Start date (YYYYMM)/(YYYY-MM-DD)', default=None, metavar='')
+    parser.add_argument('-e', '--end-date', help='End date (YYYYMM)/(YYYY-MM-DD) - if only YYYMM is provided, all days within MM are included.', default=None, metavar='')
     parser.add_argument('--vampc', help='VAM product code', metavar='')
     parser.add_argument('-d', '--targetdir', help='Target directory for GeoTIFFs (default current directory)', default=os.getcwd(), metavar='')
     parser.add_argument('--sgrid', help='Extract (mosaic of) s value grid(s)', action='store_true')
@@ -79,15 +81,19 @@ def main():
         args.roi = [float(args.roi[i]) for i in [0, 3, 2, 1]]
 
     # Load product table
-    this_dir, _ = os.path.split(__file__)
-    package_dir = os.path.abspath(os.path.join(this_dir, os.pardir))
-
-    with open(os.path.join(package_dir, 'data', 'MODIS_V6_PT.pkl'), 'rb') as table_raw:
+    this_dir = Path(__file__).parent
+    with open(this_dir.parent.joinpath('data', 'MODIS_V6_PT.pkl').as_posix(), 'rb') as table_raw:
         product_table = pickle.load(table_raw)
 
     # List HDF5 files in path
 
-    h5files = list(input_dir.glob(args.product + '*h5'))
+    if not input_dir.is_file():
+
+        h5files = list(input_dir.glob(args.product + '*h5'))
+
+    else:
+
+        h5files = [input_dir]
 
     # Make sure only compatible files are used for the mosaic
     if not h5files:

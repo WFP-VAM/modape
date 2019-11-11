@@ -24,6 +24,7 @@ The **M**\ ODIS **A**\ ssimilation and **P**\ rocessing **E**\ ngine combines a 
 The sub-module ``modape.whittaker`` includes the following variations of the whittaker smoother with 2nd order differences:
 
 - **ws2d**: Whittaker with fixed smoothing parameter (``s``)
+- **ws2dp**: Whittaker with fixed smoothing parameter (``s``) and expectile smoothing using asymmetric weights
 - **ws2doptv**: Whittaker with V-curve optimization of the smoothing parameter (``s``)
 - **ws2doptvp**: Whittaker with V-curve optimization of the smoothing parameter (``s``) and expectile smoothing using asymmetric weights
 

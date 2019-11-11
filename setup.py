@@ -65,7 +65,7 @@ setup(
     setup_requires=['pytest-runner'],
     tests_require=['pytest'],
     install_requires=[
-        'numpy>=1.15.1',
+        'numpy==1.16.1',
         'gdal>=2, <3',
         'h5py>=2.9',
         'beautifulsoup4>=4.7',
@@ -74,7 +74,7 @@ setup(
         'pandas>=0.24',
         'cryptography>=2.6',
         'mock;python_version<"3.0"',
-        'pathlib;python_version<"3.0"'
+        'pathlib2;python_version<"3.0"'
     ],
     python_requires='>=2.7.11, <4',
 )

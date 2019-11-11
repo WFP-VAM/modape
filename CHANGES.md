@@ -1,5 +1,17 @@
 # CHANGES
 
+- ## v 0.3
+  - #### v 0.3.0:
+    - Split `modis.py` into separate sub-modules
+    - MODIS download only possible using `aria2`
+    - `modis_collect` now handles duplicated `hdf` files by taking file with most recent processing timestamp (issue #68)
+    - When using `--interleave` in `modis_collect`, acquisitions before `2002185` (start of AQUA) are ignored and not collected (issue #65)
+    - Fix calculation of asymmetric weights in `ws2optvp`
+    - New smoothing function `ws2dp` runs the Whittaker filter with asymmetric weights and fixed S
+    - Filtering with S values from grid now runs with the asymmetric filter `ws2dp`
+    - minor enhancements
+
+
 - ## v 0.2
   - #### v 0.2.1:
     - Re-designing update of datasets (fix issue #66)
