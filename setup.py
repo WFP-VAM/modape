@@ -68,6 +68,7 @@ setup(
         'numpy==1.16.1',
         'gdal>=2, <3',
         'h5py>=2.9',
+        'xarray==0.14.0',
         'beautifulsoup4>=4.7',
         'requests>=2',
         'pandas>=0.24',
