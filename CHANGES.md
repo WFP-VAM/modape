@@ -2,6 +2,7 @@
 
 - ## v 0.4
   - #### v 0.4.0:
+    - New Dockerfile based on Ubuntu bionic
 
 - ## v 0.3
   - #### v 0.3.0:
