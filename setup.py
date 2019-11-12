@@ -70,7 +70,6 @@ setup(
         'h5py>=2.9',
         'beautifulsoup4>=4.7',
         'requests>=2',
-        'progress>=1.5',
         'pandas>=0.24',
         'cryptography>=2.6',
         'mock;python_version<"3.0"',

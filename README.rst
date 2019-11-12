@@ -54,7 +54,6 @@ modape depends on these packages:
 - h5py
 - beautifulsoup4
 - requests
-- progress
 - pandas
 
 Some of these packages (eg. GDAL) can be difficult to build, especially on windows machines. In the latter case it's advisable to download an unofficial binary wheel from `Christoph Gohlke's Unofficial Windows Binaries for Python Extension Packages <https://www.lfd.uci.edu/~gohlke/pythonlibs/>`_ and install it locally with ``pip install`` before installing modape.
