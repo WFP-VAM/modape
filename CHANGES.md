@@ -1,5 +1,8 @@
 # CHANGES
 
+- ## v 0.4
+  - #### v 0.4.0:
+
 - ## v 0.3
   - #### v 0.3.0:
     - Split `modis.py` into separate sub-modules
