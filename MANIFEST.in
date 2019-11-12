@@ -1,4 +1,5 @@
 include _version/__init__.py
+include _version/version_info.py
 include README.rst
 recursive-include modape/data *
 recursive-include tests *py
