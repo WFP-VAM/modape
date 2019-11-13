@@ -20,6 +20,7 @@ import time
 
 import numpy as np
 import h5py # pylint: disable=import-error
+import xarray as xr # pylint: disable=import-error
 
 from modape.utils import (DateHelper, execute_ws2d, execute_ws2d_sgrid, execute_ws2d_vc,
                           fromjulian, init_parameters, init_shared, init_worker, tonumpyarray, txx)
@@ -140,7 +141,7 @@ class ModisSmoothH5(object):
                 h5f.create_dataset('clower',
                                    shape=(rawshape[0], dates.ndoys),
                                    dtype='Int16', maxshape=(rawshape[0], dates.ndoys),
-                                   chunks=(rawchunks[0], dates.ndoys),
+                                   chunks=(rawchunks[0], 10),
                                    compression=cmpr,
                                    fillvalue=rnd)
 
@@ -148,7 +149,7 @@ class ModisSmoothH5(object):
                 h5f.create_dataset('cupper',
                                    shape=(rawshape[0], dates.ndoys),
                                    dtype='Int16', maxshape=(rawshape[0], dates.ndoys),
-                                   chunks=(rawchunks[0], dates.ndoys),
+                                   chunks=(rawchunks[0], 10),
                                    compression=cmpr,
                                    fillvalue=rnd)
 
@@ -513,7 +514,7 @@ class ModisSmoothH5(object):
                         for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(self.array_offset, arr_raw.shape[1], smoothchunks[1])):
                             smt_ds[br:br+rawchunks[0], bcs:bcs+smoothchunks[1]] = arr_raw[:, bcr:bcr+smoothchunks[1]]
 
-    def ws2d_vc(self, srange, p=None):
+    def ws2d_vc(self, srange, p=None): #pylint: disable=R0912
         """Apply whittaker smoother V-curve optimization of s.
 
         Optionally, p value can be specified to use asymmetric smoothing.
@@ -538,6 +539,7 @@ class ModisSmoothH5(object):
             nodata = raw_ds.attrs['nodata'].item()
             self.temporalresolution = smt_ds.attrs['temporalresolution'].item()
             tshift = raw_ds.attrs['tshift'].item()
+            ncols = smt_ds.attrs['RasterXSize'].item()
 
             # Store run vampceters for infotool
             smt_ds.attrs['processingtimestamp'] = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
@@ -620,6 +622,65 @@ class ModisSmoothH5(object):
                         continue #no data points, skipping to next block
 
                     _ = pool.map(execute_ws2d_vc, map_index)
+
+
+                    # create constraints (only for full timeseries)
+                    if self.nsmooth == 0:
+
+                        cupper = smth5.get('cupper')
+                        clower = smth5.get('clower')
+
+                        if self.tinterpolate:
+                            smooth_view = arr_smooth.view()
+                        else:
+                            smooth_view = arr_raw.view()
+
+                        smooth_view.shape = (-1, ncols, dates.target_length)
+
+
+                        col_ix = np.arange(smooth_view.shape[1])
+                        row_ix = np.arange(smooth_view.shape[0])
+
+                        smooth_xarr = xr.Dataset({'data':(['x', 'y', 'time'], smooth_view)},
+                                                 coords={'cols': (['x', 'y'], np.repeat([col_ix], smooth_view.shape[0], axis=0)),
+                                                         'rows': (['x', 'y'], np.repeat([row_ix], smooth_view.shape[1], axis=1).reshape(smooth_view.shape[0], -1)),
+                                                         'time': [np.datetime64(fromjulian(x)) for x in dates.target]})
+
+                        # no copy
+                        if self.tinterpolate:
+                            assert smooth_view.base is arr_smooth
+                            assert smooth_xarr.data.values.base is arr_smooth
+                        else:
+                            assert smooth_view.base is arr_raw
+                            assert smooth_xarr.data.values.base is arr_raw
+
+                        smooth_diff_mean = smooth_xarr.diff('time').groupby('time.dayofyear').mean()
+                        smooth_diff_sdev = smooth_xarr.diff('time').groupby('time.dayofyear').std()
+
+                        # check dimensions are correct
+                        assert smooth_diff_mean.data.shape[0] == smooth_diff_sdev.data.shape[0] == dates.ndoys
+
+                        constraint = (smooth_diff_mean + smooth_diff_sdev).data.values
+
+                        # flip for writing
+                        constraint_view = np.moveaxis(constraint, 0, 2).reshape(constraint.shape[1]*constraint.shape[2], constraint.shape[0])
+
+                        cupper[br:br+smoothchunks[0], :] = constraint_view[...]
+
+                        del constraint, constraint_view
+
+                        constraint = (smooth_diff_mean - smooth_diff_sdev).data.values
+
+                        # flip for writing
+                        constraint_view = np.moveaxis(constraint, 0, 2).reshape(constraint.shape[1]*constraint.shape[2], constraint.shape[0])
+
+                        clower[br:br+smoothchunks[0], :] = constraint_view[...]
+
+                        del constraint, constraint_view, smooth_xarr
+
+                    else:
+                        # constraints won't be created/updated if
+                        pass
 
                     # write back data
                     arr_sgrid[arr_sgrid > 0] = np.log10(arr_sgrid[arr_sgrid > 0])
