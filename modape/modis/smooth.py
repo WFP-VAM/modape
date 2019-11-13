@@ -115,8 +115,12 @@ class ModisSmoothH5(object):
 
         dates_length = len(dates.target)
 
+        # create datasets
+
         try:
             with h5py.File(self.outname.as_posix(), 'x', libver='latest') as h5f:
+
+                # data array
                 dset = h5f.create_dataset('data',
                                           shape=(rawshape[0], dates_length),
                                           dtype=dt, maxshape=(rawshape[0], None),
@@ -124,6 +128,7 @@ class ModisSmoothH5(object):
                                           compression=cmpr,
                                           fillvalue=rnd)
 
+                # grid with smoothing parameter
                 h5f.create_dataset('sgrid',
                                    shape=(nrows*ncols,),
                                    dtype='float32',
@@ -131,6 +136,23 @@ class ModisSmoothH5(object):
                                    chunks=(rawchunks[0],),
                                    compression=cmpr)
 
+                # lower constraint
+                h5f.create_dataset('clower',
+                                   shape=(rawshape[0], dates.ndoys),
+                                   dtype='Int16', maxshape=(rawshape[0], dates.ndoys),
+                                   chunks=(rawchunks[0], dates.ndoys),
+                                   compression=cmpr,
+                                   fillvalue=rnd)
+
+                # upper constraint
+                h5f.create_dataset('cupper',
+                                   shape=(rawshape[0], dates.ndoys),
+                                   dtype='Int16', maxshape=(rawshape[0], dates.ndoys),
+                                   chunks=(rawchunks[0], dates.ndoys),
+                                   compression=cmpr,
+                                   fillvalue=rnd)
+
+                # dates
                 h5f.create_dataset('dates',
                                    shape=(dates_length,),
                                    maxshape=(None,),
@@ -143,6 +165,7 @@ class ModisSmoothH5(object):
                 dset.attrs['resolution'] = rres
                 dset.attrs['nodata'] = rnd
                 dset.attrs['temporalresolution'] = self.temporalresolution
+                dset.attrs['doys_set'] = dates.doys_set
                 dset.attrs['RasterYSize'] = nrows
                 dset.attrs['RasterXSize'] = ncols
         except:
