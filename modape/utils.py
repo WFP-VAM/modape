@@ -189,6 +189,13 @@ class DateHelper(object):
                 self.target = rawdates
         self.target_length = len(self.target)
 
+        self.doys = [fromjulian(x).strftime('%j') for x in self.target]
+
+        doys_set = list(set(self.doys))
+        doys_set.sort()
+        self.doys_set = doys_set
+        self.ndoys = len(self.doys_set)
+
     def getDV(self, nd):
         """Gets an array of no-data values in daily timesteps.
 
