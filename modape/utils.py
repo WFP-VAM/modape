@@ -217,6 +217,11 @@ class DateHelper(object):
 
         return [self.daily.index(x) for x in self.target]
 
+    def get_nupdate_doys(self, nsmooth):
+        '''Returns set of DOYs for nsmooth scenario'''
+        doys_set = list(set(self.doys[-nsmooth:]))
+        doys_set.sort()
+        return doys_set
 
 class Credentials(object):
     """Credentials helper class"""
