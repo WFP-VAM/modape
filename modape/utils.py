@@ -189,12 +189,12 @@ class DateHelper(object):
                 self.target = rawdates
         self.target_length = len(self.target)
 
-        self.doys = [fromjulian(x).strftime('%j') for x in self.target]
+        self.mdays = [int(fromjulian(x).strftime('%m%d')) for x in self.target]
 
-        doys_set = list(set(self.doys))
-        doys_set.sort()
-        self.doys_set = doys_set
-        self.ndoys = len(self.doys_set)
+        mdays_set = list(set(self.mdays))
+        mdays_set.sort()
+        self.mdays_set = mdays_set
+        self.nmdays = len(self.mdays_set)
 
     def getDV(self, nd):
         """Gets an array of no-data values in daily timesteps.
@@ -217,11 +217,11 @@ class DateHelper(object):
 
         return [self.daily.index(x) for x in self.target]
 
-    def get_nupdate_doys(self, nsmooth):
+    def get_nupdate_mdays(self, nsmooth):
         '''Returns set of DOYs for nsmooth scenario'''
-        doys_set = list(set(self.doys[-nsmooth:]))
-        doys_set.sort()
-        return doys_set
+        mdays_set = list(set(self.mdays[-nsmooth:]))
+        mdays_set.sort()
+        return mdays_set
 
 class Credentials(object):
     """Credentials helper class"""

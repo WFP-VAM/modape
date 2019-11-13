@@ -139,16 +139,16 @@ class ModisSmoothH5(object):
 
                 # lower constraint
                 h5f.create_dataset('clower',
-                                   shape=(rawshape[0], dates.ndoys),
-                                   dtype='Int16', maxshape=(rawshape[0], dates.ndoys),
+                                   shape=(rawshape[0], dates.nmdays),
+                                   dtype='Int16', maxshape=(rawshape[0], dates.nmdays),
                                    chunks=(rawchunks[0], 10),
                                    compression=cmpr,
                                    fillvalue=rnd)
 
                 # upper constraint
                 h5f.create_dataset('cupper',
-                                   shape=(rawshape[0], dates.ndoys),
-                                   dtype='Int16', maxshape=(rawshape[0], dates.ndoys),
+                                   shape=(rawshape[0], dates.nmdays),
+                                   dtype='Int16', maxshape=(rawshape[0], dates.nmdays),
                                    chunks=(rawchunks[0], 10),
                                    compression=cmpr,
                                    fillvalue=rnd)
@@ -166,7 +166,7 @@ class ModisSmoothH5(object):
                 dset.attrs['resolution'] = rres
                 dset.attrs['nodata'] = rnd
                 dset.attrs['temporalresolution'] = self.temporalresolution
-                dset.attrs['doys_set'] = dates.doys_set
+                dset.attrs['mdays_set'] = dates.mdays_set
                 dset.attrs['RasterYSize'] = nrows
                 dset.attrs['RasterXSize'] = ncols
         except:
@@ -644,7 +644,7 @@ class ModisSmoothH5(object):
                         smooth_xarr = xr.Dataset({'data':(['x', 'y', 'time'], smooth_view)},
                                                  coords={'cols': (['x', 'y'], np.repeat([col_ix], smooth_view.shape[0], axis=0)),
                                                          'rows': (['x', 'y'], np.repeat([row_ix], smooth_view.shape[1], axis=1).reshape(smooth_view.shape[0], -1)),
-                                                         'time': [np.datetime64(fromjulian(x)) for x in dates.target]})
+                                                         'time': [int(fromjulian(x).strftime('%m%d')) for x in  dates.target]})
 
                         # no copy
                         if self.tinterpolate:
@@ -654,11 +654,11 @@ class ModisSmoothH5(object):
                             assert smooth_view.base is arr_raw
                             assert smooth_xarr.data.values.base is arr_raw
 
-                        smooth_diff_mean = smooth_xarr.diff('time').groupby('time.dayofyear').mean()
-                        smooth_diff_sdev = smooth_xarr.diff('time').groupby('time.dayofyear').std()
+                        smooth_diff_mean = smooth_xarr.diff('time').groupby('time').mean()
+                        smooth_diff_sdev = smooth_xarr.diff('time').groupby('time').std()
 
                         # check dimensions are correct
-                        assert smooth_diff_mean.data.shape[0] == smooth_diff_sdev.data.shape[0] == dates.ndoys
+                        assert smooth_diff_mean.data.shape[0] == smooth_diff_sdev.data.shape[0] == dates.nmdays
 
                         constraint = (smooth_diff_mean + smooth_diff_sdev).data.values
 
