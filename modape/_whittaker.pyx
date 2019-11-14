@@ -6,7 +6,7 @@ Core whittaker functions
 
 Author: Valentin Pesendorfer, April 2019
 
-updated: September 2019
+updated: November 2019
 """
 
 from cpython.array cimport array, clone
@@ -14,12 +14,12 @@ from libc.math cimport log, pow, sqrt
 cimport numpy as np
 import numpy as np
 
-tFloat = np.double
-ctypedef np.double_t dtype_t
+ctypedef np.double_t double_t
+ctypedef np.int16_t int16_t
 
-__all__ = ['lag1corr', 'ws2d', 'ws2dp', 'ws2doptv', 'ws2doptvp']
+__all__ = ['lag1corr', 'w_constrain', 'ws2d', 'ws2dp', 'ws2doptv', 'ws2doptvp']
 
-cpdef lag1corr(np.ndarray[dtype_t] data1, np.ndarray[dtype_t] data2, double nd):
+cpdef lag1corr(np.ndarray[double_t] data1, np.ndarray[double_t] data2, double nd):
     """Calculates Lag-1 autocorrelation.
 
     Adapted from https://stackoverflow.com/a/29194624/5997555
@@ -64,7 +64,7 @@ cpdef lag1corr(np.ndarray[dtype_t] data1, np.ndarray[dtype_t] data2, double nd):
     cross_mean = cross_sum / (M-sub)
     return (cross_mean - mean1 * mean2) / (std1 * std2)
 
-cpdef ws2d(np.ndarray[dtype_t] y, double lmda, np.ndarray[dtype_t] w):
+cpdef ws2d(np.ndarray[double_t] y, double lmda, np.ndarray[double_t] w):
     cdef array dbl_array_template = array('d', [])
     cdef int i, i1, i2, m, n
     cdef array z, d, c, e
@@ -106,7 +106,47 @@ cpdef ws2d(np.ndarray[dtype_t] y, double lmda, np.ndarray[dtype_t] w):
         z.data.as_doubles[i] = z.data.as_doubles[i] / d.data.as_doubles[i] - c.data.as_doubles[i] * z.data.as_doubles[i + 1] - e.data.as_doubles[i] * z.data.as_doubles[i + 2]
     return z
 
-cdef _ws2d(np.ndarray[dtype_t] y, double lmda, array[double] w):
+cpdef w_constrain(np.ndarray[double_t] z, np.ndarray[int16_t] cl, np.ndarray[int16_t] cu, float[:] w):
+    """Perform weighted constrainig of smoothed values.
+
+    Args:
+      z: smoothed timerseries
+      cl: lower constraints
+      cu: upper constraints
+      w: weights
+
+    Returns:
+        smoothed & constrained time-series array z
+    """
+
+    cdef int ii, jj, kk, m, m1
+    cdef float zcorr, diff
+
+    ii = 0
+    jj = 0
+    kk = 0
+    m = z.shape[0]
+    m1 = m - len(w)
+
+    for ii in range(m1, m):
+      jj = ii-1
+      diff = z[ii] - z[jj]
+
+      if diff < cl[kk]:
+        zcorr = z[jj] + cl[kk]
+      elif diff > cu[kk]:
+        zcorr = z[jj] + cu[kk]
+      else:
+        zcorr = z[ii]
+
+      z[ii] = (w[kk] * z[ii]) + ((1 - w[kk]) * zcorr)
+
+      kk+=1
+      diff = 0
+
+    return z
+
+cdef _ws2d(np.ndarray[double_t] y, double lmda, array[double] w):
     """Internal whittaker function for use in asymmetric smoothing.
 
     Args:
@@ -159,7 +199,7 @@ cdef _ws2d(np.ndarray[dtype_t] y, double lmda, array[double] w):
         z.data.as_doubles[i] = z.data.as_doubles[i] / d.data.as_doubles[i] - c.data.as_doubles[i] * z.data.as_doubles[i + 1] - e.data.as_doubles[i] * z.data.as_doubles[i + 2]
     return z
 
-cpdef ws2dp(np.ndarray[dtype_t] y, double lmda, np.ndarray[dtype_t] w, double p):
+cpdef ws2dp(np.ndarray[double_t] y, double lmda, np.ndarray[double_t] w, double p):
   """Whittaker smoother with asymmetric smoothing and fixed lambda (S).
 
   Args:
@@ -213,7 +253,7 @@ cpdef ws2dp(np.ndarray[dtype_t] y, double lmda, np.ndarray[dtype_t] w, double p)
   z[0:m] = _ws2d(y, lmda, ww)
   return z
 
-cpdef ws2doptv(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[double] llas):
+cpdef ws2doptv(np.ndarray[double_t] y, np.ndarray[double_t] w, array[double] llas):
     """Whittaker smoother with normal V-curve optimization of lambda (S).
 
     Args:
@@ -293,7 +333,7 @@ cpdef ws2doptv(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[double] llas)
     return z, lopt
 
 
-cpdef ws2doptvp(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[double] llas, double p):
+cpdef ws2doptvp(np.ndarray[double_t] y, np.ndarray[double_t] w, array[double] llas, double p):
     """Whittaker smoother with asymmetric V-curve optimization of lambda (S).
 
     Args:
