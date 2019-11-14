@@ -8,6 +8,7 @@ Author: Valentin Pesendorfer, April 2019
 from __future__ import absolute_import, division, print_function
 
 from array import array
+import ctypes
 from datetime import timedelta
 import multiprocessing as mp
 import os
@@ -22,9 +23,9 @@ import numpy as np
 import h5py # pylint: disable=import-error
 import xarray as xr # pylint: disable=import-error
 
-from modape.utils import (DateHelper, execute_ws2d, execute_ws2d_sgrid, execute_ws2d_vc,
+from modape.utils import (DateHelper, execute_ws2d, execute_ws2d_sgrid, execute_ws2d_vc, execute_w_constraint,
                           fromjulian, init_parameters, init_shared, init_worker, tonumpyarray, txx)
-from modape.whittaker import lag1corr, ws2d, ws2dp, ws2doptv, ws2doptvp # pylint: disable=no-name-in-module
+from modape.whittaker import lag1corr, w_constrain, ws2d, ws2dp, ws2doptv, ws2doptvp # pylint: disable=no-name-in-module
 
 class ModisSmoothH5(object):
 
@@ -233,8 +234,8 @@ class ModisSmoothH5(object):
 
             if self.nworkers > 1:
                 if self.tinterpolate:
-                    shared_array_smooth = init_shared(smoothchunks[0] * new_dim)
-                    arr_smooth = tonumpyarray(shared_array_smooth)
+                    shared_array_smooth = init_shared(smoothchunks[0] * new_dim, dtype=ctypes.c_double)
+                    arr_smooth = tonumpyarray(shared_array_smooth, dtype=ctypes.c_double)
                     arr_smooth.shape = (smoothchunks[0], new_dim)
                     arr_smooth[...] = nodata
                     vector_daily = dates.getDV(nodata)
@@ -246,7 +247,7 @@ class ModisSmoothH5(object):
                     vector_daily = None
                     shared_array_smooth = None
                     arr_smooth = None
-                shared_array_raw = init_shared(rawchunks[0] * len(self.rawdates_nsmooth))
+                shared_array_raw = init_shared(rawchunks[0] * len(self.rawdates_nsmooth), dtype=ctypes.c_double)
 
                 parameters = init_parameters(rdim=(rawchunks[0], len(self.rawdates_nsmooth)),
                                              sdim=(smoothchunks[0], new_dim),
@@ -256,7 +257,7 @@ class ModisSmoothH5(object):
                                              vec_dly=vector_daily,
                                              dix=dix)
 
-                arr_raw = tonumpyarray(shared_array_raw)
+                arr_raw = tonumpyarray(shared_array_raw, dtype=ctypes.c_double)
                 arr_raw.shape = (rawchunks[0], len(self.rawdates_nsmooth))
 
                 pool = mp.Pool(processes=self.nworkers, initializer=init_worker, initargs=(shared_array_raw, parameters))
@@ -337,7 +338,7 @@ class ModisSmoothH5(object):
                         for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(self.array_offset, arr_raw.shape[1], smoothchunks[1])):
                             smt_ds[br:br+rawchunks[0], bcs:bcs+smoothchunks[1]] = arr_raw[:, bcr:bcr+smoothchunks[1]]
 
-    def ws2d_sgrid(self, p=None):
+    def ws2d_sgrid(self, p=None, constrain=True):
         """Apply whittaker smootehr with fixed s to data.
 
         This fixed s version reads a pixel based s value from file, so it needs
@@ -352,6 +353,8 @@ class ModisSmoothH5(object):
             smt_ds = smth5.get('data')
             smt_dates = smth5.get('dates')
             smt_sgrid = smth5.get('sgrid')
+            smt_clower = smth5.get('clower')
+            smt_cupper = smth5.get('cupper')
             rawshape = raw_ds.shape
             rawchunks = raw_ds.chunks
             smoothshape = smt_ds.shape
@@ -360,14 +363,22 @@ class ModisSmoothH5(object):
             self.temporalresolution = smt_ds.attrs['temporalresolution'].item()
             tshift = raw_ds.attrs['tshift'].item()
 
+            # constraint indices and weights
+            cweights = array('f', np.arange(0.9, -0.1, -0.1))
+
+            mdays_set = smt_ds.attrs['mdays_set']
+            mdays = [int(fromjulian(x.decode()).strftime('%m%d')) for x in smt_dates[-len(cweights):]]
+            constraint_ix = [list(mdays_set).index(x) for x in mdays]
+
+
             # Store run parameters for infotool
             smt_ds.attrs['processingtimestamp'] = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
 
             if p:
-                smt_ds.attrs['lastrun'] = 'fixed s from grid with p = {}'.format(p)
+                smt_ds.attrs['lastrun'] = 'fixed s from grid with p = {} - constraining: {}'.format(p, constrain)
                 smt_ds.attrs['pvalue'] = p
             else:
-                smt_ds.attrs['lastrun'] = 'fixed s from grid'
+                smt_ds.attrs['lastrun'] = 'fixed s from grid - constraining: {}'.format(constrain)
                 try:
                     del smt_ds.attrs['pvalue']
                 except KeyError:
@@ -402,8 +413,8 @@ class ModisSmoothH5(object):
 
             if self.nworkers > 1:
                 if self.tinterpolate:
-                    shared_array_smooth = init_shared(smoothchunks[0] * new_dim)
-                    arr_smooth = tonumpyarray(shared_array_smooth)
+                    shared_array_smooth = init_shared(smoothchunks[0] * new_dim, dtype=ctypes.c_double)
+                    arr_smooth = tonumpyarray(shared_array_smooth, dtype=ctypes.c_double)
                     arr_smooth.shape = (smoothchunks[0], new_dim)
                     arr_smooth[...] = nodata
                     vector_daily = dates.getDV(nodata)
@@ -415,7 +426,7 @@ class ModisSmoothH5(object):
                     vector_daily = None
                     shared_array_smooth = None
                     arr_smooth = None
-                shared_array_raw = init_shared(rawchunks[0] * len(self.rawdates_nsmooth))
+                shared_array_raw = init_shared(rawchunks[0] * len(self.rawdates_nsmooth), dtype=ctypes.c_double)
 
                 parameters = init_parameters(rdim=(rawchunks[0], len(self.rawdates_nsmooth)),
                                              sdim=(smoothchunks[0], new_dim),
@@ -425,10 +436,24 @@ class ModisSmoothH5(object):
                                              dix=dix,
                                              p=p)
 
-                parameters['shared_array_sgrid'] = init_shared(rawchunks[0])
-                arr_raw = tonumpyarray(shared_array_raw)
+                parameters['shared_array_sgrid'] = init_shared(rawchunks[0], dtype=ctypes.c_double)
+                arr_raw = tonumpyarray(shared_array_raw, dtype=ctypes.c_double)
                 arr_raw.shape = (rawchunks[0], len(self.rawdates_nsmooth))
-                arr_sgrid = tonumpyarray(parameters['shared_array_sgrid'])
+                arr_sgrid = tonumpyarray(parameters['shared_array_sgrid'], dtype=ctypes.c_double)
+
+                if constrain:
+                    parameters['shared_array_clower'] = init_shared(rawchunks[0]*len(cweights), dtype=ctypes.c_int16)
+                    arr_clower = tonumpyarray(parameters['shared_array_clower'], dtype=ctypes.c_int16)
+                    arr_clower.shape = (rawchunks[0], len(cweights))
+
+                    parameters['shared_array_cupper'] = init_shared(rawchunks[0]*len(cweights), dtype=ctypes.c_int16)
+                    arr_cupper = tonumpyarray(parameters['shared_array_cupper'], dtype=ctypes.c_int16)
+                    arr_cupper.shape = (rawchunks[0], len(cweights))
+
+                    shared_cweights = init_shared(len(cweights), dtype=ctypes.c_float)
+                    shared_cweights[0:len(cweights)] = cweights[0:len(cweights)]
+
+                    parameters['cweights'] = shared_cweights
 
                 pool = mp.Pool(processes=self.nworkers, initializer=init_worker, initargs=(shared_array_raw, parameters))
                 # load raw data
@@ -444,6 +469,13 @@ class ModisSmoothH5(object):
 
                     arr_sgrid[...] = smt_sgrid[br:br+rawchunks[0]]
                     _ = pool.map(execute_ws2d_sgrid, map_index)
+
+
+                    if constrain:
+                        arr_clower[...] = smt_clower[br:br+rawchunks[0], constraint_ix]
+                        arr_cupper[...] = smt_cupper[br:br+rawchunks[0], constraint_ix]
+
+                        _ = pool.map(execute_w_constraint, map_index)
 
                     # write back data
                     if self.tinterpolate:
@@ -461,6 +493,10 @@ class ModisSmoothH5(object):
             else:
                 arr_raw = np.zeros((rawchunks[0], len(self.rawdates_nsmooth)), dtype='double')
                 arr_sgrid = np.zeros((rawchunks[0],), dtype='double')
+
+                if constrain:
+                    arr_clower = np.zeros((rawchunks[0], len(cweights)), dtype='int16')
+                    arr_cupper = arr_clower.copy()
 
                 # Create weights array
                 wts = arr_raw.copy()
@@ -490,7 +526,12 @@ class ModisSmoothH5(object):
 
                     if map_index.size == 0:
                         continue #no data points, skipping to next block
+
                     arr_sgrid[...] = smt_sgrid[br:br+rawchunks[0]]
+
+                    if constrain:
+                        arr_clower[...] = smt_clower[br:br+rawchunks[0], constraint_ix]
+                        arr_cupper[...] = smt_cupper[br:br+rawchunks[0], constraint_ix]
 
                     for ix in map_index:
                         if not p:
@@ -502,8 +543,13 @@ class ModisSmoothH5(object):
                             z2[z2 != nodata] = arr_raw[ix, :]
                             z2[...] = ws2d(y=z2, lmda=0.0001, w=np.array((z2 != nodata)*1, dtype='double'))
                             arr_smooth[ix, :] = z2[dix]
+                            if constrain:
+                                arr_smooth[ix, :] = w_constrain(arr_smooth[ix, :], arr_clower[ix, :], arr_cupper[ix, :], cweights)
                         else:
-                            pass
+                            if constrain:
+                                arr_raw[ix, :] = w_constrain(arr_raw[ix, :], arr_clower[ix, :], arr_cupper[ix, :], cweights)
+                            else:
+                                pass
 
                     # write back data
                     if self.tinterpolate:
@@ -581,8 +627,8 @@ class ModisSmoothH5(object):
 
             if self.nworkers > 1:
                 if self.tinterpolate:
-                    shared_array_smooth = init_shared(smoothchunks[0] * new_dim)
-                    arr_smooth = tonumpyarray(shared_array_smooth)
+                    shared_array_smooth = init_shared(smoothchunks[0] * new_dim, dtype=ctypes.c_double)
+                    arr_smooth = tonumpyarray(shared_array_smooth, dtype=ctypes.c_double)
                     arr_smooth.shape = (smoothchunks[0], new_dim)
                     arr_smooth[...] = nodata
                     vector_daily = dates.getDV(nodata)
@@ -594,7 +640,7 @@ class ModisSmoothH5(object):
                     vector_daily = None
                     shared_array_smooth = None
                     arr_smooth = None
-                shared_array_raw = init_shared(rawchunks[0] * len(self.rawdates_nsmooth))
+                shared_array_raw = init_shared(rawchunks[0] * len(self.rawdates_nsmooth), dtype=ctypes.c_double)
 
                 parameters = init_parameters(rdim=(rawchunks[0], len(self.rawdates_nsmooth)),
                                              sdim=(smoothchunks[0], new_dim),
@@ -605,10 +651,10 @@ class ModisSmoothH5(object):
                                              dix=dix,
                                              srange=srange)
 
-                parameters['shared_array_sgrid'] = init_shared(rawchunks[0])
-                arr_raw = tonumpyarray(shared_array_raw)
+                parameters['shared_array_sgrid'] = init_shared(rawchunks[0], dtype=ctypes.c_double)
+                arr_raw = tonumpyarray(shared_array_raw, dtype=ctypes.c_double)
                 arr_raw.shape = (rawchunks[0], len(self.rawdates_nsmooth))
-                arr_sgrid = tonumpyarray(parameters['shared_array_sgrid'])
+                arr_sgrid = tonumpyarray(parameters['shared_array_sgrid'], dtype=ctypes.c_double)
 
                 pool = mp.Pool(processes=self.nworkers, initializer=init_worker, initargs=(shared_array_raw, parameters))
                 # load raw data
