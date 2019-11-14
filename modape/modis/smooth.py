@@ -370,6 +370,8 @@ class ModisSmoothH5(object):
             mdays = [int(fromjulian(x.decode()).strftime('%m%d')) for x in smt_dates[-len(cweights):]]
             constraint_ix = [list(mdays_set).index(x) for x in mdays]
 
+            if constrain and len(self.rawdates_nsmooth) < len(cweights):
+                raise ValueError('NSMOOTH can\'t be smaller than 10 when CONSTRAIN should be performed!')
 
             # Store run parameters for infotool
             smt_ds.attrs['processingtimestamp'] = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
