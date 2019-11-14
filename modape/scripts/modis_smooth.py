@@ -71,7 +71,7 @@ def run_ws2d_sgrid(h5):
         if not smt_h5.exists:
             smt_h5.create()
 
-        smt_h5.ws2d_sgrid(p=pdict['pvalue'])
+        smt_h5.ws2d_sgrid(p=pdict['pvalue'], constrain=pdict['constrain'])
 
 def run_ws2d_vc(h5):
     """Run smoother with V-curve optimization of s.
@@ -146,6 +146,7 @@ def main():
     parser.add_argument('-p', '--pvalue', help='Value for asymmetric smoothing (float required)', metavar='', type=float, default=0.90)
     parser.add_argument('-d', '--targetdir', help='Target directory for smoothed output', default=os.getcwd(), metavar='')
     parser.add_argument('--startdate', help='Startdate for temporal interpolation (format YYYY-MM-DD or YYYYJJJ)', metavar='')
+    parser.add_argument('--constrain', help='Perform constrain (only for smoothing from S-grid on optimized file!)', action='store_true')
     parser.add_argument('--optv', help='Use V-curve for s value optimization', action='store_true')
     parser.add_argument('--optvp', help='Use asymmetric V-curve for s value optimization', action='store_true')
     parser.add_argument('--parallel-tiles', help='Number of tiles processed in parallel (default = None)', default=1, type=int, metavar='')
@@ -202,7 +203,8 @@ def main():
                                       nupdate=args.nupdate,
                                       targetdir=args.targetdir,
                                       nworkers=args.nworkers,
-                                      startdate=args.startdate)
+                                      startdate=args.startdate,
+                                      constrain=args.constrain)
 
     if not args.quiet:
         print('\n[{}]: Starting modis_smooth.py ... \n'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())))
@@ -363,7 +365,7 @@ def main():
 
                 if not smt_h5.exists:
                     smt_h5.create()
-                smt_h5.ws2d_sgrid(p=args.pvalue)
+                smt_h5.ws2d_sgrid(p=args.pvalue, constrain=args.constrain)
 
             if not args.quiet:
                 print('[{}]: Done.'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())))
