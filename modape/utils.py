@@ -22,7 +22,7 @@ except ImportError:
     from osgeo import gdal
 
 from cryptography.fernet import Fernet # pylint: disable=import-error
-from modape.whittaker import lag1corr, ws2d, ws2dp, ws2doptv, ws2doptvp # pylint: disable=no-name-in-module
+from modape.whittaker import lag1corr, w_constrain, ws2d, ws2dp, ws2doptv, ws2doptvp # pylint: disable=no-name-in-module
 
 __all__ = [
     'SessionWithHeaderRedirection',
@@ -461,7 +461,7 @@ def date2label(dates, tr):
     return labels
 
 
-def init_shared(ncell):
+def init_shared(ncell, dtype):
     """Create shared value array for smoothing.
 
     Args:
@@ -471,10 +471,10 @@ def init_shared(ncell):
         base of shared array
     """
 
-    shared_array_base = multiprocessing.Array(ctypes.c_double, ncell, lock=False)
+    shared_array_base = multiprocessing.Array(dtype, ncell, lock=False)
     return shared_array_base
 
-def tonumpyarray(shared_array):
+def tonumpyarray(shared_array, dtype):
     """Create numpy array from shared memory.
 
     Args:
@@ -483,7 +483,7 @@ def tonumpyarray(shared_array):
     Returns:
         numpy array
     """
-    nparray = np.frombuffer(shared_array, dtype=ctypes.c_double)
+    nparray = np.frombuffer(shared_array, dtype=dtype)
     assert nparray.base is shared_array
     return nparray
 
@@ -510,20 +510,32 @@ def init_worker(shared_array_, parameters_):
     global arr_raw
     global arr_smooth
     global arr_sgrid
+    global arr_clower
+    global arr_cupper
     global parameters
 
-    arr_raw = tonumpyarray(shared_array_)
+    arr_raw = tonumpyarray(shared_array_, dtype=ctypes.c_double)
     parameters = parameters_
     arr_raw.shape = parameters['rdim']
     try:
-        arr_sgrid = tonumpyarray(parameters['shared_array_sgrid'])
+        arr_sgrid = tonumpyarray(parameters['shared_array_sgrid'], dtype=ctypes.c_double)
     except (KeyError, AttributeError):
         arr_sgrid = None
     try:
-        arr_smooth = tonumpyarray(parameters['shared_array_smooth'])
+        arr_smooth = tonumpyarray(parameters['shared_array_smooth'], dtype=ctypes.c_double)
         arr_smooth.shape = parameters['sdim']
     except (KeyError, AttributeError):
         arr_smooth = None
+
+    try:
+        arr_clower = tonumpyarray(parameters['shared_array_clower'], dtype=ctypes.c_int16)
+        arr_clower.shape = (-1, len(parameters['cweights']))
+
+        arr_cupper = tonumpyarray(parameters['shared_array_cupper'], dtype=ctypes.c_int16)
+        arr_cupper.shape = (-1, len(parameters['cweights']))
+    except (KeyError, AttributeError):
+        arr_clower = None
+        arr_cupper = None
 
 def execute_ws2d(ix):
     """Execute whittaker smoother with fixed s in worker.
@@ -613,3 +625,16 @@ def execute_ws2d_vc(ix):
                        lmda=0.0001,
                        w=np.array((z2 != parameters['nd'])*1, dtype='double'))
         arr_smooth[ix, :] = z2[parameters['dix']]
+
+
+def execute_w_constraint(ix):
+    """Execute weighted constraint in worker.
+
+    Args:
+        ix: Row index for array
+    """
+
+    if parameters['shared_array_smooth']:
+        arr_smooth[ix, :] = w_constrain(arr_smooth[ix, :], arr_clower[ix, :], arr_cupper[ix, :], parameters['cweights'])
+    else:
+        arr_raw[ix, :] = w_constrain(arr_raw[ix, :], arr_clower[ix, :], arr_cupper[ix, :], parameters['cweights'])
