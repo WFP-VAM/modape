@@ -141,7 +141,7 @@ class ModisSmoothH5(object):
                 # lower constraint
                 h5f.create_dataset('clower',
                                    shape=(rawshape[0], dates.nmdays),
-                                   dtype='Int16', maxshape=(rawshape[0], dates.nmdays),
+                                   dtype='Int16', maxshape=(rawshape[0], None),
                                    chunks=(rawchunks[0], 10),
                                    compression=cmpr,
                                    fillvalue=rnd)
@@ -149,7 +149,7 @@ class ModisSmoothH5(object):
                 # upper constraint
                 h5f.create_dataset('cupper',
                                    shape=(rawshape[0], dates.nmdays),
-                                   dtype='Int16', maxshape=(rawshape[0], dates.nmdays),
+                                   dtype='Int16', maxshape=(rawshape[0], None),
                                    chunks=(rawchunks[0], 10),
                                    compression=cmpr,
                                    fillvalue=rnd)
