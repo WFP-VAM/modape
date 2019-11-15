@@ -366,12 +366,18 @@ class ModisSmoothH5(object):
             # constraint indices and weights
             cweights = array('f', np.arange(0.9, -0.1, -0.1))
 
-            mdays_set = smt_ds.attrs['mdays_set']
-            mdays = [int(fromjulian(x.decode()).strftime('%m%d')) for x in smt_dates[-len(cweights):]]
-            constraint_ix = [list(mdays_set).index(x) for x in mdays]
+            if constrain:
 
-            if constrain and len(self.rawdates_nsmooth) < len(cweights):
-                raise ValueError('NSMOOTH can\'t be smaller than 10 when CONSTRAIN should be performed!')
+                if len(self.rawdates_nsmooth) < len(cweights):
+                    raise ValueError('NSMOOTH can\'t be smaller than 10 when CONSTRAIN should be performed!')
+
+                try:
+                    mdays_set = smt_ds.attrs['mdays_set']
+                    mdays = [int(fromjulian(x.decode()).strftime('%m%d')) for x in smt_dates[-len(cweights):]]
+                    constraint_ix = [list(mdays_set).index(x) for x in mdays]
+                except ValueError:
+                    raise ValueError('Constraints not for all dates in timeseries available! Please run smoother without --constrain\
+                                     or re-initialize smooth HDF5 file with --optvp!')
 
             # Store run parameters for infotool
             smt_ds.attrs['processingtimestamp'] = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
@@ -562,7 +568,7 @@ class ModisSmoothH5(object):
                         for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(self.array_offset, arr_raw.shape[1], smoothchunks[1])):
                             smt_ds[br:br+rawchunks[0], bcs:bcs+smoothchunks[1]] = arr_raw[:, bcr:bcr+smoothchunks[1]]
 
-    def ws2d_vc(self, srange, p=None): #pylint: disable=R0912
+    def ws2d_vc(self, srange, p=None):
         """Apply whittaker smoother V-curve optimization of s.
 
         Optionally, p value can be specified to use asymmetric smoothing.
