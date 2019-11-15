@@ -678,6 +678,12 @@ class ModisSmoothH5(object):
                         cupper = smth5.get('cupper')
                         clower = smth5.get('clower')
 
+                        if dates.nmdays > cupper.shape[1]:
+                            cupper.resize((cupper.shape[0], dates.nmdays))
+
+                        if dates.nmdays > clower.shape[1]:
+                            clower.resize((clower.shape[0], dates.nmdays))
+
                         if self.tinterpolate:
                             smooth_view = arr_smooth.view()
                         else:
