@@ -371,35 +371,25 @@ class ModisSmoothH5(object):
                 if len(self.rawdates_nsmooth) < len(cweights):
                     raise ValueError('NSMOOTH can\'t be smaller than 10 when CONSTRAIN should be performed!')
 
-                try:
-                    mdays_set = smt_ds.attrs['mdays_set']
-                    mdays = [int(fromjulian(x.decode()).strftime('%m%d')) for x in smt_dates[-len(cweights):]]
-                    constraint_ix = [list(mdays_set).index(x) for x in mdays]
-                except ValueError:
-                    raise ValueError('Constraints not for all dates in timeseries available! Please run smoother without --constrain\
-                                     or re-initialize smooth HDF5 file with --optvp!')
-
-            # Store run parameters for infotool
-            smt_ds.attrs['processingtimestamp'] = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
-
-            if p:
-                smt_ds.attrs['lastrun'] = 'fixed s from grid with p = {} - constraining: {}'.format(p, constrain)
-                smt_ds.attrs['pvalue'] = p
-            else:
-                smt_ds.attrs['lastrun'] = 'fixed s from grid - constraining: {}'.format(constrain)
-                try:
-                    del smt_ds.attrs['pvalue']
-                except KeyError:
-                    pass
-
 
             dates = DateHelper(rawdates=raw_dates_all,
                                rtres=rtres,
                                stres=self.temporalresolution,
                                start=self.startdate)
 
-
             dix = dates.getDIX()[-self.nupdate:]
+
+            if constrain:
+
+                try:
+                    mdays_set = smt_ds.attrs['mdays_set']
+                    mdays = [int(fromjulian(x).strftime('%m%d')) for x in dates.target[-len(cweights):]]
+                    constraint_ix = [list(mdays_set).index(x) for x in mdays]
+                    constraint_ix_sorted = constraint_ix.copy()
+                    constraint_ix_sorted.sort()
+                except ValueError:
+                    raise ValueError('Constraints not for all dates in timeseries available! Please run smoother without --constrain\
+                                     or re-initialize smooth HDF5 file with --optvp!')
 
             # Resize if date list is bigger than shape of smoothed data
             if len(dates.target) > smoothshape[1]:
@@ -418,6 +408,19 @@ class ModisSmoothH5(object):
                 smoothoffset = [x.decode() for x in smt_dates[...]].index(dates.target[0])
 
             new_dim = smoothshape[1] - smoothoffset
+
+            # Store run parameters for infotool
+            smt_ds.attrs['processingtimestamp'] = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
+
+            if p:
+                smt_ds.attrs['lastrun'] = 'fixed s from grid with p = {} - constraining: {}'.format(p, constrain)
+                smt_ds.attrs['pvalue'] = p
+            else:
+                smt_ds.attrs['lastrun'] = 'fixed s from grid - constraining: {}'.format(constrain)
+                try:
+                    del smt_ds.attrs['pvalue']
+                except KeyError:
+                    pass
 
             if self.nworkers > 1:
                 if self.tinterpolate:
@@ -480,8 +483,11 @@ class ModisSmoothH5(object):
 
 
                     if constrain:
-                        arr_clower[...] = smt_clower[br:br+rawchunks[0], constraint_ix]
-                        arr_cupper[...] = smt_cupper[br:br+rawchunks[0], constraint_ix]
+                        arr_clower[...] = smt_clower[br:br+rawchunks[0], constraint_ix_sorted]
+                        arr_clower[...] = arr_clower[:, np.argsort(constraint_ix)]
+
+                        arr_cupper[...] = smt_cupper[br:br+rawchunks[0], constraint_ix_sorted]
+                        arr_cupper[...] = arr_cupper[:, np.argsort(constraint_ix)]
 
                         _ = pool.map(execute_w_constraint, map_index)
 
