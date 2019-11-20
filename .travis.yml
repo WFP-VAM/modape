@@ -24,13 +24,13 @@ addons:
 
 python:
   - '2.7'
-  - '3.5'
+  - '3.6'
 
 virtualenv:
   system_site_packages: true
 
 install:
-  - pip install --ignore-installed numpy==1.16.1 cython pathlib
+  - pip install --ignore-installed numpy==1.16.1 xarray==0.14.0 cython pathlib
   - pip install .
 
 script:
