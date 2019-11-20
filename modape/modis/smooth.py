@@ -363,13 +363,20 @@ class ModisSmoothH5(object):
             self.temporalresolution = smt_ds.attrs['temporalresolution'].item()
             tshift = raw_ds.attrs['tshift'].item()
 
-            # constraint indices and weights
-            cweights = array('f', np.arange(0.9, -0.1, -0.1))
+            # if constrain datasets are not available, don't perform constrain
+            if not smt_clower and smt_cupper:
+                constrain = False
 
             if constrain:
 
+                # constrain weights
+                cweights = array('f', np.arange(0.9, -0.1, -0.1))
+
                 if len(self.rawdates_nsmooth) < len(cweights):
                     raise ValueError('NSMOOTH can\'t be smaller than 10 when CONSTRAIN should be performed!')
+
+            else:
+                cweights = None
 
 
             dates = DateHelper(rawdates=raw_dates_all,
@@ -592,6 +599,8 @@ class ModisSmoothH5(object):
             smt_ds = smth5.get('data')
             smt_dates = smth5.get('dates')
             smt_sgrid = smth5.get('sgrid')
+            smt_cupper = smth5.get('cupper')
+            smt_clower = smth5.get('clower')
             rawshape = raw_ds.shape
             rawchunks = raw_ds.chunks
             smoothshape = smt_ds.shape
@@ -683,18 +692,14 @@ class ModisSmoothH5(object):
 
                     _ = pool.map(execute_ws2d_vc, map_index)
 
+                    # create constraints (only for full timeseries and if datasets are available)
+                    if self.nsmooth == 0 and smt_clower and smt_cupper:
 
-                    # create constraints (only for full timeseries)
-                    if self.nsmooth == 0:
+                        if dates.nmdays > smt_cupper.shape[1]:
+                            smt_cupper.resize((smt_cupper.shape[0], dates.nmdays))
 
-                        cupper = smth5.get('cupper')
-                        clower = smth5.get('clower')
-
-                        if dates.nmdays > cupper.shape[1]:
-                            cupper.resize((cupper.shape[0], dates.nmdays))
-
-                        if dates.nmdays > clower.shape[1]:
-                            clower.resize((clower.shape[0], dates.nmdays))
+                        if dates.nmdays > smt_clower.shape[1]:
+                            smt_clower.resize((smt_clower.shape[0], dates.nmdays))
 
                         if self.tinterpolate:
                             smooth_view = arr_smooth.view()
@@ -731,7 +736,7 @@ class ModisSmoothH5(object):
                         # flip for writing
                         constraint_view = np.moveaxis(constraint, 0, 2).reshape(constraint.shape[1]*constraint.shape[2], constraint.shape[0])
 
-                        cupper[br:br+smoothchunks[0], :] = constraint_view[...]
+                        smt_cupper[br:br+smoothchunks[0], :] = constraint_view[...]
 
                         del constraint, constraint_view
 
@@ -740,7 +745,7 @@ class ModisSmoothH5(object):
                         # flip for writing
                         constraint_view = np.moveaxis(constraint, 0, 2).reshape(constraint.shape[1]*constraint.shape[2], constraint.shape[0])
 
-                        clower[br:br+smoothchunks[0], :] = constraint_view[...]
+                        smt_clower[br:br+smoothchunks[0], :] = constraint_view[...]
 
                         del constraint, constraint_view, smooth_xarr
 
