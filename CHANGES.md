@@ -3,6 +3,14 @@
 - ## v 0.4
   - #### v 0.4.0:
     - New Dockerfile based on Ubuntu bionic
+    - `modape_version` executable to check version of modape
+    - Added dependency `xarray`, removed dependency `progress`
+    - Add option for "constrained" smoothing for MODIS HDF5 tiles
+      - Constrains will be calculated and stored when `--optvp` flag is used in `modis_smooth` (**smooth HDF5 files from previous versions have to be replaced!**)
+      - Constrains can be used in "update" mode, when smoothing parameter S is read from grid,
+        by passing the `--constrain` flag
+    - improved tests
+
 
 - ## v 0.3
   - #### v 0.3.0:
