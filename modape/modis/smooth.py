@@ -727,6 +727,8 @@ class ModisSmoothH5(object):
 
                         smooth_diff_mean = smooth_xarr.diff('time').groupby('time').mean()
                         smooth_diff_sdev = smooth_xarr.diff('time').groupby('time').std()
+                        # enforce min sdev of one NDVI value
+                        smooth_diff_sdev = smooth_diff_sdev.where(smooth_diff_sdev.data > 100, 100)
 
                         # check dimensions are correct
                         assert smooth_diff_mean.data.shape[0] == smooth_diff_sdev.data.shape[0] == dates.nmdays
