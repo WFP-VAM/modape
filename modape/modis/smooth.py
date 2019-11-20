@@ -18,6 +18,7 @@ try:
 except ImportError:
     from pathlib import Path
 import time
+import warnings
 
 import numpy as np
 import h5py # pylint: disable=import-error
@@ -394,6 +395,11 @@ class ModisSmoothH5(object):
                     constraint_ix = [list(mdays_set).index(x) for x in mdays]
                     constraint_ix_sorted = constraint_ix.copy()
                     constraint_ix_sorted.sort()
+
+                except KeyError:
+                    constrain = False
+                    warnings.warn('Error reading constrain information from dataset. Continuing without constrain!')
+
                 except ValueError:
                     raise ValueError('Constraints not for all dates in timeseries available! Please run smoother without --constrain\
                                      or re-initialize smooth HDF5 file with --optvp!')
@@ -693,63 +699,68 @@ class ModisSmoothH5(object):
                     _ = pool.map(execute_ws2d_vc, map_index)
 
                     # create constraints (only for full timeseries and if datasets are available)
-                    if self.nsmooth == 0 and smt_clower and smt_cupper:
+                    if self.nsmooth == 0:
 
-                        if dates.nmdays > smt_cupper.shape[1]:
-                            smt_cupper.resize((smt_cupper.shape[0], dates.nmdays))
+                        if smt_clower and smt_cupper:
 
-                        if dates.nmdays > smt_clower.shape[1]:
-                            smt_clower.resize((smt_clower.shape[0], dates.nmdays))
+                            if dates.nmdays > smt_cupper.shape[1]:
+                                smt_cupper.resize((smt_cupper.shape[0], dates.nmdays))
 
-                        if self.tinterpolate:
-                            smooth_view = arr_smooth.view()
+                            if dates.nmdays > smt_clower.shape[1]:
+                                smt_clower.resize((smt_clower.shape[0], dates.nmdays))
+
+                            if self.tinterpolate:
+                                smooth_view = arr_smooth.view()
+                            else:
+                                smooth_view = arr_raw.view()
+
+                            smooth_view.shape = (-1, ncols, dates.target_length)
+
+
+                            col_ix = np.arange(smooth_view.shape[1])
+                            row_ix = np.arange(smooth_view.shape[0])
+
+                            smooth_xarr = xr.Dataset({'data':(['x', 'y', 'time'], smooth_view)},
+                                                     coords={'cols': (['x', 'y'], np.repeat([col_ix], smooth_view.shape[0], axis=0)),
+                                                             'rows': (['x', 'y'], np.repeat([row_ix], smooth_view.shape[1], axis=1).reshape(smooth_view.shape[0], -1)),
+                                                             'time': [int(fromjulian(x).strftime('%m%d')) for x in  dates.target]})
+
+                            # no copy
+                            if self.tinterpolate:
+                                assert smooth_view.base is arr_smooth
+                                assert smooth_xarr.data.values.base is arr_smooth
+                            else:
+                                assert smooth_view.base is arr_raw
+                                assert smooth_xarr.data.values.base is arr_raw
+
+                            smooth_diff_mean = smooth_xarr.diff('time').groupby('time').mean()
+                            smooth_diff_sdev = smooth_xarr.diff('time').groupby('time').std()
+                            # enforce min sdev of one NDVI value
+                            smooth_diff_sdev = smooth_diff_sdev.where(smooth_diff_sdev.data > 100, 100)
+
+                            # check dimensions are correct
+                            assert smooth_diff_mean.data.shape[0] == smooth_diff_sdev.data.shape[0] == dates.nmdays
+
+                            constraint = (smooth_diff_mean + smooth_diff_sdev).data.values
+
+                            # flip for writing
+                            constraint_view = np.moveaxis(constraint, 0, 2).reshape(constraint.shape[1]*constraint.shape[2], constraint.shape[0])
+
+                            smt_cupper[br:br+smoothchunks[0], :] = constraint_view[...]
+
+                            del constraint, constraint_view
+
+                            constraint = (smooth_diff_mean - smooth_diff_sdev).data.values
+
+                            # flip for writing
+                            constraint_view = np.moveaxis(constraint, 0, 2).reshape(constraint.shape[1]*constraint.shape[2], constraint.shape[0])
+
+                            smt_clower[br:br+smoothchunks[0], :] = constraint_view[...]
+
+                            del constraint, constraint_view, smooth_xarr
+
                         else:
-                            smooth_view = arr_raw.view()
-
-                        smooth_view.shape = (-1, ncols, dates.target_length)
-
-
-                        col_ix = np.arange(smooth_view.shape[1])
-                        row_ix = np.arange(smooth_view.shape[0])
-
-                        smooth_xarr = xr.Dataset({'data':(['x', 'y', 'time'], smooth_view)},
-                                                 coords={'cols': (['x', 'y'], np.repeat([col_ix], smooth_view.shape[0], axis=0)),
-                                                         'rows': (['x', 'y'], np.repeat([row_ix], smooth_view.shape[1], axis=1).reshape(smooth_view.shape[0], -1)),
-                                                         'time': [int(fromjulian(x).strftime('%m%d')) for x in  dates.target]})
-
-                        # no copy
-                        if self.tinterpolate:
-                            assert smooth_view.base is arr_smooth
-                            assert smooth_xarr.data.values.base is arr_smooth
-                        else:
-                            assert smooth_view.base is arr_raw
-                            assert smooth_xarr.data.values.base is arr_raw
-
-                        smooth_diff_mean = smooth_xarr.diff('time').groupby('time').mean()
-                        smooth_diff_sdev = smooth_xarr.diff('time').groupby('time').std()
-                        # enforce min sdev of one NDVI value
-                        smooth_diff_sdev = smooth_diff_sdev.where(smooth_diff_sdev.data > 100, 100)
-
-                        # check dimensions are correct
-                        assert smooth_diff_mean.data.shape[0] == smooth_diff_sdev.data.shape[0] == dates.nmdays
-
-                        constraint = (smooth_diff_mean + smooth_diff_sdev).data.values
-
-                        # flip for writing
-                        constraint_view = np.moveaxis(constraint, 0, 2).reshape(constraint.shape[1]*constraint.shape[2], constraint.shape[0])
-
-                        smt_cupper[br:br+smoothchunks[0], :] = constraint_view[...]
-
-                        del constraint, constraint_view
-
-                        constraint = (smooth_diff_mean - smooth_diff_sdev).data.values
-
-                        # flip for writing
-                        constraint_view = np.moveaxis(constraint, 0, 2).reshape(constraint.shape[1]*constraint.shape[2], constraint.shape[0])
-
-                        smt_clower[br:br+smoothchunks[0], :] = constraint_view[...]
-
-                        del constraint, constraint_view, smooth_xarr
+                            warnings.warn('Error reading constrain information from dataset. Won\'t create/update constrains!')
 
                     else:
                         # constraints won't be created/updated if
