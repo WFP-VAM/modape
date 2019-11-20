@@ -606,17 +606,22 @@ def execute_ws2d_vc(ix):
                           int(parameters['nd']))
             if lc > 0.5:
                 srange = np.linspace(-2, 1, 16)
+                vp = 1
             elif lc <= 0.5:
                 srange = np.linspace(0, 3, 16)
+                vp = 2
             else:
                 srange = np.linspace(-1, 1, 11)
+                vp = 5
         else:
             srange = parameters['srange']
+            vp = 5
 
         arr_raw[ix, :], arr_sgrid[ix] = ws2doptvp(y=arr_raw[ix, :],
                                                   w=np.array((arr_raw[ix, :] != parameters['nd'])*1, dtype='double'),
                                                   llas=array('d', srange),
-                                                  p=parameters['p'])
+                                                  p=parameters['p'],
+                                                  vprec=vp)
 
     if parameters['shared_array_smooth']:
         z2 = parameters['vec_dly'].copy()

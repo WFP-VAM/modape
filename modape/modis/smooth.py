@@ -799,22 +799,28 @@ class ModisSmoothH5(object):
                     if map_index.size == 0:
                         continue #no data points, skipping to next block
 
+                    #pylint: disable=C0103
                     for ix in map_index:
                         if not isinstance(srange, np.ndarray):
                             lag_correlation = lag1corr(arr_raw[ix, :-1], arr_raw[ix, 1:], nodata)
                             if lag_correlation > 0.5:
                                 sr = np.linspace(-2, 1.0, 16)
+                                vp = 1
                             elif lag_correlation <= 0.5:
                                 sr = np.linspace(0, 3.0, 16)
+                                vp = 2
                             else:
                                 sr = np.linspace(-1, 1, 11)
+                                vp = 5
                         else:
                             sr = srange
+                            vp = 5
                         if p:
                             arr_raw[ix, :], arr_sgrid[ix] = ws2doptvp(y=arr_raw[ix, :],
                                                                       w=np.array((arr_raw[ix, :] != nodata)*1, dtype='double'),
                                                                       llas=array('d', sr),
-                                                                      p=p)
+                                                                      p=p,
+                                                                      vprec=vp)
                         else:
                             arr_raw[ix, :], arr_sgrid[ix] = ws2doptv(y=arr_raw[ix, :],
                                                                      w=np.array((arr_raw[ix, :] != nodata)*1, dtype='double'),
