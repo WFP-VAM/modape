@@ -1225,6 +1225,19 @@ typedef npy_clongdouble __pyx_t_5numpy_clongdouble_t;
  * cdef inline object PyArray_MultiIterNew1(a):
  */
 typedef npy_cdouble __pyx_t_5numpy_complex_t;
+struct __pyx_opt_args_6modape_9whittaker_ws2doptvp;
+
+/* "modape/_whittaker.pyx":336
+ * 
+ * 
+ * cpdef ws2doptvp(np.ndarray[double_t] y, np.ndarray[double_t] w, array[double] llas, float p, int vprec=5):             # <<<<<<<<<<<<<<
+ *     """Whittaker smoother with asymmetric V-curve optimization of lambda (S).
+ * 
+ */
+struct __pyx_opt_args_6modape_9whittaker_ws2doptvp {
+  int __pyx_n;
+  int vprec;
+};
 
 /* "View.MemoryView":105
  * 
@@ -2295,7 +2308,7 @@ static PyObject *__pyx_f_6modape_9whittaker_w_constrain(PyArrayObject *, PyArray
 static PyObject *__pyx_f_6modape_9whittaker__ws2d(PyArrayObject *, double, arrayobject *); /*proto*/
 static PyObject *__pyx_f_6modape_9whittaker_ws2dp(PyArrayObject *, double, PyArrayObject *, double, int __pyx_skip_dispatch); /*proto*/
 static PyObject *__pyx_f_6modape_9whittaker_ws2doptv(PyArrayObject *, PyArrayObject *, arrayobject *, int __pyx_skip_dispatch); /*proto*/
-static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *, PyArrayObject *, arrayobject *, double, int __pyx_skip_dispatch); /*proto*/
+static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *, PyArrayObject *, arrayobject *, float, int __pyx_skip_dispatch, struct __pyx_opt_args_6modape_9whittaker_ws2doptvp *__pyx_optional_args); /*proto*/
 static struct __pyx_array_obj *__pyx_array_new(PyObject *, Py_ssize_t, char *, char *, char *); /*proto*/
 static void *__pyx_align_pointer(void *, size_t); /*proto*/
 static PyObject *__pyx_memoryview_new(PyObject *, int, int, __Pyx_TypeInfo *); /*proto*/
@@ -2339,6 +2352,7 @@ int __pyx_module_is_main_modape__whittaker = 0;
 
 /* Implementation of 'modape.whittaker' */
 static PyObject *__pyx_builtin_range;
+static PyObject *__pyx_builtin_round;
 static PyObject *__pyx_builtin_MemoryError;
 static PyObject *__pyx_builtin_ValueError;
 static PyObject *__pyx_builtin_RuntimeError;
@@ -2385,8 +2399,10 @@ static const char __pyx_k_error[] = "error";
 static const char __pyx_k_flags[] = "flags";
 static const char __pyx_k_numpy[] = "numpy";
 static const char __pyx_k_range[] = "range";
+static const char __pyx_k_round[] = "round";
 static const char __pyx_k_shape[] = "shape";
 static const char __pyx_k_start[] = "start";
+static const char __pyx_k_vprec[] = "vprec";
 static const char __pyx_k_ws2dp[] = "ws2dp";
 static const char __pyx_k_encode[] = "encode";
 static const char __pyx_k_format[] = "format";
@@ -2555,6 +2571,7 @@ static PyObject *__pyx_n_s_range;
 static PyObject *__pyx_n_s_reduce;
 static PyObject *__pyx_n_s_reduce_cython;
 static PyObject *__pyx_n_s_reduce_ex;
+static PyObject *__pyx_n_s_round;
 static PyObject *__pyx_n_s_setstate;
 static PyObject *__pyx_n_s_setstate_cython;
 static PyObject *__pyx_n_s_shape;
@@ -2573,6 +2590,7 @@ static PyObject *__pyx_kp_s_unable_to_allocate_shape_and_str;
 static PyObject *__pyx_kp_u_unknown_dtype_code_in_numpy_pxd;
 static PyObject *__pyx_n_s_unpack;
 static PyObject *__pyx_n_s_update;
+static PyObject *__pyx_n_s_vprec;
 static PyObject *__pyx_n_s_w;
 static PyObject *__pyx_n_s_w_constrain;
 static PyObject *__pyx_n_s_ws2d;
@@ -2586,7 +2604,7 @@ static PyObject *__pyx_pf_6modape_9whittaker_2ws2d(CYTHON_UNUSED PyObject *__pyx
 static PyObject *__pyx_pf_6modape_9whittaker_4w_constrain(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_z, PyArrayObject *__pyx_v_cl, PyArrayObject *__pyx_v_cu, __Pyx_memviewslice __pyx_v_w); /* proto */
 static PyObject *__pyx_pf_6modape_9whittaker_6ws2dp(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_y, double __pyx_v_lmda, PyArrayObject *__pyx_v_w, double __pyx_v_p); /* proto */
 static PyObject *__pyx_pf_6modape_9whittaker_8ws2doptv(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_y, PyArrayObject *__pyx_v_w, arrayobject *__pyx_v_llas); /* proto */
-static PyObject *__pyx_pf_6modape_9whittaker_10ws2doptvp(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_y, PyArrayObject *__pyx_v_w, arrayobject *__pyx_v_llas, double __pyx_v_p); /* proto */
+static PyObject *__pyx_pf_6modape_9whittaker_10ws2doptvp(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_y, PyArrayObject *__pyx_v_w, arrayobject *__pyx_v_llas, float __pyx_v_p, int __pyx_v_vprec); /* proto */
 static int __pyx_pf_7cpython_5array_5array___getbuffer__(arrayobject *__pyx_v_self, Py_buffer *__pyx_v_info, CYTHON_UNUSED int __pyx_v_flags); /* proto */
 static void __pyx_pf_7cpython_5array_5array_2__releasebuffer__(CYTHON_UNUSED arrayobject *__pyx_v_self, Py_buffer *__pyx_v_info); /* proto */
 static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, Py_buffer *__pyx_v_info, int __pyx_v_flags); /* proto */
@@ -6518,13 +6536,14 @@ static PyObject *__pyx_pf_6modape_9whittaker_8ws2doptv(CYTHON_UNUSED PyObject *_
 /* "modape/_whittaker.pyx":336
  * 
  * 
- * cpdef ws2doptvp(np.ndarray[double_t] y, np.ndarray[double_t] w, array[double] llas, double p):             # <<<<<<<<<<<<<<
+ * cpdef ws2doptvp(np.ndarray[double_t] y, np.ndarray[double_t] w, array[double] llas, float p, int vprec=5):             # <<<<<<<<<<<<<<
  *     """Whittaker smoother with asymmetric V-curve optimization of lambda (S).
  * 
  */
 
 static PyObject *__pyx_pw_6modape_9whittaker_11ws2doptvp(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
-static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, PyArrayObject *__pyx_v_w, arrayobject *__pyx_v_llas, double __pyx_v_p, CYTHON_UNUSED int __pyx_skip_dispatch) {
+static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, PyArrayObject *__pyx_v_w, arrayobject *__pyx_v_llas, float __pyx_v_p, CYTHON_UNUSED int __pyx_skip_dispatch, struct __pyx_opt_args_6modape_9whittaker_ws2doptvp *__pyx_optional_args) {
+  int __pyx_v_vprec = ((int)5);
   arrayobject *__pyx_v_template = 0;
   arrayobject *__pyx_v_fits = 0;
   arrayobject *__pyx_v_pens = 0;
@@ -6585,9 +6604,16 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
   Py_ssize_t __pyx_t_16;
   Py_ssize_t __pyx_t_17;
   Py_ssize_t __pyx_t_18;
-  Py_ssize_t __pyx_t_19;
-  Py_ssize_t __pyx_t_20;
+  PyObject *__pyx_t_19 = NULL;
+  double __pyx_t_20;
+  Py_ssize_t __pyx_t_21;
+  Py_ssize_t __pyx_t_22;
   __Pyx_RefNannySetupContext("ws2doptvp", 0);
+  if (__pyx_optional_args) {
+    if (__pyx_optional_args->__pyx_n > 0) {
+      __pyx_v_vprec = __pyx_optional_args->vprec;
+    }
+  }
   __pyx_pybuffer_y.pybuffer.buf = NULL;
   __pyx_pybuffer_y.refcount = 0;
   __pyx_pybuffernd_y.data = NULL;
@@ -6616,16 +6642,16 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
   }
   __pyx_pybuffernd_llas.diminfo[0].strides = __pyx_pybuffernd_llas.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_llas.diminfo[0].shape = __pyx_pybuffernd_llas.rcbuffer->pybuffer.shape[0]; __pyx_pybuffernd_llas.diminfo[0].suboffsets = __pyx_pybuffernd_llas.rcbuffer->pybuffer.suboffsets[0];
 
-  /* "modape/_whittaker.pyx":348
+  /* "modape/_whittaker.pyx":349
  *         Smoothed time-series array z and optimized lambda (S) value lopt
  *     """
  *     cdef array template = array('d', [])             # <<<<<<<<<<<<<<
  *     cdef array fits, pens, diff1, lamids, v, z
  *     cdef int m, m1, m2, nl, nl1, lix, i, j, k
  */
-  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 348, __pyx_L1_error)
+  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 349, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = PyTuple_New(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 348, __pyx_L1_error)
+  __pyx_t_2 = PyTuple_New(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 349, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_INCREF(__pyx_n_s_d);
   __Pyx_GIVEREF(__pyx_n_s_d);
@@ -6633,13 +6659,13 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
   __Pyx_GIVEREF(__pyx_t_1);
   PyTuple_SET_ITEM(__pyx_t_2, 1, __pyx_t_1);
   __pyx_t_1 = 0;
-  __pyx_t_1 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_7cpython_5array_array), __pyx_t_2, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 348, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_7cpython_5array_array), __pyx_t_2, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 349, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_v_template = ((arrayobject *)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "modape/_whittaker.pyx":353
+  /* "modape/_whittaker.pyx":354
  *     cdef double w_tmp, y_tmp, z_tmp, z2, llastep, fit1, fit2, pen1, pen2, l, l1, l2, vmin, lopt, p1
  * 
  *     m = y.shape[0]             # <<<<<<<<<<<<<<
@@ -6648,7 +6674,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
  */
   __pyx_v_m = (__pyx_v_y->dimensions[0]);
 
-  /* "modape/_whittaker.pyx":354
+  /* "modape/_whittaker.pyx":355
  * 
  *     m = y.shape[0]
  *     m1 = m - 1             # <<<<<<<<<<<<<<
@@ -6657,7 +6683,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
  */
   __pyx_v_m1 = (__pyx_v_m - 1);
 
-  /* "modape/_whittaker.pyx":355
+  /* "modape/_whittaker.pyx":356
  *     m = y.shape[0]
  *     m1 = m - 1
  *     m2 = m - 2             # <<<<<<<<<<<<<<
@@ -6666,7 +6692,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
  */
   __pyx_v_m2 = (__pyx_v_m - 2);
 
-  /* "modape/_whittaker.pyx":356
+  /* "modape/_whittaker.pyx":357
  *     m1 = m - 1
  *     m2 = m - 2
  *     nl = len(llas)             # <<<<<<<<<<<<<<
@@ -6675,12 +6701,12 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
  */
   if (unlikely(((PyObject *)__pyx_v_llas) == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
-    __PYX_ERR(0, 356, __pyx_L1_error)
+    __PYX_ERR(0, 357, __pyx_L1_error)
   }
-  __pyx_t_3 = Py_SIZE(((PyObject *)__pyx_v_llas)); if (unlikely(__pyx_t_3 == ((Py_ssize_t)-1))) __PYX_ERR(0, 356, __pyx_L1_error)
+  __pyx_t_3 = Py_SIZE(((PyObject *)__pyx_v_llas)); if (unlikely(__pyx_t_3 == ((Py_ssize_t)-1))) __PYX_ERR(0, 357, __pyx_L1_error)
   __pyx_v_nl = __pyx_t_3;
 
-  /* "modape/_whittaker.pyx":357
+  /* "modape/_whittaker.pyx":358
  *     m2 = m - 2
  *     nl = len(llas)
  *     nl1 = nl - 1             # <<<<<<<<<<<<<<
@@ -6689,7 +6715,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
  */
   __pyx_v_nl1 = (__pyx_v_nl - 1);
 
-  /* "modape/_whittaker.pyx":358
+  /* "modape/_whittaker.pyx":359
  *     nl = len(llas)
  *     nl1 = nl - 1
  *     i = 0             # <<<<<<<<<<<<<<
@@ -6698,7 +6724,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
  */
   __pyx_v_i = 0;
 
-  /* "modape/_whittaker.pyx":359
+  /* "modape/_whittaker.pyx":360
  *     nl1 = nl - 1
  *     i = 0
  *     k = 0             # <<<<<<<<<<<<<<
@@ -6707,7 +6733,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
  */
   __pyx_v_k = 0;
 
-  /* "modape/_whittaker.pyx":360
+  /* "modape/_whittaker.pyx":361
  *     i = 0
  *     k = 0
  *     j = 0             # <<<<<<<<<<<<<<
@@ -6716,7 +6742,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
  */
   __pyx_v_j = 0;
 
-  /* "modape/_whittaker.pyx":361
+  /* "modape/_whittaker.pyx":362
  *     k = 0
  *     j = 0
  *     p1 = 1-p             # <<<<<<<<<<<<<<
@@ -6725,16 +6751,16 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
  */
   __pyx_v_p1 = (1.0 - __pyx_v_p);
 
-  /* "modape/_whittaker.pyx":363
+  /* "modape/_whittaker.pyx":364
  *     p1 = 1-p
  * 
  *     template = array('d', [])             # <<<<<<<<<<<<<<
  *     fits = clone(template, nl, True)
  *     pens = clone(template, nl, True)
  */
-  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 363, __pyx_L1_error)
+  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 364, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = PyTuple_New(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 363, __pyx_L1_error)
+  __pyx_t_2 = PyTuple_New(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 364, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_INCREF(__pyx_n_s_d);
   __Pyx_GIVEREF(__pyx_n_s_d);
@@ -6742,121 +6768,121 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
   __Pyx_GIVEREF(__pyx_t_1);
   PyTuple_SET_ITEM(__pyx_t_2, 1, __pyx_t_1);
   __pyx_t_1 = 0;
-  __pyx_t_1 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_7cpython_5array_array), __pyx_t_2, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 363, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_7cpython_5array_array), __pyx_t_2, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 364, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __Pyx_DECREF_SET(__pyx_v_template, ((arrayobject *)__pyx_t_1));
   __pyx_t_1 = 0;
 
-  /* "modape/_whittaker.pyx":364
+  /* "modape/_whittaker.pyx":365
  * 
  *     template = array('d', [])
  *     fits = clone(template, nl, True)             # <<<<<<<<<<<<<<
  *     pens = clone(template, nl, True)
  *     z = clone(template, m, True)
  */
-  __pyx_t_1 = ((PyObject *)__pyx_f_7cpython_5array_clone(__pyx_v_template, __pyx_v_nl, 1)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 364, __pyx_L1_error)
+  __pyx_t_1 = ((PyObject *)__pyx_f_7cpython_5array_clone(__pyx_v_template, __pyx_v_nl, 1)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 365, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_fits = ((arrayobject *)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "modape/_whittaker.pyx":365
+  /* "modape/_whittaker.pyx":366
  *     template = array('d', [])
  *     fits = clone(template, nl, True)
  *     pens = clone(template, nl, True)             # <<<<<<<<<<<<<<
  *     z = clone(template, m, True)
  *     znew = clone(template, m, True)
  */
-  __pyx_t_1 = ((PyObject *)__pyx_f_7cpython_5array_clone(__pyx_v_template, __pyx_v_nl, 1)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 365, __pyx_L1_error)
+  __pyx_t_1 = ((PyObject *)__pyx_f_7cpython_5array_clone(__pyx_v_template, __pyx_v_nl, 1)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 366, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_pens = ((arrayobject *)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "modape/_whittaker.pyx":366
+  /* "modape/_whittaker.pyx":367
  *     fits = clone(template, nl, True)
  *     pens = clone(template, nl, True)
  *     z = clone(template, m, True)             # <<<<<<<<<<<<<<
  *     znew = clone(template, m, True)
  *     diff1 = clone(template, m1, True)
  */
-  __pyx_t_1 = ((PyObject *)__pyx_f_7cpython_5array_clone(__pyx_v_template, __pyx_v_m, 1)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 366, __pyx_L1_error)
+  __pyx_t_1 = ((PyObject *)__pyx_f_7cpython_5array_clone(__pyx_v_template, __pyx_v_m, 1)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 367, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_z = ((arrayobject *)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "modape/_whittaker.pyx":367
+  /* "modape/_whittaker.pyx":368
  *     pens = clone(template, nl, True)
  *     z = clone(template, m, True)
  *     znew = clone(template, m, True)             # <<<<<<<<<<<<<<
  *     diff1 = clone(template, m1, True)
  *     lamids = clone(template, nl1, False)
  */
-  __pyx_t_1 = ((PyObject *)__pyx_f_7cpython_5array_clone(__pyx_v_template, __pyx_v_m, 1)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 367, __pyx_L1_error)
+  __pyx_t_1 = ((PyObject *)__pyx_f_7cpython_5array_clone(__pyx_v_template, __pyx_v_m, 1)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 368, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_znew = ((arrayobject *)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "modape/_whittaker.pyx":368
+  /* "modape/_whittaker.pyx":369
  *     z = clone(template, m, True)
  *     znew = clone(template, m, True)
  *     diff1 = clone(template, m1, True)             # <<<<<<<<<<<<<<
  *     lamids = clone(template, nl1, False)
  *     v = clone(template, nl1, False)
  */
-  __pyx_t_1 = ((PyObject *)__pyx_f_7cpython_5array_clone(__pyx_v_template, __pyx_v_m1, 1)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 368, __pyx_L1_error)
+  __pyx_t_1 = ((PyObject *)__pyx_f_7cpython_5array_clone(__pyx_v_template, __pyx_v_m1, 1)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 369, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_diff1 = ((arrayobject *)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "modape/_whittaker.pyx":369
+  /* "modape/_whittaker.pyx":370
  *     znew = clone(template, m, True)
  *     diff1 = clone(template, m1, True)
  *     lamids = clone(template, nl1, False)             # <<<<<<<<<<<<<<
  *     v = clone(template, nl1, False)
  *     wa = clone(template, m, False)
  */
-  __pyx_t_1 = ((PyObject *)__pyx_f_7cpython_5array_clone(__pyx_v_template, __pyx_v_nl1, 0)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 369, __pyx_L1_error)
+  __pyx_t_1 = ((PyObject *)__pyx_f_7cpython_5array_clone(__pyx_v_template, __pyx_v_nl1, 0)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 370, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_lamids = ((arrayobject *)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "modape/_whittaker.pyx":370
+  /* "modape/_whittaker.pyx":371
  *     diff1 = clone(template, m1, True)
  *     lamids = clone(template, nl1, False)
  *     v = clone(template, nl1, False)             # <<<<<<<<<<<<<<
  *     wa = clone(template, m, False)
  *     ww = clone(template, m, False)
  */
-  __pyx_t_1 = ((PyObject *)__pyx_f_7cpython_5array_clone(__pyx_v_template, __pyx_v_nl1, 0)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 370, __pyx_L1_error)
+  __pyx_t_1 = ((PyObject *)__pyx_f_7cpython_5array_clone(__pyx_v_template, __pyx_v_nl1, 0)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 371, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_v = ((arrayobject *)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "modape/_whittaker.pyx":371
+  /* "modape/_whittaker.pyx":372
  *     lamids = clone(template, nl1, False)
  *     v = clone(template, nl1, False)
  *     wa = clone(template, m, False)             # <<<<<<<<<<<<<<
  *     ww = clone(template, m, False)
  * 
  */
-  __pyx_t_1 = ((PyObject *)__pyx_f_7cpython_5array_clone(__pyx_v_template, __pyx_v_m, 0)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 371, __pyx_L1_error)
+  __pyx_t_1 = ((PyObject *)__pyx_f_7cpython_5array_clone(__pyx_v_template, __pyx_v_m, 0)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 372, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_wa = ((arrayobject *)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "modape/_whittaker.pyx":372
+  /* "modape/_whittaker.pyx":373
  *     v = clone(template, nl1, False)
  *     wa = clone(template, m, False)
  *     ww = clone(template, m, False)             # <<<<<<<<<<<<<<
  * 
  *     # Compute v-curve
  */
-  __pyx_t_1 = ((PyObject *)__pyx_f_7cpython_5array_clone(__pyx_v_template, __pyx_v_m, 0)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 372, __pyx_L1_error)
+  __pyx_t_1 = ((PyObject *)__pyx_f_7cpython_5array_clone(__pyx_v_template, __pyx_v_m, 0)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 373, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_ww = ((arrayobject *)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "modape/_whittaker.pyx":375
+  /* "modape/_whittaker.pyx":376
  * 
  *     # Compute v-curve
  *     for lix in range(nl):             # <<<<<<<<<<<<<<
@@ -6868,7 +6894,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
   for (__pyx_t_6 = 0; __pyx_t_6 < __pyx_t_5; __pyx_t_6+=1) {
     __pyx_v_lix = __pyx_t_6;
 
-    /* "modape/_whittaker.pyx":376
+    /* "modape/_whittaker.pyx":377
  *     # Compute v-curve
  *     for lix in range(nl):
  *         l = pow(10,llas.data.as_doubles[lix])             # <<<<<<<<<<<<<<
@@ -6877,7 +6903,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
  */
     __pyx_v_l = pow(10.0, (__pyx_v_llas->data.as_doubles[__pyx_v_lix]));
 
-    /* "modape/_whittaker.pyx":378
+    /* "modape/_whittaker.pyx":379
  *         l = pow(10,llas.data.as_doubles[lix])
  * 
  *         for i in range(10):             # <<<<<<<<<<<<<<
@@ -6887,7 +6913,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
     for (__pyx_t_7 = 0; __pyx_t_7 < 10; __pyx_t_7+=1) {
       __pyx_v_i = __pyx_t_7;
 
-      /* "modape/_whittaker.pyx":379
+      /* "modape/_whittaker.pyx":380
  * 
  *         for i in range(10):
  *           for j in range(m):             # <<<<<<<<<<<<<<
@@ -6899,7 +6925,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
       for (__pyx_t_10 = 0; __pyx_t_10 < __pyx_t_9; __pyx_t_10+=1) {
         __pyx_v_j = __pyx_t_10;
 
-        /* "modape/_whittaker.pyx":380
+        /* "modape/_whittaker.pyx":381
  *         for i in range(10):
  *           for j in range(m):
  *             y_tmp = y[j]             # <<<<<<<<<<<<<<
@@ -6913,11 +6939,11 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
         } else if (unlikely(__pyx_t_11 >= __pyx_pybuffernd_y.diminfo[0].shape)) __pyx_t_12 = 0;
         if (unlikely(__pyx_t_12 != -1)) {
           __Pyx_RaiseBufferIndexError(__pyx_t_12);
-          __PYX_ERR(0, 380, __pyx_L1_error)
+          __PYX_ERR(0, 381, __pyx_L1_error)
         }
         __pyx_v_y_tmp = (*__Pyx_BufPtrStrided1d(__pyx_t_6modape_9whittaker_double_t *, __pyx_pybuffernd_y.rcbuffer->pybuffer.buf, __pyx_t_11, __pyx_pybuffernd_y.diminfo[0].strides));
 
-        /* "modape/_whittaker.pyx":381
+        /* "modape/_whittaker.pyx":382
  *           for j in range(m):
  *             y_tmp = y[j]
  *             z_tmp = z.data.as_doubles[j]             # <<<<<<<<<<<<<<
@@ -6926,7 +6952,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
  */
         __pyx_v_z_tmp = (__pyx_v_z->data.as_doubles[__pyx_v_j]);
 
-        /* "modape/_whittaker.pyx":382
+        /* "modape/_whittaker.pyx":383
  *             y_tmp = y[j]
  *             z_tmp = z.data.as_doubles[j]
  *             if y_tmp > z_tmp:             # <<<<<<<<<<<<<<
@@ -6936,7 +6962,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
         __pyx_t_13 = ((__pyx_v_y_tmp > __pyx_v_z_tmp) != 0);
         if (__pyx_t_13) {
 
-          /* "modape/_whittaker.pyx":383
+          /* "modape/_whittaker.pyx":384
  *             z_tmp = z.data.as_doubles[j]
  *             if y_tmp > z_tmp:
  *               wa.data.as_doubles[j] = p             # <<<<<<<<<<<<<<
@@ -6945,7 +6971,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
  */
           (__pyx_v_wa->data.as_doubles[__pyx_v_j]) = __pyx_v_p;
 
-          /* "modape/_whittaker.pyx":382
+          /* "modape/_whittaker.pyx":383
  *             y_tmp = y[j]
  *             z_tmp = z.data.as_doubles[j]
  *             if y_tmp > z_tmp:             # <<<<<<<<<<<<<<
@@ -6955,7 +6981,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
           goto __pyx_L9;
         }
 
-        /* "modape/_whittaker.pyx":385
+        /* "modape/_whittaker.pyx":386
  *               wa.data.as_doubles[j] = p
  *             else:
  *               wa.data.as_doubles[j] = p1             # <<<<<<<<<<<<<<
@@ -6967,7 +6993,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
         }
         __pyx_L9:;
 
-        /* "modape/_whittaker.pyx":386
+        /* "modape/_whittaker.pyx":387
  *             else:
  *               wa.data.as_doubles[j] = p1
  *             ww.data.as_doubles[j] = w[j] * wa.data.as_doubles[j]             # <<<<<<<<<<<<<<
@@ -6981,24 +7007,24 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
         } else if (unlikely(__pyx_t_14 >= __pyx_pybuffernd_w.diminfo[0].shape)) __pyx_t_12 = 0;
         if (unlikely(__pyx_t_12 != -1)) {
           __Pyx_RaiseBufferIndexError(__pyx_t_12);
-          __PYX_ERR(0, 386, __pyx_L1_error)
+          __PYX_ERR(0, 387, __pyx_L1_error)
         }
         (__pyx_v_ww->data.as_doubles[__pyx_v_j]) = ((*__Pyx_BufPtrStrided1d(__pyx_t_6modape_9whittaker_double_t *, __pyx_pybuffernd_w.rcbuffer->pybuffer.buf, __pyx_t_14, __pyx_pybuffernd_w.diminfo[0].strides)) * (__pyx_v_wa->data.as_doubles[__pyx_v_j]));
       }
 
-      /* "modape/_whittaker.pyx":388
+      /* "modape/_whittaker.pyx":389
  *             ww.data.as_doubles[j] = w[j] * wa.data.as_doubles[j]
  * 
  *           znew[0:m] = _ws2d(y, l, ww)             # <<<<<<<<<<<<<<
  *           z_tmp = 0.0
  *           j = 0
  */
-      __pyx_t_1 = __pyx_f_6modape_9whittaker__ws2d(((PyArrayObject *)__pyx_v_y), __pyx_v_l, ((arrayobject *)__pyx_v_ww)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 388, __pyx_L1_error)
+      __pyx_t_1 = __pyx_f_6modape_9whittaker__ws2d(((PyArrayObject *)__pyx_v_y), __pyx_v_l, ((arrayobject *)__pyx_v_ww)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 389, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
-      if (__Pyx_PyObject_SetSlice(((PyObject *)__pyx_v_znew), __pyx_t_1, 0, __pyx_v_m, NULL, NULL, NULL, 1, 1, 0) < 0) __PYX_ERR(0, 388, __pyx_L1_error)
+      if (__Pyx_PyObject_SetSlice(((PyObject *)__pyx_v_znew), __pyx_t_1, 0, __pyx_v_m, NULL, NULL, NULL, 1, 1, 0) < 0) __PYX_ERR(0, 389, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-      /* "modape/_whittaker.pyx":389
+      /* "modape/_whittaker.pyx":390
  * 
  *           znew[0:m] = _ws2d(y, l, ww)
  *           z_tmp = 0.0             # <<<<<<<<<<<<<<
@@ -7007,7 +7033,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
  */
       __pyx_v_z_tmp = 0.0;
 
-      /* "modape/_whittaker.pyx":390
+      /* "modape/_whittaker.pyx":391
  *           znew[0:m] = _ws2d(y, l, ww)
  *           z_tmp = 0.0
  *           j = 0             # <<<<<<<<<<<<<<
@@ -7016,7 +7042,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
  */
       __pyx_v_j = 0;
 
-      /* "modape/_whittaker.pyx":391
+      /* "modape/_whittaker.pyx":392
  *           z_tmp = 0.0
  *           j = 0
  *           for j in range(m):             # <<<<<<<<<<<<<<
@@ -7028,7 +7054,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
       for (__pyx_t_10 = 0; __pyx_t_10 < __pyx_t_9; __pyx_t_10+=1) {
         __pyx_v_j = __pyx_t_10;
 
-        /* "modape/_whittaker.pyx":392
+        /* "modape/_whittaker.pyx":393
  *           j = 0
  *           for j in range(m):
  *             z_tmp += abs(znew.data.as_doubles[j] - z.data.as_doubles[j])             # <<<<<<<<<<<<<<
@@ -7038,7 +7064,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
         __pyx_v_z_tmp = (__pyx_v_z_tmp + fabs(((__pyx_v_znew->data.as_doubles[__pyx_v_j]) - (__pyx_v_z->data.as_doubles[__pyx_v_j]))));
       }
 
-      /* "modape/_whittaker.pyx":394
+      /* "modape/_whittaker.pyx":395
  *             z_tmp += abs(znew.data.as_doubles[j] - z.data.as_doubles[j])
  * 
  *           if z_tmp == 0.0:             # <<<<<<<<<<<<<<
@@ -7048,7 +7074,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
       __pyx_t_13 = ((__pyx_v_z_tmp == 0.0) != 0);
       if (__pyx_t_13) {
 
-        /* "modape/_whittaker.pyx":395
+        /* "modape/_whittaker.pyx":396
  * 
  *           if z_tmp == 0.0:
  *             break             # <<<<<<<<<<<<<<
@@ -7057,7 +7083,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
  */
         goto __pyx_L6_break;
 
-        /* "modape/_whittaker.pyx":394
+        /* "modape/_whittaker.pyx":395
  *             z_tmp += abs(znew.data.as_doubles[j] - z.data.as_doubles[j])
  * 
  *           if z_tmp == 0.0:             # <<<<<<<<<<<<<<
@@ -7066,21 +7092,21 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
  */
       }
 
-      /* "modape/_whittaker.pyx":397
+      /* "modape/_whittaker.pyx":398
  *             break
  * 
  *           z[0:m]= znew[0:m]             # <<<<<<<<<<<<<<
  * 
  *         for i in range(m):
  */
-      __pyx_t_1 = __Pyx_PyObject_GetSlice(((PyObject *)__pyx_v_znew), 0, __pyx_v_m, NULL, NULL, NULL, 1, 1, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 397, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyObject_GetSlice(((PyObject *)__pyx_v_znew), 0, __pyx_v_m, NULL, NULL, NULL, 1, 1, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 398, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
-      if (__Pyx_PyObject_SetSlice(((PyObject *)__pyx_v_z), __pyx_t_1, 0, __pyx_v_m, NULL, NULL, NULL, 1, 1, 0) < 0) __PYX_ERR(0, 397, __pyx_L1_error)
+      if (__Pyx_PyObject_SetSlice(((PyObject *)__pyx_v_z), __pyx_t_1, 0, __pyx_v_m, NULL, NULL, NULL, 1, 1, 0) < 0) __PYX_ERR(0, 398, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     }
     __pyx_L6_break:;
 
-    /* "modape/_whittaker.pyx":399
+    /* "modape/_whittaker.pyx":400
  *           z[0:m]= znew[0:m]
  * 
  *         for i in range(m):             # <<<<<<<<<<<<<<
@@ -7092,7 +7118,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
     for (__pyx_t_9 = 0; __pyx_t_9 < __pyx_t_8; __pyx_t_9+=1) {
       __pyx_v_i = __pyx_t_9;
 
-      /* "modape/_whittaker.pyx":400
+      /* "modape/_whittaker.pyx":401
  * 
  *         for i in range(m):
  *             w_tmp = w[i]             # <<<<<<<<<<<<<<
@@ -7106,11 +7132,11 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
       } else if (unlikely(__pyx_t_15 >= __pyx_pybuffernd_w.diminfo[0].shape)) __pyx_t_10 = 0;
       if (unlikely(__pyx_t_10 != -1)) {
         __Pyx_RaiseBufferIndexError(__pyx_t_10);
-        __PYX_ERR(0, 400, __pyx_L1_error)
+        __PYX_ERR(0, 401, __pyx_L1_error)
       }
       __pyx_v_w_tmp = (*__Pyx_BufPtrStrided1d(__pyx_t_6modape_9whittaker_double_t *, __pyx_pybuffernd_w.rcbuffer->pybuffer.buf, __pyx_t_15, __pyx_pybuffernd_w.diminfo[0].strides));
 
-      /* "modape/_whittaker.pyx":401
+      /* "modape/_whittaker.pyx":402
  *         for i in range(m):
  *             w_tmp = w[i]
  *             y_tmp = y[i]             # <<<<<<<<<<<<<<
@@ -7124,11 +7150,11 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
       } else if (unlikely(__pyx_t_16 >= __pyx_pybuffernd_y.diminfo[0].shape)) __pyx_t_10 = 0;
       if (unlikely(__pyx_t_10 != -1)) {
         __Pyx_RaiseBufferIndexError(__pyx_t_10);
-        __PYX_ERR(0, 401, __pyx_L1_error)
+        __PYX_ERR(0, 402, __pyx_L1_error)
       }
       __pyx_v_y_tmp = (*__Pyx_BufPtrStrided1d(__pyx_t_6modape_9whittaker_double_t *, __pyx_pybuffernd_y.rcbuffer->pybuffer.buf, __pyx_t_16, __pyx_pybuffernd_y.diminfo[0].strides));
 
-      /* "modape/_whittaker.pyx":402
+      /* "modape/_whittaker.pyx":403
  *             w_tmp = w[i]
  *             y_tmp = y[i]
  *             z_tmp = z.data.as_doubles[i]             # <<<<<<<<<<<<<<
@@ -7137,7 +7163,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
  */
       __pyx_v_z_tmp = (__pyx_v_z->data.as_doubles[__pyx_v_i]);
 
-      /* "modape/_whittaker.pyx":403
+      /* "modape/_whittaker.pyx":404
  *             y_tmp = y[i]
  *             z_tmp = z.data.as_doubles[i]
  *             fits.data.as_doubles[lix] += pow(w_tmp * (y_tmp - z_tmp),2)             # <<<<<<<<<<<<<<
@@ -7148,7 +7174,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
       (__pyx_v_fits->data.as_doubles[__pyx_t_10]) = ((__pyx_v_fits->data.as_doubles[__pyx_t_10]) + pow((__pyx_v_w_tmp * (__pyx_v_y_tmp - __pyx_v_z_tmp)), 2.0));
     }
 
-    /* "modape/_whittaker.pyx":404
+    /* "modape/_whittaker.pyx":405
  *             z_tmp = z.data.as_doubles[i]
  *             fits.data.as_doubles[lix] += pow(w_tmp * (y_tmp - z_tmp),2)
  *         fits.data.as_doubles[lix] = log(fits.data.as_doubles[lix])             # <<<<<<<<<<<<<<
@@ -7157,7 +7183,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
  */
     (__pyx_v_fits->data.as_doubles[__pyx_v_lix]) = log((__pyx_v_fits->data.as_doubles[__pyx_v_lix]));
 
-    /* "modape/_whittaker.pyx":406
+    /* "modape/_whittaker.pyx":407
  *         fits.data.as_doubles[lix] = log(fits.data.as_doubles[lix])
  * 
  *         for i in range(m1):             # <<<<<<<<<<<<<<
@@ -7169,7 +7195,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
     for (__pyx_t_9 = 0; __pyx_t_9 < __pyx_t_8; __pyx_t_9+=1) {
       __pyx_v_i = __pyx_t_9;
 
-      /* "modape/_whittaker.pyx":407
+      /* "modape/_whittaker.pyx":408
  * 
  *         for i in range(m1):
  *             z_tmp = z.data.as_doubles[i]             # <<<<<<<<<<<<<<
@@ -7178,7 +7204,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
  */
       __pyx_v_z_tmp = (__pyx_v_z->data.as_doubles[__pyx_v_i]);
 
-      /* "modape/_whittaker.pyx":408
+      /* "modape/_whittaker.pyx":409
  *         for i in range(m1):
  *             z_tmp = z.data.as_doubles[i]
  *             z2 = z.data.as_doubles[i+1]             # <<<<<<<<<<<<<<
@@ -7187,7 +7213,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
  */
       __pyx_v_z2 = (__pyx_v_z->data.as_doubles[(__pyx_v_i + 1)]);
 
-      /* "modape/_whittaker.pyx":409
+      /* "modape/_whittaker.pyx":410
  *             z_tmp = z.data.as_doubles[i]
  *             z2 = z.data.as_doubles[i+1]
  *             diff1.data.as_doubles[i] = z2 - z_tmp             # <<<<<<<<<<<<<<
@@ -7197,7 +7223,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
       (__pyx_v_diff1->data.as_doubles[__pyx_v_i]) = (__pyx_v_z2 - __pyx_v_z_tmp);
     }
 
-    /* "modape/_whittaker.pyx":410
+    /* "modape/_whittaker.pyx":411
  *             z2 = z.data.as_doubles[i+1]
  *             diff1.data.as_doubles[i] = z2 - z_tmp
  *         for i in range(m2):             # <<<<<<<<<<<<<<
@@ -7209,7 +7235,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
     for (__pyx_t_9 = 0; __pyx_t_9 < __pyx_t_8; __pyx_t_9+=1) {
       __pyx_v_i = __pyx_t_9;
 
-      /* "modape/_whittaker.pyx":411
+      /* "modape/_whittaker.pyx":412
  *             diff1.data.as_doubles[i] = z2 - z_tmp
  *         for i in range(m2):
  *             z_tmp = diff1.data.as_doubles[i]             # <<<<<<<<<<<<<<
@@ -7218,7 +7244,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
  */
       __pyx_v_z_tmp = (__pyx_v_diff1->data.as_doubles[__pyx_v_i]);
 
-      /* "modape/_whittaker.pyx":412
+      /* "modape/_whittaker.pyx":413
  *         for i in range(m2):
  *             z_tmp = diff1.data.as_doubles[i]
  *             z2 = diff1.data.as_doubles[i+1]             # <<<<<<<<<<<<<<
@@ -7227,7 +7253,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
  */
       __pyx_v_z2 = (__pyx_v_diff1->data.as_doubles[(__pyx_v_i + 1)]);
 
-      /* "modape/_whittaker.pyx":413
+      /* "modape/_whittaker.pyx":414
  *             z_tmp = diff1.data.as_doubles[i]
  *             z2 = diff1.data.as_doubles[i+1]
  *             pens.data.as_doubles[lix] += pow(z2 - z_tmp,2)             # <<<<<<<<<<<<<<
@@ -7238,7 +7264,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
       (__pyx_v_pens->data.as_doubles[__pyx_t_10]) = ((__pyx_v_pens->data.as_doubles[__pyx_t_10]) + pow((__pyx_v_z2 - __pyx_v_z_tmp), 2.0));
     }
 
-    /* "modape/_whittaker.pyx":414
+    /* "modape/_whittaker.pyx":415
  *             z2 = diff1.data.as_doubles[i+1]
  *             pens.data.as_doubles[lix] += pow(z2 - z_tmp,2)
  *         pens.data.as_doubles[lix] = log(pens.data.as_doubles[lix])             # <<<<<<<<<<<<<<
@@ -7248,7 +7274,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
     (__pyx_v_pens->data.as_doubles[__pyx_v_lix]) = log((__pyx_v_pens->data.as_doubles[__pyx_v_lix]));
   }
 
-  /* "modape/_whittaker.pyx":417
+  /* "modape/_whittaker.pyx":418
  * 
  *     # Construct v-curve
  *     llastep = llas[1] - llas[0]             # <<<<<<<<<<<<<<
@@ -7262,7 +7288,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
   } else if (unlikely(__pyx_t_17 >= __pyx_pybuffernd_llas.diminfo[0].shape)) __pyx_t_4 = 0;
   if (unlikely(__pyx_t_4 != -1)) {
     __Pyx_RaiseBufferIndexError(__pyx_t_4);
-    __PYX_ERR(0, 417, __pyx_L1_error)
+    __PYX_ERR(0, 418, __pyx_L1_error)
   }
   __pyx_t_18 = 0;
   __pyx_t_4 = -1;
@@ -7271,11 +7297,11 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
   } else if (unlikely(__pyx_t_18 >= __pyx_pybuffernd_llas.diminfo[0].shape)) __pyx_t_4 = 0;
   if (unlikely(__pyx_t_4 != -1)) {
     __Pyx_RaiseBufferIndexError(__pyx_t_4);
-    __PYX_ERR(0, 417, __pyx_L1_error)
+    __PYX_ERR(0, 418, __pyx_L1_error)
   }
   __pyx_v_llastep = ((*__Pyx_BufPtrFull1d(double *, __pyx_pybuffernd_llas.rcbuffer->pybuffer.buf, __pyx_t_17, __pyx_pybuffernd_llas.diminfo[0].strides, __pyx_pybuffernd_llas.diminfo[0].suboffsets)) - (*__Pyx_BufPtrFull1d(double *, __pyx_pybuffernd_llas.rcbuffer->pybuffer.buf, __pyx_t_18, __pyx_pybuffernd_llas.diminfo[0].strides, __pyx_pybuffernd_llas.diminfo[0].suboffsets)));
 
-  /* "modape/_whittaker.pyx":419
+  /* "modape/_whittaker.pyx":420
  *     llastep = llas[1] - llas[0]
  * 
  *     for i in range(nl1):             # <<<<<<<<<<<<<<
@@ -7287,7 +7313,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
   for (__pyx_t_6 = 0; __pyx_t_6 < __pyx_t_5; __pyx_t_6+=1) {
     __pyx_v_i = __pyx_t_6;
 
-    /* "modape/_whittaker.pyx":420
+    /* "modape/_whittaker.pyx":421
  * 
  *     for i in range(nl1):
  *         l1 = llas.data.as_doubles[i]             # <<<<<<<<<<<<<<
@@ -7296,7 +7322,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
  */
     __pyx_v_l1 = (__pyx_v_llas->data.as_doubles[__pyx_v_i]);
 
-    /* "modape/_whittaker.pyx":421
+    /* "modape/_whittaker.pyx":422
  *     for i in range(nl1):
  *         l1 = llas.data.as_doubles[i]
  *         l2 = llas.data.as_doubles[i+1]             # <<<<<<<<<<<<<<
@@ -7305,7 +7331,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
  */
     __pyx_v_l2 = (__pyx_v_llas->data.as_doubles[(__pyx_v_i + 1)]);
 
-    /* "modape/_whittaker.pyx":422
+    /* "modape/_whittaker.pyx":423
  *         l1 = llas.data.as_doubles[i]
  *         l2 = llas.data.as_doubles[i+1]
  *         fit1 = fits.data.as_doubles[i]             # <<<<<<<<<<<<<<
@@ -7314,7 +7340,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
  */
     __pyx_v_fit1 = (__pyx_v_fits->data.as_doubles[__pyx_v_i]);
 
-    /* "modape/_whittaker.pyx":423
+    /* "modape/_whittaker.pyx":424
  *         l2 = llas.data.as_doubles[i+1]
  *         fit1 = fits.data.as_doubles[i]
  *         fit2 = fits.data.as_doubles[i+1]             # <<<<<<<<<<<<<<
@@ -7323,36 +7349,53 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
  */
     __pyx_v_fit2 = (__pyx_v_fits->data.as_doubles[(__pyx_v_i + 1)]);
 
-    /* "modape/_whittaker.pyx":424
+    /* "modape/_whittaker.pyx":425
  *         fit1 = fits.data.as_doubles[i]
  *         fit2 = fits.data.as_doubles[i+1]
  *         pen1 = pens.data.as_doubles[i]             # <<<<<<<<<<<<<<
  *         pen2 = pens.data.as_doubles[i+1]
- *         v.data.as_doubles[i] = sqrt(pow(fit2 - fit1,2) + pow(pen2 - pen1,2)) / (log(10) * llastep)
+ *         v.data.as_doubles[i] = round(sqrt(pow(fit2 - fit1,2) + pow(pen2 - pen1,2)) / (log(10) * llastep), vprec)
  */
     __pyx_v_pen1 = (__pyx_v_pens->data.as_doubles[__pyx_v_i]);
 
-    /* "modape/_whittaker.pyx":425
+    /* "modape/_whittaker.pyx":426
  *         fit2 = fits.data.as_doubles[i+1]
  *         pen1 = pens.data.as_doubles[i]
  *         pen2 = pens.data.as_doubles[i+1]             # <<<<<<<<<<<<<<
- *         v.data.as_doubles[i] = sqrt(pow(fit2 - fit1,2) + pow(pen2 - pen1,2)) / (log(10) * llastep)
+ *         v.data.as_doubles[i] = round(sqrt(pow(fit2 - fit1,2) + pow(pen2 - pen1,2)) / (log(10) * llastep), vprec)
  *         lamids.data.as_doubles[i] = (l1+l2) / 2
  */
     __pyx_v_pen2 = (__pyx_v_pens->data.as_doubles[(__pyx_v_i + 1)]);
 
-    /* "modape/_whittaker.pyx":426
+    /* "modape/_whittaker.pyx":427
  *         pen1 = pens.data.as_doubles[i]
  *         pen2 = pens.data.as_doubles[i+1]
- *         v.data.as_doubles[i] = sqrt(pow(fit2 - fit1,2) + pow(pen2 - pen1,2)) / (log(10) * llastep)             # <<<<<<<<<<<<<<
+ *         v.data.as_doubles[i] = round(sqrt(pow(fit2 - fit1,2) + pow(pen2 - pen1,2)) / (log(10) * llastep), vprec)             # <<<<<<<<<<<<<<
  *         lamids.data.as_doubles[i] = (l1+l2) / 2
  * 
  */
-    (__pyx_v_v->data.as_doubles[__pyx_v_i]) = (sqrt((pow((__pyx_v_fit2 - __pyx_v_fit1), 2.0) + pow((__pyx_v_pen2 - __pyx_v_pen1), 2.0))) / (log(10.0) * __pyx_v_llastep));
+    __pyx_t_1 = PyFloat_FromDouble((sqrt((pow((__pyx_v_fit2 - __pyx_v_fit1), 2.0) + pow((__pyx_v_pen2 - __pyx_v_pen1), 2.0))) / (log(10.0) * __pyx_v_llastep))); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 427, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_1);
+    __pyx_t_2 = __Pyx_PyInt_From_int(__pyx_v_vprec); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 427, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    __pyx_t_19 = PyTuple_New(2); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 427, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_19);
+    __Pyx_GIVEREF(__pyx_t_1);
+    PyTuple_SET_ITEM(__pyx_t_19, 0, __pyx_t_1);
+    __Pyx_GIVEREF(__pyx_t_2);
+    PyTuple_SET_ITEM(__pyx_t_19, 1, __pyx_t_2);
+    __pyx_t_1 = 0;
+    __pyx_t_2 = 0;
+    __pyx_t_2 = __Pyx_PyObject_Call(__pyx_builtin_round, __pyx_t_19, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 427, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    __Pyx_DECREF(__pyx_t_19); __pyx_t_19 = 0;
+    __pyx_t_20 = __pyx_PyFloat_AsDouble(__pyx_t_2); if (unlikely((__pyx_t_20 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 427, __pyx_L1_error)
+    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+    (__pyx_v_v->data.as_doubles[__pyx_v_i]) = __pyx_t_20;
 
-    /* "modape/_whittaker.pyx":427
+    /* "modape/_whittaker.pyx":428
  *         pen2 = pens.data.as_doubles[i+1]
- *         v.data.as_doubles[i] = sqrt(pow(fit2 - fit1,2) + pow(pen2 - pen1,2)) / (log(10) * llastep)
+ *         v.data.as_doubles[i] = round(sqrt(pow(fit2 - fit1,2) + pow(pen2 - pen1,2)) / (log(10) * llastep), vprec)
  *         lamids.data.as_doubles[i] = (l1+l2) / 2             # <<<<<<<<<<<<<<
  * 
  *     vmin = v.data.as_doubles[k]
@@ -7360,7 +7403,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
     (__pyx_v_lamids->data.as_doubles[__pyx_v_i]) = ((__pyx_v_l1 + __pyx_v_l2) / 2.0);
   }
 
-  /* "modape/_whittaker.pyx":429
+  /* "modape/_whittaker.pyx":430
  *         lamids.data.as_doubles[i] = (l1+l2) / 2
  * 
  *     vmin = v.data.as_doubles[k]             # <<<<<<<<<<<<<<
@@ -7369,7 +7412,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
  */
   __pyx_v_vmin = (__pyx_v_v->data.as_doubles[__pyx_v_k]);
 
-  /* "modape/_whittaker.pyx":430
+  /* "modape/_whittaker.pyx":431
  * 
  *     vmin = v.data.as_doubles[k]
  *     for i in range(1, nl1):             # <<<<<<<<<<<<<<
@@ -7381,7 +7424,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
   for (__pyx_t_6 = 1; __pyx_t_6 < __pyx_t_5; __pyx_t_6+=1) {
     __pyx_v_i = __pyx_t_6;
 
-    /* "modape/_whittaker.pyx":431
+    /* "modape/_whittaker.pyx":432
  *     vmin = v.data.as_doubles[k]
  *     for i in range(1, nl1):
  *         if v.data.as_doubles[i] < vmin:             # <<<<<<<<<<<<<<
@@ -7391,7 +7434,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
     __pyx_t_13 = (((__pyx_v_v->data.as_doubles[__pyx_v_i]) < __pyx_v_vmin) != 0);
     if (__pyx_t_13) {
 
-      /* "modape/_whittaker.pyx":432
+      /* "modape/_whittaker.pyx":433
  *     for i in range(1, nl1):
  *         if v.data.as_doubles[i] < vmin:
  *             vmin = v.data.as_doubles[i]             # <<<<<<<<<<<<<<
@@ -7400,7 +7443,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
  */
       __pyx_v_vmin = (__pyx_v_v->data.as_doubles[__pyx_v_i]);
 
-      /* "modape/_whittaker.pyx":433
+      /* "modape/_whittaker.pyx":434
  *         if v.data.as_doubles[i] < vmin:
  *             vmin = v.data.as_doubles[i]
  *             k = i             # <<<<<<<<<<<<<<
@@ -7409,7 +7452,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
  */
       __pyx_v_k = __pyx_v_i;
 
-      /* "modape/_whittaker.pyx":431
+      /* "modape/_whittaker.pyx":432
  *     vmin = v.data.as_doubles[k]
  *     for i in range(1, nl1):
  *         if v.data.as_doubles[i] < vmin:             # <<<<<<<<<<<<<<
@@ -7419,7 +7462,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
     }
   }
 
-  /* "modape/_whittaker.pyx":435
+  /* "modape/_whittaker.pyx":436
  *             k = i
  * 
  *     lopt = pow(10, lamids.data.as_doubles[k])             # <<<<<<<<<<<<<<
@@ -7428,7 +7471,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
  */
   __pyx_v_lopt = pow(10.0, (__pyx_v_lamids->data.as_doubles[__pyx_v_k]));
 
-  /* "modape/_whittaker.pyx":437
+  /* "modape/_whittaker.pyx":438
  *     lopt = pow(10, lamids.data.as_doubles[k])
  * 
  *     del z             # <<<<<<<<<<<<<<
@@ -7438,19 +7481,19 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
   __Pyx_DECREF(((PyObject *)__pyx_v_z));
   __pyx_v_z = NULL;
 
-  /* "modape/_whittaker.pyx":438
+  /* "modape/_whittaker.pyx":439
  * 
  *     del z
  *     z = clone(template, m, True)             # <<<<<<<<<<<<<<
  * 
  *     for i in range(10):
  */
-  __pyx_t_1 = ((PyObject *)__pyx_f_7cpython_5array_clone(__pyx_v_template, __pyx_v_m, 1)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 438, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_1);
-  __pyx_v_z = ((arrayobject *)__pyx_t_1);
-  __pyx_t_1 = 0;
+  __pyx_t_2 = ((PyObject *)__pyx_f_7cpython_5array_clone(__pyx_v_template, __pyx_v_m, 1)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 439, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  __pyx_v_z = ((arrayobject *)__pyx_t_2);
+  __pyx_t_2 = 0;
 
-  /* "modape/_whittaker.pyx":440
+  /* "modape/_whittaker.pyx":441
  *     z = clone(template, m, True)
  * 
  *     for i in range(10):             # <<<<<<<<<<<<<<
@@ -7460,7 +7503,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
   for (__pyx_t_4 = 0; __pyx_t_4 < 10; __pyx_t_4+=1) {
     __pyx_v_i = __pyx_t_4;
 
-    /* "modape/_whittaker.pyx":441
+    /* "modape/_whittaker.pyx":442
  * 
  *     for i in range(10):
  *       for j in range(m):             # <<<<<<<<<<<<<<
@@ -7472,25 +7515,25 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
     for (__pyx_t_7 = 0; __pyx_t_7 < __pyx_t_6; __pyx_t_7+=1) {
       __pyx_v_j = __pyx_t_7;
 
-      /* "modape/_whittaker.pyx":442
+      /* "modape/_whittaker.pyx":443
  *     for i in range(10):
  *       for j in range(m):
  *         y_tmp = y[j]             # <<<<<<<<<<<<<<
  *         z_tmp = z.data.as_doubles[j]
  * 
  */
-      __pyx_t_19 = __pyx_v_j;
+      __pyx_t_21 = __pyx_v_j;
       __pyx_t_8 = -1;
-      if (__pyx_t_19 < 0) {
+      if (__pyx_t_21 < 0) {
         __pyx_t_8 = 0;
-      } else if (unlikely(__pyx_t_19 >= __pyx_pybuffernd_y.diminfo[0].shape)) __pyx_t_8 = 0;
+      } else if (unlikely(__pyx_t_21 >= __pyx_pybuffernd_y.diminfo[0].shape)) __pyx_t_8 = 0;
       if (unlikely(__pyx_t_8 != -1)) {
         __Pyx_RaiseBufferIndexError(__pyx_t_8);
-        __PYX_ERR(0, 442, __pyx_L1_error)
+        __PYX_ERR(0, 443, __pyx_L1_error)
       }
-      __pyx_v_y_tmp = (*__Pyx_BufPtrStrided1d(__pyx_t_6modape_9whittaker_double_t *, __pyx_pybuffernd_y.rcbuffer->pybuffer.buf, __pyx_t_19, __pyx_pybuffernd_y.diminfo[0].strides));
+      __pyx_v_y_tmp = (*__Pyx_BufPtrStrided1d(__pyx_t_6modape_9whittaker_double_t *, __pyx_pybuffernd_y.rcbuffer->pybuffer.buf, __pyx_t_21, __pyx_pybuffernd_y.diminfo[0].strides));
 
-      /* "modape/_whittaker.pyx":443
+      /* "modape/_whittaker.pyx":444
  *       for j in range(m):
  *         y_tmp = y[j]
  *         z_tmp = z.data.as_doubles[j]             # <<<<<<<<<<<<<<
@@ -7499,7 +7542,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
  */
       __pyx_v_z_tmp = (__pyx_v_z->data.as_doubles[__pyx_v_j]);
 
-      /* "modape/_whittaker.pyx":445
+      /* "modape/_whittaker.pyx":446
  *         z_tmp = z.data.as_doubles[j]
  * 
  *         if y_tmp > z_tmp:             # <<<<<<<<<<<<<<
@@ -7509,7 +7552,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
       __pyx_t_13 = ((__pyx_v_y_tmp > __pyx_v_z_tmp) != 0);
       if (__pyx_t_13) {
 
-        /* "modape/_whittaker.pyx":446
+        /* "modape/_whittaker.pyx":447
  * 
  *         if y_tmp > z_tmp:
  *           wa.data.as_doubles[j] = p             # <<<<<<<<<<<<<<
@@ -7518,7 +7561,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
  */
         (__pyx_v_wa->data.as_doubles[__pyx_v_j]) = __pyx_v_p;
 
-        /* "modape/_whittaker.pyx":445
+        /* "modape/_whittaker.pyx":446
  *         z_tmp = z.data.as_doubles[j]
  * 
  *         if y_tmp > z_tmp:             # <<<<<<<<<<<<<<
@@ -7528,7 +7571,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
         goto __pyx_L28;
       }
 
-      /* "modape/_whittaker.pyx":448
+      /* "modape/_whittaker.pyx":449
  *           wa.data.as_doubles[j] = p
  *         else:
  *           wa.data.as_doubles[j] = p1             # <<<<<<<<<<<<<<
@@ -7540,38 +7583,38 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
       }
       __pyx_L28:;
 
-      /* "modape/_whittaker.pyx":449
+      /* "modape/_whittaker.pyx":450
  *         else:
  *           wa.data.as_doubles[j] = p1
  *         ww.data.as_doubles[j] = w[j] * wa.data.as_doubles[j]             # <<<<<<<<<<<<<<
  * 
  *       znew[0:m] = _ws2d(y, lopt, ww)
  */
-      __pyx_t_20 = __pyx_v_j;
+      __pyx_t_22 = __pyx_v_j;
       __pyx_t_8 = -1;
-      if (__pyx_t_20 < 0) {
+      if (__pyx_t_22 < 0) {
         __pyx_t_8 = 0;
-      } else if (unlikely(__pyx_t_20 >= __pyx_pybuffernd_w.diminfo[0].shape)) __pyx_t_8 = 0;
+      } else if (unlikely(__pyx_t_22 >= __pyx_pybuffernd_w.diminfo[0].shape)) __pyx_t_8 = 0;
       if (unlikely(__pyx_t_8 != -1)) {
         __Pyx_RaiseBufferIndexError(__pyx_t_8);
-        __PYX_ERR(0, 449, __pyx_L1_error)
+        __PYX_ERR(0, 450, __pyx_L1_error)
       }
-      (__pyx_v_ww->data.as_doubles[__pyx_v_j]) = ((*__Pyx_BufPtrStrided1d(__pyx_t_6modape_9whittaker_double_t *, __pyx_pybuffernd_w.rcbuffer->pybuffer.buf, __pyx_t_20, __pyx_pybuffernd_w.diminfo[0].strides)) * (__pyx_v_wa->data.as_doubles[__pyx_v_j]));
+      (__pyx_v_ww->data.as_doubles[__pyx_v_j]) = ((*__Pyx_BufPtrStrided1d(__pyx_t_6modape_9whittaker_double_t *, __pyx_pybuffernd_w.rcbuffer->pybuffer.buf, __pyx_t_22, __pyx_pybuffernd_w.diminfo[0].strides)) * (__pyx_v_wa->data.as_doubles[__pyx_v_j]));
     }
 
-    /* "modape/_whittaker.pyx":451
+    /* "modape/_whittaker.pyx":452
  *         ww.data.as_doubles[j] = w[j] * wa.data.as_doubles[j]
  * 
  *       znew[0:m] = _ws2d(y, lopt, ww)             # <<<<<<<<<<<<<<
  *       z_tmp = 0.0
  *       j = 0
  */
-    __pyx_t_1 = __pyx_f_6modape_9whittaker__ws2d(((PyArrayObject *)__pyx_v_y), __pyx_v_lopt, ((arrayobject *)__pyx_v_ww)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 451, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_1);
-    if (__Pyx_PyObject_SetSlice(((PyObject *)__pyx_v_znew), __pyx_t_1, 0, __pyx_v_m, NULL, NULL, NULL, 1, 1, 0) < 0) __PYX_ERR(0, 451, __pyx_L1_error)
-    __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+    __pyx_t_2 = __pyx_f_6modape_9whittaker__ws2d(((PyArrayObject *)__pyx_v_y), __pyx_v_lopt, ((arrayobject *)__pyx_v_ww)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 452, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    if (__Pyx_PyObject_SetSlice(((PyObject *)__pyx_v_znew), __pyx_t_2, 0, __pyx_v_m, NULL, NULL, NULL, 1, 1, 0) < 0) __PYX_ERR(0, 452, __pyx_L1_error)
+    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-    /* "modape/_whittaker.pyx":452
+    /* "modape/_whittaker.pyx":453
  * 
  *       znew[0:m] = _ws2d(y, lopt, ww)
  *       z_tmp = 0.0             # <<<<<<<<<<<<<<
@@ -7580,7 +7623,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
  */
     __pyx_v_z_tmp = 0.0;
 
-    /* "modape/_whittaker.pyx":453
+    /* "modape/_whittaker.pyx":454
  *       znew[0:m] = _ws2d(y, lopt, ww)
  *       z_tmp = 0.0
  *       j = 0             # <<<<<<<<<<<<<<
@@ -7589,7 +7632,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
  */
     __pyx_v_j = 0;
 
-    /* "modape/_whittaker.pyx":454
+    /* "modape/_whittaker.pyx":455
  *       z_tmp = 0.0
  *       j = 0
  *       for j in range(m):             # <<<<<<<<<<<<<<
@@ -7601,7 +7644,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
     for (__pyx_t_7 = 0; __pyx_t_7 < __pyx_t_6; __pyx_t_7+=1) {
       __pyx_v_j = __pyx_t_7;
 
-      /* "modape/_whittaker.pyx":455
+      /* "modape/_whittaker.pyx":456
  *       j = 0
  *       for j in range(m):
  *         z_tmp += abs(znew.data.as_doubles[j] - z.data.as_doubles[j])             # <<<<<<<<<<<<<<
@@ -7611,7 +7654,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
       __pyx_v_z_tmp = (__pyx_v_z_tmp + fabs(((__pyx_v_znew->data.as_doubles[__pyx_v_j]) - (__pyx_v_z->data.as_doubles[__pyx_v_j]))));
     }
 
-    /* "modape/_whittaker.pyx":457
+    /* "modape/_whittaker.pyx":458
  *         z_tmp += abs(znew.data.as_doubles[j] - z.data.as_doubles[j])
  * 
  *       if z_tmp == 0.0:             # <<<<<<<<<<<<<<
@@ -7621,7 +7664,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
     __pyx_t_13 = ((__pyx_v_z_tmp == 0.0) != 0);
     if (__pyx_t_13) {
 
-      /* "modape/_whittaker.pyx":458
+      /* "modape/_whittaker.pyx":459
  * 
  *       if z_tmp == 0.0:
  *         break             # <<<<<<<<<<<<<<
@@ -7630,7 +7673,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
  */
       goto __pyx_L25_break;
 
-      /* "modape/_whittaker.pyx":457
+      /* "modape/_whittaker.pyx":458
  *         z_tmp += abs(znew.data.as_doubles[j] - z.data.as_doubles[j])
  * 
  *       if z_tmp == 0.0:             # <<<<<<<<<<<<<<
@@ -7639,55 +7682,55 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
  */
     }
 
-    /* "modape/_whittaker.pyx":460
+    /* "modape/_whittaker.pyx":461
  *         break
  * 
  *       z[0:m]= znew[0:m]             # <<<<<<<<<<<<<<
  * 
  *     z[0:m] = _ws2d(y, lopt, ww)
  */
-    __pyx_t_1 = __Pyx_PyObject_GetSlice(((PyObject *)__pyx_v_znew), 0, __pyx_v_m, NULL, NULL, NULL, 1, 1, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 460, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_1);
-    if (__Pyx_PyObject_SetSlice(((PyObject *)__pyx_v_z), __pyx_t_1, 0, __pyx_v_m, NULL, NULL, NULL, 1, 1, 0) < 0) __PYX_ERR(0, 460, __pyx_L1_error)
-    __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+    __pyx_t_2 = __Pyx_PyObject_GetSlice(((PyObject *)__pyx_v_znew), 0, __pyx_v_m, NULL, NULL, NULL, 1, 1, 0); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 461, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    if (__Pyx_PyObject_SetSlice(((PyObject *)__pyx_v_z), __pyx_t_2, 0, __pyx_v_m, NULL, NULL, NULL, 1, 1, 0) < 0) __PYX_ERR(0, 461, __pyx_L1_error)
+    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   }
   __pyx_L25_break:;
 
-  /* "modape/_whittaker.pyx":462
+  /* "modape/_whittaker.pyx":463
  *       z[0:m]= znew[0:m]
  * 
  *     z[0:m] = _ws2d(y, lopt, ww)             # <<<<<<<<<<<<<<
  *     return z, lopt
  */
-  __pyx_t_1 = __pyx_f_6modape_9whittaker__ws2d(((PyArrayObject *)__pyx_v_y), __pyx_v_lopt, ((arrayobject *)__pyx_v_ww)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 462, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_1);
-  if (__Pyx_PyObject_SetSlice(((PyObject *)__pyx_v_z), __pyx_t_1, 0, __pyx_v_m, NULL, NULL, NULL, 1, 1, 0) < 0) __PYX_ERR(0, 462, __pyx_L1_error)
-  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  __pyx_t_2 = __pyx_f_6modape_9whittaker__ws2d(((PyArrayObject *)__pyx_v_y), __pyx_v_lopt, ((arrayobject *)__pyx_v_ww)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 463, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  if (__Pyx_PyObject_SetSlice(((PyObject *)__pyx_v_z), __pyx_t_2, 0, __pyx_v_m, NULL, NULL, NULL, 1, 1, 0) < 0) __PYX_ERR(0, 463, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "modape/_whittaker.pyx":463
+  /* "modape/_whittaker.pyx":464
  * 
  *     z[0:m] = _ws2d(y, lopt, ww)
  *     return z, lopt             # <<<<<<<<<<<<<<
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = PyFloat_FromDouble(__pyx_v_lopt); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 463, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = PyTuple_New(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 463, __pyx_L1_error)
+  __pyx_t_2 = PyFloat_FromDouble(__pyx_v_lopt); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 464, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
+  __pyx_t_19 = PyTuple_New(2); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 464, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_19);
   __Pyx_INCREF(((PyObject *)__pyx_v_z));
   __Pyx_GIVEREF(((PyObject *)__pyx_v_z));
-  PyTuple_SET_ITEM(__pyx_t_2, 0, ((PyObject *)__pyx_v_z));
-  __Pyx_GIVEREF(__pyx_t_1);
-  PyTuple_SET_ITEM(__pyx_t_2, 1, __pyx_t_1);
-  __pyx_t_1 = 0;
-  __pyx_r = __pyx_t_2;
+  PyTuple_SET_ITEM(__pyx_t_19, 0, ((PyObject *)__pyx_v_z));
+  __Pyx_GIVEREF(__pyx_t_2);
+  PyTuple_SET_ITEM(__pyx_t_19, 1, __pyx_t_2);
   __pyx_t_2 = 0;
+  __pyx_r = __pyx_t_19;
+  __pyx_t_19 = 0;
   goto __pyx_L0;
 
   /* "modape/_whittaker.pyx":336
  * 
  * 
- * cpdef ws2doptvp(np.ndarray[double_t] y, np.ndarray[double_t] w, array[double] llas, double p):             # <<<<<<<<<<<<<<
+ * cpdef ws2doptvp(np.ndarray[double_t] y, np.ndarray[double_t] w, array[double] llas, float p, int vprec=5):             # <<<<<<<<<<<<<<
  *     """Whittaker smoother with asymmetric V-curve optimization of lambda (S).
  * 
  */
@@ -7696,6 +7739,7 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
   __pyx_L1_error:;
   __Pyx_XDECREF(__pyx_t_1);
   __Pyx_XDECREF(__pyx_t_2);
+  __Pyx_XDECREF(__pyx_t_19);
   { PyObject *__pyx_type, *__pyx_value, *__pyx_tb;
     __Pyx_PyThreadState_declare
     __Pyx_PyThreadState_assign
@@ -7729,22 +7773,25 @@ static PyObject *__pyx_f_6modape_9whittaker_ws2doptvp(PyArrayObject *__pyx_v_y, 
 
 /* Python wrapper */
 static PyObject *__pyx_pw_6modape_9whittaker_11ws2doptvp(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
-static char __pyx_doc_6modape_9whittaker_10ws2doptvp[] = "Whittaker smoother with asymmetric V-curve optimization of lambda (S).\n\n    Args:\n        y: time-series numpy array\n        w: weights numpy array\n        llas: array with lambda values to iterate (S-range)\n        p: \"Envelope\" value\n\n    Returns:\n        Smoothed time-series array z and optimized lambda (S) value lopt\n    ";
+static char __pyx_doc_6modape_9whittaker_10ws2doptvp[] = "Whittaker smoother with asymmetric V-curve optimization of lambda (S).\n\n    Args:\n        y: time-series numpy array\n        w: weights numpy array\n        llas: array with lambda values to iterate (S-range)\n        p: \"Envelope\" value\n        vprec: Precision for Vcurve values (optional, default=5)\n\n    Returns:\n        Smoothed time-series array z and optimized lambda (S) value lopt\n    ";
 static PyObject *__pyx_pw_6modape_9whittaker_11ws2doptvp(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
   PyArrayObject *__pyx_v_y = 0;
   PyArrayObject *__pyx_v_w = 0;
   arrayobject *__pyx_v_llas = 0;
-  double __pyx_v_p;
+  float __pyx_v_p;
+  int __pyx_v_vprec;
   PyObject *__pyx_r = 0;
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("ws2doptvp (wrapper)", 0);
   {
-    static PyObject **__pyx_pyargnames[] = {&__pyx_n_s_y,&__pyx_n_s_w,&__pyx_n_s_llas,&__pyx_n_s_p,0};
-    PyObject* values[4] = {0,0,0,0};
+    static PyObject **__pyx_pyargnames[] = {&__pyx_n_s_y,&__pyx_n_s_w,&__pyx_n_s_llas,&__pyx_n_s_p,&__pyx_n_s_vprec,0};
+    PyObject* values[5] = {0,0,0,0,0};
     if (unlikely(__pyx_kwds)) {
       Py_ssize_t kw_args;
       const Py_ssize_t pos_args = PyTuple_GET_SIZE(__pyx_args);
       switch (pos_args) {
+        case  5: values[4] = PyTuple_GET_ITEM(__pyx_args, 4);
+        CYTHON_FALLTHROUGH;
         case  4: values[3] = PyTuple_GET_ITEM(__pyx_args, 3);
         CYTHON_FALLTHROUGH;
         case  3: values[2] = PyTuple_GET_ITEM(__pyx_args, 2);
@@ -7765,40 +7812,55 @@ static PyObject *__pyx_pw_6modape_9whittaker_11ws2doptvp(PyObject *__pyx_self, P
         case  1:
         if (likely((values[1] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_w)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("ws2doptvp", 1, 4, 4, 1); __PYX_ERR(0, 336, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("ws2doptvp", 0, 4, 5, 1); __PYX_ERR(0, 336, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  2:
         if (likely((values[2] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_llas)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("ws2doptvp", 1, 4, 4, 2); __PYX_ERR(0, 336, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("ws2doptvp", 0, 4, 5, 2); __PYX_ERR(0, 336, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  3:
         if (likely((values[3] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_p)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("ws2doptvp", 1, 4, 4, 3); __PYX_ERR(0, 336, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("ws2doptvp", 0, 4, 5, 3); __PYX_ERR(0, 336, __pyx_L3_error)
+        }
+        CYTHON_FALLTHROUGH;
+        case  4:
+        if (kw_args > 0) {
+          PyObject* value = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_vprec);
+          if (value) { values[4] = value; kw_args--; }
         }
       }
       if (unlikely(kw_args > 0)) {
         if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "ws2doptvp") < 0)) __PYX_ERR(0, 336, __pyx_L3_error)
       }
-    } else if (PyTuple_GET_SIZE(__pyx_args) != 4) {
-      goto __pyx_L5_argtuple_error;
     } else {
-      values[0] = PyTuple_GET_ITEM(__pyx_args, 0);
-      values[1] = PyTuple_GET_ITEM(__pyx_args, 1);
-      values[2] = PyTuple_GET_ITEM(__pyx_args, 2);
-      values[3] = PyTuple_GET_ITEM(__pyx_args, 3);
+      switch (PyTuple_GET_SIZE(__pyx_args)) {
+        case  5: values[4] = PyTuple_GET_ITEM(__pyx_args, 4);
+        CYTHON_FALLTHROUGH;
+        case  4: values[3] = PyTuple_GET_ITEM(__pyx_args, 3);
+        values[2] = PyTuple_GET_ITEM(__pyx_args, 2);
+        values[1] = PyTuple_GET_ITEM(__pyx_args, 1);
+        values[0] = PyTuple_GET_ITEM(__pyx_args, 0);
+        break;
+        default: goto __pyx_L5_argtuple_error;
+      }
     }
     __pyx_v_y = ((PyArrayObject *)values[0]);
     __pyx_v_w = ((PyArrayObject *)values[1]);
     __pyx_v_llas = ((arrayobject *)values[2]);
-    __pyx_v_p = __pyx_PyFloat_AsDouble(values[3]); if (unlikely((__pyx_v_p == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 336, __pyx_L3_error)
+    __pyx_v_p = __pyx_PyFloat_AsFloat(values[3]); if (unlikely((__pyx_v_p == (float)-1) && PyErr_Occurred())) __PYX_ERR(0, 336, __pyx_L3_error)
+    if (values[4]) {
+      __pyx_v_vprec = __Pyx_PyInt_As_int(values[4]); if (unlikely((__pyx_v_vprec == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 336, __pyx_L3_error)
+    } else {
+      __pyx_v_vprec = ((int)5);
+    }
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("ws2doptvp", 1, 4, 4, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 336, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("ws2doptvp", 0, 4, 5, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 336, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("modape.whittaker.ws2doptvp", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
@@ -7807,7 +7869,7 @@ static PyObject *__pyx_pw_6modape_9whittaker_11ws2doptvp(PyObject *__pyx_self, P
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_y), __pyx_ptype_5numpy_ndarray, 1, "y", 0))) __PYX_ERR(0, 336, __pyx_L1_error)
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_w), __pyx_ptype_5numpy_ndarray, 1, "w", 0))) __PYX_ERR(0, 336, __pyx_L1_error)
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_llas), __pyx_ptype_7cpython_5array_array, 1, "llas", 0))) __PYX_ERR(0, 336, __pyx_L1_error)
-  __pyx_r = __pyx_pf_6modape_9whittaker_10ws2doptvp(__pyx_self, __pyx_v_y, __pyx_v_w, __pyx_v_llas, __pyx_v_p);
+  __pyx_r = __pyx_pf_6modape_9whittaker_10ws2doptvp(__pyx_self, __pyx_v_y, __pyx_v_w, __pyx_v_llas, __pyx_v_p, __pyx_v_vprec);
 
   /* function exit code */
   goto __pyx_L0;
@@ -7818,7 +7880,7 @@ static PyObject *__pyx_pw_6modape_9whittaker_11ws2doptvp(PyObject *__pyx_self, P
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_6modape_9whittaker_10ws2doptvp(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_y, PyArrayObject *__pyx_v_w, arrayobject *__pyx_v_llas, double __pyx_v_p) {
+static PyObject *__pyx_pf_6modape_9whittaker_10ws2doptvp(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_y, PyArrayObject *__pyx_v_w, arrayobject *__pyx_v_llas, float __pyx_v_p, int __pyx_v_vprec) {
   __Pyx_LocalBuf_ND __pyx_pybuffernd_llas;
   __Pyx_Buffer __pyx_pybuffer_llas;
   __Pyx_LocalBuf_ND __pyx_pybuffernd_w;
@@ -7828,6 +7890,7 @@ static PyObject *__pyx_pf_6modape_9whittaker_10ws2doptvp(CYTHON_UNUSED PyObject 
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
   PyObject *__pyx_t_1 = NULL;
+  struct __pyx_opt_args_6modape_9whittaker_ws2doptvp __pyx_t_2;
   __Pyx_RefNannySetupContext("ws2doptvp", 0);
   __pyx_pybuffer_y.pybuffer.buf = NULL;
   __pyx_pybuffer_y.refcount = 0;
@@ -7857,7 +7920,9 @@ static PyObject *__pyx_pf_6modape_9whittaker_10ws2doptvp(CYTHON_UNUSED PyObject 
   }
   __pyx_pybuffernd_llas.diminfo[0].strides = __pyx_pybuffernd_llas.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_llas.diminfo[0].shape = __pyx_pybuffernd_llas.rcbuffer->pybuffer.shape[0]; __pyx_pybuffernd_llas.diminfo[0].suboffsets = __pyx_pybuffernd_llas.rcbuffer->pybuffer.suboffsets[0];
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __pyx_f_6modape_9whittaker_ws2doptvp(__pyx_v_y, __pyx_v_w, __pyx_v_llas, __pyx_v_p, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 336, __pyx_L1_error)
+  __pyx_t_2.__pyx_n = 1;
+  __pyx_t_2.vprec = __pyx_v_vprec;
+  __pyx_t_1 = __pyx_f_6modape_9whittaker_ws2doptvp(__pyx_v_y, __pyx_v_w, __pyx_v_llas, __pyx_v_p, 0, &__pyx_t_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 336, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -24542,6 +24607,7 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_reduce, __pyx_k_reduce, sizeof(__pyx_k_reduce), 0, 0, 1, 1},
   {&__pyx_n_s_reduce_cython, __pyx_k_reduce_cython, sizeof(__pyx_k_reduce_cython), 0, 0, 1, 1},
   {&__pyx_n_s_reduce_ex, __pyx_k_reduce_ex, sizeof(__pyx_k_reduce_ex), 0, 0, 1, 1},
+  {&__pyx_n_s_round, __pyx_k_round, sizeof(__pyx_k_round), 0, 0, 1, 1},
   {&__pyx_n_s_setstate, __pyx_k_setstate, sizeof(__pyx_k_setstate), 0, 0, 1, 1},
   {&__pyx_n_s_setstate_cython, __pyx_k_setstate_cython, sizeof(__pyx_k_setstate_cython), 0, 0, 1, 1},
   {&__pyx_n_s_shape, __pyx_k_shape, sizeof(__pyx_k_shape), 0, 0, 1, 1},
@@ -24560,6 +24626,7 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_kp_u_unknown_dtype_code_in_numpy_pxd, __pyx_k_unknown_dtype_code_in_numpy_pxd, sizeof(__pyx_k_unknown_dtype_code_in_numpy_pxd), 0, 1, 0, 0},
   {&__pyx_n_s_unpack, __pyx_k_unpack, sizeof(__pyx_k_unpack), 0, 0, 1, 1},
   {&__pyx_n_s_update, __pyx_k_update, sizeof(__pyx_k_update), 0, 0, 1, 1},
+  {&__pyx_n_s_vprec, __pyx_k_vprec, sizeof(__pyx_k_vprec), 0, 0, 1, 1},
   {&__pyx_n_s_w, __pyx_k_w, sizeof(__pyx_k_w), 0, 0, 1, 1},
   {&__pyx_n_s_w_constrain, __pyx_k_w_constrain, sizeof(__pyx_k_w_constrain), 0, 0, 1, 1},
   {&__pyx_n_s_ws2d, __pyx_k_ws2d, sizeof(__pyx_k_ws2d), 0, 0, 1, 1},
@@ -24572,6 +24639,7 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
 };
 static CYTHON_SMALL_CODE int __Pyx_InitCachedBuiltins(void) {
   __pyx_builtin_range = __Pyx_GetBuiltinName(__pyx_n_s_range); if (!__pyx_builtin_range) __PYX_ERR(0, 44, __pyx_L1_error)
+  __pyx_builtin_round = __Pyx_GetBuiltinName(__pyx_n_s_round); if (!__pyx_builtin_round) __PYX_ERR(0, 427, __pyx_L1_error)
   __pyx_builtin_MemoryError = __Pyx_GetBuiltinName(__pyx_n_s_MemoryError); if (!__pyx_builtin_MemoryError) __PYX_ERR(1, 109, __pyx_L1_error)
   __pyx_builtin_ValueError = __Pyx_GetBuiltinName(__pyx_n_s_ValueError); if (!__pyx_builtin_ValueError) __PYX_ERR(2, 272, __pyx_L1_error)
   __pyx_builtin_RuntimeError = __Pyx_GetBuiltinName(__pyx_n_s_RuntimeError); if (!__pyx_builtin_RuntimeError) __PYX_ERR(2, 856, __pyx_L1_error)

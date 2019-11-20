@@ -333,7 +333,7 @@ cpdef ws2doptv(np.ndarray[double_t] y, np.ndarray[double_t] w, array[double] lla
     return z, lopt
 
 
-cpdef ws2doptvp(np.ndarray[double_t] y, np.ndarray[double_t] w, array[double] llas, double p):
+cpdef ws2doptvp(np.ndarray[double_t] y, np.ndarray[double_t] w, array[double] llas, float p, int vprec=5):
     """Whittaker smoother with asymmetric V-curve optimization of lambda (S).
 
     Args:
@@ -341,6 +341,7 @@ cpdef ws2doptvp(np.ndarray[double_t] y, np.ndarray[double_t] w, array[double] ll
         w: weights numpy array
         llas: array with lambda values to iterate (S-range)
         p: "Envelope" value
+        vprec: Precision for Vcurve values (optional, default=5)
 
     Returns:
         Smoothed time-series array z and optimized lambda (S) value lopt
@@ -423,7 +424,7 @@ cpdef ws2doptvp(np.ndarray[double_t] y, np.ndarray[double_t] w, array[double] ll
         fit2 = fits.data.as_doubles[i+1]
         pen1 = pens.data.as_doubles[i]
         pen2 = pens.data.as_doubles[i+1]
-        v.data.as_doubles[i] = sqrt(pow(fit2 - fit1,2) + pow(pen2 - pen1,2)) / (log(10) * llastep)
+        v.data.as_doubles[i] = round(sqrt(pow(fit2 - fit1,2) + pow(pen2 - pen1,2)) / (log(10) * llastep), vprec)
         lamids.data.as_doubles[i] = (l1+l2) / 2
 
     vmin = v.data.as_doubles[k]
