@@ -56,7 +56,7 @@ class TestWhittaker(unittest.TestCase):
         z_rock = self.data['z_ws2dvcp'][[x < date(2014, 1, 1) for x in self.dates]]*10000
         dates_rock = [x for x in self.dates if x < date(2014, 1, 1)]
 
-        df = pd.DataFrame({'z': np.diff((z_rock)), 'md': [int(x.strftime('%d%m')) for x in dates_rock[1:]]})
+        df = pd.DataFrame({'z': np.diff((z_rock)), 'md': [int(x.strftime('%m%d')) for x in dates_rock[1:]]})
         mn = df.groupby('md').mean()
         sd = df.groupby('md').std()
 
@@ -87,7 +87,7 @@ class TestWhittaker(unittest.TestCase):
 
             z = np.array(ws2dp(y, self.data['sopt_ws2dvcp'], w, 0.90))
 
-            constraint_ix = [constraints['mday_set'].index(x) for x in [int(x.strftime('%d%m')) for x in self.dates[kk:jj]]]
+            constraint_ix = [constraints['mday_set'].index(x) for x in [int(x.strftime('%m%d')) for x in self.dates[kk:jj]]]
 
             z[...] = w_constrain(z, constraints['clower'][constraint_ix], constraints['cupper'][constraint_ix], wc)
 
