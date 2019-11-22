@@ -24,7 +24,7 @@ import numpy as np
 import h5py # pylint: disable=import-error
 import xarray as xr # pylint: disable=import-error
 
-from modape.utils import (DateHelper, execute_ws2d, execute_ws2d_sgrid, execute_ws2d_vc, execute_w_constraint,
+from modape.utils import (DateHelper, execute_ws2d, execute_ws2d_sgrid, execute_ws2d_vc, execute_w_constraint, execute_tempint,
                           fromjulian, init_parameters, init_shared, init_worker, tonumpyarray, txx)
 from modape.whittaker import lag1corr, w_constrain, ws2d, ws2dp, ws2doptv, ws2doptvp # pylint: disable=no-name-in-module
 
@@ -273,6 +273,9 @@ class ModisSmoothH5(object):
                         continue #no data points, skipping to next block
                     _ = pool.map(execute_ws2d, map_index)
 
+                    if self.tinterpolate:
+                        _ = pool.map(execute_tempint, map_index)
+
                     # write back data
                     if self.tinterpolate:
                         for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(0, arr_smooth.shape[1], smoothchunks[1])):
@@ -494,6 +497,9 @@ class ModisSmoothH5(object):
                     arr_sgrid[...] = smt_sgrid[br:br+rawchunks[0]]
                     _ = pool.map(execute_ws2d_sgrid, map_index)
 
+                    if self.tinterpolate:
+                        _ = pool.map(execute_tempint, map_index)
+
 
                     if constrain:
                         arr_clower[...] = smt_clower[br:br+rawchunks[0], constraint_ix_sorted]
@@ -697,6 +703,9 @@ class ModisSmoothH5(object):
                         continue #no data points, skipping to next block
 
                     _ = pool.map(execute_ws2d_vc, map_index)
+
+                    if self.tinterpolate:
+                        _ = pool.map(execute_tempint, map_index)
 
                     # create constraints (only for full timeseries and if datasets are available)
                     if self.nsmooth == 0:

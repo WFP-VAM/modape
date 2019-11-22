@@ -548,14 +548,6 @@ def execute_ws2d(ix):
                           lmda=10**parameters['s'],
                           w=np.array((arr_raw[ix, :] != parameters['nd'])*1, dtype='double'))
 
-    if parameters['shared_array_smooth']:
-        z2 = parameters['vec_dly'].copy()
-        z2[z2 != parameters['nd']] = arr_raw[ix, :]
-        z2[...] = ws2d(y=z2,
-                       lmda=0.0001,
-                       w=np.array((z2 != parameters['nd'])*1, dtype='double'))
-
-        arr_smooth[ix, :] = z2[parameters['dix']]
 
 def execute_ws2d_sgrid(ix):
     """Execute whittaker smoother with s from grid in worker.
@@ -575,14 +567,6 @@ def execute_ws2d_sgrid(ix):
                                w=np.array((arr_raw[ix, :] != parameters['nd'])*1, dtype='double'),
                                p=parameters['p'])
 
-    if parameters['shared_array_smooth']:
-        z2 = parameters['vec_dly'].copy()
-        z2[z2 != parameters['nd']] = arr_raw[ix, :]
-        z2[...] = ws2d(y=z2,
-                       lmda=0.0001,
-                       w=np.array((z2 != parameters['nd'])*1, dtype='double'))
-
-        arr_smooth[ix, :] = z2[parameters['dix']]
 
 def execute_ws2d_vc(ix):
     """Execute whittaker smoother with V-curve optimization of s in worker.
@@ -623,13 +607,23 @@ def execute_ws2d_vc(ix):
                                                   p=parameters['p'],
                                                   vprec=vp)
 
+def execute_tempint(ix):
+    """Execute temporal interpolation in worker.
+
+    Args:
+        ix: Row index for array
+    """
+
     if parameters['shared_array_smooth']:
         z2 = parameters['vec_dly'].copy()
         z2[z2 != parameters['nd']] = arr_raw[ix, :]
         z2[...] = ws2d(y=z2,
                        lmda=0.0001,
                        w=np.array((z2 != parameters['nd'])*1, dtype='double'))
+
         arr_smooth[ix, :] = z2[parameters['dix']]
+    else:
+        pass
 
 
 def execute_w_constraint(ix):
