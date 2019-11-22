@@ -632,8 +632,4 @@ def execute_w_constraint(ix):
     Args:
         ix: Row index for array
     """
-
-    if parameters['shared_array_smooth']:
-        arr_smooth[ix, :] = w_constrain(arr_smooth[ix, :], arr_clower[ix, :], arr_cupper[ix, :], parameters['cweights'])
-    else:
-        arr_raw[ix, :] = w_constrain(arr_raw[ix, :], arr_clower[ix, :], arr_cupper[ix, :], parameters['cweights'])
+    arr_raw[ix, :] = w_constrain(arr_raw[ix, :], arr_clower[ix, :], arr_cupper[ix, :], parameters['cweights'])
