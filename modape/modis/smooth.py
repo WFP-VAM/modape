@@ -118,6 +118,9 @@ class ModisSmoothH5(object):
 
         dates_length = len(dates.target)
 
+        self.doys = [int(x[4:]) for x in self.rawdates_nsmooth]
+        doys_set = list(set(self.doys))
+
         # create datasets
 
         try:
@@ -141,7 +144,7 @@ class ModisSmoothH5(object):
 
                 # lower constraint
                 h5f.create_dataset('clower',
-                                   shape=(rawshape[0], dates.nmdays),
+                                   shape=(rawshape[0], len(doys_set)),
                                    dtype='Int16', maxshape=(rawshape[0], None),
                                    chunks=(rawchunks[0], 10),
                                    compression=cmpr,
@@ -149,7 +152,7 @@ class ModisSmoothH5(object):
 
                 # upper constraint
                 h5f.create_dataset('cupper',
-                                   shape=(rawshape[0], dates.nmdays),
+                                   shape=(rawshape[0], len(doys_set)),
                                    dtype='Int16', maxshape=(rawshape[0], None),
                                    chunks=(rawchunks[0], 10),
                                    compression=cmpr,
@@ -168,7 +171,7 @@ class ModisSmoothH5(object):
                 dset.attrs['resolution'] = rres
                 dset.attrs['nodata'] = rnd
                 dset.attrs['temporalresolution'] = self.temporalresolution
-                dset.attrs['mdays_set'] = dates.mdays_set
+                dset.attrs['doys_set'] = doys_set
                 dset.attrs['RasterYSize'] = nrows
                 dset.attrs['RasterXSize'] = ncols
         except:
@@ -393,9 +396,9 @@ class ModisSmoothH5(object):
             if constrain:
 
                 try:
-                    mdays_set = smt_ds.attrs['mdays_set']
-                    mdays = [int(fromjulian(x).strftime('%m%d')) for x in dates.target[-len(cweights):]]
-                    constraint_ix = [list(mdays_set).index(x) for x in mdays]
+                    doys_set = smt_ds.attrs['doys_set']
+                    doys = [int(x[4:]) for x in self.rawdates_nsmooth[-len(cweights):]]
+                    constraint_ix = [list(doys_set).index(x) for x in doys]
                     constraint_ix_sorted = constraint_ix.copy()
                     constraint_ix_sorted.sort()
 
@@ -497,10 +500,6 @@ class ModisSmoothH5(object):
                     arr_sgrid[...] = smt_sgrid[br:br+rawchunks[0]]
                     _ = pool.map(execute_ws2d_sgrid, map_index)
 
-                    if self.tinterpolate:
-                        _ = pool.map(execute_tempint, map_index)
-
-
                     if constrain:
                         arr_clower[...] = smt_clower[br:br+rawchunks[0], constraint_ix_sorted]
                         arr_clower[...] = arr_clower[:, np.argsort(constraint_ix)]
@@ -509,6 +508,9 @@ class ModisSmoothH5(object):
                         arr_cupper[...] = arr_cupper[:, np.argsort(constraint_ix)]
 
                         _ = pool.map(execute_w_constraint, map_index)
+
+                    if self.tinterpolate:
+                        _ = pool.map(execute_tempint, map_index)
 
                     # write back data
                     if self.tinterpolate:
@@ -571,18 +573,15 @@ class ModisSmoothH5(object):
                             arr_raw[ix, :] = ws2d(y=arr_raw[ix, :], lmda=10**arr_sgrid[ix], w=wts[ix, :])
                         else:
                             arr_raw[ix, :] = ws2dp(y=arr_raw[ix, :], lmda=10**arr_sgrid[ix], w=wts[ix, :], p=p)
+
+                        if constrain:
+                            arr_raw[ix, :] = w_constrain(arr_raw[ix, :], arr_clower[ix, :], arr_cupper[ix, :], cweights)
+
                         if self.tinterpolate:
                             z2 = vector_daily.copy()
                             z2[z2 != nodata] = arr_raw[ix, :]
                             z2[...] = ws2d(y=z2, lmda=0.0001, w=np.array((z2 != nodata)*1, dtype='double'))
                             arr_smooth[ix, :] = z2[dix]
-                            if constrain:
-                                arr_smooth[ix, :] = w_constrain(arr_smooth[ix, :], arr_clower[ix, :], arr_cupper[ix, :], cweights)
-                        else:
-                            if constrain:
-                                arr_raw[ix, :] = w_constrain(arr_raw[ix, :], arr_clower[ix, :], arr_cupper[ix, :], cweights)
-                            else:
-                                pass
 
                     # write back data
                     if self.tinterpolate:
@@ -621,6 +620,7 @@ class ModisSmoothH5(object):
             self.temporalresolution = smt_ds.attrs['temporalresolution'].item()
             tshift = raw_ds.attrs['tshift'].item()
             ncols = smt_ds.attrs['RasterXSize'].item()
+            doys_set = smt_ds.attrs['doys_set']
 
             # Store run vampceters for infotool
             smt_ds.attrs['processingtimestamp'] = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
@@ -704,53 +704,44 @@ class ModisSmoothH5(object):
 
                     _ = pool.map(execute_ws2d_vc, map_index)
 
-                    if self.tinterpolate:
-                        _ = pool.map(execute_tempint, map_index)
-
                     # create constraints (only for full timeseries and if datasets are available)
                     if self.nsmooth == 0:
 
                         if smt_clower and smt_cupper:
 
-                            if dates.nmdays > smt_cupper.shape[1]:
-                                smt_cupper.resize((smt_cupper.shape[0], dates.nmdays))
+                            if len(self.rawdates_nsmooth) > smt_cupper.shape[1]:
+                                smt_cupper.resize((smt_cupper.shape[0], len(self.rawdates_nsmooth)))
 
-                            if dates.nmdays > smt_clower.shape[1]:
-                                smt_clower.resize((smt_clower.shape[0], dates.nmdays))
-
-                            if self.tinterpolate:
-                                smooth_view = arr_smooth.view()
-                            else:
-                                smooth_view = arr_raw.view()
-
-                            smooth_view.shape = (-1, ncols, dates.target_length)
+                            if len(self.rawdates_nsmooth) > smt_clower.shape[1]:
+                                smt_clower.resize((smt_clower.shape[0], len(self.rawdates_nsmooth)))
 
 
-                            col_ix = np.arange(smooth_view.shape[1])
-                            row_ix = np.arange(smooth_view.shape[0])
+                            arr_view = arr_raw.view()
 
-                            smooth_xarr = xr.Dataset({'data':(['x', 'y', 'time'], smooth_view)},
-                                                     coords={'cols': (['x', 'y'], np.repeat([col_ix], smooth_view.shape[0], axis=0)),
-                                                             'rows': (['x', 'y'], np.repeat([row_ix], smooth_view.shape[1], axis=1).reshape(smooth_view.shape[0], -1)),
-                                                             'time': [int(fromjulian(x).strftime('%m%d')) for x in  dates.target]})
+                            arr_view.shape = (-1, ncols, len(self.rawdates_nsmooth))
 
-                            # no copy
-                            if self.tinterpolate:
-                                assert smooth_view.base is arr_smooth
-                                assert smooth_xarr.data.values.base is arr_smooth
-                            else:
-                                assert smooth_view.base is arr_raw
-                                assert smooth_xarr.data.values.base is arr_raw
 
-                            smooth_diff_mean = smooth_xarr.diff('time').groupby('time').mean()
-                            smooth_diff_sdev = smooth_xarr.diff('time').groupby('time').std()
+                            col_ix = np.arange(arr_view.shape[1])
+                            row_ix = np.arange(arr_view.shape[0])
+
+                            xarr = xr.Dataset({'data':(['x', 'y', 'time'], arr_view)},
+                                              coords={'cols': (['x', 'y'], np.repeat([col_ix], arr_view.shape[0], axis=0)),
+                                                      'rows': (['x', 'y'], np.repeat([row_ix], arr_view.shape[1], axis=1).reshape(arr_view.shape[0], -1)),
+                                                      'time': [int(x[4:]) for x in self.rawdates_nsmooth]})
+
+
+                            assert arr_view.base is arr_raw
+                            assert xarr.data.values.base is arr_raw
+
+                            diff_mean = xarr.diff('time').groupby('time').mean()
+                            diff_sdev = xarr.diff('time').groupby('time').std()
                             # enforce min sdev of one NDVI value
-                            smooth_diff_sdev = smooth_diff_sdev.where(smooth_diff_sdev.data > 100, 100)
+                            diff_sdev = diff_sdev.where(diff_sdev.data > 100, 100)
 
                             # check dimensions are correct
-                            assert smooth_diff_mean.data.shape[0] == smooth_diff_sdev.data.shape[0] == dates.nmdays
+                            assert diff_mean.data.shape[0] == diff_sdev.data.shape[0] == len(doys_set)
 
-                            constraint = (smooth_diff_mean + smooth_diff_sdev).data.values
+                            constraint = (diff_mean + diff_sdev).data.values
 
                             # flip for writing
                             constraint_view = np.moveaxis(constraint, 0, 2).reshape(constraint.shape[1]*constraint.shape[2], constraint.shape[0])
@@ -759,14 +750,14 @@ class ModisSmoothH5(object):
 
                             del constraint, constraint_view
 
-                            constraint = (smooth_diff_mean - smooth_diff_sdev).data.values
+                            constraint = (diff_mean - diff_sdev).data.values
 
                             # flip for writing
                             constraint_view = np.moveaxis(constraint, 0, 2).reshape(constraint.shape[1]*constraint.shape[2], constraint.shape[0])
 
                             smt_clower[br:br+smoothchunks[0], :] = constraint_view[...]
 
-                            del constraint, constraint_view, smooth_xarr
+                            del constraint, constraint_view, xarr
 
                         else:
                             warnings.warn('Error reading constrain information from dataset. Won\'t create/update constrains!')
@@ -774,6 +765,9 @@ class ModisSmoothH5(object):
                     else:
                         # constraints won't be created/updated if
                         pass
+
+                    if self.tinterpolate:
+                        _ = pool.map(execute_tempint, map_index)
 
                     # write back data
                     arr_sgrid[arr_sgrid > 0] = np.log10(arr_sgrid[arr_sgrid > 0])
@@ -848,6 +842,7 @@ class ModisSmoothH5(object):
                                                                      w=np.array((arr_raw[ix, :] != nodata)*1, dtype='double'),
                                                                      llas=array('d', sr))
 
+
                         if self.tinterpolate:
                             z2 = vector_daily.copy()
                             z2[z2 != nodata] = arr_raw[ix, :]
@@ -857,6 +852,68 @@ class ModisSmoothH5(object):
                             arr_smooth[ix, :] = z2[dix]
                         else:
                             pass
+
+                    # create constraints (only for full timeseries and if datasets are available)
+                    if self.nsmooth == 0:
+
+                        if smt_clower and smt_cupper:
+
+                            if len(self.rawdates_nsmooth) > smt_cupper.shape[1]:
+                                smt_cupper.resize((smt_cupper.shape[0], len(self.rawdates_nsmooth)))
+
+                            if len(self.rawdates_nsmooth) > smt_clower.shape[1]:
+                                smt_clower.resize((smt_clower.shape[0], len(self.rawdates_nsmooth)))
+
+
+                            arr_view = arr_raw.view()
+
+                            arr_view.shape = (-1, ncols, len(self.rawdates_nsmooth))
+
+
+                            col_ix = np.arange(arr_view.shape[1])
+                            row_ix = np.arange(arr_view.shape[0])
+
+                            xarr = xr.Dataset({'data':(['x', 'y', 'time'], arr_view)},
+                                              coords={'cols': (['x', 'y'], np.repeat([col_ix], arr_view.shape[0], axis=0)),
+                                                      'rows': (['x', 'y'], np.repeat([row_ix], arr_view.shape[1], axis=1).reshape(arr_view.shape[0], -1)),
+                                                      'time': [int(x[4:]) for x in self.rawdates_nsmooth]})
+
+
+                            assert arr_view.base is arr_raw
+                            assert xarr.data.values.base is arr_raw
+
+                            diff_mean = xarr.diff('time').groupby('time').mean()
+                            diff_sdev = xarr.diff('time').groupby('time').std()
+                            # enforce min sdev of one NDVI value
+                            diff_sdev = diff_sdev.where(diff_sdev.data > 100, 100)
+
+                            # check dimensions are correct
+                            assert diff_mean.data.shape[0] == diff_sdev.data.shape[0] == len(doys_set)
+
+                            constraint = (diff_mean + diff_sdev).data.values
+
+                            # flip for writing
+                            constraint_view = np.moveaxis(constraint, 0, 2).reshape(constraint.shape[1]*constraint.shape[2], constraint.shape[0])
+
+                            smt_cupper[br:br+smoothchunks[0], :] = constraint_view[...]
+
+                            del constraint, constraint_view
+
+                            constraint = (diff_mean - diff_sdev).data.values
+
+                            # flip for writing
+                            constraint_view = np.moveaxis(constraint, 0, 2).reshape(constraint.shape[1]*constraint.shape[2], constraint.shape[0])
+
+                            smt_clower[br:br+smoothchunks[0], :] = constraint_view[...]
+
+                            del constraint, constraint_view, xarr
+
+                        else:
+                            warnings.warn('Error reading constrain information from dataset. Won\'t create/update constrains!')
+
+                    else:
+                        # constraints won't be created/updated if
+                        pass
 
                     # write back data
                     arr_sgrid[arr_sgrid > 0] = np.log10(arr_sgrid[arr_sgrid > 0])
