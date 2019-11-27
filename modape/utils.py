@@ -289,6 +289,22 @@ def pload(filename):
     with open(filename, 'rb') as pkl:
         return pickle.load(pkl)
 
+def get_doyset(x):
+    '''Return set of DOYs for given list of dates
+
+    Args:
+        x: List of dates (as %Y%j)
+
+    Returns:
+        List of unique DOYs'''
+
+
+    doys = [int(date[4:]) for date in x]
+    doy_set = list(set(doys))
+    doy_set.sort()
+
+    return doy_set
+
 def dtype_GDNP(dt):
     """GDAL/NP DataType helper.
 
