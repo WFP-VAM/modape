@@ -565,8 +565,11 @@ class ModisSmoothH5(object):
                     arr_sgrid[...] = smt_sgrid[br:br+rawchunks[0]]
 
                     if constrain:
-                        arr_clower[...] = smt_clower[br:br+rawchunks[0], constraint_ix]
-                        arr_cupper[...] = smt_cupper[br:br+rawchunks[0], constraint_ix]
+                        arr_clower[...] = smt_clower[br:br+rawchunks[0], constraint_ix_sorted]
+                        arr_clower[...] = arr_clower[:, np.argsort(constraint_ix)]
+
+                        arr_cupper[...] = smt_cupper[br:br+rawchunks[0], constraint_ix_sorted]
+                        arr_cupper[...] = arr_cupper[:, np.argsort(constraint_ix)]
 
                     for ix in map_index:
                         if not p:
@@ -592,7 +595,7 @@ class ModisSmoothH5(object):
                         for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(self.array_offset, arr_raw.shape[1], smoothchunks[1])):
                             smt_ds[br:br+rawchunks[0], bcs:bcs+smoothchunks[1]] = arr_raw[:, bcr:bcr+smoothchunks[1]]
 
-    def ws2d_vc(self, srange, p=None):
+    def ws2d_vc(self, srange, p=None, constrain=False):
         """Apply whittaker smoother V-curve optimization of s.
 
         Optionally, p value can be specified to use asymmetric smoothing.
@@ -621,11 +624,26 @@ class ModisSmoothH5(object):
             tshift = raw_ds.attrs['tshift'].item()
             ncols = smt_ds.attrs['RasterXSize'].item()
 
+            if not smt_clower and smt_cupper:
+                constrain = False
+
+            if constrain:
+
+                # constrain weights
+                cweights = array('f', np.arange(0.9, -0.1, -0.1))
+
+                if len(self.rawdates_nsmooth) < len(cweights):
+                    raise ValueError('NSMOOTH can\'t be smaller than 10 when CONSTRAIN should be performed!')
+
+            else:
+                cweights = None
+
+
             # Store run vampceters for infotool
             smt_ds.attrs['processingtimestamp'] = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
 
             if p:
-                smt_ds.attrs['lastrun'] = 'V-curve optimization of s with p = {}'.format(p)
+                smt_ds.attrs['lastrun'] = 'V-curve optimization of s with p = {} and constrain = {}'.format(p, constrain)
                 smt_ds.attrs['pvalue'] = p
             else:
                 smt_ds.attrs['lastrun'] = 'V-curve optimization of s'
@@ -656,6 +674,19 @@ class ModisSmoothH5(object):
 
             if len(self.rawdates_doyset) > smt_clower.shape[1]:
                 smt_clower.resize((smt_clower.shape[0], len(self.rawdates_doyset)))
+
+            if constrain:
+
+                try:
+                    doyset = smt_ds.attrs['doyset']
+                    doys = [int(x[4:]) for x in self.rawdates_nsmooth[-len(cweights):]]
+                    constraint_ix = [list(doyset).index(x) for x in doys]
+                    constraint_ix_sorted = constraint_ix.copy()
+                    constraint_ix_sorted.sort()
+
+                except KeyError:
+                    constrain = False
+                    warnings.warn('Error reading constrain information from dataset. Continuing without constrain!')
 
             # calculate offsets
             rawoffset = raw_dates_all.index(self.rawdates_nsmooth[0])
@@ -699,7 +730,24 @@ class ModisSmoothH5(object):
                 arr_raw.shape = (rawchunks[0], len(self.rawdates_nsmooth))
                 arr_sgrid = tonumpyarray(parameters['shared_array_sgrid'], dtype=ctypes.c_double)
 
+                assert arr_raw.base is shared_array_raw
+
+                if constrain:
+                    parameters['shared_array_clower'] = init_shared(rawchunks[0]*len(cweights), dtype=ctypes.c_int16)
+                    arr_clower = tonumpyarray(parameters['shared_array_clower'], dtype=ctypes.c_int16)
+                    arr_clower.shape = (rawchunks[0], len(cweights))
+
+                    parameters['shared_array_cupper'] = init_shared(rawchunks[0]*len(cweights), dtype=ctypes.c_int16)
+                    arr_cupper = tonumpyarray(parameters['shared_array_cupper'], dtype=ctypes.c_int16)
+                    arr_cupper.shape = (rawchunks[0], len(cweights))
+
+                    shared_cweights = init_shared(len(cweights), dtype=ctypes.c_float)
+                    shared_cweights[0:len(cweights)] = cweights[0:len(cweights)]
+
+                    parameters['cweights'] = shared_cweights
+
                 pool = mp.Pool(processes=self.nworkers, initializer=init_worker, initargs=(shared_array_raw, parameters))
+
                 # load raw data
                 for br in range(0, rawshape[0], rawchunks[0]):
                     for bc in range(0, arr_raw.shape[1], rawchunks[1]):
@@ -753,6 +801,9 @@ class ModisSmoothH5(object):
 
                             smt_cupper[br:br+smoothchunks[0], ix_update] = constraint_view[...]
 
+                            if constrain:
+                                arr_cupper[...] = constraint_view[:, np.argsort(constraint_ix)]
+
                             del constraint, constraint_view
 
                             constraint = (diff_mean - diff_sdev).data.values
@@ -762,14 +813,28 @@ class ModisSmoothH5(object):
 
                             smt_clower[br:br+smoothchunks[0], ix_update] = constraint_view[...]
 
+                            if constrain:
+                                arr_clower[...] = constraint_view[:, np.argsort(constraint_ix)]
+
                             del constraint, constraint_view, xarr, ix_update
 
                         else:
                             warnings.warn('Error reading constrain information from dataset. Won\'t create/update constrains!')
 
+                    elif constrain:
+
+                        arr_clower[...] = smt_clower[br:br+rawchunks[0], constraint_ix_sorted]
+                        arr_clower[...] = arr_clower[:, np.argsort(constraint_ix)]
+
+                        arr_cupper[...] = smt_cupper[br:br+rawchunks[0], constraint_ix_sorted]
+                        arr_cupper[...] = arr_cupper[:, np.argsort(constraint_ix)]
+
                     else:
-                        # constraints won't be created/updated if
+                        # constraints won't be created/updated or loaded
                         pass
+
+                    if constrain:
+                        _ = pool.map(execute_w_constraint, map_index)
 
                     if self.tinterpolate:
                         _ = pool.map(execute_tempint, map_index)
@@ -796,6 +861,10 @@ class ModisSmoothH5(object):
                 arr_sgrid = np.zeros((rawchunks[0],), dtype='double')
                 wts = arr_raw.copy() # Create weights array
 
+                if constrain:
+                    arr_clower = np.zeros((rawchunks[0], len(cweights)), dtype='int16')
+                    arr_cupper = arr_clower.copy()
+
                 if self.tinterpolate:
                     arr_smooth = np.zeros((smoothchunks[0], new_dim), dtype='double')
                     vector_daily = dates.getDV(nodata)
@@ -805,18 +874,21 @@ class ModisSmoothH5(object):
                         vector_daily[dates.daily.index((fromjulian(rdate) + timedelta(tshift)).strftime('%Y%j'))] = -1
                 else:
                     arr_smooth = None
+
                 for br in range(0, rawshape[0], rawchunks[0]):
                     try:
                         arr_smooth[...] = nodata
                     except TypeError:
                         pass
                     wts[...] = 0
+
                     for bc in range(0, arr_raw.shape[1], rawchunks[1]):
                         bco = bc + rawoffset
                         arr_raw[:, bc:bc+rawchunks[1]] = raw_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]]
                     wts[...] = (arr_raw != nodata)*1
                     ndix = np.sum(wts, 1) >= (arr_raw.shape[1] * 0.2) # 20%+ data
                     map_index = np.where(ndix)[0]
+
                     if map_index.size == 0:
                         continue #no data points, skipping to next block
 
@@ -846,17 +918,6 @@ class ModisSmoothH5(object):
                             arr_raw[ix, :], arr_sgrid[ix] = ws2doptv(y=arr_raw[ix, :],
                                                                      w=np.array((arr_raw[ix, :] != nodata)*1, dtype='double'),
                                                                      llas=array('d', sr))
-
-
-                        if self.tinterpolate:
-                            z2 = vector_daily.copy()
-                            z2[z2 != nodata] = arr_raw[ix, :]
-                            z2[...] = ws2d(y=z2,
-                                           lmda=0.0001,
-                                           w=np.array((z2 != nodata)*1, dtype='double'))
-                            arr_smooth[ix, :] = z2[dix]
-                        else:
-                            pass
 
                     # create constraints (only for full timeseries and if datasets are available)
                     if self.nsmooth == 0:
@@ -899,6 +960,9 @@ class ModisSmoothH5(object):
 
                             smt_cupper[br:br+smoothchunks[0], ix_update] = constraint_view[...]
 
+                            if constrain:
+                                arr_cupper[...] = constraint_view[:, np.argsort(constraint_ix)]
+
                             del constraint, constraint_view
 
                             constraint = (diff_mean - diff_sdev).data.values
@@ -908,6 +972,9 @@ class ModisSmoothH5(object):
 
                             smt_clower[br:br+smoothchunks[0], ix_update] = constraint_view[...]
 
+                            if constrain:
+                                arr_clower[...] = constraint_view[:, np.argsort(constraint_ix)]
+
                             del constraint, constraint_view, xarr, ix_update
 
                         else:
@@ -915,7 +982,30 @@ class ModisSmoothH5(object):
 
                     else:
                         # constraints won't be created/updated if
-                        pass
+                        if constrain:
+                            arr_clower[...] = smt_clower[br:br+rawchunks[0], constraint_ix_sorted]
+                            arr_clower[...] = arr_clower[:, np.argsort(constraint_ix)]
+
+                            arr_cupper[...] = smt_cupper[br:br+rawchunks[0], constraint_ix_sorted]
+                            arr_cupper[...] = arr_cupper[:, np.argsort(constraint_ix)]
+
+                        else:
+                            pass
+
+                    for ix in map_index:
+
+                        if constrain:
+                            arr_raw[ix, :] = w_constrain(arr_raw[ix, :], arr_clower[ix, :], arr_cupper[ix, :], cweights)
+
+                        if self.tinterpolate:
+                            z2 = vector_daily.copy()
+                            z2[z2 != nodata] = arr_raw[ix, :]
+                            z2[...] = ws2d(y=z2,
+                                           lmda=0.0001,
+                                           w=np.array((z2 != nodata)*1, dtype='double'))
+                            arr_smooth[ix, :] = z2[dix]
+                        else:
+                            pass
 
                     # write back data
                     arr_sgrid[arr_sgrid > 0] = np.log10(arr_sgrid[arr_sgrid > 0])

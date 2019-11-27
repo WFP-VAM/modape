@@ -115,7 +115,7 @@ def run_ws2d_vcp(h5):
         if not smt_h5.exists:
             smt_h5.create()
 
-        smt_h5.ws2d_vc(pdict['srange'], pdict['pvalue'])
+        smt_h5.ws2d_vc(pdict['srange'], pdict['pvalue'], constrain=pdict['constrain'])
 
 def main():
     """Smooth, gapfill and interpolate processed raw MODIS HDF5 files.
@@ -317,7 +317,7 @@ def main():
 
                 if not smt_h5.exists:
                     smt_h5.create()
-                smt_h5.ws2d_vc(args.srange, args.pvalue)
+                smt_h5.ws2d_vc(args.srange, args.pvalue, constrain=args.constrain)
 
             if not args.quiet:
                 print('[{}]: Done.'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())))
