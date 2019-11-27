@@ -25,7 +25,7 @@ import h5py # pylint: disable=import-error
 import xarray as xr # pylint: disable=import-error
 
 from modape.utils import (DateHelper, execute_ws2d, execute_ws2d_sgrid, execute_ws2d_vc, execute_w_constraint, execute_tempint,
-                          fromjulian, init_parameters, init_shared, init_worker, tonumpyarray, txx)
+                          fromjulian, get_doyset, init_parameters, init_shared, init_worker, tonumpyarray, txx)
 from modape.whittaker import lag1corr, w_constrain, ws2d, ws2dp, ws2doptv, ws2doptvp # pylint: disable=no-name-in-module
 
 class ModisSmoothH5(object):
@@ -61,6 +61,8 @@ class ModisSmoothH5(object):
         with h5py.File(self.rawfile, 'r') as h5f:
             dates = h5f.get('dates')
             self.rawdates_nsmooth = [x.decode() for x in dates[-self.nsmooth:]]
+
+        self.rawdates_doyset = get_doyset(self.rawdates_nsmooth)
 
         # Parse tempint to get flag for filename
         try:
@@ -118,9 +120,6 @@ class ModisSmoothH5(object):
 
         dates_length = len(dates.target)
 
-        self.doys = [int(x[4:]) for x in self.rawdates_nsmooth]
-        doys_set = list(set(self.doys))
-
         # create datasets
 
         try:
@@ -144,7 +143,7 @@ class ModisSmoothH5(object):
 
                 # lower constraint
                 h5f.create_dataset('clower',
-                                   shape=(rawshape[0], len(doys_set)),
+                                   shape=(rawshape[0], len(self.rawdates_doyset)),
                                    dtype='Int16', maxshape=(rawshape[0], None),
                                    chunks=(rawchunks[0], 10),
                                    compression=cmpr,
@@ -152,7 +151,7 @@ class ModisSmoothH5(object):
 
                 # upper constraint
                 h5f.create_dataset('cupper',
-                                   shape=(rawshape[0], len(doys_set)),
+                                   shape=(rawshape[0], len(self.rawdates_doyset)),
                                    dtype='Int16', maxshape=(rawshape[0], None),
                                    chunks=(rawchunks[0], 10),
                                    compression=cmpr,
@@ -171,9 +170,10 @@ class ModisSmoothH5(object):
                 dset.attrs['resolution'] = rres
                 dset.attrs['nodata'] = rnd
                 dset.attrs['temporalresolution'] = self.temporalresolution
-                dset.attrs['doys_set'] = doys_set
                 dset.attrs['RasterYSize'] = nrows
                 dset.attrs['RasterXSize'] = ncols
+                dset.attrs['doyset'] = self.rawdates_doyset
+
         except:
             print('\n\nError creating {}! Check input parameters (especially if compression/filter is available) and try again. Corrupt file will be removed now. \n\nError message: \n'.format(self.outname.as_posix()))
             os.remove(self.outname.unlink())
@@ -396,9 +396,9 @@ class ModisSmoothH5(object):
             if constrain:
 
                 try:
-                    doys_set = smt_ds.attrs['doys_set']
+                    doyset = smt_ds.attrs['doyset']
                     doys = [int(x[4:]) for x in self.rawdates_nsmooth[-len(cweights):]]
-                    constraint_ix = [list(doys_set).index(x) for x in doys]
+                    constraint_ix = [list(doyset).index(x) for x in doys]
                     constraint_ix_sorted = constraint_ix.copy()
                     constraint_ix_sorted.sort()
 
@@ -620,7 +620,6 @@ class ModisSmoothH5(object):
             self.temporalresolution = smt_ds.attrs['temporalresolution'].item()
             tshift = raw_ds.attrs['tshift'].item()
             ncols = smt_ds.attrs['RasterXSize'].item()
-            doys_set = smt_ds.attrs['doys_set']
 
             # Store run vampceters for infotool
             smt_ds.attrs['processingtimestamp'] = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
@@ -648,6 +647,15 @@ class ModisSmoothH5(object):
                 smt_ds.resize((smoothshape[0], dates.target_length))
                 smt_dates[...] = np.array(dates.target, dtype='S8')
                 smoothshape = smt_ds.shape
+
+            # Resize constraints if needed
+
+            if len(self.rawdates_doyset) > smt_cupper.shape[1]:
+                smt_cupper.resize((smt_cupper.shape[0], len(self.rawdates_doyset)))
+                smt_ds.attrs['doyset'] = self.rawdates_doyset
+
+            if len(self.rawdates_doyset) > smt_clower.shape[1]:
+                smt_clower.resize((smt_clower.shape[0], len(self.rawdates_doyset)))
 
             # calculate offsets
             rawoffset = raw_dates_all.index(self.rawdates_nsmooth[0])
@@ -709,13 +717,6 @@ class ModisSmoothH5(object):
 
                         if smt_clower and smt_cupper:
 
-                            if len(self.rawdates_nsmooth) > smt_cupper.shape[1]:
-                                smt_cupper.resize((smt_cupper.shape[0], len(self.rawdates_nsmooth)))
-
-                            if len(self.rawdates_nsmooth) > smt_clower.shape[1]:
-                                smt_clower.resize((smt_clower.shape[0], len(self.rawdates_nsmooth)))
-
-
                             arr_view = arr_raw.view()
 
                             arr_view.shape = (-1, ncols, len(self.rawdates_nsmooth))
@@ -739,14 +740,18 @@ class ModisSmoothH5(object):
                             diff_sdev = diff_sdev.where(diff_sdev.data > 100, 100)
 
                             # check dimensions are correct
-                            assert diff_mean.data.shape[0] == diff_sdev.data.shape[0] == len(doys_set)
+                            assert diff_mean.data.shape[0] == diff_sdev.data.shape[0] == len(self.rawdates_doyset)
 
                             constraint = (diff_mean + diff_sdev).data.values
+
+                            doyset = list(smt_ds.attrs['doyset'])
+
+                            ix_update = np.array([doyset.index(x) for x in diff_mean.time.values])
 
                             # flip for writing
                             constraint_view = np.moveaxis(constraint, 0, 2).reshape(constraint.shape[1]*constraint.shape[2], constraint.shape[0])
 
-                            smt_cupper[br:br+smoothchunks[0], :] = constraint_view[...]
+                            smt_cupper[br:br+smoothchunks[0], ix_update] = constraint_view[...]
 
                             del constraint, constraint_view
 
@@ -755,9 +760,9 @@ class ModisSmoothH5(object):
                             # flip for writing
                             constraint_view = np.moveaxis(constraint, 0, 2).reshape(constraint.shape[1]*constraint.shape[2], constraint.shape[0])
 
-                            smt_clower[br:br+smoothchunks[0], :] = constraint_view[...]
+                            smt_clower[br:br+smoothchunks[0], ix_update] = constraint_view[...]
 
-                            del constraint, constraint_view, xarr
+                            del constraint, constraint_view, xarr, ix_update
 
                         else:
                             warnings.warn('Error reading constrain information from dataset. Won\'t create/update constrains!')
@@ -858,13 +863,6 @@ class ModisSmoothH5(object):
 
                         if smt_clower and smt_cupper:
 
-                            if len(self.rawdates_nsmooth) > smt_cupper.shape[1]:
-                                smt_cupper.resize((smt_cupper.shape[0], len(self.rawdates_nsmooth)))
-
-                            if len(self.rawdates_nsmooth) > smt_clower.shape[1]:
-                                smt_clower.resize((smt_clower.shape[0], len(self.rawdates_nsmooth)))
-
-
                             arr_view = arr_raw.view()
 
                             arr_view.shape = (-1, ncols, len(self.rawdates_nsmooth))
@@ -888,14 +886,18 @@ class ModisSmoothH5(object):
                             diff_sdev = diff_sdev.where(diff_sdev.data > 100, 100)
 
                             # check dimensions are correct
-                            assert diff_mean.data.shape[0] == diff_sdev.data.shape[0] == len(doys_set)
+                            assert diff_mean.data.shape[0] == diff_sdev.data.shape[0] == len(self.rawdates_doyset)
 
                             constraint = (diff_mean + diff_sdev).data.values
+
+                            doyset = list(smt_ds.attrs['doyset'])
+
+                            ix_update = np.array([doyset.index(x) for x in diff_mean.time.values])
 
                             # flip for writing
                             constraint_view = np.moveaxis(constraint, 0, 2).reshape(constraint.shape[1]*constraint.shape[2], constraint.shape[0])
 
-                            smt_cupper[br:br+smoothchunks[0], :] = constraint_view[...]
+                            smt_cupper[br:br+smoothchunks[0], ix_update] = constraint_view[...]
 
                             del constraint, constraint_view
 
@@ -904,9 +906,9 @@ class ModisSmoothH5(object):
                             # flip for writing
                             constraint_view = np.moveaxis(constraint, 0, 2).reshape(constraint.shape[1]*constraint.shape[2], constraint.shape[0])
 
-                            smt_clower[br:br+smoothchunks[0], :] = constraint_view[...]
+                            smt_clower[br:br+smoothchunks[0], ix_update] = constraint_view[...]
 
-                            del constraint, constraint_view, xarr
+                            del constraint, constraint_view, xarr, ix_update
 
                         else:
                             warnings.warn('Error reading constrain information from dataset. Won\'t create/update constrains!')
