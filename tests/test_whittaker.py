@@ -56,21 +56,21 @@ class TestWhittaker(unittest.TestCase):
         z_rock = self.data['z_ws2dvcp'][[x < date(2014, 1, 1) for x in self.dates]]*10000
         dates_rock = [x for x in self.dates if x < date(2014, 1, 1)]
 
-        df = pd.DataFrame({'z': np.diff((z_rock)), 'md': [int(x.strftime('%m%d')) for x in dates_rock[1:]]})
-        mn = df.groupby('md').mean()
-        sd = df.groupby('md').std()
+        df = pd.DataFrame({'z': np.diff((z_rock)), 'doy': [int(x.strftime('%Y%j')[4:]) for x in dates_rock[1:]]})
+        mn = df.groupby('doy').mean()
+        sd = df.groupby('doy').std()
 
-        mdays = mn.index.values
+        doys = mn.index.values
 
         constraints = {'clower': np.array(mn.to_numpy().flatten() - sd.to_numpy().flatten(), dtype='int16'),
                        'cupper': np.array(mn.to_numpy().flatten() + sd.to_numpy().flatten(), dtype='int16'),
-                       'mday_set': list(mdays)}
+                       'doyset': list(doys)}
 
         wc = array('f', np.arange(0.9, -0.1, -0.1))
 
         np.testing.assert_equal(self.data['constraints']['clower'], constraints['clower'], 0)
         np.testing.assert_equal(self.data['constraints']['cupper'], constraints['cupper'], 0)
-        np.testing.assert_equal(self.data['constraints']['mday_set'], constraints['mday_set'], 0)
+        np.testing.assert_equal(self.data['constraints']['doyset'], constraints['doyset'], 0)
 
         zall = []
         ii = 0
@@ -87,7 +87,7 @@ class TestWhittaker(unittest.TestCase):
 
             z = np.array(ws2dp(y, self.data['sopt_ws2dvcp'], w, 0.90))
 
-            constraint_ix = [constraints['mday_set'].index(x) for x in [int(x.strftime('%m%d')) for x in self.dates[kk:jj]]]
+            constraint_ix = [constraints['doyset'].index(x) for x in [int(x.strftime('%Y%j')[4:]) for x in self.dates[kk:jj]]]
 
             z[...] = w_constrain(z, constraints['clower'][constraint_ix], constraints['cupper'][constraint_ix], wc)
 
