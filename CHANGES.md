@@ -23,6 +23,8 @@
     - Filtering with S values from grid now runs with the asymmetric filter `ws2dp`
     - minor enhancements
 
+  - #### v 0.3.1:
+    - fix `numpy` requirement in `setup.py`
 
 - ## v 0.2
   - #### v 0.2.1:
