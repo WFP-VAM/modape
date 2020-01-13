@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y \
 RUN add-apt-repository ppa:ubuntugis/ppa
 
 RUN apt-get update && apt-get install -y \
-    gdal-bin=2.4.0+dfsg-1~bionic0 \
+    gdal-bin=2.4.2+dfsg-1~bionic0 \
     python3.6-gdal \
   && rm -rf /var/lib/apt/lists/*
 
