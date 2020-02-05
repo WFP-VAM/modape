@@ -49,13 +49,13 @@ class TestWhittaker(unittest.TestCase):
         """Test ws2doptv (V-CURVE) smoothing."""
         z, sopt = ws2doptv(self.y, self.w, array('d', np.arange(-2, 1.2, 0.2).round(2)))
         np.testing.assert_almost_equal(z, self.data['z_ws2dvc'], 5)
-        self.assertEqual(sopt, self.data['sopt_ws2dvc'])
+        np.testing.assert_almost_equal(sopt, self.data['sopt_ws2dvc'], 5)
 
     def test_ws2dvcp(self):
         """Test ws2doptvp (V-CURVE with p) smoothing."""
         z, sopt = ws2doptvp(self.y, self.w, array('d', np.arange(-2, 1.2, 0.2).round(2)), p=0.90)
         np.testing.assert_almost_equal(z, self.data['z_ws2dvcp'], 5)
-        self.assertEqual(sopt, self.data['sopt_ws2dvcp'])
+        np.testing.assert_almost_equal(sopt, self.data['sopt_ws2dvcp'], 5)
 
 if __name__ == '__main__':
     unittest.main()
