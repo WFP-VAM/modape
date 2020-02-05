@@ -599,13 +599,11 @@ def execute_ws2d_vc(ix):
                 srange = np.arange(-1, 1.2, 0.2).round(2)
         else:
             srange = parameters['srange']
-            vp = 5
 
         arr_raw[ix, :], arr_sgrid[ix] = ws2doptvp(y=arr_raw[ix, :],
                                                   w=np.array((arr_raw[ix, :] != parameters['nd'])*1, dtype='double'),
                                                   llas=array('d', srange),
-                                                  p=parameters['p'],
-                                                  vprec=vp)
+                                                  p=parameters['p'])
 
 def execute_tempint(ix):
     """Execute temporal interpolation in worker.

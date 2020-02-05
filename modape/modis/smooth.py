@@ -904,13 +904,12 @@ class ModisSmoothH5(object):
                                 sr = np.arange(-1, 1.2, 0.2).round(2)
                         else:
                             sr = srange
-                            vp = 5
                         if p:
                             arr_raw[ix, :], arr_sgrid[ix] = ws2doptvp(y=arr_raw[ix, :],
                                                                       w=np.array((arr_raw[ix, :] != nodata)*1, dtype='double'),
                                                                       llas=array('d', sr),
-                                                                      p=p,
-                                                                      vprec=vp)
+                                                                      p=p)
+
                         else:
                             arr_raw[ix, :], arr_sgrid[ix] = ws2doptv(y=arr_raw[ix, :],
                                                                      w=np.array((arr_raw[ix, :] != nodata)*1, dtype='double'),
