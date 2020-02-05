@@ -15,7 +15,7 @@
     - fix `numpy` requirement in `setup.py`
   - #### v 0.3.2:
       - fix issues with `np.linspace` and `srange` (issue #75)
-      - fix deprecation warning in modis_download (issue #76)
+      - fix deprecation warning in `modis_download` (issue #76)
       - fix bug when windowing sgrid without AOI (issue #77)
 
 - ## v 0.2
