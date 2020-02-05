@@ -22,9 +22,12 @@
     - New smoothing function `ws2dp` runs the Whittaker filter with asymmetric weights and fixed S
     - Filtering with S values from grid now runs with the asymmetric filter `ws2dp`
     - minor enhancements
-
   - #### v 0.3.1:
     - fix `numpy` requirement in `setup.py`
+  - #### v 0.3.2:
+      - fix issues with `np.linspace` and `srange` (issue #75)
+      - fix deprecation warning in `modis_download` (issue #76)
+      - fix bug when windowing sgrid without AOI (issue #77)
 
 - ## v 0.2
   - #### v 0.2.1:
