@@ -339,13 +339,13 @@ def main():
         if args.srange:
             try:
                 assert len(args.srange) == 3
-                srange = np.linspace(float(args.srange[0]),
-                                     float(args.srange[1]),
-                                     abs((args.srange[0]-args.srange[1]))/float(args.srange[2]) + 1.0)
+                srange = np.arange(float(args.srange[0]),
+                                   float(args.srange[1]) + float(args.srange[2]),
+                                   float(args.srange[2])).round(2)
             except (IndexError, TypeError, AssertionError):
                 raise SystemExit('Error with s value array values. Expected three values of float log10(s) -  smin smax sstep !')
         else:
-            srange = np.linspace(0, 4, 41)
+            srange = np.arange(0, 4.1, 0.1).round(2)
         if args.pvalue:
             print('\nRunning asymmetric whittaker smoother with V-curve optimization ... \n')
             rts.ws2dopt(srange=srange, p=args.pvalue)
