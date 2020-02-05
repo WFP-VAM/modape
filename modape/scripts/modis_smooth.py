@@ -175,9 +175,9 @@ def main():
     if args.srange:
         try:
             assert len(args.srange) == 3
-            args.srange = np.linspace(float(args.srange[0]),
-                                      float(args.srange[1]),
-                                      abs((float(args.srange[0])-float(args.srange[1])))/float(args.srange[2]) + 1.0)
+            args.srange = np.arange(float(args.srange[0]),
+                                    float(args.srange[1]) + float(args.srange[2]),
+                                    float(args.srange[2])).round(2)
         except (IndexError, TypeError, AssertionError):
             raise ValueError('Error with s value array values. Expected three values of float log10(s) -  smin smax sstep !')
 
@@ -210,7 +210,7 @@ def main():
     if args.parallel_tiles > 1:
         if args.optv:
             if not args.srange:
-                processing_dict['srange'] = np.linspace(-1, 1, 11)
+                processing_dict['srange'] = np.arange(-1, 1.2, 0.2).round(2)
             else:
                 processing_dict['srange'] = args.srange
             if not args.quiet:
@@ -269,7 +269,7 @@ def main():
     else:
         if args.optv:
             if not args.srange:
-                srange = np.linspace(-1, 1, 11)
+                srange = np.arange(-1, 1.2, 0.2).round(2)
             else:
                 srange = args.srange
 
