@@ -25,6 +25,7 @@ import warnings
 import numpy as np
 import requests
 from bs4 import BeautifulSoup # pylint: disable=import-error
+from modape.utils import fromjulian
 
 # turn off BeautifulSoup warnings
 warnings.filterwarnings('ignore', category=UserWarning, module='bs4')
@@ -35,7 +36,7 @@ class ModisQuery(object):
     def __init__(self, url, begindate,
                  enddate, username=None, password=None,
                  targetdir=os.getcwd(), global_flag=None,
-                 tile_filter=None):
+                 tile_filter=None, strict_begindate=False):
         """Creates a ModisQuery object.
 
         Args:
@@ -74,6 +75,7 @@ class ModisQuery(object):
             soup = BeautifulSoup(response.content, features='html.parser')
 
             # results for global products are date directories on server, so need to query separately
+            date_regexp = re.compile(r'.+A(\d{7}).+')
             if self.global_flag:
                 regex = re.compile('.*.hdf$')
                 dates = np.array([x.getText() for x in soup.findAll('a', href=True) if re.match(r'\d{4}\.\d{2}\.\d{2}', x.getText())])
@@ -96,6 +98,10 @@ class ModisQuery(object):
                         warnings.warn("More than 1 HDF files for specific date found for URL: {}".format(self.query_url + date_sel), Warning)
 
                     try:
+                        fname = hdf_file[0]
+                        fname = fname[fname.rfind('/') + 1:]
+                        if (strict_begindate) and fromjulian(re.findall(date_regexp, fname)[0]) < self.begin:
+                            continue
                         self.modis_urls.append(self.query_url + date_sel + hdf_file[0])
                     except IndexError:
                         print('No HDF file found in {} - skipping.'.format(self.query_url + date_sel))
@@ -104,6 +110,10 @@ class ModisQuery(object):
                 regex = re.compile(r'.+(h\d+v\d+).+')
                 urls = [x.getText() for x in soup.find_all('url')]
 
+                if strict_begindate:
+                    # exclude time steps that temporally covers the begin/end interval but are time-stamped before
+                    urls = [x for x in urls if
+                            fromjulian(re.findall(date_regexp, x[x.rfind('/') + 1:])[0]) >= self.begin]
                 if tile_filter:
                     tiles = [x.lower() for x in tile_filter]
                     self.modis_urls = [x for x in urls if any(t in x for t in tiles)]
