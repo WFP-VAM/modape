@@ -1,4 +1,4 @@
-dist: xenial
+dist: bionic
 
 language: python
 
@@ -23,14 +23,18 @@ addons:
       - libffi-dev
 
 python:
-  - '2.7'
-  - '3.5'
+  - '3.6'
+
+branches:
+  only:
+    - master
+    - dev
 
 virtualenv:
   system_site_packages: true
 
 install:
-  - pip install --ignore-installed numpy==1.16.1 cython pathlib
+  - pip install --ignore-installed "numpy>=1.16" cython
   - pip install .
 
 script:
