@@ -1,30 +1,38 @@
-FROM continuumio/miniconda3
+FROM ubuntu:bionic
 
 LABEL maintainer="valentin.pesendorfer@wfp.org"
 
-ENV CONDA_ENV_PATH /opt/conda/envs/
-ENV CONDA_ENV "python36"
-ENV CPL_ZIP_ENCODING UTF-8
+RUN apt-get update && apt-get install -y \
+    gcc \
+    build-essential \
+    aria2 \
+    software-properties-common \
+    python3 \
+    python3-dev \
+    python3-pip \
+  && rm -rf /var/lib/apt/lists/*
 
-RUN conda install -y python=3.6
+RUN add-apt-repository ppa:ubuntugis/ppa
 
-RUN apt-get update && apt-get install -y vim gcc build-essential aria2
+RUN apt-get update && apt-get install -y \
+    gdal-bin \
+    python3-gdal \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update && apt-get install -y libpq-dev \
+   && rm -rf /var/lib/apt/lists/*
+
+RUN python3 -m pip install cython
 
 RUN useradd -m worker
-
-RUN conda install -y \
-	pip h5py gdal
-
-RUN conda clean -y -t
-
 ADD . /home/worker
 WORKDIR /home/worker
 
-RUN python setup.py install
-RUN python setup.py test
+RUN python3 setup.py install
+RUN python3 setup.py test
 
 RUN rm -rf *
 
 USER worker
 
-CMD ["/bin/bash"]
+CMD ["modape_version"]
