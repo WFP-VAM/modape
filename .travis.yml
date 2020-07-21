@@ -31,9 +31,6 @@ branches:
     - master
     - dev
 
-virtualenv:
-  system_site_packages: true
-
 install:
   - pip install --ignore-installed "numpy>=1.16" cython
   - pip install .
