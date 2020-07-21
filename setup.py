@@ -51,6 +51,7 @@ setup(
             'modis_product_table=modape.scripts.modis_product_table:main',
             'csv_smooth=modape.scripts.csv_smooth:main',
             'rts_smooth=modape.scripts.rts_smooth:main',
+            'modape_version=_version.version_info:main',
         ]
     },
     packages=find_packages(),
