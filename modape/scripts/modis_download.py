@@ -1,15 +1,10 @@
 #!/usr/bin/env python
 """modis_download.py: Query and download MODIS HDF files."""
 
-from __future__ import absolute_import, division, print_function
-
 import argparse
 import datetime
 import os
-try:
-    from pathlib2 import Path
-except ImportError:
-    from pathlib import Path
+from pathlib import Path
 import pickle
 import re
 from subprocess import check_output
