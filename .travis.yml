@@ -1,8 +1,7 @@
+os: linux
 dist: bionic
 
 language: python
-
-sudo: required
 
 notifications:
   email: false
@@ -24,6 +23,8 @@ addons:
 
 python:
   - '3.6'
+  - '3.7'
+  - '3.8'
 
 branches:
   only:
