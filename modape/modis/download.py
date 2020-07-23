@@ -6,15 +6,13 @@ raw MODIS products from NASA's servers.
 
 Author: Valentin Pesendorfer, April 2019
 """
-from __future__ import absolute_import, division, print_function
+
+# pylint: disable=E0401
 
 from datetime import datetime
 import os
 from os.path import basename
-try:
-    from pathlib2 import Path
-except ImportError:
-    from pathlib import Path
+from pathlib import Path
 import re
 from subprocess import Popen
 import sys
@@ -24,10 +22,11 @@ import warnings
 
 import numpy as np
 import requests
-from bs4 import BeautifulSoup # pylint: disable=import-error
+from bs4 import BeautifulSoup
 
 # turn off BeautifulSoup warnings
 warnings.filterwarnings('ignore', category=UserWarning, module='bs4')
+
 
 class ModisQuery(object):
     """Class for querying and downloading MODIS data."""
