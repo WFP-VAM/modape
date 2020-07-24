@@ -16,9 +16,9 @@ try:
 except ImportError:
     from osgeo import gdal
 
-from modapeexept import DownloadError
+from modape.exceptions import DownloadError
 from modape.modis import ModisQuery, ModisRawH5, ModisSmoothH5, modis_tiles
-from utils import SessionWithHeaderRedirection
+from modape.utils import SessionWithHeaderRedirection
 
 def create_gdal(x, y):
     """Create in-memory gdal dataset for testing.
@@ -53,9 +53,10 @@ class TestModisQuery(unittest.TestCase):
     def setUpClass(cls):
         '''Set up testing class'''
 
-        # load response data
-        with open('cmr_api_response.pkl', 'rb') as f:
-            cls.api_response = pickle.load(f)
+        data_dir = str(Path(__file__).parent).replace('tests', 'modape')
+
+        with open(f"{data_dir}/data/cmr_api_response.pkl", 'rb') as pkl:
+            cls.api_response = pickle.load(pkl)
 
         cls.testpath = Path(__name__).parent
 
@@ -88,7 +89,7 @@ class TestModisQuery(unittest.TestCase):
     def test_response_parse(self):
         '''Test parsing of response'''
 
-        with patch('modis.download.GranuleQuery.get_all',
+        with patch('modape.modis.download.GranuleQuery.get_all',
                    return_value=self.api_response):
 
             self.query.search(strict_dates=False)
@@ -108,8 +109,8 @@ class TestModisQuery(unittest.TestCase):
             self.assertTrue(all([x['time_start'] >= self.query.begin.date() for x in self.query.results]))
             self.assertTrue(all([x['time_end'] <= self.query.end.date() for x in self.query.results]))
 
-    @patch("modis.download.ThreadPoolExecutor")#, new_callable=fake_fun)
-    @patch("modis.download.GranuleQuery.get_all")
+    @patch("modape.modis.download.ThreadPoolExecutor")#, new_callable=fake_fun)
+    @patch("modape.modis.download.GranuleQuery.get_all")
     def test_download(self, mock_response, mock_submit):
         '''Test download'''
 
@@ -146,7 +147,7 @@ class TestModisQuery(unittest.TestCase):
             multithread=True,
         )
 
-        with patch("modis.download.ModisQuery._fetch_hdf", return_value=future_result) as mocked_fetch:
+        with patch("modape.modis.download.ModisQuery._fetch_hdf", return_value=future_result) as mocked_fetch:
             self.query.download(
                 targetdir=(self.testpath),
                 username='test',
