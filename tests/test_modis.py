@@ -1,14 +1,10 @@
 """test_modis.py: Test MODIS classes and functions."""
-from __future__ import absolute_import, division, print_function
 # pylint: disable=invalid-name, bare-except, unused-argument, unnecessary-pass
 import os
 import re
 import shutil
 import unittest
-try:
-    from unittest.mock import patch, MagicMock
-except ImportError:
-    from mock import patch, MagicMock
+from unittest.mock import patch, MagicMock
 import uuid
 
 import numpy as np
