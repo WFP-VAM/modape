@@ -20,8 +20,8 @@ from cmr import GranuleQuery
 import pandas as pd
 from requests.exceptions import HTTPError
 
-from exceptions import DownloadError
-from utils import SessionWithHeaderRedirection
+from modape.exceptions import DownloadError
+from modape.utils import SessionWithHeaderRedirection
 
 class ModisQuery(object):
     """Class for querying and downloading MODIS data."""
