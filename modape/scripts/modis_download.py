@@ -75,6 +75,8 @@ def main():
         except ValueError:
             print('Error parsing begin-date!')
             raise
+    else:
+        start = None
 
     if args.end_date:
         try:
@@ -82,6 +84,8 @@ def main():
         except ValueError:
             print('Error parsing begin-date!')
             raise
+    else:
+        stop = None
 
     print('Running query!')
 
@@ -91,7 +95,7 @@ def main():
         begindate=start,
         enddate=stop,
         tile_filter=args.tile_filter,
-        version=args.version,
+        version=args.collection,
     )
 
     query.search(strict_dates=args.strict_dates)
