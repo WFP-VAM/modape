@@ -69,7 +69,7 @@ setup(
         'numpy>=1.16.1',
         'gdal>=2, <3',
         'h5py>=2.9',
-        'beautifulsoup4>=4.7',
+        'python-cmr>=0.4',
         'requests>=2',
         'progress>=1.5',
         'pandas>=0.24',
