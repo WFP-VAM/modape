@@ -20,24 +20,8 @@ from cmr import GranuleQuery
 import pandas as pd
 from requests.exceptions import HTTPError
 
-
+from exceptions import DownloadError
 from utils import SessionWithHeaderRedirection
-
-class DownloadError(Exception):
-    def __init__(self, fails):
-
-        message = '''
-
-ERROR downloading MODIS data!
-
-Failed downloads:
-
-'''
-        for failed, error in fails:
-            message += f"{failed}: {error}\n"
-
-        super(DownloadError, self).__init__(message)
-
 
 class ModisQuery(object):
     """Class for querying and downloading MODIS data."""
@@ -97,7 +81,7 @@ class ModisQuery(object):
                         continue
 
                 if self.end is not None:
-                    if result['time_stop'] > self.end.date():
+                    if result['time_end'] > self.end.date():
                         continue
 
             self.results.append(result)
