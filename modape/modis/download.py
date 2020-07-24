@@ -4,183 +4,194 @@ MODIS query & download class.
 This file contains the class used for querying and downloading
 raw MODIS products from NASA's servers.
 
-Author: Valentin Pesendorfer, April 2019
+Author: Valentin Pesendorfer, July 2020
 """
 
-# pylint: disable=E0401
+# pylint: disable=E0401, E0611
 
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
-import os
-from os.path import basename
 from pathlib import Path
 import re
-from subprocess import Popen
-import sys
-import time
-import uuid
-import warnings
+import shutil
+from typing import List, Tuple, Union
 
-import numpy as np
-import requests
-from bs4 import BeautifulSoup
+from cmr import GranuleQuery
+import pandas as pd
+from requests.exceptions import HTTPError
 
-# turn off BeautifulSoup warnings
-warnings.filterwarnings('ignore', category=UserWarning, module='bs4')
+
+from utils import SessionWithHeaderRedirection
+
+class DownloadError(Exception):
+    def __init__(self, fails):
+
+        message = '''
+
+ERROR downloading MODIS data!
+
+Failed downloads:
+
+'''
+        for failed, error in fails:
+            message += f"{failed}: {error}\n"
+
+        super(DownloadError, self).__init__(message)
 
 
 class ModisQuery(object):
     """Class for querying and downloading MODIS data."""
 
-    def __init__(self, url, begindate,
-                 enddate, username=None, password=None,
-                 targetdir=os.getcwd(), global_flag=None,
-                 tile_filter=None):
-        """Creates a ModisQuery object.
+    def __init__(self,
+                 products: List[str],
+                 #targetdir: Path,
+                 aoi: List[Union[float, int]] = None,
+                 begindate: datetime = None,
+                 enddate: datetime = None,
+                 tile_filter: List[str] = None,
+                 version: str = "006") -> None:
 
-        Args:
-            url: Query URL as created by modis_download.py
-            begindate: Begin of period for query as ISO 8601 date string (YYYY-MM-DD)
-            enddate: End of period for query as ISO 8601 date string (YYYY-MM-DD)
-            username: Earthdata username (only required for download)
-            password: Earthdata password (only required for download)
-            targetdir: Path to target directory for downloaded files (default cwd)
-            global_flag: Boolean flag indictaing queried product is global file instead of tiled product
-            tile_filter: List of MODIS files to query and optionally download
-        """
+        assert products, 'No product IDs supplied!'
 
-        self.query_url = url
-        self.username = username
-        self.password = password
-        self.targetdir = Path(targetdir)
-        self.files = []
-        self.modis_urls = []
-        self.begin = datetime.strptime(begindate, '%Y-%m-%d').date()
-        self.end = datetime.strptime(enddate, '%Y-%m-%d').date()
-        self.global_flag = global_flag
+        self.begin = begindate
+        self.end = enddate
+        self.tile_filter = tile_filter
+        self.api = GranuleQuery()
 
-        # query for products using session object
-        with requests.Session() as sess:
+        # construct query
 
-            print('Checking for MODIS products ...', end='')
-            try:
-                response = sess.get(self.query_url)
-                self.statuscode = response.status_code
-                response.raise_for_status()
-            except requests.exceptions.RequestException as e:
-                print(e)
-                sys.exit(1)
+        self.api.parameters(
+            short_name=products,
+            version=version,
+            temporal=(begindate, enddate)
+        )
 
-            soup = BeautifulSoup(response.content, features='html.parser')
-
-            # results for global products are date directories on server, so need to query separately
-            if self.global_flag:
-                regex = re.compile('.*.hdf$')
-                dates = np.array([x.getText() for x in soup.findAll('a', href=True) if re.match(r'\d{4}\.\d{2}\.\d{2}', x.getText())])
-                dates_parsed = [datetime.strptime(x, '%Y.%m.%d/').date() for x in dates]
-                dates_ix = np.flatnonzero(np.array([self.begin <= x < self.end for x in dates_parsed]))
-
-                for date_sel in dates[dates_ix]:
-                    try:
-                        response = sess.get(self.query_url + date_sel)
-                    except requests.exceptions.RequestException as e:
-                        print(e)
-                        print('Error accessing {} - skipping.'.format(self.query_url + date_sel))
-
-                    soup = BeautifulSoup(response.content, features='html.parser')
-                    hrefs = soup.find_all('a', href=True)
-                    hdf_file = [x.getText() for x in hrefs if re.match(regex, x.getText())]
-
-                    # Issue warning if there are multiple HDF
-                    if len(hdf_file) > 1:
-                        warnings.warn("More than 1 HDF files for specific date found for URL: {}".format(self.query_url + date_sel), Warning)
-
-                    try:
-                        self.modis_urls.append(self.query_url + date_sel + hdf_file[0])
-                    except IndexError:
-                        print('No HDF file found in {} - skipping.'.format(self.query_url + date_sel))
-                        continue
+        if aoi is not None:
+            if len(aoi) == 2:
+                self.api.point(*aoi)
+            elif len(aoi) == 4:
+                self.api.bounding_box(*aoi)
             else:
-                regex = re.compile(r'.+(h\d+v\d+).+')
-                urls = [x.getText() for x in soup.find_all('url')]
+                raise ValueError("Expected point or bounding box as AOI")
 
-                if tile_filter:
-                    tiles = [x.lower() for x in tile_filter]
-                    self.modis_urls = [x for x in urls if any(t in x for t in tiles)]
-                else:
-                    self.modis_urls = urls
+    def query(self, strict_dates: bool = True) -> None:
 
-                self.tiles = list({regex.search(x).group(1) for x in self.modis_urls})
+        self.results = []
 
-        self.results = len(self.modis_urls)
-        print('... done.\n')
+        if self.begin is None and self.end is None:
+            strict_dates = False
 
-        # check for results
-        if self.results > 0:
-            print('{} results found.\n'.format(self.results))
-        else:
-            print('0 results found. Please check query!')
+        results_all = self.api.get_all()
 
-    def set_credentials(self, username, password):
-        """Set Earthdata credentials.
+        # TODO: check for duplicates?
 
-        Sets Earthdata username and password in created ModisQuery object.
+        for result in self._parse_response(results_all):
 
-        Args:
-            username (str): Earthdata username
-            password (str): Earthdata password
-        """
+            if self.tile_filter and result['tile']:
+                if result['tile'] not in self.tile_filter:
+                    continue
 
-        self.username = username
-        self.password = password
+            if strict_dates:
+                if self.begin is not None:
+                    if result['time_start'] < self.begin.date():
+                        continue
 
-    def download(self):
-        """Downloads MODIS products.
+                if self.end is not None:
+                    if result['time_stop'] > self.end.date():
+                        continue
 
-        Download of files found through query, Earthdata username and password required!
-        """
+            self.results.append(result)
 
-        if self.username is None or self.password is None:
-            raise ValueError('No credentials found. Please run .setCredentials(username,password)!')
+        self.nresults = len(self.results)
 
-        print('[{}]: Downloading products to {} ...\n'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()), self.targetdir))
 
-        # if targetdir doesn't exist, create
-        self.targetdir.mkdir(parents=True, exist_ok=True)
+    @staticmethod
+    def _parse_response(query: List[dict]) -> dict:
 
-        flist = self.targetdir.joinpath(str(uuid.uuid4())).as_posix()
+        tile_regxp = re.compile(r'.+(h\d+v\d+).+')
 
-        # write URLs of query resuls to disk for WGET
-        with open(flist, 'w') as thefile:
-            for item in self.modis_urls:
-                thefile.write('%s\n' % item)
+        for entry in query:
 
-        args = [
-            'aria2c',
-            '--file-allocation=none',
-            '-m', '50',
-            '--retry-wait', '2',
-            '-c',
-            '-x', '10',
-            '-s', '10',
-            '--http-user', self.username,
-            '--http-passwd', self.password,
-            '-d', self.targetdir.as_posix(),
-        ]
+            entry_parsed = dict(
+                file_id=entry['producer_granule_id'],
+                time_start=pd.Timestamp(entry['time_start']).date(),
+                time_end=pd.Timestamp(entry['time_end']).date(),
+                updated=entry['updated'],
+                link=entry['links'][0]['href'],
+            )
 
-        # execute subprocess
-        process_output = Popen(args + ['-i', flist])
-        process_output.wait()
+            try:
+                tile = tile_regxp.search(entry_parsed['file_id']).group(1)
+            except AttributeError:
+                tile = None
 
-        # remove filelist.txt if all downloads are successful
-        if process_output.returncode != 0:
-            print('\nError (error code {}) occured during download, please check files against MODIS URL list ({})!\n'.format(process_output.returncode, flist))
-            # remove incoplete files
-            for incomplete_file in self.targetdir.glob('*.aria2'):
-                incomplete_file.unlink()
-                self.targetdir.joinpath(incomplete_file.stem).unlink()
-        else:
-            os.remove(flist)
+            entry_parsed.update({"tile": tile})
 
-        self.files = [self.targetdir.joinpath(basename(x)) for x in self.modis_urls if self.targetdir.joinpath(basename(x)).exists()]
+            yield entry_parsed
 
-        print('\n[{}]: Downloading finished.'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())))
+    @staticmethod
+    def _fetch_hdf(session: SessionWithHeaderRedirection,
+                   url: str,
+                   destination: Path
+                  ) -> Tuple[str, bool]:
+
+        try:
+
+            filename = destination.joinpath(url.split('/')[-1])
+
+            with session.get(url, stream=True) as response:
+                response.raise_for_status()
+
+                with open(filename, "wb") as openfile:
+                    shutil.copyfileobj(response.raw, openfile)
+
+            assert filename.exists()
+
+        except (HTTPError, AssertionError) as e:
+            return (url, e)
+
+        return (filename, None)
+
+
+    def download(self,
+                 targetdir: Path,
+                 username: str,
+                 password: str,
+                 multithread: bool = False
+                ) -> None:
+
+        assert targetdir.exists()
+        assert targetdir.is_dir()
+
+        with SessionWithHeaderRedirection(username, password) as session:
+
+            if multithread:
+
+                with ThreadPoolExecutor(4) as pool:
+
+                    futures = [pool.submit(self._fetch_hdf, session, x['link'], targetdir)
+                               for x in self.results]
+
+                downloaded_files = [x.result() for x in futures]
+
+            else:
+
+                downloaded_files = []
+
+                for result in self.results:
+
+                    downloaded_files.append(
+                        self._fetch_hdf(session, result['link'], targetdir)
+                    )
+
+        errors = []
+
+        for file, err in downloaded_files:
+
+            if err is not None:
+                errors.append((file, err))
+            else:
+                assert file.exists(), "Downloaded file is missing! No download error was reported"
+
+        if errors:
+            raise DownloadError(errors)
