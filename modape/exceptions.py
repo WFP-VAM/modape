@@ -1,5 +1,17 @@
+'''Custom exceptions for MODAPE'''
+
+from typing import List, Tuple
+
 class DownloadError(Exception):
-    def __init__(self, fails):
+    '''Exception for failed download of MODIS data'''
+
+    def __init__(self, fails: List[Tuple]) -> None:
+        """Init custom DownloadError Exception.
+
+        Args:
+            fails (List[Tuple]): List of failed downloads. Each is tuple with (URI, Error).
+        """
+
 
         message = '''
 
