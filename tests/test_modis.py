@@ -16,8 +16,7 @@ try:
 except ImportError:
     from osgeo import gdal
 
-
-from exceptions import DownloadError
+from modapeexept import DownloadError
 from modape.modis import ModisQuery, ModisRawH5, ModisSmoothH5, modis_tiles
 from utils import SessionWithHeaderRedirection
 
@@ -92,7 +91,7 @@ class TestModisQuery(unittest.TestCase):
         with patch('modis.download.GranuleQuery.get_all',
                    return_value=self.api_response):
 
-            self.query.query(strict_dates=False)
+            self.query.search(strict_dates=False)
 
             self.assertTrue(self.query.results)
             self.assertEqual(len(self.query.results), len(self.api_response))
@@ -103,7 +102,7 @@ class TestModisQuery(unittest.TestCase):
 
             self.setUp()
             self.query.tile_filter = tiles_select
-            self.query.query(strict_dates=True)
+            self.query.search(strict_dates=True)
 
             self.assertEqual(len({x['tile'] for x in self.query.results}), 2)
             self.assertTrue(all([x['time_start'] >= self.query.begin.date() for x in self.query.results]))
@@ -115,7 +114,7 @@ class TestModisQuery(unittest.TestCase):
         '''Test download'''
 
         mock_response.return_value = self.api_response
-        self.query.query()
+        self.query.search()
 
         self.query.results = [self.query.results[0]]
 

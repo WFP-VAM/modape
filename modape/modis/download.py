@@ -69,7 +69,7 @@ class ModisQuery(object):
             else:
                 raise ValueError("Expected point or bounding box as AOI")
 
-    def query(self, strict_dates: bool = True) -> None:
+    def search(self, strict_dates: bool = True) -> None:
         """Query MODIS data.
 
         Performs query based on inut to class instance.
