@@ -28,12 +28,24 @@ class ModisQuery(object):
 
     def __init__(self,
                  products: List[str],
-                 #targetdir: Path,
                  aoi: List[Union[float, int]] = None,
                  begindate: datetime = None,
                  enddate: datetime = None,
                  tile_filter: List[str] = None,
                  version: str = "006") -> None:
+        """Initialize ModisQuery instance.
+
+        This class is used for querying and downloading MODIS data
+        from MODIS CMR.
+
+        Args:
+            products (List[str]): List of product codes to be queried / downloaded.
+            aoi (List[Union[float, int]]): Area of interes (point as lat/lon or bounding box as xmin, ymin, xmax, ymax).
+            begindate (datetime): Start date for query.
+            enddate (datetime): End date for query.
+            tile_filter (List[str]): List of tiles to be queried / downloaded (refines initial results).
+            version (str): MODIS collection version.
+        """
 
         assert products, 'No product IDs supplied!'
 
@@ -43,7 +55,6 @@ class ModisQuery(object):
         self.api = GranuleQuery()
 
         # construct query
-
         self.api.parameters(
             short_name=products,
             version=version,
@@ -59,21 +70,35 @@ class ModisQuery(object):
                 raise ValueError("Expected point or bounding box as AOI")
 
     def query(self, strict_dates: bool = True) -> None:
+        """Query MODIS data.
 
+        Performs query based on inut to class instance.
+
+        Args:
+            strict_dates (bool): Flag for strict date enforcement (no data with timestamp outside
+                                 of begindate and enddate are allowed).
+        """
+
+        # init results list
         self.results = []
 
+        # if no dates supplied, we can't be strict
         if self.begin is None and self.end is None:
             strict_dates = False
 
+        # get all results
         results_all = self.api.get_all()
 
         # TODO: check for duplicates?
 
         for result in self._parse_response(results_all):
 
+            # skip tiles outside of filter
             if self.tile_filter and result['tile']:
                 if result['tile'] not in self.tile_filter:
                     continue
+
+            # enforce dates if required
 
             if strict_dates:
                 if self.begin is not None:
@@ -86,11 +111,21 @@ class ModisQuery(object):
 
             self.results.append(result)
 
+        # final results
         self.nresults = len(self.results)
 
 
     @staticmethod
     def _parse_response(query: List[dict]) -> dict:
+        """Generator for parsing API response.
+
+        Args:
+            query (List[dict]): Query returned by CMR API.
+
+        Returns:
+            dict: Parsed query as dict.
+
+        """
 
         tile_regxp = re.compile(r'.+(h\d+v\d+).+')
 
@@ -117,7 +152,19 @@ class ModisQuery(object):
     def _fetch_hdf(session: SessionWithHeaderRedirection,
                    url: str,
                    destination: Path
-                  ) -> Tuple[str, bool]:
+                   ) -> Tuple[str, Union[None, Exception]]:
+        """Helper function to fetch HDF files
+
+        Args:
+            session (SessionWithHeaderRedirection): requests session to fetch file.
+            url (str): URL for file.
+            destination (Path): target directory.
+
+        Returns:
+            Tuple[str, Union[None, Exception]]: Returns tuple with
+                either (filename, None) for success and (URL, Exception) for error.
+
+        """
 
         try:
 
@@ -143,9 +190,19 @@ class ModisQuery(object):
                  password: str,
                  multithread: bool = False
                 ) -> None:
+        """Download queried MODIS files.
 
-        assert targetdir.exists()
+        Args:
+            targetdir (Path): target directory for file being downloaded.
+            username (str): Earthdata username.
+            password (str): Earthdata password.
+            multithread (bool): use multiple threads for downloading.
+
+        """
+
+        # make sure target directory is dir and exists
         assert targetdir.is_dir()
+        assert targetdir.exists()
 
         with SessionWithHeaderRedirection(username, password) as session:
 
@@ -170,11 +227,13 @@ class ModisQuery(object):
 
         errors = []
 
+        # check if downloads are OK
         for file, err in downloaded_files:
 
             if err is not None:
-                errors.append((file, err))
+                errors.append((file, err)) # append to error list
             else:
+                # if no error, make sure file is on disk
                 assert file.exists(), "Downloaded file is missing! No download error was reported"
 
         if errors:
