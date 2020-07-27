@@ -1,5 +1,5 @@
 '''Custom exceptions for MODAPE'''
-
+#pylint: disable=W0107
 from typing import List, Tuple
 
 class DownloadError(Exception):
@@ -24,3 +24,9 @@ Failed downloads:
             message += f"{failed}: {error}\n"
 
         super(DownloadError, self).__init__(message)
+
+
+class TargetNotEmpty(Exception):
+    """Exception when target directory is not empty
+    when it's required to be."""
+    pass
