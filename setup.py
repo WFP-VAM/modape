@@ -64,7 +64,7 @@ setup(
         'Programming Language :: Python :: 3',
     ],
     setup_requires=['pytest-runner'],
-    tests_require=['pytest'],
+    tests_require=['pytest', 'Click'],
     install_requires=[
         'numpy>=1.16.1',
         'gdal>=2, <3',
