@@ -32,6 +32,12 @@ else:
         Extension("modape.whittaker",
                   ["modape/_whittaker.c"], extra_compile_args=["-O3", "-ffast-math"])]
 
+# set py 3:
+
+for ext in ext_modules:
+    ext.cython_directives = {"language_level": "3"}
+
+
 setup(
     name='modape',
     description='MODIS Assimilation and Processing Engine',
