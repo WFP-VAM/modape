@@ -124,7 +124,7 @@ def cli(products: List[str],
 
         tile_filter = tiles
 
-    click.echo('Quering NASA CMR ...')
+    click.echo('Querying NASA CMR ...')
 
     query = ModisQuery(
         products=products_parsed,
