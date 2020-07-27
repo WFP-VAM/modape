@@ -5,14 +5,9 @@ This file contains the class representing a raw MODIS HDF5 file.
 
 Author: Valentin Pesendorfer, April 2019
 """
-from __future__ import absolute_import, division, print_function
-
 import gc
 import os
-try:
-    from pathlib2 import Path
-except ImportError:
-    from pathlib import Path
+from pathlib import Path
 import re
 import time
 import traceback
