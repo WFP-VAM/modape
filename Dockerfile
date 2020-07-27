@@ -28,7 +28,7 @@ RUN useradd -m worker
 ADD . /home/worker
 WORKDIR /home/worker
 
-RUN python3 setup.py install
+RUN pip3 install .
 RUN python3 setup.py test
 
 RUN rm -rf *
