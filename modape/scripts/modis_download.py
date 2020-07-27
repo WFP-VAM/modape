@@ -31,7 +31,7 @@ from modape.modis import ModisQuery
 def cli(products: List[str],
         begin_date: datetime.datetime,
         end_date: datetime.datetime,
-        targetdir: pathlib.Path,
+        targetdir: str,
         roi: str,
         target_empty: bool,
         tile_filter: str,
@@ -77,6 +77,8 @@ def cli(products: List[str],
 
     if targetdir is None:
         targetdir = pathlib.Path(os.getcwd())
+    else:
+        targetdir = pathlib.Path(targetdir)
 
     # handle targetdir
     targetdir.mkdir(exist_ok=True)
