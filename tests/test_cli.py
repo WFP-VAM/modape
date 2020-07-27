@@ -1,5 +1,6 @@
 """test_cli.py: Test command line scripts."""
 #pylint: disable=E0401
+from pathlib import Path
 import shutil
 import unittest
 from unittest.mock import patch, Mock, MagicMock
@@ -9,6 +10,12 @@ from modape.scripts.modis_download import cli as modis_download_cli
 
 class TestConsoleScripts(unittest.TestCase):
     """Test class for console scripts."""
+
+    @classmethod
+    def setUpClass(cls):
+        '''Set up testing class'''
+
+        cls.testpath = Path(__name__).parent
 
     @classmethod
     def tearDownClass(cls):
@@ -53,6 +60,24 @@ class TestConsoleScripts(unittest.TestCase):
 
             result = self.runner.invoke(modis_download_cli, ["MOD13A2", "--username", "test", "--password", "test", "--download"])
             mocked_query.assert_called()
+
+            mocked_query.reset_mock()
+
+            fake_hdf = self.testpath.joinpath("MOD13A2.A2002193.h18v06.006.2019256103823.hdf")
+            fake_hdf.touch()
+
+            result = self.runner.invoke(modis_download_cli, ["MOD13A2", "--targetdir", str(self.testpath)])
+            mocked_query.assert_called()
+            assert result.exit_code == 0
+
+            fake_hdf.unlink()
+
+            mocked_query.reset_mock()
+
+            result = self.runner.invoke(modis_download_cli, ["MOD13A2", "--targetdir", str(self.testpath), "--target-empty"])
+            mocked_query.assert_not_called()
+            print(result.output)
+            assert result.exit_code == 1
 
             mocked_query.reset_mock()
 
