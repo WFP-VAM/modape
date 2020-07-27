@@ -70,14 +70,19 @@ class TestConsoleScripts(unittest.TestCase):
             mocked_query.assert_called()
             assert result.exit_code == 0
 
-            fake_hdf.unlink()
-
             mocked_query.reset_mock()
 
             result = self.runner.invoke(modis_download_cli, ["MOD13A2", "--targetdir", str(self.testpath), "--target-empty"])
             mocked_query.assert_not_called()
-            print(result.output)
+
             assert result.exit_code == 1
+
+            fake_hdf.unlink()
+
+            result = self.runner.invoke(modis_download_cli, ["MOD13A2", "--targetdir", str(self.testpath), "--target-empty"])
+            mocked_query.assert_called()
+
+            assert result.exit_code == 0
 
             mocked_query.reset_mock()
 
