@@ -1,5 +1,16 @@
 # CHANGES
 
+- ## v 1.0
+  - #### v 1.0.0
+    - New Dockerfile (fix #82)
+    - Improved downloading based on python requests #93
+      - Better catching of failed downloads #29 
+      - new executable script
+      - add option for strict date handling #87
+      - allows downloading all available data from NASA CMR #86
+      - adds option to fail if target directory is not empty #90
+
+
 - ## v 0.3
   - #### v 0.3.0:
     - Split `modis.py` into separate sub-modules
