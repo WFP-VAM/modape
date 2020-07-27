@@ -11,20 +11,35 @@ from typing import List
 import click
 from modape.modis import ModisQuery
 
-def main(products: List[str],
-         begin_date: datetime.datetime,
-         end_date: datetime.datetime,
-         targetdir: pathlib.Path,
-         roi: str,
-         tile_filter: str,
-         username: str,
-         password: str,
-         strict_dates: bool,
-         return_results: bool,
-         download: bool,
-         multithread: bool,
-         collection: str,
-         ) -> None:
+@click.command()
+@click.argument("products", nargs=-1, type=click.STRING)
+@click.option("-b", "--begin-date", type=click.DateTime(formats=["%Y-%m-%d"]), help="Start date for query")
+@click.option("-e", "--end-date", type=click.DateTime(formats=["%Y-%m-%d"]), help="End date for query")
+@click.option("-d", "--targetdir", type=click.Path(dir_okay=True, writable=True, resolve_path=True),
+              help="Destination directory for downloaded files")
+@click.option("--roi", type=click.STRING, help="Region of interest. Either LAT,LON or xmin,ymin,xmax,ymax")
+@click.option("--tile-filter", type=click.STRING, help="Filter tiles - supplied as csv list")
+@click.option("--username", type=click.STRING, help="Earthdata username")
+@click.option("--password", type=click.STRING, help="Earthdata password")
+@click.option("--strict-dates", is_flag=True, help="Don't allow files with timestamps outside of provided date(s)")
+@click.option("--return-results", is_flag=True, help="Print results to console")
+@click.option("--download", is_flag=True, help="Download data")
+@click.option("--multithread", is_flag=True, help="Use multiple threads for downloading")
+@click.option("-c", "--collection", type=click.STRING, default="006", help="MODIS collection")
+def cli(products: List[str],
+        begin_date: datetime.datetime,
+        end_date: datetime.datetime,
+        targetdir: pathlib.Path,
+        roi: str,
+        tile_filter: str,
+        username: str,
+        password: str,
+        strict_dates: bool,
+        return_results: bool,
+        download: bool,
+        multithread: bool,
+        collection: str,
+        ) -> None:
     """Query and download MODIS products.
 
     This function allows for querying and downloading MODIS products in bulk.
@@ -135,47 +150,15 @@ def main(products: List[str],
                 multithread=multithread
             )
 
-
     click.echo('modis_download.py COMPLETED! Bye! \n')
 
-@click.command()
-@click.argument("products", nargs=-1, type=click.STRING)
-@click.option("-b", "--begin-date", type=click.DateTime(formats=["%Y-%m-%d"]), help="Start date for query")
-@click.option("-e", "--end-date", type=click.DateTime(formats=["%Y-%m-%d"]), help="End date for query")
-@click.option("-d", "--targetdir", type=click.Path(dir_okay=True, writable=True, resolve_path=True),
-              help="Destination directory for downloaded files")
-@click.option("--roi", type=click.STRING, help="Region of interest. Either LAT,LON or xmin,ymin,xmax,ymax")
-@click.option("--tile-filter", type=click.STRING, help="Filter tiles - supplied as csv list")
-@click.option("--username", type=click.STRING, help="Earthdata username")
-@click.option("--password", type=click.STRING, help="Earthdata password")
-@click.option("--strict-dates", is_flag=True, help="Don't allow files with timestamps outside of provided date(s)")
-@click.option("--return-results", is_flag=True, help="Print results to console")
-@click.option("--download", is_flag=True, help="Download data")
-@click.option("--multithread", is_flag=True, help="Use multiple threads for downloading")
-@click.option("-c", "--collection", type=click.STRING, default="006", help="MODIS collection")
-def cli(products, begin_date, end_date, targetdir, roi, tile_filter, username, password, strict_dates, return_results, download, multithread, collection):
-    """modis_download.py: Query and download MODIS HDF files."""
-
-    if len(sys.argv) == 1:
-        cli.main(['--help'])
-    else:
-        main(products,
-             begin_date,
-             end_date,
-             targetdir,
-             roi,
-             tile_filter,
-             username,
-             password,
-             strict_dates,
-             return_results,
-             download,
-             multithread,
-             collection)
-
-if __name__ == '__main__':
+def cli_wrap():
+    """Wrapper for cli"""
 
     if len(sys.argv) == 1:
         cli.main(['--help'])
     else:
         cli() #pylint: disable=E1120
+
+if __name__ == '__main__':
+    cli_wrap()

@@ -43,7 +43,7 @@ setup(
     include_dirs=[numpy.get_include()],
     entry_points={
         'console_scripts':[
-            'modis_download=modape.scripts.modis_download:cli',
+            'modis_download=modape.scripts.modis_download:cli_wrap',
             'modis_collect=modape.scripts.modis_collect:main',
             'modis_smooth=modape.scripts.modis_smooth:main',
             'modis_window=modape.scripts.modis_window:main',
