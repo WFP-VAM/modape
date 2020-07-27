@@ -9,15 +9,17 @@ import sys
 from typing import List
 
 import click
+from modape.exceptions import TargetNotEmpty
 from modape.modis import ModisQuery
 
 @click.command()
 @click.argument("products", nargs=-1, type=click.STRING)
+@click.option("--roi", type=click.STRING, help="Region of interest. Either LAT,LON or xmin,ymin,xmax,ymax")
 @click.option("-b", "--begin-date", type=click.DateTime(formats=["%Y-%m-%d"]), help="Start date for query")
 @click.option("-e", "--end-date", type=click.DateTime(formats=["%Y-%m-%d"]), help="End date for query")
 @click.option("-d", "--targetdir", type=click.Path(dir_okay=True, writable=True, resolve_path=True),
               help="Destination directory for downloaded files")
-@click.option("--roi", type=click.STRING, help="Region of interest. Either LAT,LON or xmin,ymin,xmax,ymax")
+@click.option("--target-empty", is_flag=True, help="Fail if there are hdf files in the target directory")
 @click.option("--tile-filter", type=click.STRING, help="Filter tiles - supplied as csv list")
 @click.option("--username", type=click.STRING, help="Earthdata username")
 @click.option("--password", type=click.STRING, help="Earthdata password")
@@ -31,6 +33,7 @@ def cli(products: List[str],
         end_date: datetime.datetime,
         targetdir: pathlib.Path,
         roi: str,
+        target_empty: bool,
         tile_filter: str,
         username: str,
         password: str,
@@ -80,6 +83,13 @@ def cli(products: List[str],
 
     assert targetdir.exists()
     assert targetdir.is_dir()
+
+    if target_empty:
+        for _ in targetdir.glob("M*hdf"):
+            try:
+                raise TargetNotEmpty("Found HDF files in target directory with flag --target-empty set!")
+            except StopIteration:
+                pass
 
     products_parsed = []
 
