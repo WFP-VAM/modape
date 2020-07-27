@@ -22,8 +22,7 @@ addons:
       - libffi-dev
 
 env:
-  - LC_ALL=C.UTF-8
-  - LANG=C.UTF-8
+  - LC_ALL=C.UTF-8 LANG=C.UTF-8
 
 python:
   - '3.6'
