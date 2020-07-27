@@ -43,7 +43,7 @@ setup(
     include_dirs=[numpy.get_include()],
     entry_points={
         'console_scripts':[
-            'modis_download=modape.scripts.modis_download:main',
+            'modis_download=modape.scripts.modis_download:cli',
             'modis_collect=modape.scripts.modis_collect:main',
             'modis_smooth=modape.scripts.modis_smooth:main',
             'modis_window=modape.scripts.modis_window:main',
@@ -64,7 +64,7 @@ setup(
         'Programming Language :: Python :: 3',
     ],
     setup_requires=['pytest-runner'],
-    tests_require=['pytest', 'Click'],
+    tests_require=['pytest', 'click'],
     install_requires=[
         'numpy>=1.16.1',
         'gdal>=2, <3',
