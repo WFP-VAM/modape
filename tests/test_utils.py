@@ -8,7 +8,7 @@ import unittest
 
 import numpy as np
 
-from modape.utils import DateHelper, Credentials, ldom, tvec, fromjulian, date2label
+from modape.utils import DateHelper, ldom, tvec, fromjulian, date2label
 
 class TestUtils(unittest.TestCase):
     """Test class for testing utils."""
@@ -34,24 +34,6 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(len(dix), 580)
         self.assertEqual([dh.daily[x] for x in dix], dh.target)
         self.assertTrue(np.all(dv == -3000))
-
-    def test_credentials(self):
-        """Testing Credentials class."""
-        cred = Credentials(username='testuser', password='testpass')
-
-        self.assertEqual(cred.username, 'testuser')
-        self.assertEqual(cred.password, 'testpass')
-        cred.store()
-        self.assertTrue(os.path.exists('modape.cred.pkl'))
-        self.assertTrue(os.path.exists('modape.key.pkl'))
-        cred.username = None
-        cred.password = None
-        cred.retrieve()
-        self.assertEqual(cred.username, 'testuser')
-        self.assertEqual(cred.password, 'testpass')
-        cred.destroy()
-        self.assertFalse(os.path.exists('modape.cred.pkl'))
-        self.assertFalse(os.path.exists('modape.key.pkl'))
 
     def test_fj_ldom(self):
         """Testing ldom and fromjulian."""

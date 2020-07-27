@@ -1,96 +1,113 @@
 """test_cli.py: Test command line scripts."""
-from __future__ import absolute_import, division, print_function
+#pylint: disable=E0401
+from pathlib import Path
+import shutil
 import unittest
+from unittest.mock import patch, Mock, MagicMock
+from click.testing import CliRunner
 
-from modape.scripts.csv_smooth import main as csv_smooth_main
-from modape.scripts.modis_download import main as modis_download_main
-from modape.scripts.modis_collect import main as modis_collect_main
-from modape.scripts.modis_smooth import main as modis_smooth_main
-from modape.scripts.modis_window import main as modis_window_main
-from modape.scripts.modis_info import main as modis_info_main
-from modape.scripts.modis_product_table import main as modis_product_table_main
-from modape.scripts.rts_smooth import main as rts_smooth_main
+from modape.scripts.modis_download import cli as modis_download_cli
 
 class TestConsoleScripts(unittest.TestCase):
     """Test class for console scripts."""
 
-    def test_csv_smooth(self):
-        """Test csv_smooth.py."""
+    @classmethod
+    def setUpClass(cls):
+        '''Set up testing class'''
+
+        cls.testpath = Path(__name__).parent
+
+    @classmethod
+    def tearDownClass(cls):
         try:
-            csv_smooth_main()
-        except SystemExit as system_exit:
-            if system_exit.code == 0:
-                pass
-            else:
-                raise
+            shutil.rmtree('__pycache__')
+        except: #pylint: disable=W0702
+            pass
+
+    def setUp(self):
+        """Set up a test"""
+        self.runner = CliRunner()
 
     def test_modis_download(self):
         """Test modis_download.py."""
-        try:
-            modis_download_main()
-        except SystemExit as system_exit:
-            if system_exit.code == 0:
-                pass
-            else:
-                raise
 
-    def test_modis_collect(self):
-        """Test modis_collect.py."""
-        try:
-            modis_collect_main()
-        except SystemExit as system_exit:
-            if system_exit.code == 0:
-                pass
-            else:
-                raise
+        test_query = MagicMock()
+        test_query.nresults = 4
+        test_query.download = Mock(return_value='Mocking download!')
 
-    def test_modis_smooth(self):
-        """Test modis_smooth.py."""
-        try:
-            modis_smooth_main()
-        except SystemExit as system_exit:
-            if system_exit.code == 0:
-                pass
-            else:
-                raise
+        with patch('modape.scripts.modis_download.ModisQuery', return_value=test_query) as mocked_query:
 
-    def test_modis_window(self):
-        """Test modis_window.py."""
-        try:
-            modis_window_main()
-        except SystemExit as system_exit:
-            if system_exit.code == 0:
-                pass
-            else:
-                raise
+            result = self.runner.invoke(modis_download_cli, ["MOD13A2"])
 
+            mocked_query.assert_called()
+            args = mocked_query.call_args_list[0][1]
+            self.assertEqual(args['products'], ["MOD13A2"])
+            assert result.exit_code == 0
 
-    def test_modis_info(self):
-        """Test modis_info.py."""
-        try:
-            modis_info_main()
-        except SystemExit as system_exit:
-            if system_exit.code == 0:
-                pass
-            else:
-                raise
+            mocked_query.reset_mock()
+            #
+            result = self.runner.invoke(modis_download_cli, ["m?d13a2"])
+            mocked_query.assert_called()
+            args = mocked_query.call_args_list[0][1]
+            self.assertEqual(args['products'], ["MOD13A2", 'MYD13A2'])
+            assert result.exit_code == 0
 
-    def test_modis_product_table(self):
-        """Test modis_product_table.py."""
-        try:
-            modis_product_table_main()
-        except SystemExit as system_exit:
-            if system_exit.code == 0:
-                pass
-            else:
-                raise
+            mocked_query.reset_mock()
 
-    def test_rts_smooth(self):
-        """Test rts_smooth.py."""
-        try:
-            rts_smooth_main()
-        except SystemExit as system_exit:
-            if system_exit.code == 0:
-                pass
-            else:
-                raise
+            result = self.runner.invoke(modis_download_cli, ["MOD13A2", "--download"])
+            mocked_query.assert_not_called()
+            assert result.exit_code == 1
+
+            result = self.runner.invoke(modis_download_cli, ["MOD13A2", "--username", "test", "--password", "test", "--download"])
+            mocked_query.assert_called()
+
+            mocked_query.reset_mock()
+
+            fake_hdf = self.testpath.joinpath("MOD13A2.A2002193.h18v06.006.2019256103823.hdf")
+            fake_hdf.touch()
+
+            result = self.runner.invoke(modis_download_cli, ["MOD13A2", "--targetdir", str(self.testpath)])
+            mocked_query.assert_called()
+            assert result.exit_code == 0
+
+            mocked_query.reset_mock()
+
+            result = self.runner.invoke(modis_download_cli, ["MOD13A2", "--targetdir", str(self.testpath), "--target-empty"])
+            mocked_query.assert_not_called()
+
+            assert result.exit_code == 1
+
+            fake_hdf.unlink()
+
+            result = self.runner.invoke(modis_download_cli, ["MOD13A2", "--targetdir", str(self.testpath), "--target-empty"])
+            mocked_query.assert_called()
+
+            assert result.exit_code == 0
+
+            mocked_query.reset_mock()
+
+            result = self.runner.invoke(modis_download_cli, ["MOD13A2", "--roi", "10,10"])
+            mocked_query.assert_called()
+            args = mocked_query.call_args_list[0][1]
+            self.assertEqual(args['aoi'], (10.0, 10.0))
+            assert result.exit_code == 0
+
+            mocked_query.reset_mock()
+
+            result = self.runner.invoke(modis_download_cli, ["MOD13A2", "--roi", "10,10,20,20"])
+            mocked_query.assert_called()
+            args = mocked_query.call_args_list[0][1]
+            self.assertEqual(args['aoi'], (10.0, 10.0, 20.0, 20.0))
+            assert result.exit_code == 0
+
+            mocked_query.reset_mock()
+
+            result = self.runner.invoke(modis_download_cli, ["MOD13A2", "--roi", "10,20,20"])
+            mocked_query.assert_not_called()
+            assert result.exit_code == 1
+
+            mocked_query.reset_mock()
+
+            result = self.runner.invoke(modis_download_cli, ["MOD13A2", "--roi", "10,20,20,30,50"])
+            mocked_query.assert_not_called()
+            assert result.exit_code == 1

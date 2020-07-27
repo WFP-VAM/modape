@@ -21,7 +21,6 @@ try:
 except ImportError:
     from osgeo import gdal
 
-from cryptography.fernet import Fernet # pylint: disable=import-error
 from modape.whittaker import lag1corr, ws2d, ws2dp, ws2doptv, ws2doptvp # pylint: disable=no-name-in-module
 
 __all__ = [
@@ -30,7 +29,6 @@ __all__ = [
     'NoDaemonProcess',
     'Pool',
     'DateHelper',
-    'Credentials',
     'pdump',
     'pload',
     'dtype_GDNP',
@@ -210,61 +208,6 @@ class DateHelper(object):
 
         return [self.daily.index(x) for x in self.target]
 
-
-class Credentials(object):
-    """Credentials helper class"""
-
-    def __init__(self, username=None, password=None):
-        """Creates Credentials instance.
-
-        Args:
-            username: Earthdata username
-            password: Earthdata password
-        """
-
-        self.username = username
-        self.password = password
-        self.complete = not (not self.username or not self.password)
-
-    def retrieve(self):
-        """Retrieves credentials from disk."""
-
-        try:
-            u, p = pload('modape.cred.pkl')
-            k = pload('modape.key.pkl')
-            cipher_suite = Fernet(k)
-            self.username = cipher_suite.decrypt(u).decode()
-            self.password = cipher_suite.decrypt(p).decode()
-        except:
-            self.destroy()
-            raise
-
-    def store(self):
-        """Stores credentials on disk."""
-
-        try:
-            k = Fernet.generate_key()
-            cipher_suite = Fernet(k)
-            u = cipher_suite.encrypt(self.username.encode())
-            p = cipher_suite.encrypt(self.password.encode())
-            pdump((u, p), 'modape.cred.pkl')
-            pdump(k, 'modape.key.pkl')
-        except Exception as e:
-            self.destroy()
-            print('Storing Earthdata credentials failed! Exception raised: {}'.format(e))
-
-    def destroy(self):
-        """Removes all credential files on disk."""
-
-        try:
-            os.remove('modape.cred.pkl')
-        except FileNotFoundError:
-            pass
-
-        try:
-            os.remove('modape.key.pkl')
-        except FileNotFoundError:
-            pass
 
 def pdump(obj, filename):
     """Pickle dump wrapper.

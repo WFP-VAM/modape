@@ -1,14 +1,12 @@
 """test_modis.py: Test MODIS classes and functions."""
-from __future__ import absolute_import, division, print_function
-# pylint: disable=invalid-name, bare-except, unused-argument, unnecessary-pass
+# pylint: disable=E0401,E0611,W0702,W0613
+from datetime import datetime
 import os
-import re
+from pathlib import Path
+import pickle
 import shutil
 import unittest
-try:
-    from unittest.mock import patch, MagicMock
-except ImportError:
-    from mock import patch, MagicMock
+from unittest.mock import patch
 import uuid
 
 import numpy as np
@@ -18,8 +16,9 @@ try:
 except ImportError:
     from osgeo import gdal
 
-import fake
+from modape.exceptions import DownloadError
 from modape.modis import ModisQuery, ModisRawH5, ModisSmoothH5, modis_tiles
+from modape.utils import SessionWithHeaderRedirection
 
 def create_gdal(x, y):
     """Create in-memory gdal dataset for testing.
@@ -46,6 +45,138 @@ def create_h5(fn, x, y, tr, ts, r):
         dset.attrs['projection'] = 'PRJ'
         dset.attrs['resolution'] = r
 
+
+class TestModisQuery(unittest.TestCase):
+    """Test class for ModisQuery tests."""
+
+    @classmethod
+    def setUpClass(cls):
+        '''Set up testing class'''
+
+        data_dir = str(Path(__file__).parent).replace('tests', 'modape')
+
+        with open(f"{data_dir}/data/cmr_api_response.pkl", 'rb') as pkl:
+            cls.api_response = pickle.load(pkl)
+
+        cls.testpath = Path(__name__).parent
+
+    @classmethod
+    def tearDownClass(cls):
+        try:
+            shutil.rmtree('__pycache__')
+        except:
+            pass
+
+    def setUp(self):
+        '''Set up test'''
+
+        # create query
+
+        self.query = ModisQuery(
+            products=['MOD13A2', 'MYD13A2'],
+            aoi=(10, 10, 20, 20),
+            begindate=datetime(2020, 1, 1),
+            enddate=datetime(2020, 7, 24),
+        )
+
+    def test_query(self):
+        '''Test API query'''
+
+        self.assertEqual(self.query.api.params['short_name'], ['MOD13A2', 'MYD13A2'])
+        self.assertEqual(self.query.api.params['bounding_box'], '10.0,10.0,20.0,20.0')
+        self.assertEqual(self.query.api.params['temporal'], ['2020-01-01T00:00:00Z,2020-07-24T00:00:00Z'])
+
+    def test_response_parse(self):
+        '''Test parsing of response'''
+
+        with patch('modape.modis.download.GranuleQuery.get_all',
+                   return_value=self.api_response):
+
+            self.query.search(strict_dates=False)
+
+            self.assertTrue(self.query.results)
+            self.assertEqual(len(self.query.results), len(self.api_response))
+
+            tiles = list({x['tile'] for x in self.query.results})
+            tiles_select = tiles[:2]
+            self.assertEqual(len(tiles), 6)
+
+            self.setUp()
+            self.query.tile_filter = tiles_select
+            self.query.search(strict_dates=True)
+
+            self.assertEqual(len({x['tile'] for x in self.query.results}), 2)
+            self.assertTrue(all([x['time_start'] >= self.query.begin.date() for x in self.query.results]))
+            self.assertTrue(all([x['time_end'] <= self.query.end.date() for x in self.query.results]))
+
+    @patch("modape.modis.download.ThreadPoolExecutor")#, new_callable=fake_fun)
+    @patch("modape.modis.download.GranuleQuery.get_all")
+    def test_download(self, mock_response, mock_submit):
+        '''Test download'''
+
+        mock_response.return_value = self.api_response
+        self.query.search()
+
+        self.query.results = [self.query.results[0]]
+
+        # Successful downloads
+
+        future_result = (self.testpath.joinpath(self.query.results[0]['file_id']), None)
+        mock_submit.return_value.__enter__.return_value.submit.return_value.result.return_value = future_result
+
+        try:
+            future_result[0].unlink()
+        except FileNotFoundError:
+            pass
+
+        # Raise AssertionError when file is missing
+        with self.assertRaises(AssertionError):
+            self.query.download(
+                targetdir=self.testpath,
+                username='test',
+                password='test',
+                multithread=True,
+            )
+
+        future_result[0].touch()
+
+        self.query.download(
+            targetdir=self.testpath,
+            username='test',
+            password='test',
+            multithread=True,
+        )
+
+        with patch("modape.modis.download.ModisQuery._fetch_hdf", return_value=future_result) as mocked_fetch:
+            self.query.download(
+                targetdir=(self.testpath),
+                username='test',
+                password='test',
+                multithread=False,
+            )
+
+            mocked_fetch.assert_called_once()
+            fetch_args = mocked_fetch.call_args[0]
+
+            self.assertEqual(type(fetch_args[0]), SessionWithHeaderRedirection)
+            self.assertEqual(fetch_args[1], self.query.results[0]['link'])
+            self.assertEqual(fetch_args[2], self.testpath)
+
+        future_result[0].unlink()
+
+        # Download Error
+        future_result = (f"http://datalocation.com/{self.query.results[0]['file_id']}", "Error")
+        mock_submit.return_value.__enter__.return_value.submit.return_value.result.return_value = future_result
+
+        with self.assertRaises(DownloadError):
+            self.query.download(
+                targetdir=self.testpath,
+                username='test',
+                password='test',
+                multithread=True
+            )
+
+
 class TestMODIS(unittest.TestCase):
     """Test class for MODIS tests."""
 
@@ -63,66 +194,6 @@ class TestMODIS(unittest.TestCase):
     def tearDown(self):
         pass
 
-    @patch('modape.modis.download.requests.Session')
-    def test_query(self, mocked_get):
-        """Test query of MODIS products."""
-        class MockRSP:
-            """Mock response."""
-
-            def raise_for_status(self):
-                """Mock raise_for_status."""
-                pass
-
-            def get(self, *args):
-                """Mock get method."""
-                rsp = MagicMock()
-                rsp.status_code.return_value = 200
-                rsp.raise_for_status.return_value = None
-
-                if 'tiled' in args[0]:
-                    rsp.content = fake.tiled
-
-                elif args[0] == 'http://global-test.query/':
-                    rsp.content = fake.glob
-
-                elif re.match('http://global-test.query/\\d.+\\.\\d.+\\.\\d.+/', args[0]):
-                    rsp.content = fake.mola[args[0]]
-                return rsp
-
-        # Test query of MOD tiled NDVI
-        mock_rsp = MockRSP()
-        mocked_get.return_value.__enter__.return_value = mock_rsp
-
-        urls = ["https://e4ftl01.cr.usgs.gov//MODV6_Cmp_B/MOLT/MOD13A2.006/2000.02.18/MOD13A2.A2000049.h18v06.006.2015136104646.hdf",
-                "https://e4ftl01.cr.usgs.gov//MODV6_Cmp_B/MOLT/MOD13A2.006/2000.03.05/MOD13A2.A2000065.h18v06.006.2015136022922.hdf",
-                "https://e4ftl01.cr.usgs.gov//MODV6_Cmp_B/MOLT/MOD13A2.006/2000.03.21/MOD13A2.A2000081.h18v06.006.2015136035955.hdf",
-                "https://e4ftl01.cr.usgs.gov//MODV6_Cmp_B/MOLT/MOD13A2.006/2000.04.06/MOD13A2.A2000097.h18v06.006.2015136035959.hdf",
-                "https://e4ftl01.cr.usgs.gov//MODV6_Cmp_B/MOLT/MOD13A2.006/2000.04.22/MOD13A2.A2000113.h18v06.006.2015137034359.hdf"]
-
-        query = ModisQuery(url='http://tiled-test.query', begindate='2000-01-01', enddate='2000-04-30')
-
-        self.assertFalse(query.global_flag)
-        self.assertEqual(query.modis_urls, urls)
-        self.assertEqual(query.tiles, ['h18v06'])
-        self.assertEqual(query.results, 5)
-        del query, urls
-
-        urls = ["http://global-test.query/2002.07.04/MYD11C2.A2002185.006.2015168205556.hdf",
-                "http://global-test.query/2002.07.12/MYD11C2.A2002193.006.2015149021321.hdf",
-                "http://global-test.query/2002.07.20/MYD11C2.A2002201.006.2015149021446.hdf",
-                "http://global-test.query/2002.07.28/MYD11C2.A2002209.006.2015149021240.hdf",
-                "http://global-test.query/2002.08.05/MYD11C2.A2002217.006.2015149021044.hdf"]
-
-        query = ModisQuery(url='http://global-test.query/', begindate='2002-07-01', enddate='2002-08-15', global_flag=True)
-
-        self.assertTrue(query.global_flag)
-        self.assertEqual(query.modis_urls, urls)
-        self.assertEqual(query.results, 5)
-
-        try:
-            shutil.rmtree('__pycache__')
-        except:
-            pass
 
     @patch('modape.modis.collect.gdal.Dataset.GetMetadataItem', return_value=-3000)
     @patch('modape.modis.collect.gdal.Dataset.GetSubDatasets', return_value=[['NDVI']])
