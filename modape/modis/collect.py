@@ -19,7 +19,10 @@ try:
 except ImportError:
     from osgeo import gdal
 import h5py # pylint: disable=import-error
+
+from modape.constants import REGEX_PATTERNS
 from modape.utils import dtype_GDNP, FileHandler
+
 
 class ModisRawH5(object):
     """Class for raw MODIS data collected into HDF5 file, ready for smoothing.
@@ -38,19 +41,12 @@ class ModisRawH5(object):
             interleave: Boolean flag if MOD/MYD 13  products should be interleaved
         """
 
-        # Patterns for string extraction
-        ppatt = re.compile(r'M\w{6}')
-        vpatt = re.compile(r'.+\.(\d{3})\..+')
-        tpatt = re.compile(r'h\d+v\d+')
-        dtspatt = re.compile(r'.+A(\d{7}).+')
-        ptspatt = re.compile(r'.+(\d{13}).+')
-
         self.targetdir = Path(targetdir)
         #self.resdict = dict(zip(['250m','500m','1km','0.05_Deg'],[x/112000 for x in [250,500,1000,5600]])) ## commented for original resolution
         self.vam_product_code_dict = dict(zip(['VIM', 'VEM', 'LTD', 'LTN'],
                                               ['NDVI', 'EVI', 'LST_Day', 'LST_Night']))
 
-        self.rawdates = [re.findall(dtspatt, x)[0] for x in files]
+        self.rawdates = [re.findall(REGEX_PATTERNS["date"], x)[0] for x in files]
         self.files = [x for (y, x) in sorted(zip(self.rawdates, files))]
         self.rawdates.sort()
         self.nfiles = len(self.files)
@@ -61,7 +57,7 @@ class ModisRawH5(object):
             raise SystemExit("Processing only implemented for M*D11 or M*13 products!")
 
         # make sure number of dates is equal to number of files, so no duplicates!
-        processing_timestamps = [int(re.sub(ptspatt, '\\1', x)) for x in self.files]
+        processing_timestamps = [int(re.sub(REGEX_PATTERNS["processing_timestamp"], '\\1', x)) for x in self.files]
 
         # check for duplicates
         if len(set(self.rawdates)) != self.nfiles:
@@ -115,7 +111,7 @@ class ModisRawH5(object):
 
         # check for MOD/MYD interleaving
         if interleave and self.vam_product_code == 'VIM':
-            self.product = [re.sub(r'M[O|Y]D', 'MXD', re.findall(ppatt, self.reference_file.name)[0])]
+            self.product = [re.sub(r'M[O|Y]D', 'MXD', re.findall(REGEX_PATTERNS["product"], self.reference_file.name)[0])]
             self.temporalresolution = 8
             self.tshift = 8
 
@@ -135,7 +131,7 @@ class ModisRawH5(object):
             self.reference_file = Path(self.files[0])
 
         else:
-            self.product = re.findall(ppatt, self.reference_file.name)
+            self.product = re.findall(REGEX_PATTERNS["product"], self.reference_file.name)
             if re.match(r'M[O|Y]D13\w\d', self.product[0]):
                 self.temporalresolution = 16
                 self.tshift = 8
@@ -163,7 +159,7 @@ class ModisRawH5(object):
         self.outname = Path('{}/{}/{}.{}.h5'.format(
             self.targetdir.as_posix(),
             self.vam_product_code,
-            '.'.join(self.product + re.findall(tpatt, self.reference_file.name) + [re.sub(vpatt, '\\1', self.reference_file.name)]),
+            '.'.join(self.product + re.findall(REGEX_PATTERNS["tile"], self.reference_file.name) + [re.sub(REGEX_PATTERNS["version"], '\\1', self.reference_file.name)]),
             fname_vpc))
 
         self.exists = self.outname.exists()
