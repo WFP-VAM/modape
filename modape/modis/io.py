@@ -168,6 +168,7 @@ class HDF5Base(object):
             geotransform=(c, a, b, f, d, e),
             projection=sds_open.GetProjection(),
             resolution=(a, e),
+            nodata=int(sds_open.GetMetadataItem('_FillValue')),
         )
 
         sds_open = None
