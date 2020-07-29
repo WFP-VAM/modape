@@ -176,6 +176,103 @@ class TestModisQuery(unittest.TestCase):
                 multithread=True
             )
 
+class TestModisCollect(unittest.TestCase):
+    """Test class for ModisQuery tests."""
+
+    @classmethod
+    def setUpClass(cls):
+        '''Set up testing class'''
+
+
+        cls.vim_files = ['MYD13A2.A2002201.h18v06.006.2015149071105.hdf',
+                         'MYD13A2.A2002185.h18v06.006.2015149071113.hdf',
+                         'MOD13A2.A2002177.h18v06.006.2015149001129.hdf',
+                         'MOD13A2.A2002209.h18v06.006.2015149180726.hdf',
+                         'MOD13A2.A2002193.h18v06.006.2015149022847.hdf']
+
+        cls.vim_files_terra = [x for x in cls.vim_files if 'MOD13A2' in x]
+        cls.vim_files_aqua = [x for x in cls.vim_files if 'MYD13A2' in x]
+
+        cls.lst_files = ['MYD11A2.A2002193.h18v06.006.2015146152945.hdf',
+                         'MOD11A2.A2002209.h18v06.006.2015145152020.hdf',
+                         'MYD11A2.A2002201.h18v06.006.2015146153241.hdf',
+                         'MYD11A2.A2002185.h18v06.006.2015146152642.hdf',
+                         'MOD11A2.A2002177.h18v06.006.2015144183717.hdf',
+                         'MYD11A2.A2002209.h18v06.006.2015152152813.hdf',
+                         'MOD11A2.A2002185.h18v06.006.2015145002847.hdf',
+                         'MOD11A2.A2002193.h18v06.006.2015145055806.hdf',
+                         'MOD11A2.A2002201.h18v06.006.2015145105749.hdf']
+
+        cls.lst_files_terra = [x for x in cls.lst_files if 'MOD11A2' in x]
+        cls.lst_files_aqua = [x for x in cls.lst_files if 'MYD11A2' in x]
+
+        cls.lst_duplicate = ['MOD11A2.A2002201.h18v06.006.2014145105749.hdf']
+
+
+    @classmethod
+    def tearDownClass(cls):
+        try:
+            shutil.rmtree('__pycache__')
+        except:
+            pass
+
+    def test_raw_instance(self):
+        """Test creation of class instance"""
+
+        raw_h5 = ModisRawH5(files=self.vim_files_aqua, targetdir='/temp')
+        self.assertEqual(raw_h5.vam_product_code, "VIM")
+        self.assertEqual(raw_h5.product, "MYD13A2")
+        self.assertEqual(raw_h5.temporalresolution, 16)
+        self.assertEqual(raw_h5.tshift, 8)
+        self.assertEqual(str(raw_h5.filename), "/tmp/VIM/MYD13A2.h18v06.006.VIM.h5")
+
+        raw_h5 = ModisRawH5(files=self.vim_files_aqua, targetdir='/temp', vam_product_code="VEM")
+        self.assertEqual(raw_h5.vam_product_code, "VEM")
+        self.assertEqual(raw_h5.product, "MYD13A2")
+        self.assertEqual(str(raw_h5.filename), "/tmp/VEM/MYD13A2.h18v06.006.VEM.h5")
+
+        with self.assertRaises(AssertionError):
+            raw_h5 = ModisRawH5(files=self.vim_files_aqua, targetdir='/temp', interleave=True)
+
+        with self.assertRaises(AssertionError):
+            raw_h5 = ModisRawH5(files=self.vim_files_aqua + self.vim_files_terra, targetdir='/temp')
+
+        with self.assertRaises(AssertionError):
+            raw_h5 = ModisRawH5(files=self.vim_files_aqua, targetdir='/temp', vam_product_code="LTD")
+
+        raw_h5 = ModisRawH5(files=self.vim_files, targetdir='/temp', interleave=True)
+        self.assertEqual(raw_h5.vam_product_code, "VIM")
+        self.assertEqual(raw_h5.product, "MXD13A2")
+        self.assertEqual(raw_h5.temporalresolution, 8)
+        self.assertEqual(raw_h5.tshift, 8)
+        self.assertEqual(str(raw_h5.filename), "/tmp/VIM/MXD13A2.h18v06.006.VIM.h5")
+        self.assertNotEqual(raw_h5.nfiles, len(self.vim_files))
+        self.assertEqual(raw_h5.nfiles, (len(self.vim_files) - 1))
+
+        raw_h5 = ModisRawH5(files=self.lst_files_aqua, targetdir='/temp')
+        self.assertEqual(raw_h5.vam_product_code, "LTD")
+        self.assertEqual(raw_h5.product, "MYD11A2")
+        self.assertEqual(raw_h5.temporalresolution, 8)
+        self.assertEqual(raw_h5.tshift, 4)
+        self.assertEqual(str(raw_h5.filename), "/tmp/TDA/MYD11A2.h18v06.006.TDA.h5")
+
+        raw_h5 = ModisRawH5(files=self.lst_files_aqua, targetdir='/temp', vam_product_code="LTN")
+        self.assertEqual(raw_h5.vam_product_code, "LTN")
+        self.assertEqual(str(raw_h5.filename), "/tmp/TDN/MYD11A2.h18v06.006.TNA.h5")
+
+        raw_h5 = ModisRawH5(files=self.lst_files_terra, targetdir='/temp')
+        self.assertEqual(raw_h5.vam_product_code, "LTD")
+        self.assertEqual(raw_h5.product, "MOD11A2")
+        self.assertEqual(str(raw_h5.filename), "/tmp/TDN/MYD11A2.h18v06.006.TDT.h5")
+
+        with self.assertRaises(AssertionError):
+            raw_h5 = ModisRawH5(files=self.lst_files_terra, targetdir='/temp', interleave=True)
+
+        with self.assertRaises(AssertionError):
+            raw_h5 = ModisRawH5(files=self.lst_files_terra, targetdir='/temp', vam_product_code="VIM")
+
+        raw_h5 = ModisRawH5(files=self.lst_files + self.lst_duplicate, targetdir='/temp')
+        self.assertEqual(raw_h5.files, sorted(self.lst_files))
 
 class TestMODIS(unittest.TestCase):
     """Test class for MODIS tests."""
