@@ -5,12 +5,14 @@ This file contains the class representing a raw MODIS HDF5 file.
 
 Author: Valentin Pesendorfer, April 2019
 """
+#pylint: disable=E0401
 import gc
-import os
+import logging
 from pathlib import Path
 import re
 import time
 import traceback
+from typing import List
 import warnings
 
 import numpy as np
@@ -18,20 +20,26 @@ try:
     import gdal
 except ImportError:
     from osgeo import gdal
-import h5py # pylint: disable=import-error
+import h5py
 
-from modape.constants import REGEX_PATTERNS
-from modape.utils import dtype_GDNP, FileHandler
+from modape.constants import REGEX_PATTERNS, VAM_PRODUCT_CODES, TEMPORAL_DICT, LST_NAME_LUD
+from modape.modis.io import HDF5Base
+from modape.utils import dtype_GDNP, FileHandler, fromjulian
+
+log = logging.getLogger(__name__)
 
 
-class ModisRawH5(object):
+class ModisRawH5(HDF5Base):
     """Class for raw MODIS data collected into HDF5 file, ready for smoothing.
 
     MOD/MYD 13 products can be interleaved into a combined MXD.
     """
 
-    def __init__(self, files, vam_product_code=None,
-                 targetdir=os.getcwd(), interleave=False):
+    def __init__(self,
+                 files: List[str],
+                 targetdir: str,
+                 vam_product_code: str = None,
+                 interleave: bool = False) -> None:
         """Create a ModisRawH5 class
 
         Args:
@@ -42,26 +50,35 @@ class ModisRawH5(object):
         """
 
         self.targetdir = Path(targetdir)
-        #self.resdict = dict(zip(['250m','500m','1km','0.05_Deg'],[x/112000 for x in [250,500,1000,5600]])) ## commented for original resolution
-        self.vam_product_code_dict = dict(zip(['VIM', 'VEM', 'LTD', 'LTN'],
-                                              ['NDVI', 'EVI', 'LST_Day', 'LST_Night']))
+
+        # check if all files provided are either VIM or TDA
+        for file in files:
+            if not re.match(REGEX_PATTERNS['VIMLST'], file.split('/')[-1]):
+                log.error("File %s not NDVI or LST", file)
+                raise ValueError("MODIS collect processing only implemented for M{O|Y}D {11,13} products!")
 
         self.rawdates = [re.findall(REGEX_PATTERNS["date"], x)[0] for x in files]
         self.files = [x for (y, x) in sorted(zip(self.rawdates, files))]
         self.rawdates.sort()
-        self.nfiles = len(self.files)
-        self.reference_file = Path(self.files[0])
 
-        # class works only for M.D11 and M.D13 products
-        if not re.match(r'M.D13\w\d', self.reference_file.name) and not re.match(r'M.D11\w\d', self.reference_file.name):
-            raise SystemExit("Processing only implemented for M*D11 or M*13 products!")
+        # extract product patterns
+        products = []
+        for file_tmp in self.files:
+            products.append(
+                re.findall(REGEX_PATTERNS["product"], file_tmp.split('/')[-1])[0]
+            )
 
-        # make sure number of dates is equal to number of files, so no duplicates!
-        processing_timestamps = [int(re.sub(REGEX_PATTERNS["processing_timestamp"], '\\1', x)) for x in self.files]
+        # Make sure it's the same product
+        assert len({x[3:] for x in products}) == 1, "Found different products in input files!"
 
-        # check for duplicates
-        if len(set(self.rawdates)) != self.nfiles:
-            warnings.warn("Possibly duplicate files in {}! Using files with most recent processing date.".format(self.targetdir.as_posix()), Warning)
+        # remove duplicates
+        if len(set(self.rawdates)) != len(self.files):
+            duplicate_warning_msg = f"Possibly duplicate files in {self.targetdir}! Using files with most recent processing date."
+            log.warning("Found duplicate files in %s", str(self.targetdir))
+            warnings.warn(duplicate_warning_msg, Warning)
+
+            # make sure number of dates is equal to number of files, so no duplicates!
+            processing_timestamps = [int(re.sub(REGEX_PATTERNS["processing_timestamp"], '\\1', x)) for x in self.files]
 
             dups = []
             dt_prev = None
@@ -86,40 +103,41 @@ class ModisRawH5(object):
                 del self.rawdates[ix]
                 del processing_timestamps[ix]
 
-            self.nfiles = len(self.files)
-            self.reference_file = Path(self.files[0])
-
             # assert that there are no duplicates now
-            assert len(set(self.rawdates)) == self.nfiles
+            assert len(set(self.rawdates)) == len(self.files)
 
-        # Open reference file
-        ref = gdal.Open(self.reference_file.as_posix())
+        if vam_product_code is None:
 
-        # When no product is selected, the default is VIM and LTD
-        if not vam_product_code:
-            ref_sds = [x[0] for x in ref.GetSubDatasets() if self.vam_product_code_dict['VIM'] in x[0] or self.vam_product_code_dict['LTD'] in x[0]][0]
-            self.vam_product_code = [key for key, value in self.vam_product_code_dict.items() if value in ref_sds][0]
-            ref_sds = None
-        elif vam_product_code in self.vam_product_code_dict.keys():
-            self.vam_product_code = vam_product_code
+            refname = self.files[0].split('/')[-1]
+
+            if re.match(REGEX_PATTERNS["VIM"], refname):
+                self.vam_product_code = "VIM"
+
+            elif re.match(REGEX_PATTERNS["LST"], refname):
+                self.vam_product_code = "LTD"
+            else:
+                pass
         else:
-            raise ValueError('VAM product code string not recognized. Available products are %s.' % [x for x in self.vam_product_code_dict.keys()])
-        ref = None
+            assert vam_product_code in VAM_PRODUCT_CODES, "Supplied product code not supported."
+            self.vam_product_code = vam_product_code
 
-        # VAM product code to be included in filename
-        fname_vpc = self.vam_product_code
+        satset = {x[:3] for x in products}
 
-        # check for MOD/MYD interleaving
-        if interleave and self.vam_product_code == 'VIM':
-            self.product = [re.sub(r'M[O|Y]D', 'MXD', re.findall(REGEX_PATTERNS["product"], self.reference_file.name)[0])]
-            self.temporalresolution = 8
-            self.tshift = 8
+        if interleave:
+
+            assert self.vam_product_code == "VIM", "Interleaving only possible for M{O|Y}D13 (VIM) products!"
+
+            # assert we have both satellites
+            assert len(satset) == 2, "Interleaving needs MOD & MYD products!"
+            self.satellite = "MXD"
+            self.product = f"MXD{products[0][3:]}"
 
             # for interleaving, exclude all dates before 1st aqua date
             ix = 0
+            min_date = fromjulian("2002185")
             for x in self.rawdates:
                 start = ix
-                if int(x) >= 2002185:
+                if fromjulian(x) >= min_date:
                     break
                 ix += 1
 
@@ -127,43 +145,42 @@ class ModisRawH5(object):
             self.files = self.files[start:]
             self.rawdates = self.rawdates[start:]
 
-            self.nfiles = len(self.files)
-            self.reference_file = Path(self.files[0])
+            # TODO: enforce sequential dates?
 
         else:
-            self.product = re.findall(REGEX_PATTERNS["product"], self.reference_file.name)
-            if re.match(r'M[O|Y]D13\w\d', self.product[0]):
-                self.temporalresolution = 16
-                self.tshift = 8
-            elif re.match(r'M[O|Y]D11\w\d', self.product[0]):
-                self.temporalresolution = 8
-                self.tshift = 4
+            # if no interleave, only one satellite allowed
+            assert len(satset) == 1, "Without interleave, only one satellite allowed!"
+            self.satellite = list(satset)[0]
+            self.product = products[0]
 
-                # LST has specific VAM product codes for the file naming
-                if self.vam_product_code == 'LTD':
-                    if re.match(r'MOD11\w\d', self.product[0]):
-                        fname_vpc = 'TDT'
-                    elif re.match(r'MYD11\w\d', self.product[0]):
-                        fname_vpc = 'TDA'
-                    else:
-                        pass
-                elif self.vam_product_code == 'LTN':
-                    if re.match(r'MOD11\w\d', self.product[0]):
-                        fname_vpc = 'TNT'
-                    elif re.match(r'MYD11\w\d', self.product[0]):
-                        fname_vpc = 'TNA'
-                    else:
-                        pass
+        tempinfo = TEMPORAL_DICT[self.product[:5]]
 
-        # Name of file to be created/updated
-        self.outname = Path('{}/{}/{}.{}.h5'.format(
-            self.targetdir.as_posix(),
-            self.vam_product_code,
-            '.'.join(self.product + re.findall(REGEX_PATTERNS["tile"], self.reference_file.name) + [re.sub(REGEX_PATTERNS["version"], '\\1', self.reference_file.name)]),
-            fname_vpc))
+        self.temporalresolution = tempinfo["temporalresolution"]
+        self.tshift = tempinfo["tshift"]
+        self.nfiles = len(self.files)
+        self.reference_file = Path(self.files[0])
 
-        self.exists = self.outname.exists()
-        ref = None
+        ## Build filename
+
+        # LST has specific VAM product codes for the file naming
+        if self.vam_product_code in ["LTD", "LTN"]:
+            fn_code = LST_NAME_LUD[self.vam_product_code][self.satellite]
+            test_vampc = REGEX_PATTERNS["LST"]
+        else:
+            fn_code = self.vam_product_code
+            test_vampc = REGEX_PATTERNS["VIM"]
+
+        assert test_vampc.match(self.product), f"Incomaptible VAM code {self.vam_product_code} for product {self.product}"
+
+        refname = self.reference_file.name
+
+        tile = REGEX_PATTERNS["tile"].findall(refname)
+        version = REGEX_PATTERNS["version"].findall(refname)
+        tile_version = '.'.join(tile + version)
+
+        filename = f"{self.targetdir}/{fn_code}/{self.product}.{tile_version}.{fn_code}.h5"
+
+        super().__init__(filename=filename)
 
     def create(self, compression='gzip', chunk=None):
         """Creates the HDF5 file.
