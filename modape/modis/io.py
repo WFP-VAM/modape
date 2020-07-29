@@ -2,6 +2,10 @@
 # pylint: disable=E0401, C0103
 from pathlib import Path
 
+try:
+    import gdal
+except ImportError:
+    from osgeo import gdal
 import h5py
 import numpy as np
 
@@ -120,3 +124,53 @@ class HDF5Base(object):
                 ds[yoff:(yoff+ysize), xb_data:(xb_data+xchunk)] = arr_in[:, xb:(xb+xchunk)]
 
         return True
+
+    @staticmethod
+    def _get_reference_metadata(reference_file: str,
+                                sds_filter: str = None)-> dict:
+        """Helper function to get metadata from reference file.
+
+        Extracts metadata from subdataset, eitjer filtered
+        by sds_filter or if None, using the first one.
+
+        GDAL's geotransform is extracted following the
+        Affine scheme:
+            c = x-coordinate of the upper-left corner of the upper-left pixel
+            a = width of a pixel
+            b = row rotation (typically zero)
+            f = y-coordinate of the of the upper-left corner of the upper-left pixel
+            d = column rotation (typically zero)
+            e = height of a pixel (typically negative)
+
+        Args:
+            reference_file (str): Full path to reference file.
+            sds_filter (str): Indicator of Subdataset 9as returned by VAM_PRODUCT_CODES.
+
+        Returns:
+            dict: Dictionary with metadata
+
+        """
+
+        ds = gdal.Open(reference_file)
+        sds_all = ds.GetSubDatasets()
+
+        if sds_filter is None:
+            sds = sds_all[0][0]
+        else:
+            sds, = [x[0] for x in sds if sds_filter in x[0]]
+
+        sds_open = gdal.Open(sds)
+        c, a, b, f, d, e = sds_open.GetGeoTransform()
+
+        metadata = dict(
+            RasterXSize=sds_open.RasterXSize,
+            RasterYSize=sds_open.RasterYSize,
+            geotransform=(c, a, b, f, d, e),
+            projection=sds_open.GetProjection(),
+            resolution=(a, e),
+        )
+
+        sds_open = None
+        ds = None
+
+        return metadata
