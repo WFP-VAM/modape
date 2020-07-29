@@ -12,17 +12,14 @@ from pathlib import Path
 import re
 import time
 import traceback
-from typing import List
+from typing import List, Tuple
 import warnings
 
 import numpy as np
-try:
-    import gdal
-except ImportError:
-    from osgeo import gdal
 import h5py
 
 from modape.constants import REGEX_PATTERNS, VAM_PRODUCT_CODES, TEMPORAL_DICT, LST_NAME_LUD
+from modape.exceptions import HDF5CreationError
 from modape.modis.io import HDF5Base
 from modape.utils import dtype_GDNP, FileHandler, fromjulian
 
@@ -145,8 +142,6 @@ class ModisRawH5(HDF5Base):
             self.files = self.files[start:]
             self.rawdates = self.rawdates[start:]
 
-            # TODO: enforce sequential dates?
-
         else:
             # if no interleave, only one satellite allowed
             assert len(satset) == 1, "Without interleave, only one satellite allowed!"
@@ -182,91 +177,84 @@ class ModisRawH5(HDF5Base):
 
         super().__init__(filename=filename)
 
-    def create(self, compression='gzip', chunk=None):
-        """Creates the HDF5 file.
+    def create(self,
+               compression: str = 'gzip',
+               chunks: Tuple[int] = None) -> None:
+        """Creates HDF5 file for raw data.
 
         Args:
-            compression: Compression method to be used (default = gzip)
-            chunk: Number of pixels per chunk (needs to define equal sized chunks!)
+            compression (str): Compression for data (default = gzip).
+            chunks (Tuple[int]): Chunksize for data (tuple of 2 int; default = (rows//25, 1)).
         """
 
-        ref = gdal.Open(self.reference_file.as_posix())
-        ref_sds = [x[0] for x in ref.GetSubDatasets() if self.vam_product_code_dict[self.vam_product_code] in x[0]][0]
+        sds_indicator = VAM_PRODUCT_CODES[self.vam_product_code]
 
-        # reference raster
-        rst = gdal.Open(ref_sds)
-        ref_sds = None
-        ref = None
-        nrows = rst.RasterYSize
-        ncols = rst.RasterXSize
+        ref_metadata = self._get_reference_metadata(
+            reference_file=str(self.reference_file),
+            sds_filter=sds_indicator
+        )
+
+        row_number = ref_metadata["RasterYSize"]
+        col_number = ref_metadata["RasterXSize"]
 
         # check chunksize
-        if not chunk:
-            self.chunks = ((nrows*ncols)//25, 10) # default
+        if chunks is None:
+            chunks = ((row_number*col_number)//25, 1) # default
         else:
-            self.chunks = (chunk, 10)
-
-        # Check if chunksize is OK
-        if not ((nrows*ncols)/self.chunks[0]).is_integer():
-            rst = None # close ref file
-            raise ValueError('\n\nChunksize must result in equal number of chunks. Please adjust chunksize!')
-
-        self.nodata_value = int(rst.GetMetadataItem('_FillValue'))
-
-        # Read datatype
-        dt = rst.GetRasterBand(1).DataType
-
-        # Parse datatype - on error use default Int16
-        try:
-            self.datatype = dtype_GDNP(dt)
-        except IndexError:
-            print('\n\n Couldn\'t read data type from dataset. Using default Int16!\n')
-            self.datatype = (3, 'int16')
-
-        trans = rst.GetGeoTransform()
-        prj = rst.GetProjection()
-        rst = None
+            assert isinstance(chunks, tuple), "Need chunks as tuple of length = 2"
+            assert len(chunks) == 2, "Need chunks as tuple of length = 2"
 
         # Create directory if necessary
-        self.outname.parent.mkdir(parents=True, exist_ok=True)
+        self.filename.parent.mkdir(parents=True, exist_ok=True)
+
+        log.info("Creating %s", str(self.filename))
 
         # Create HDF5 file
         try:
-            with h5py.File(self.outname.as_posix(), 'x', libver='latest') as h5f:
-                dset = h5f.create_dataset('data',
-                                          shape=(nrows*ncols, self.nfiles),
-                                          dtype=self.datatype[1],
-                                          maxshape=(nrows*ncols, None),
-                                          chunks=self.chunks,
-                                          compression=compression,
-                                          fillvalue=self.nodata_value)
 
-                h5f.create_dataset('dates',
-                                   shape=(self.nfiles,),
-                                   maxshape=(None,),
-                                   dtype='S8',
-                                   compression=compression)
+            with h5py.File(self.filename, 'x', libver='latest') as h5f:
 
-                dset.attrs['geotransform'] = trans
-                dset.attrs['projection'] = prj
-                dset.attrs['resolution'] = trans[1] # res ## commented for original resolution
-                dset.attrs['nodata'] = self.nodata_value
-                dset.attrs['temporalresolution'] = self.temporalresolution
-                dset.attrs['tshift'] = self.tshift
-                dset.attrs['RasterXSize'] = ncols
-                dset.attrs['RasterYSize'] = nrows
+                # create data array
+                dset = h5f.create_dataset(
+                    name='data',
+                    shape=(row_number*col_number, self.nfiles),
+                    dtype="int16",
+                    maxshape=(row_number*col_number, None),
+                    chunks=chunks,
+                    compression=compression,
+                    fillvalue=ref_metadata["nodata_value"])
+
+                # create dates
+                _ = h5f.create_dataset(
+                    name='dates',
+                    shape=(self.nfiles,),
+                    maxshape=(None,),
+                    dtype='S8',
+                    compression=compression
+                )
+
+                # set attributes of data array
+
+                # reference metadata
+                dset.attrs.update(ref_metadata)
+
+                # teporal information
+                dset.attrs.update({
+                    "temporalresolution": self.temporalresolution,
+                    "tshift": self.tshift,
+                })
+
             self.exists = True
-        except:
-            print('\n\nError creating {}! Check input parameters (especially if compression/filter is available) and try again. Corrupt file will be removed now. \n\nError message: \n'.format(self.outname.as_posix()))
-            self.outname.unlink()
-            raise
+        except Exception as _:
+            log.error("Error creating %s", str(self.filename))
+            raise HDF5CreationError(f"Error creating {str(self.filename)}! Check if file exists, or if compression / chunksize is OK.")
 
     def update(self):
         """Update MODIS raw HDF5 file with raw data.
 
         When a new HDF5 file is created, update will also handle the first data ingest.
         """
-
+# TODO: ENFORCE SEQUENTIAL DATES
         try:
             with h5py.File(self.outname.as_posix(), 'r+', libver='latest') as h5f:
                 dset = h5f.get('data')
