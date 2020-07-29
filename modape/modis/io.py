@@ -41,7 +41,6 @@ class HDF5Base(object):
 
         """
 
-
         with h5py.File(self.filename, 'r') as h5f_open:
 
             ds = h5f_open.get(dataset)
