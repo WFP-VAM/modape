@@ -30,3 +30,7 @@ class TargetNotEmpty(Exception):
     """Exception when target directory is not empty
     when it's required to be."""
     pass
+
+class HDF5CreationError(Exception):
+    """Exception when creating HDF5 file"""
+    pass
