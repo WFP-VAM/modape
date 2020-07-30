@@ -1,6 +1,9 @@
 """IO module for modape"""
 # pylint: disable=E0401, C0103
+from contextlib import contextmanager
+import logging
 from pathlib import Path
+from typing import List, Tuple
 
 try:
     import gdal
@@ -8,6 +11,8 @@ except ImportError:
     from osgeo import gdal
 import h5py
 import numpy as np
+
+log = logging.getLogger(__name__)
 
 class HDF5Base(object):
     """Base class for interaction with HDF5 files"""
@@ -121,6 +126,7 @@ class HDF5Base(object):
             for xb in range(0, xsize, xchunk):
 
                 xb_data = xb + xoff
+                log.debug("Writing to [%s : %s, %s : %s]", yoff, yoff+ysize, xb_data, xb_data+xchunk)
                 ds[yoff:(yoff+ysize), xb_data:(xb_data+xchunk)] = arr_in[:, xb:(xb+xchunk)]
 
         return True
@@ -157,7 +163,7 @@ class HDF5Base(object):
         if sds_filter is None:
             sds = sds_all[0][0]
         else:
-            sds, = [x[0] for x in sds if sds_filter in x[0]]
+            sds, = [x[0] for x in sds_all if sds_filter in x[0]]
 
         sds_open = gdal.Open(sds)
         c, a, b, f, d, e = sds_open.GetGeoTransform()
@@ -175,3 +181,77 @@ class HDF5Base(object):
         ds = None
 
         return metadata
+
+class HDFHandler(object):
+    """Class to handle HDF files for reading"""
+    def __init__(self,
+                 files: List[str],
+                 sds: str) -> None:
+        """Init the class.
+
+        Reads the datasets, extracts the subdatasets and keeps
+        a reference to the file handlers.
+
+        Args:
+            files (List[str]): List of file paths.
+            sds (str): subdataset as returned by constants.VAM_PRODUCT_CODES.
+
+        """
+
+        self.files = files
+        self.sds = sds
+        self.handles = []
+
+    @contextmanager
+    def open_datasets(self) -> None:
+        """Opens the datasets within contextmanager.
+
+        """
+        for ds_handle in self._gen_sds_handle(self.files, self.sds):
+            self.handles.append(ds_handle)
+
+        yield
+
+        for ii in range(len(self.handles)):
+            self.handles[ii] = None
+        self.handles = []
+
+    def iter_handles(self) -> Tuple[int, gdal.Dataset]:
+        """Iterate over file handles.
+
+        Yields:
+            Tuple[int, gdal.Dataset]: Tuple with index and correspomnding gdal dataset
+
+        """
+        ix = 0
+        for handle in self.handles:
+            yield (ix, handle)
+            ix += 1
+
+    @staticmethod
+    def read_chunk(x: gdal.Dataset, **kwargs: dict) -> np.ndarray:
+        """Read chunk of dataset.
+
+        Chunk can be as big as full dataset.
+
+        Args:
+            x (gdal.Dataset): GDAL Dataset.
+            **kwargs (dict): kwargs passed on to gdal.Dataset.ReadAsArray
+
+        Returns:
+            np.ndarray: array data
+
+        """
+        return x.ReadAsArray(**kwargs)
+
+    @staticmethod
+    def _gen_sds_handle(x: str, sds: str):
+        for xx in x:
+            try:
+                ds = gdal.Open(xx)
+                ds_sds, = [x[0] for x in ds.GetSubDatasets() if sds in x[0]]
+                yield gdal.Open(ds_sds)
+                ds = None
+
+            except AttributeError:
+                yield None
