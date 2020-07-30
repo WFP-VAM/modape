@@ -1,145 +1,177 @@
 #!/usr/bin/env python
 # pylint: disable=broad-except
 """modis_collect.py: Collect raw MODIS data into HDF5 file."""
-
-from __future__ import absolute_import, division, print_function
-
-import argparse
+from concurrent.futures import ProcessPoolExecutor, wait
+import logging
 import multiprocessing as mp
-import os
-try:
-    from pathlib2 import Path
-except ImportError:
-    from pathlib import Path
+from pathlib import Path
 import re
 import sys
-import time
-import traceback
 
+import click
+from modape.constants import REGEX_PATTERNS
 from modape.modis import ModisRawH5
 
-def run_process(pdict):
-    """Execute processing into raw HDF5 file
+# TODO: Increase verbosity
+# TODO: Implement checks requested by RM
 
-    Little wrapper to execute the processing into a raw HDF5 file. This enables multi-process concurrency.
-
-    Args:
-        pdict: dictionary with processing parameters for tile
-    """
-
-    for vam_product_code in pdict['vam_product_code']:
-        try:
-            rh5 = ModisRawH5(pdict['files'],
-                             vam_product_code=vam_product_code,
-                             targetdir=pdict['targetdir'],
-                             interleave=pdict['interleave'])
-            if not rh5.exists:
-                rh5.create(compression=pdict['compression'],
-                           chunk=pdict['chunksize'])
-            rh5.update()
-        except Exception as e: # pylint: disable=unused-variable
-            print('\nError processing group {}, product code {}. \n\n Traceback:\n'.format(pdict['group_id'], vam_product_code))
-            traceback.print_exc()
-        print('\n')
-
-def main():
+@click.command()
+@click.argument("src_dir", type=click.Path(dir_okay=True, resolve_path=True))
+@click.option("-d", "--targetdir", type=click.Path(dir_okay=True, writable=True, resolve_path=True),
+              help="Destination for raw HDF5 files")
+@click.option('-x', '--compression', type=click.STRING, default='gzip', help='Compression for HDF5 files')
+@click.option('--vam-code', type=click.STRING, help='VAM code for dataset to process')
+@click.option('--interleave', is_flag=True, help='Interleave MOD13 & MYD13 products to MXD (only works for VIM!)')
+@click.option('--parallel-tiles', type=click.INT, default=1, help='Number of tiles processed in parallel (default = None)')
+def cli(src_dir: str,
+        targetdir: str,
+        compression: str,
+        vam_code: str,
+        interleave: bool,
+        parallel_tiles: int
+        ) -> None:
     """Collect raw MODIS hdf files into a raw MODIS HDF5 file.
 
-    All MODIS hdf files within srcdir will be collected into a raw MODIS HDF5 file, corresponding to product type and tile.
+    All MODIS hdf files within srcdir will be collected into a raw MODIS HDF5 file, corresponding to product type and tile (if not global).
     If the respective HDF5 file does not exists in the target directory, it will be created. Otherwhise, the file will be
-    updated and the data inserted at the proper temporal location within the HDF5 file.
+    updated and the data will be appended.
 
     16-day MOD13* and MYD13* products can be interleaved into an 8-day product with the new product ID MXD* by adding the `--interleave` flag.
+
+    Args:
+        src_dir (str): Path to source directory with HDF files.
+        targetdir (str): Targetdir for HDF5 file(s).
+        compression (str): Compression filter for HDF5 file.
+        vam_code (str): VAM product code to process.
+        interleave (bool): Interleave 16-day NDVI/EVI products to 8-day.
+        parallel_tiles (int): Process tiles in parallel (number can't exceed ncores - 1).
     """
 
-    parser = argparse.ArgumentParser(description='Process downloaded RAW MODIS hdf files')
-    parser.add_argument('srcdir', help='directory with raw MODIS .hdf files', default=os.getcwd(), metavar='srcdir')
-    parser.add_argument('-d', '--targetdir', help='Target directory for PROCESSED MODIS files (default is scrdir)', metavar='')
-    parser.add_argument('-x', '--compression', help='Compression for HDF5 files', default='gzip', metavar='')
-    parser.add_argument('-c', '--chunksize', help='Number of pixels per block (value needs to result in integer number of blocks)', type=int, metavar='')
-    parser.add_argument('--all-vampc', help='Flag to process all possible VAM product codes', action='store_true')
-    parser.add_argument('--interleave', help='Interleave MOD13 & MYD13 products to MXD (only works for VIM!)', action='store_true')
-    parser.add_argument('--parallel-tiles', help='Number of tiles processed in parallel (default = None)', default=1, type=int, metavar='')
-    parser.add_argument('--quiet', help='Be quiet', action='store_true')
+    log = logging.getLogger(__name__)
 
-    # Fail and print help if no arguments supplied
-    if len(sys.argv) == 1:
-        parser.print_help(sys.stderr)
-        sys.exit(0)
+    input_dir = Path(src_dir)
+    assert input_dir.exists(), "Source directory (src_dir) does not exist!"
+    assert input_dir.is_dir(), "Source directory (src_dir) is not a directory!"
 
-    args = parser.parse_args()
-
-    input_dir = Path(args.srcdir)
-
-    if not input_dir.exists:
-        raise SystemExit('Source directory not a valid path! Please check inputs.targetdir')
-    if not args.targetdir:
-        args.targetdir = args.srcdir
+    if targetdir is None:
+        targetdir = input_dir
     else:
-        pass
+        targetdir = Path(targetdir)
 
-    files = input_dir.glob('*hdf')
+    assert targetdir.is_dir(), "Target directory (targetdir) not a direcory!"
+    targetdir.mkdir(exist_ok=True)
+    assert targetdir.exists(), "Target directory (targetdir) doesn't exist!"
 
-    # Regex patterns
-    ppatt = re.compile(r'M\w{6}')
-    vpatt = re.compile(r'.+\.(\d{3})\..+')
-    tpatt = re.compile(r'h\d+v\d+')
-    vimvem = re.compile('M.D13')
-    lst = re.compile('M.D11')
-    processing_dict = {} # processing dictionary
+    hdf_files = list(input_dir.glob('*hdf'))
+
+    if not hdf_files:
+        raise ValueError(f"NO HDF files found in src_dir {src_dir}!")
+
+    products = []
+    tiles = []
+    versions = []
 
     # Seperate input files into group
-    groups = ['.*'.join(re.findall(ppatt, x.name) + re.findall(tpatt, x.name) + [re.sub(vpatt, '\\1', x.name)])  for x in files]
+    for file in hdf_files:
+        products.append(*REGEX_PATTERNS["product"].findall(file.name))
+        tiles.append(*REGEX_PATTERNS["tile"].findall(file.name))
+        versions.append(*REGEX_PATTERNS["version"].findall(file.name))
 
-    files = [x.as_posix() for x in input_dir.glob('*hdf')]
+    groups = [".*".join(x) for x in zip(products, tiles, versions)]
+    groups = list({re.sub('(M.{1})(D.+)', 'M.'+'\\2', x) if REGEX_PATTERNS["VIM"].match(x) else x for x in groups}) # Join MOD13/MYD13
 
-    if args.interleave:
-        groups = list({re.sub('(M.{1})(D.+)', 'M.'+'\\2', x) if re.match(vimvem, x) else x for x in groups}) # Join MOD13/MYD13
-    else:
-        groups = list(set(groups))
+    log.debug("Parsed groups: %s", groups)
+
+    processing_dict = {}
+
     for group in groups:
-        gpatt = re.compile(group + '.*hdf')
-        processing_dict[group] = {}
-        processing_dict[group]['targetdir'] = args.targetdir
-        processing_dict[group]['files'] = [x for x in files if re.search(gpatt, x)]
-        processing_dict[group]['interleave'] = args.interleave
-        processing_dict[group]['group_id'] = group.replace('M.', 'MX')
+        group_pattern = re.compile(group + '.*hdf')
 
-        if args.chunksize:
-            processing_dict[group]['chunksize'] = args.chunksize
-        else:
-            processing_dict[group]['chunksize'] = None
-        processing_dict[group]['compression'] = args.compression
+        parameters = dict(
+            targetdir=targetdir,
+            files=[str(x) for x in hdf_files if group_pattern.match(x.name)],
+            interleave=interleave,
+            group_id=group.replace('M.', 'MX'),
+            compression=compression,
+            vam_product_codes=vam_code
+        )
 
-        if args.all_vampc:
-            if re.match(vimvem, group.split('.*')[0]):
-                processing_dict[group]['vam_product_code'] = ['VIM', 'VEM']
-            elif re.match(lst, group.split('.*')[0]):
-                processing_dict[group]['vam_product_code'] = ['LTD', 'LTN']
-            else:
-                raise ValueError('No VAM product code implemented for {}'.format(group.split('.*')[0]))
-        else:
-            processing_dict[group]['vam_product_code'] = [None]
+        processing_dict.update({group: parameters})
 
-    if args.parallel_tiles > 1:
-        if not args.quiet:
-            print('\n\n[{}]: Start processing - {} tiles in parallel ...'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()), args.parallel_tiles))
+    log.debug("Start processing!")
 
-        pool = mp.Pool(processes=args.parallel_tiles)
-        _ = pool.map(run_process, [processing_dict[group] for group in groups])
-        pool.close()
-        pool.join()
+    if parallel_tiles > 1:
+        log.debug("Processing %s parallel tiles!", parallel_tiles)
+        available_cores = mp.cpu_count() - 1
 
-        if not args.quiet:
-            print('[{}]: Done.'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())))
+        if parallel_tiles > available_cores:
+            log.warning("Number of parallel tiles bigger than CPUs available. Scaling down.")
+            parallel_tiles = available_cores
+
+        futures = []
+
+        with ProcessPoolExecutor(parallel_tiles) as executor:
+
+            for group, parameters in processing_dict.items():
+
+                log.debug("Submitting %s", group)
+
+                futures.append(
+                    executor.submit(
+                        _worker,
+                        parameters["files"],
+                        parameters["targetdir"],
+                        parameters["vam_product_code"],
+                        parameters["interleave"],
+                        parameters["compression"],
+                    )
+                )
+
+            _ = wait(futures)
+
+        for future in futures:
+            assert future.done()
+            assert future.exception() is None, f"Received exception {future.exception()}"
+
     else:
-        if not args.quiet:
-            print('\n\n[{}]: Start processing ... \n'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())))
 
-        for group in groups:
-            run_process(processing_dict[group])
-        if not args.quiet:
-            print('\n[{}]: Done.'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())))
+        log.debug("Processing groups sequentially")
+
+        for group, parameters in processing_dict.items():
+
+            log.debug("Processing %s", group)
+
+            _ = _worker(
+                parameters["files"],
+                parameters["targetdir"],
+                parameters["vam_product_code"],
+                parameters["interleave"],
+                parameters["compression"],
+            )
+
+def _worker(files, targetdir, vam_code, interleave, compression):
+
+    raw_h5 = ModisRawH5(
+        files=files,
+        targetdir=targetdir,
+        vam_product_code=vam_code,
+        interleave=interleave,
+    )
+
+    if not raw_h5.exists:
+        raw_h5.create(compression=compression)
+
+    raw_h5.update()
+
+    return str(raw_h5.filename)
+
+def cli_wrap():
+    """Wrapper for cli"""
+
+    if len(sys.argv) == 1:
+        cli.main(['--help'])
+    else:
+        cli() #pylint: disable=E1120
 
 if __name__ == '__main__':
-    main()
+    cli_wrap()
