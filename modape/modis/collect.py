@@ -3,28 +3,30 @@ MODIS raw HDF5 class.
 
 This file contains the class representing a raw MODIS HDF5 file.
 
-Author: Valentin Pesendorfer, April 2019
+Author: Valentin Pesendorfer, July 2020
 """
 #pylint: disable=E0401
+from datetime import datetime
 import gc
 import logging
 from pathlib import Path
 import re
-import time
-import traceback
 from typing import List, Tuple
 import warnings
 
-import numpy as np
 import h5py
-
-from modape.constants import REGEX_PATTERNS, VAM_PRODUCT_CODES, TEMPORAL_DICT, LST_NAME_LUD
-from modape.exceptions import HDF5CreationError
-from modape.modis.io import HDF5Base
-from modape.utils import dtype_GDNP, FileHandler, fromjulian
+import numpy as np
+from modape.constants import (
+    LST_NAME_LUD,
+    REGEX_PATTERNS,
+    TEMPORAL_DICT,
+    VAM_PRODUCT_CODES,
+)
+from modape.exceptions import HDF5CreationError, HDF5WriteError
+from modape.modis.io import HDF5Base, HDFHandler
+from modape.utils import check_sequential, fromjulian
 
 log = logging.getLogger(__name__)
-
 
 class ModisRawH5(HDF5Base):
     """Class for raw MODIS data collected into HDF5 file, ready for smoothing.
@@ -222,7 +224,7 @@ class ModisRawH5(HDF5Base):
                     maxshape=(row_number*col_number, None),
                     chunks=chunks,
                     compression=compression,
-                    fillvalue=ref_metadata["nodata_value"])
+                    fillvalue=ref_metadata["nodata"])
 
                 # create dates
                 _ = h5f.create_dataset(
@@ -234,7 +236,6 @@ class ModisRawH5(HDF5Base):
                 )
 
                 # set attributes of data array
-
                 # reference metadata
                 dset.attrs.update(ref_metadata)
 
@@ -254,74 +255,83 @@ class ModisRawH5(HDF5Base):
 
         When a new HDF5 file is created, update will also handle the first data ingest.
         """
-# TODO: ENFORCE SEQUENTIAL DATES
-        try:
-            with h5py.File(self.outname.as_posix(), 'r+', libver='latest') as h5f:
-                dset = h5f.get('data')
-                dates = h5f.get('dates')
-                self.chunks = dset.chunks
-                self.nodata_value = dset.attrs['nodata'].item()
-                self.ncols = dset.attrs['RasterXSize'].item()
-                self.nrows = dset.attrs['RasterYSize'].item()
-                self.datatype = dtype_GDNP(dset.dtype.name)
-                dset.attrs['processingtimestamp'] = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
 
-                # Load any existing dates and combine with new dates
-                dates_combined = [x.decode() for x in dates[...] if len(x) > 0 and x.decode() not in self.rawdates]
-                _ = [dates_combined.append(x) for x in self.rawdates]
+        log.info("Updating %s", str(self.filename))
 
-                # New total temporal length
-                dates_length = len(dates_combined)
+        with h5py.File(self.filename, 'r+', libver='latest') as h5f:
+            dset = h5f.get('data')
+            dates = h5f.get('dates')
+            dataset_shape = dset.shape
 
-                # if new total temporal length is bigger than dataset, datasets need to be resized for additional data
-                if dates_length > dset.shape[1]:
-                    dates.resize((dates_length,))
-                    dset.resize((dset.shape[0], dates_length))
+            # set processing timestamp
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            dset.attrs['processingtimestamp'] = timestamp
 
-                # Sorting index to ensure temporal continuity
-                sort_ix = np.argsort(dates_combined)
+            # Load any existing dates and combine with new dates
+            dates_combined = [x.decode() for x in dates[...] if x and x.decode() not in self.rawdates]
+            dates_combined = dates_combined + self.rawdates
+            dates_combined.sort()
 
-                # Manual garbage collect to prevent out of memory
-                _ = [gc.collect() for x in range(3)]
+            # check if dates are sequential
+            assert check_sequential(reference=dates_combined, update=self.rawdates), \
+                "Files provided for updating are not in sequence!"
 
-                # preallocate array
-                arr = np.zeros((self.chunks[0], dates_length), dtype=self.datatype[1])
+            # New total temporal length
+            dates_length = len(dates_combined)
 
-                # Open all files and keep reference in handler
-                handler = FileHandler(self.files, self.vam_product_code_dict[self.vam_product_code])
-                handler.open()
-                ysize = self.chunks[0]//self.ncols
+            # if new total temporal length is bigger than dataset, datasets need to be resized for additional data
+            if dates_length > dataset_shape[1]:
+                dates.resize((dates_length,))
+                dset.resize((dataset_shape[0], dates_length))
 
-                for b in range(0, dset.shape[0], self.chunks[0]):
-                    yoff = b//self.ncols
+            # get required metadata
+            attrs = {key: dset.attrs[key] for key in ["nodata", "RasterXSize", "RasterYSize"]}
+            chunks = dset.chunks
 
-                    for b1 in range(0, dates_length, self.chunks[1]):
-                        arr[..., b1:b1+self.chunks[1]] = dset[b:b+self.chunks[0], b1:b1+self.chunks[1]]
-                    del b1
+        # start index for write
+        start_index = dates_combined.index(self.rawdates[0])
 
-                    for fix, f in enumerate(self.files):
-                        try:
-                            arr[..., dates_combined.index(self.rawdates[fix])] = handler.handles[fix].ReadAsArray(xoff=0,
-                                                                                                                  yoff=yoff,
-                                                                                                                  xsize=self.ncols,
-                                                                                                                  ysize=ysize).flatten()
-                        except AttributeError:
-                            print('Error reading from {}. Using nodata ({}) value.'.format(f, self.nodata_value))
-                            arr[..., dates_combined.index(self.rawdates[fix])] = self.nodata_value
-                    arr = arr[..., sort_ix]
+        # Manual garbage collect to prevent out of memory
+        _ = [gc.collect() for x in range(3)]
 
-                    for b1 in range(0, dates_length, self.chunks[1]):
-                        dset[b:b+self.chunks[0], b1:b1+self.chunks[1]] = arr[..., b1:b1+self.chunks[1]]
-                handler.close()
+        # preallocate array
+        arr = np.full((chunks[0], dates_length), attrs["nodata"], dtype="int16")
 
-                # Write back date list
-                dates_combined.sort()
-                dates[...] = np.array(dates_combined, dtype='S8')
-        except:
-            print('Error updating {}! File may be corrupt, consider creating the file from scratch, or closer investigation. \n\nError message: \n'.format(self.outname.as_posix()))
-            traceback.print_exc()
-            raise
+        sds_indicator = VAM_PRODUCT_CODES[self.vam_product_code]
+        ysize = chunks[0]//attrs["RasterXSize"]
 
-    def __str__(self):
-        """String to be displayed when printing an instance of the class object"""
-        return 'ModisRawH5 object: {} - {} files - exists on disk: {}'.format(self.outname.as_posix(), self.nfiles, self.exists)
+        hdf_datasets = HDFHandler(files=self.files, sds=sds_indicator)
+
+        block_gen = ((x, x//attrs["RasterXSize"]) for x in range(0, dataset_shape[0], chunks[0]))
+
+        log.debug("Opening HDF files ... ")
+        with hdf_datasets.open_datasets():
+            log.debug("Iterating chunks ... ")
+            for yoff_ds, yoff_rst in block_gen:
+                log.debug("Processing chunk (%s, %s)", yoff_ds, yoff_rst)
+
+                for ii, hdf in hdf_datasets.iter_handles():
+                    try:
+                        arr[:, ii] = hdf_datasets.read_chunk(hdf, yoff=int(yoff_rst), ysize=int(ysize)).flatten()
+                    except AttributeError:
+                        log.warning("Error reading from %s, using nodata.", hdf_datasets.files[ii])
+                        arr[:, ii] = attrs["nodata"]
+
+                # write to HDF5
+                write_check = self.write_chunk(
+                    dataset="data",
+                    arr_in=arr,
+                    xchunk=10,
+                    xoff=start_index,
+                    yoff=yoff_ds
+                )
+
+                if not write_check:
+                    msg = "Error writing to %s"
+                    log.error(msg, self.filename)
+                    raise HDF5WriteError(msg % self.filename)
+
+        # Write back date list
+        with h5py.File(self.filename, 'r+', libver='latest') as h5f:
+            dates = h5f.get('dates')
+            dates[...] = np.array(dates_combined, dtype='S8')
