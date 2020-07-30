@@ -295,7 +295,7 @@ class ModisRawH5(HDF5Base):
         _ = [gc.collect() for x in range(3)]
 
         # preallocate array
-        arr = np.full((chunks[0], dates_length), attrs["nodata"], dtype="int16")
+        arr = np.full((chunks[0], self.nfiles), attrs["nodata"], dtype="int16")
 
         sds_indicator = VAM_PRODUCT_CODES[self.vam_product_code]
         ysize = chunks[0]//attrs["RasterXSize"]
