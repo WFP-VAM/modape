@@ -34,3 +34,7 @@ class TargetNotEmpty(Exception):
 class HDF5CreationError(Exception):
     """Exception when creating HDF5 file"""
     pass
+
+class HDF5WriteError(Exception):
+    """Exception when writing to HDF5 file"""
+    pass
