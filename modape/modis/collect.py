@@ -122,9 +122,11 @@ class ModisRawH5(HDF5Base):
 
         satset = {x[:3] for x in products}
 
-        if interleave:
+        if not self.vam_product_code == "VIM":
+            log.debug("Interleaving only possible for M{O|Y}D13 (VIM) products! Proceeding without interleave.")
+            interleave = False
 
-            assert self.vam_product_code == "VIM", "Interleaving only possible for M{O|Y}D13 (VIM) products!"
+        if interleave:
 
             # assert we have both satellites
             assert len(satset) == 2, "Interleaving needs MOD & MYD products!"
