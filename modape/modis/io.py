@@ -123,10 +123,11 @@ class HDF5Base(object):
             ysize = max(ysize, ychunk)
             assert ysize <= ychunk
 
-            for xb in range(0, xsize, xchunk):
+            log.debug("arr_in shape: %s", arr_in.shape)
 
+            for xb in range(0, xsize, xchunk):
                 xb_data = xb + xoff
-                log.debug("Writing to [%s : %s, %s : %s]", yoff, yoff+ysize, xb_data, xb_data+xchunk)
+                log.debug("Writing dataset[%s : %s, %s : %s] from arr_in[:, %s : %s]", yoff, yoff+ysize, xb_data, xb_data+xchunk, xb, xb+xchunk)
                 ds[yoff:(yoff+ysize), xb_data:(xb_data+xchunk)] = arr_in[:, xb:(xb+xchunk)]
 
         return True
