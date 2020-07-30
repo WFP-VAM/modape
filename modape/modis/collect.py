@@ -24,7 +24,7 @@ from modape.constants import (
 )
 from modape.exceptions import HDF5CreationError, HDF5WriteError
 from modape.modis.io import HDF5Base, HDFHandler
-from modape.utils import check_sequential, fromjulian
+from modape.utils import fromjulian
 
 log = logging.getLogger(__name__)
 
@@ -268,13 +268,13 @@ class ModisRawH5(HDF5Base):
             dset.attrs['processingtimestamp'] = timestamp
 
             # Load any existing dates and combine with new dates
-            dates_combined = [x.decode() for x in dates[...] if x and x.decode() not in self.rawdates]
-            dates_combined = dates_combined + self.rawdates
+            dates_stored = [x.decode() for x in dates[...] if x and x.decode() not in self.rawdates]
+            dates_combined = dates_stored + self.rawdates
             dates_combined.sort()
 
-            # check if dates are sequential
-            assert check_sequential(reference=dates_combined, update=self.rawdates), \
-                "Files provided for updating are not in sequence!"
+            # assert all dates are after last update
+            assert dates_combined[:-len(self.rawdates)] == dates_stored, \
+                "Files to be collected need to be sequential and AFTER dates of previous updates!"
 
             # New total temporal length
             dates_length = len(dates_combined)
