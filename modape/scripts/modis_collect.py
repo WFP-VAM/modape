@@ -80,22 +80,25 @@ def cli(src_dir: str,
         versions.append(*REGEX_PATTERNS["version"].findall(file.name))
 
     groups = [".*".join(x) for x in zip(products, tiles, versions)]
-    groups = list({re.sub('(M.{1})(D.+)', 'M.'+'\\2', x) if REGEX_PATTERNS["VIM"].match(x) else x for x in groups}) # Join MOD13/MYD13
-
+    if interleave:
+        groups = list({re.sub('(M.{1})(D.+)', 'M.'+'\\2', x) if REGEX_PATTERNS["VIM"].match(x) else x for x in groups}) # Join MOD13/MYD13
+    groups.sort()
     log.debug("Parsed groups: %s", groups)
 
     processing_dict = {}
 
     for group in groups:
         group_pattern = re.compile(group + '.*hdf')
+        group_files = [str(x) for x in hdf_files if group_pattern.match(x.name)]
+        group_files.sort()
 
         parameters = dict(
             targetdir=targetdir,
-            files=[str(x) for x in hdf_files if group_pattern.match(x.name)],
+            files=group_files,
             interleave=interleave,
             group_id=group.replace('M.', 'MX'),
             compression=compression,
-            vam_product_codes=vam_code
+            vam_product_code=vam_code
         )
 
         processing_dict.update({group: parameters})

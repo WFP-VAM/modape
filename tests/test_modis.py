@@ -108,7 +108,7 @@ class TestModisQuery(unittest.TestCase):
             self.assertTrue(all([x['time_start'] >= self.query.begin.date() for x in self.query.results]))
             self.assertTrue(all([x['time_end'] <= self.query.end.date() for x in self.query.results]))
 
-    @patch("modape.modis.download.ThreadPoolExecutor")#, new_callable=fake_fun)
+    @patch("modape.modis.download.ThreadPoolExecutor")
     @patch("modape.modis.download.GranuleQuery.get_all")
     def test_download(self, mock_response, mock_submit):
         '''Test download'''
@@ -222,6 +222,9 @@ class TestModisCollect(unittest.TestCase):
             shutil.rmtree('__pycache__')
         except:
             pass
+
+        for file in Path('/tmp').glob("*h5"):
+            file.unlink()
 
     def tearDown(self):
         try:
