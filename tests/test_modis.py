@@ -1,12 +1,11 @@
 """test_modis.py: Test MODIS classes and functions."""
 # pylint: disable=E0401,E0611,W0702,W0613
 from datetime import datetime
-import os
 from pathlib import Path
 import pickle
 import shutil
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 import uuid
 
 import numpy as np
@@ -208,6 +207,14 @@ class TestModisCollect(unittest.TestCase):
 
         cls.lst_duplicate = ['MOD11A2.A2002201.h18v06.006.2014145105749.hdf']
 
+        cls.referece_metadata = dict(
+            RasterXSize=1200,
+            RasterYSize=1200,
+            geotransform=(0, 1000, 0, 0, 0, -1000),
+            projection='EPSG:4326',
+            resolution=(1000, -1000),
+            nodata=0,
+        )
 
     @classmethod
     def tearDownClass(cls):
@@ -216,31 +223,57 @@ class TestModisCollect(unittest.TestCase):
         except:
             pass
 
+    def tearDown(self):
+        try:
+            shutil.rmtree('/tmp/VIM')
+        except:
+            pass
+
+        try:
+            shutil.rmtree('/tmp/TDA')
+        except:
+            pass
+
+        try:
+            shutil.rmtree('/tmp/TNA')
+        except:
+            pass
+
+        try:
+            shutil.rmtree('/tmp/TDT')
+        except:
+            pass
+
+        try:
+            shutil.rmtree('/tmp/TNT')
+        except:
+            pass
+
     def test_raw_instance(self):
         """Test creation of class instance"""
 
-        raw_h5 = ModisRawH5(files=self.vim_files_aqua, targetdir='/temp')
+        raw_h5 = ModisRawH5(files=self.vim_files_aqua, targetdir='/tmp')
         self.assertEqual(raw_h5.vam_product_code, "VIM")
         self.assertEqual(raw_h5.product, "MYD13A2")
         self.assertEqual(raw_h5.temporalresolution, 16)
         self.assertEqual(raw_h5.tshift, 8)
         self.assertEqual(str(raw_h5.filename), "/tmp/VIM/MYD13A2.h18v06.006.VIM.h5")
 
-        raw_h5 = ModisRawH5(files=self.vim_files_aqua, targetdir='/temp', vam_product_code="VEM")
+        raw_h5 = ModisRawH5(files=self.vim_files_aqua, targetdir='/tmp', vam_product_code="VEM")
         self.assertEqual(raw_h5.vam_product_code, "VEM")
         self.assertEqual(raw_h5.product, "MYD13A2")
         self.assertEqual(str(raw_h5.filename), "/tmp/VEM/MYD13A2.h18v06.006.VEM.h5")
 
         with self.assertRaises(AssertionError):
-            raw_h5 = ModisRawH5(files=self.vim_files_aqua, targetdir='/temp', interleave=True)
+            raw_h5 = ModisRawH5(files=self.vim_files_aqua, targetdir='/tmp', interleave=True)
 
         with self.assertRaises(AssertionError):
-            raw_h5 = ModisRawH5(files=self.vim_files_aqua + self.vim_files_terra, targetdir='/temp')
+            raw_h5 = ModisRawH5(files=self.vim_files_aqua + self.vim_files_terra, targetdir='/tmp')
 
         with self.assertRaises(AssertionError):
-            raw_h5 = ModisRawH5(files=self.vim_files_aqua, targetdir='/temp', vam_product_code="LTD")
+            raw_h5 = ModisRawH5(files=self.vim_files_aqua, targetdir='/tmp', vam_product_code="LTD")
 
-        raw_h5 = ModisRawH5(files=self.vim_files, targetdir='/temp', interleave=True)
+        raw_h5 = ModisRawH5(files=self.vim_files, targetdir='/tmp', interleave=True)
         self.assertEqual(raw_h5.vam_product_code, "VIM")
         self.assertEqual(raw_h5.product, "MXD13A2")
         self.assertEqual(raw_h5.temporalresolution, 8)
@@ -249,231 +282,375 @@ class TestModisCollect(unittest.TestCase):
         self.assertNotEqual(raw_h5.nfiles, len(self.vim_files))
         self.assertEqual(raw_h5.nfiles, (len(self.vim_files) - 1))
 
-        raw_h5 = ModisRawH5(files=self.lst_files_aqua, targetdir='/temp')
+        raw_h5 = ModisRawH5(files=self.lst_files_aqua, targetdir='/tmp')
         self.assertEqual(raw_h5.vam_product_code, "LTD")
         self.assertEqual(raw_h5.product, "MYD11A2")
         self.assertEqual(raw_h5.temporalresolution, 8)
         self.assertEqual(raw_h5.tshift, 4)
         self.assertEqual(str(raw_h5.filename), "/tmp/TDA/MYD11A2.h18v06.006.TDA.h5")
 
-        raw_h5 = ModisRawH5(files=self.lst_files_aqua, targetdir='/temp', vam_product_code="LTN")
+        raw_h5 = ModisRawH5(files=self.lst_files_aqua, targetdir='/tmp', vam_product_code="LTN")
         self.assertEqual(raw_h5.vam_product_code, "LTN")
-        self.assertEqual(str(raw_h5.filename), "/tmp/TDN/MYD11A2.h18v06.006.TNA.h5")
+        self.assertEqual(str(raw_h5.filename), "/tmp/TNA/MYD11A2.h18v06.006.TNA.h5")
 
-        raw_h5 = ModisRawH5(files=self.lst_files_terra, targetdir='/temp')
+        raw_h5 = ModisRawH5(files=self.lst_files_terra, targetdir='/tmp')
         self.assertEqual(raw_h5.vam_product_code, "LTD")
         self.assertEqual(raw_h5.product, "MOD11A2")
-        self.assertEqual(str(raw_h5.filename), "/tmp/TDN/MYD11A2.h18v06.006.TDT.h5")
+        self.assertEqual(str(raw_h5.filename), "/tmp/TDT/MOD11A2.h18v06.006.TDT.h5")
 
         with self.assertRaises(AssertionError):
-            raw_h5 = ModisRawH5(files=self.lst_files_terra, targetdir='/temp', interleave=True)
+            raw_h5 = ModisRawH5(files=self.lst_files_terra, targetdir='/tmp', vam_product_code="VIM")
 
-        with self.assertRaises(AssertionError):
-            raw_h5 = ModisRawH5(files=self.lst_files_terra, targetdir='/temp', vam_product_code="VIM")
+        raw_h5 = ModisRawH5(files=self.lst_files_terra + self.lst_duplicate, targetdir='/tmp')
+        self.assertEqual(raw_h5.files, sorted(self.lst_files_terra))
 
-        raw_h5 = ModisRawH5(files=self.lst_files + self.lst_duplicate, targetdir='/temp')
-        self.assertEqual(raw_h5.files, sorted(self.lst_files))
+    def test_create(self):
+        """Test creation of file"""
+        h5f = ModisRawH5(
+            files=self.vim_files,
+            targetdir='/tmp',
+            interleave=True,
+        )
 
-class TestMODIS(unittest.TestCase):
-    """Test class for MODIS tests."""
+        self.assertFalse(h5f.exists)
 
-    @classmethod
-    def setUpClass(cls):
-        pass
+        with patch.object(ModisRawH5, "_get_reference_metadata") as mocked_md:
+            mocked_md.return_value = self.referece_metadata
 
-    @classmethod
-    def tearDownClass(cls):
-        pass
+            h5f.create()
+            self.assertTrue(h5f.exists)
 
-    def setUp(self):
-        pass
+            with h5py.File(h5f.filename, 'r') as hdf5_file:
+                ds = hdf5_file.get('data')
+                self.assertTrue(ds)
 
-    def tearDown(self):
-        pass
+                attrs = ds.attrs
+                ysize = attrs['RasterYSize'] * attrs['RasterXSize']
+
+                self.assertEqual(ds.shape, (ysize, len(self.vim_files) - 1))
+
+                dates = hdf5_file.get('dates')
+                self.assertTrue(dates)
+                self.assertTrue(dates.shape, (len(h5f.rawdates,)))
+
+            h5f.filename.unlink()
+
+    @patch("modape.modis.collect.HDFHandler.open_datasets")
+    @patch("modape.modis.collect.HDFHandler.read_chunk")
+    def test_update(self, mocked_chunk, mocked_handles):
+        """Test updating dataset"""
+
+        ones = np.ones((48, 1200), dtype='int16')
+        ones_view = ones.view()
+        ones_view.shape = (48*1200,)
+
+        h5f = ModisRawH5(
+            files=self.vim_files,
+            targetdir='/tmp',
+            interleave=True,
+        )
+
+        with patch.object(ModisRawH5, "_get_reference_metadata") as mocked_md:
+            mocked_md.return_value = self.referece_metadata
+            h5f.create()
+
+        mocked_chunk.return_value = ones
+
+        with patch("modape.modis.collect.HDFHandler.iter_handles") as mocked_iter:
+            mocked_iter.return_value = ((ii, None) for ii, x in enumerate(h5f.files))
+            h5f.update()
+
+        for test_arr in h5f.read_chunked("data", xchunk=10):
+            for dim in range(test_arr.shape[1]):
+                np.testing.assert_array_equal(test_arr[:, dim], ones_view)
+
+        with h5py.File(h5f.filename, 'r') as hdf5_file:
+            dates = [x.decode() for x in hdf5_file.get('dates')]
+            self.assertEqual(dates, h5f.rawdates)
+
+        h5f.filename.unlink()
+        del h5f
+
+        files = self.lst_files_aqua
+        files.sort()
+
+        h5f = ModisRawH5(
+            files=files[:2],
+            targetdir='/tmp',
+        )
+
+        with patch.object(ModisRawH5, "_get_reference_metadata") as mocked_md:
+            mocked_md.return_value = self.referece_metadata
+            h5f.create()
+
+        with patch("modape.modis.collect.HDFHandler.iter_handles") as mocked_iter:
+            mocked_iter.return_value = ((ii, None) for ii, x in enumerate(h5f.files))
+            h5f.update()
+
+        dates_init = h5f.rawdates
+
+        del h5f
+
+        h5f = ModisRawH5(
+            files=files[2:],
+            targetdir='/tmp',
+        )
+
+        twos = ones.copy()
+        twos[...] = 2
+        twos_view = twos.view()
+        twos_view.shape = (48*1200,)
+
+        mocked_chunk.return_value = twos
+
+        with patch("modape.modis.collect.HDFHandler.iter_handles") as mocked_iter:
+            mocked_iter.return_value = ((ii, None) for ii, x in enumerate(h5f.files))
+            h5f.update()
+
+        for test_arr in h5f.read_chunked("data", xchunk=10):
+            ii = 0
+            for dim in range(test_arr.shape[1]):
+                if ii > 1:
+                    np.testing.assert_array_equal(test_arr[:, dim], twos_view)
+                else:
+                    np.testing.assert_array_equal(test_arr[:, dim], ones_view)
+                ii += 1
+
+        with h5py.File(h5f.filename, 'r') as hdf5_file:
+            dates = [x.decode() for x in hdf5_file.get('dates')]
+            self.assertEqual(dates, dates_init + h5f.rawdates)
 
 
-    @patch('modape.modis.collect.gdal.Dataset.GetMetadataItem', return_value=-3000)
-    @patch('modape.modis.collect.gdal.Dataset.GetSubDatasets', return_value=[['NDVI']])
-    @patch('modape.modis.collect.gdal.Open', return_value=create_gdal(1200, 1200))
-    def test_raw_hdf5(self, mock_ds, mock_sds, mock_nodata):
-        """Test raw tiled NDVI with 8-day interleaving of MOD/MYD and raw global LST DAY."""
-        rawfiles = [
-            'MOD13A2.A2002193.h18v06.006.2019256103823.hdf',
-            'MOD13A2.A2002209.h18v06.006.2019256103823.hdf',
-            'MYD13A2.A2002185.h18v06.006.2019256103823.hdf',
-            'MYD13A2.A2002201.h18v06.006.2019256103823.hdf',
-        ]
-        rawh5 = ModisRawH5(files=rawfiles, interleave=True)
-        mock_ds.assert_called_with('MYD13A2.A2002185.h18v06.006.2019256103823.hdf')
+        h5f.filename.unlink()
+        del h5f
 
-        self.assertEqual(rawh5.nfiles, 4)
-        self.assertFalse(rawh5.exists)
-        self.assertEqual(rawh5.outname.name, 'MXD13A2.h18v06.006.VIM.h5')
-        self.assertEqual(rawh5.temporalresolution, 8)
-        self.assertEqual(rawh5.tshift, 8)
-        self.assertEqual(rawh5.rawdates, [
-            '2002185',
-            '2002193',
-            '2002201',
-            '2002209',
-        ])
+        h5f = ModisRawH5(
+            files=files[2:],
+            targetdir='/tmp',
+        )
 
-        rawh5.create()
-        self.assertTrue(rawh5.exists)
-        self.assertEqual(rawh5.nodata_value, -3000)
-        self.assertEqual(rawh5.chunks, ((1200*1200)//25, 10))
+        with patch.object(ModisRawH5, "_get_reference_metadata") as mocked_md:
+            mocked_md.return_value = self.referece_metadata
+            h5f.create()
 
-        shutil.rmtree(rawh5.outname.parent.name)
+        with patch("modape.modis.collect.HDFHandler.iter_handles") as mocked_iter:
+            mocked_iter.return_value = ((ii, None) for ii, x in enumerate(h5f.files))
+            h5f.update()
 
-        # Test handling of duplicate files
-        rawfiles = [
-            'MOD13A2.A2002193.h18v06.006.2019256103823.hdf',
-            'MOD13A2.A2002209.h18v06.006.2019256103823.hdf',
-            'MOD13A2.A2002209.h18v06.006.2018256103823.hdf',
-            'MYD13A2.A2002185.h18v06.006.2019256103823.hdf',
-            'MYD13A2.A2002185.h18v06.006.2018256103823.hdf',
-            'MYD13A2.A2002201.h18v06.006.2019256103823.hdf',
-        ]
-        rawh5 = ModisRawH5(files=rawfiles, interleave=True)
-        mock_ds.assert_called_with('MYD13A2.A2002185.h18v06.006.2019256103823.hdf')
+        del h5f
 
-        self.assertEqual(rawh5.nfiles, 4)
-        self.assertEqual(rawh5.temporalresolution, 8)
-        self.assertEqual(rawh5.tshift, 8)
-        self.assertEqual(rawh5.rawdates, [
-            '2002185',
-            '2002193',
-            '2002201',
-            '2002209',
-        ])
+        h5f = ModisRawH5(
+            files=files[:2],
+            targetdir='/tmp',
+        )
 
-        # Test raw global LST DAY
-        rawfiles = [
-            'MYD11C2.A2002193.*.006.2019256103823.hdf',
-            'MYD11C2.A2002209.*.006.2019256103823.hdf',
-            'MYD11C2.A2002185.*.006.2019256103823.hdf',
-            'MYD11C2.A2002201.*.006.2019256103823.hdf',
-        ]
+        with patch("modape.modis.collect.HDFHandler.iter_handles") as mocked_iter:
+            mocked_iter.return_value = ((ii, None) for ii, x in enumerate(h5f.files))
 
-        mock_ds.return_value = create_gdal(7200, 3600)
-        mock_sds.return_value = [['LST_Day']]
+            with self.assertRaises(AssertionError):
+                h5f.update()
 
-        rawh5 = ModisRawH5(files=rawfiles)
-        mock_ds.assert_called_with('MYD11C2.A2002185.*.006.2019256103823.hdf')
-        self.assertEqual(rawh5.nfiles, 4)
-        self.assertFalse(rawh5.exists)
-        self.assertEqual(rawh5.outname.name, 'MYD11C2.006.TDA.h5')
-        self.assertEqual(rawh5.temporalresolution, 8)
-        self.assertEqual(rawh5.tshift, 4)
-        self.assertEqual(rawh5.rawdates, [
-            '2002185',
-            '2002193',
-            '2002201',
-            '2002209',
-        ])
-
-        rawh5.create()
-        self.assertTrue(rawh5.exists)
-        self.assertEqual(rawh5.nodata_value, -3000)
-        self.assertEqual(rawh5.chunks, ((3600*7200)//25, 10))
-
-        shutil.rmtree(rawh5.outname.parent.name)
-
-        # Test handling of duplicate files
-        rawfiles = [
-            'MYD11C2.A2002193.*.006.2019256103823.hdf',
-            'MYD11C2.A2002209.*.006.2019256103823.hdf',
-            'MYD11C2.A2002209.*.006.2018256103823.hdf',
-            'MYD11C2.A2002185.*.006.2019256103823.hdf',
-            'MYD11C2.A2002201.*.006.2019256103823.hdf',
-            'MYD11C2.A2002201.*.006.2018256103823.hdf',
-        ]
-
-        rawh5 = ModisRawH5(files=rawfiles)
-        mock_ds.assert_called_with('MYD11C2.A2002185.*.006.2019256103823.hdf')
-        self.assertEqual(rawh5.nfiles, 4)
-        self.assertEqual(rawh5.outname.name, 'MYD11C2.006.TDA.h5')
-        self.assertEqual(rawh5.temporalresolution, 8)
-        self.assertEqual(rawh5.tshift, 4)
-        self.assertEqual(rawh5.rawdates, [
-            '2002185',
-            '2002193',
-            '2002201',
-            '2002209',
-        ])
-
-    def test_smoothHDF5(self):
-        """Test smooth tiled 10-day NDVI and global 5-day LST Day."""
-        try:
-            create_h5(fn='MXD13A2.h18v06.006.VIM.h5', x=1200, y=1200, tr=8, ts=8, r=0.009)
-            smth5 = ModisSmoothH5('MXD13A2.h18v06.006.VIM.h5', tempint=10)
-
-            self.assertEqual(smth5.outname.name, 'MXD13A2.h18v06.006.txd.VIM.h5')
-            self.assertEqual(smth5.rawdates_nsmooth, [
-                '2002185',
-                '2002193',
-                '2002201',
-                '2002209',
-            ])
-            self.assertTrue(smth5.tinterpolate)
-            self.assertEqual(smth5.temporalresolution, 10)
-            self.assertFalse(smth5.exists)
-
-            smth5.create()
-            self.assertTrue(smth5.exists)
-
-            with h5py.File('MXD13A2.h18v06.006.txd.VIM.h5', 'r+') as h5f:
-                self.assertEqual([x.decode() for x in h5f.get('dates')[...]],
-                                 ['2002186', '2002196', '2002206', '2002217'])
-        except:
-            try:
-                os.remove('MXD13A2.h18v06.006.VIM.h5')
-                os.remove('MXD13A2.h18v06.006.txd.VIM.h5')
-            except:
-                pass
-            raise
-        else:
-            os.remove('MXD13A2.h18v06.006.VIM.h5')
-            os.remove('MXD13A2.h18v06.006.txd.VIM.h5')
-
-        # Test smooth global 5-day LST Day
-        try:
-            create_h5(fn='MOD11C2.006.LTD.h5', x=3600, y=7200, tr=8, ts=4, r=0.05)
-            smth5 = ModisSmoothH5('MOD11C2.006.LTD.h5', tempint=5)
-
-            self.assertEqual(smth5.outname.name, 'MOD11C2.006.txp.LTD.h5')
-            self.assertEqual(smth5.rawdates_nsmooth, [
-                '2002185',
-                '2002193',
-                '2002201',
-                '2002209',
-            ])
-
-            self.assertTrue(smth5.tinterpolate)
-            self.assertEqual(smth5.temporalresolution, 5)
-            self.assertFalse(smth5.exists)
-
-            smth5.create()
-            self.assertTrue(smth5.exists)
-
-            with h5py.File('MOD11C2.006.txp.LTD.h5', 'r+') as h5f:
-                self.assertEqual([x.decode() for x in h5f.get('dates')[...]],
-                                 ['2002189', '2002194', '2002199', '2002204', '2002209', '2002215'])
-        except:
-            try:
-                os.remove('MOD11C2.006.LTD.h5')
-                os.remove('MOD11C2.006.txp.LTD.h5')
-            except:
-                pass
-            raise
-        else:
-            os.remove('MOD11C2.006.LTD.h5')
-            os.remove('MOD11C2.006.txp.LTD.h5')
-
-    def test_modis_tiles(self):
-        """Test modis_tiles."""
-        tiles = modis_tiles([12, 19, 29, 1]) # xmin, ymax, xmax, ymin
-        self.assertEqual(tiles, ['h19v07', 'h19v08', 'h20v07', 'h20v08'])
+#
+# class TestMODIS(unittest.TestCase):
+#     """Test class for MODIS tests."""
+#
+#     @classmethod
+#     def setUpClass(cls):
+#         pass
+#
+#     @classmethod
+#     def tearDownClass(cls):
+#         pass
+#
+#     def setUp(self):
+#         pass
+#
+#     def tearDown(self):
+#         pass
+#
+#
+#     @patch('modape.modis.collect.gdal.Dataset.GetMetadataItem', return_value=-3000)
+#     @patch('modape.modis.collect.gdal.Dataset.GetSubDatasets', return_value=[['NDVI']])
+#     @patch('modape.modis.collect.gdal.Open', return_value=create_gdal(1200, 1200))
+#     def test_raw_hdf5(self, mock_ds, mock_sds, mock_nodata):
+#         """Test raw tiled NDVI with 8-day interleaving of MOD/MYD and raw global LST DAY."""
+#         rawfiles = [
+#             'MOD13A2.A2002193.h18v06.006.2019256103823.hdf',
+#             'MOD13A2.A2002209.h18v06.006.2019256103823.hdf',
+#             'MYD13A2.A2002185.h18v06.006.2019256103823.hdf',
+#             'MYD13A2.A2002201.h18v06.006.2019256103823.hdf',
+#         ]
+#         rawh5 = ModisRawH5(files=rawfiles, interleave=True)
+#         mock_ds.assert_called_with('MYD13A2.A2002185.h18v06.006.2019256103823.hdf')
+#
+#         self.assertEqual(rawh5.nfiles, 4)
+#         self.assertFalse(rawh5.exists)
+#         self.assertEqual(rawh5.outname.name, 'MXD13A2.h18v06.006.VIM.h5')
+#         self.assertEqual(rawh5.temporalresolution, 8)
+#         self.assertEqual(rawh5.tshift, 8)
+#         self.assertEqual(rawh5.rawdates, [
+#             '2002185',
+#             '2002193',
+#             '2002201',
+#             '2002209',
+#         ])
+#
+#         rawh5.create()
+#         self.assertTrue(rawh5.exists)
+#         self.assertEqual(rawh5.nodata_value, -3000)
+#         self.assertEqual(rawh5.chunks, ((1200*1200)//25, 10))
+#
+#         shutil.rmtree(rawh5.outname.parent.name)
+#
+#         # Test handling of duplicate files
+#         rawfiles = [
+#             'MOD13A2.A2002193.h18v06.006.2019256103823.hdf',
+#             'MOD13A2.A2002209.h18v06.006.2019256103823.hdf',
+#             'MOD13A2.A2002209.h18v06.006.2018256103823.hdf',
+#             'MYD13A2.A2002185.h18v06.006.2019256103823.hdf',
+#             'MYD13A2.A2002185.h18v06.006.2018256103823.hdf',
+#             'MYD13A2.A2002201.h18v06.006.2019256103823.hdf',
+#         ]
+#         rawh5 = ModisRawH5(files=rawfiles, interleave=True)
+#         mock_ds.assert_called_with('MYD13A2.A2002185.h18v06.006.2019256103823.hdf')
+#
+#         self.assertEqual(rawh5.nfiles, 4)
+#         self.assertEqual(rawh5.temporalresolution, 8)
+#         self.assertEqual(rawh5.tshift, 8)
+#         self.assertEqual(rawh5.rawdates, [
+#             '2002185',
+#             '2002193',
+#             '2002201',
+#             '2002209',
+#         ])
+#
+#         # Test raw global LST DAY
+#         rawfiles = [
+#             'MYD11C2.A2002193.*.006.2019256103823.hdf',
+#             'MYD11C2.A2002209.*.006.2019256103823.hdf',
+#             'MYD11C2.A2002185.*.006.2019256103823.hdf',
+#             'MYD11C2.A2002201.*.006.2019256103823.hdf',
+#         ]
+#
+#         mock_ds.return_value = create_gdal(7200, 3600)
+#         mock_sds.return_value = [['LST_Day']]
+#
+#         rawh5 = ModisRawH5(files=rawfiles)
+#         mock_ds.assert_called_with('MYD11C2.A2002185.*.006.2019256103823.hdf')
+#         self.assertEqual(rawh5.nfiles, 4)
+#         self.assertFalse(rawh5.exists)
+#         self.assertEqual(rawh5.outname.name, 'MYD11C2.006.TDA.h5')
+#         self.assertEqual(rawh5.temporalresolution, 8)
+#         self.assertEqual(rawh5.tshift, 4)
+#         self.assertEqual(rawh5.rawdates, [
+#             '2002185',
+#             '2002193',
+#             '2002201',
+#             '2002209',
+#         ])
+#
+#         rawh5.create()
+#         self.assertTrue(rawh5.exists)
+#         self.assertEqual(rawh5.nodata_value, -3000)
+#         self.assertEqual(rawh5.chunks, ((3600*7200)//25, 10))
+#
+#         shutil.rmtree(rawh5.outname.parent.name)
+#
+#         # Test handling of duplicate files
+#         rawfiles = [
+#             'MYD11C2.A2002193.*.006.2019256103823.hdf',
+#             'MYD11C2.A2002209.*.006.2019256103823.hdf',
+#             'MYD11C2.A2002209.*.006.2018256103823.hdf',
+#             'MYD11C2.A2002185.*.006.2019256103823.hdf',
+#             'MYD11C2.A2002201.*.006.2019256103823.hdf',
+#             'MYD11C2.A2002201.*.006.2018256103823.hdf',
+#         ]
+#
+#         rawh5 = ModisRawH5(files=rawfiles)
+#         mock_ds.assert_called_with('MYD11C2.A2002185.*.006.2019256103823.hdf')
+#         self.assertEqual(rawh5.nfiles, 4)
+#         self.assertEqual(rawh5.outname.name, 'MYD11C2.006.TDA.h5')
+#         self.assertEqual(rawh5.temporalresolution, 8)
+#         self.assertEqual(rawh5.tshift, 4)
+#         self.assertEqual(rawh5.rawdates, [
+#             '2002185',
+#             '2002193',
+#             '2002201',
+#             '2002209',
+#         ])
+#
+#     def test_smoothHDF5(self):
+#         """Test smooth tiled 10-day NDVI and global 5-day LST Day."""
+#         try:
+#             create_h5(fn='MXD13A2.h18v06.006.VIM.h5', x=1200, y=1200, tr=8, ts=8, r=0.009)
+#             smth5 = ModisSmoothH5('MXD13A2.h18v06.006.VIM.h5', tempint=10)
+#
+#             self.assertEqual(smth5.outname.name, 'MXD13A2.h18v06.006.txd.VIM.h5')
+#             self.assertEqual(smth5.rawdates_nsmooth, [
+#                 '2002185',
+#                 '2002193',
+#                 '2002201',
+#                 '2002209',
+#             ])
+#             self.assertTrue(smth5.tinterpolate)
+#             self.assertEqual(smth5.temporalresolution, 10)
+#             self.assertFalse(smth5.exists)
+#
+#             smth5.create()
+#             self.assertTrue(smth5.exists)
+#
+#             with h5py.File('MXD13A2.h18v06.006.txd.VIM.h5', 'r+') as h5f:
+#                 self.assertEqual([x.decode() for x in h5f.get('dates')[...]],
+#                                  ['2002186', '2002196', '2002206', '2002217'])
+#         except:
+#             try:
+#                 os.remove('MXD13A2.h18v06.006.VIM.h5')
+#                 os.remove('MXD13A2.h18v06.006.txd.VIM.h5')
+#             except:
+#                 pass
+#             raise
+#         else:
+#             os.remove('MXD13A2.h18v06.006.VIM.h5')
+#             os.remove('MXD13A2.h18v06.006.txd.VIM.h5')
+#
+#         # Test smooth global 5-day LST Day
+#         try:
+#             create_h5(fn='MOD11C2.006.LTD.h5', x=3600, y=7200, tr=8, ts=4, r=0.05)
+#             smth5 = ModisSmoothH5('MOD11C2.006.LTD.h5', tempint=5)
+#
+#             self.assertEqual(smth5.outname.name, 'MOD11C2.006.txp.LTD.h5')
+#             self.assertEqual(smth5.rawdates_nsmooth, [
+#                 '2002185',
+#                 '2002193',
+#                 '2002201',
+#                 '2002209',
+#             ])
+#
+#             self.assertTrue(smth5.tinterpolate)
+#             self.assertEqual(smth5.temporalresolution, 5)
+#             self.assertFalse(smth5.exists)
+#
+#             smth5.create()
+#             self.assertTrue(smth5.exists)
+#
+#             with h5py.File('MOD11C2.006.txp.LTD.h5', 'r+') as h5f:
+#                 self.assertEqual([x.decode() for x in h5f.get('dates')[...]],
+#                                  ['2002189', '2002194', '2002199', '2002204', '2002209', '2002215'])
+#         except:
+#             try:
+#                 os.remove('MOD11C2.006.LTD.h5')
+#                 os.remove('MOD11C2.006.txp.LTD.h5')
+#             except:
+#                 pass
+#             raise
+#         else:
+#             os.remove('MOD11C2.006.LTD.h5')
+#             os.remove('MOD11C2.006.txp.LTD.h5')
+#
+#     def test_modis_tiles(self):
+#         """Test modis_tiles."""
+#         tiles = modis_tiles([12, 19, 29, 1]) # xmin, ymax, xmax, ymin
+#         self.assertEqual(tiles, ['h19v07', 'h19v08', 'h20v07', 'h20v08'])
 
 if __name__ == '__main__':
     unittest.main()
