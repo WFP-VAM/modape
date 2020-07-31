@@ -184,4 +184,9 @@ class TestConsoleScripts(unittest.TestCase):
             product_files.sort()
             mocked_worker.assert_called_with(product_files, data_dir, None, True, "gzip")
 
-            self.assertTrue(not any([Path(x).exists() for x in product_files]))
+        tracefile = data_dir.joinpath('.collected')
+        self.assertTrue(tracefile.exists())
+        self.assertTrue(not any([Path(x).exists() for x in product_files]))
+        with open(str(tracefile), 'r') as thefile:
+            collected = [x.strip() for x in thefile.readlines()]
+        self.assertEqual(collected, [x.split('/')[-1] for x in product_files])

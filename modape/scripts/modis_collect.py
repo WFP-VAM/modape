@@ -143,10 +143,14 @@ def cli(src_dir: str,
             assert future.result()
 
         if cleanup:
-            for group, parameters in processing_dict.items():
-                log.debug("Cleaning up files for group %s", group)
-                for to_remove in parameters["files"]:
-                    Path(to_remove).unlink()
+            tracefile = targetdir.joinpath(".collected")
+            with open(str(tracefile), "a") as tf_open:
+                for group, parameters in processing_dict.items():
+                    log.debug("Cleaning up files for group %s", group)
+                    for to_remove in parameters["files"]:
+                        to_remove_obj = Path(to_remove)
+                        tf_open.write(to_remove_obj.name + "\n")
+                        to_remove_obj.unlink()
 
     else:
 
@@ -167,9 +171,13 @@ def cli(src_dir: str,
             assert result
 
             if cleanup:
-                log.debug("Cleaning up files for group %s", group)
-                for to_remove in parameters["files"]:
-                    Path(to_remove).unlink()
+                tracefile = targetdir.joinpath(".collected")
+                with open(str(tracefile), "a") as tf_open:
+                    log.debug("Cleaning up files for group %s", group)
+                    for to_remove in parameters["files"]:
+                        to_remove_obj = Path(to_remove)
+                        tf_open.write(to_remove_obj.name + "\n")
+                        to_remove_obj.unlink()
 
     click.echo("MODIS COLLECT completed!")
 
