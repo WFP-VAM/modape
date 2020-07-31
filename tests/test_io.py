@@ -1,9 +1,8 @@
 """test_modis.py: Test modape I/O and functions."""
-# pylint: disable=E0401
+# pylint: disable=E0401, W0702
 import shutil
 from tempfile import NamedTemporaryFile
 import unittest
-from unittest.mock import patch
 
 import h5py
 import numpy as np
@@ -41,7 +40,10 @@ class TestHDF5io(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        shutil.rmtree(cls.testfile)
+        try:
+            shutil.rmtree(cls.testfile)
+        except:
+            pass
 
     def test_rw(self):
         """Test read and write to HDF5 file"""
