@@ -164,6 +164,7 @@ class TestConsoleScripts(unittest.TestCase):
             )
 
         with patch("modape.scripts.modis_collect._worker") as mocked_worker:
+            mocked_worker.return_value = True
             result = self.runner.invoke(modis_collect_cli, ["/tmp/data"])
             mocked_worker.assert_called()
             self.assertEqual(mocked_worker.call_count, 2)
@@ -176,10 +177,11 @@ class TestConsoleScripts(unittest.TestCase):
             file_path.touch()
 
         with patch("modape.scripts.modis_collect._worker") as mocked_worker:
-            result = self.runner.invoke(modis_collect_cli, ["/tmp/data", "--interleave"])
-            mocked_worker.assert_called_once()
+            mocked_worker.return_value = True
             product_files = [str(x) for x in data_dir.glob("*hdf")]
+            result = self.runner.invoke(modis_collect_cli, ["/tmp/data", "--interleave", "--cleanup"])
+            mocked_worker.assert_called_once()
             product_files.sort()
             mocked_worker.assert_called_with(product_files, data_dir, None, True, "gzip")
 
-        _ = [x.unlink() for x in data_dir.glob("*hdf")]
+            self.assertTrue(not any([Path(x).exists() for x in product_files]))

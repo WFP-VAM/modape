@@ -21,12 +21,14 @@ from modape.modis import ModisRawH5
 @click.option('--vam-code', type=click.STRING, help='VAM code for dataset to process')
 @click.option('--interleave', is_flag=True, help='Interleave MOD13 & MYD13 products to MXD (only works for VIM!)')
 @click.option('--parallel-tiles', type=click.INT, default=1, help='Number of tiles processed in parallel (default = None)')
+@click.option('--cleanup', is_flag=True, help='Remove collected HDF files')
 def cli(src_dir: str,
         targetdir: str,
         compression: str,
         vam_code: str,
         interleave: bool,
-        parallel_tiles: int
+        parallel_tiles: int,
+        cleanup: bool,
         ) -> None:
     """Collect raw MODIS hdf files into a raw MODIS HDF5 file.
 
@@ -43,6 +45,7 @@ def cli(src_dir: str,
         vam_code (str): VAM product code to process.
         interleave (bool): Interleave 16-day NDVI/EVI products to 8-day.
         parallel_tiles (int): Process tiles in parallel (number can't exceed ncores - 1).
+        cleanup (bool): Remove collected HDF files.
     """
 
     log = logging.getLogger(__name__)
@@ -137,6 +140,13 @@ def cli(src_dir: str,
         for future in futures:
             assert future.done()
             assert future.exception() is None, f"Received exception {future.exception()}"
+            assert future.result()
+
+        if cleanup:
+            for group, parameters in processing_dict.items():
+                log.debug("Cleaning up files for group %s", group)
+                for to_remove in parameters["files"]:
+                    Path(to_remove).unlink()
 
     else:
 
@@ -146,13 +156,21 @@ def cli(src_dir: str,
 
             log.debug("Processing %s", group)
 
-            _ = _worker(
+            result = _worker(
                 parameters["files"],
                 parameters["targetdir"],
                 parameters["vam_product_code"],
                 parameters["interleave"],
                 parameters["compression"],
             )
+
+            assert result
+
+            if cleanup:
+                log.debug("Cleaning up files for group %s", group)
+                for to_remove in parameters["files"]:
+                    Path(to_remove).unlink()
+
     click.echo("MODIS COLLECT completed!")
 
 def _worker(files, targetdir, vam_code, interleave, compression):
@@ -169,7 +187,7 @@ def _worker(files, targetdir, vam_code, interleave, compression):
 
     raw_h5.update()
 
-    return str(raw_h5.filename)
+    return True
 
 def cli_wrap():
     """Wrapper for cli"""
