@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# pylint: disable=broad-except
+# pylint: disable=broad-except,E0401
 """modis_collect.py: Collect raw MODIS data into HDF5 file."""
 from concurrent.futures import ProcessPoolExecutor, wait
 import logging
@@ -12,9 +12,7 @@ import click
 from modape.constants import REGEX_PATTERNS
 from modape.modis import ModisRawH5
 
-# TODO: Increase verbosity
 # TODO: Implement checks requested by RM
-
 @click.command()
 @click.argument("src_dir", type=click.Path(dir_okay=True, resolve_path=True))
 @click.option("-d", "--targetdir", type=click.Path(dir_okay=True, writable=True, resolve_path=True),
@@ -62,10 +60,14 @@ def cli(src_dir: str,
     targetdir.mkdir(exist_ok=True)
     assert targetdir.exists(), "Target directory (targetdir) doesn't exist!"
 
+    click.echo("Starting MODIS COLLECT!")
+
     hdf_files = list(input_dir.glob('*hdf'))
 
     if not hdf_files:
         raise ValueError(f"NO HDF files found in src_dir {src_dir}!")
+
+    log.debug("Found %s hdf files.", len(hdf_files))
 
     products = []
     tiles = []
@@ -148,6 +150,7 @@ def cli(src_dir: str,
                 parameters["interleave"],
                 parameters["compression"],
             )
+    click.echo("MODIS COLLECT completed!")
 
 def _worker(files, targetdir, vam_code, interleave, compression):
 
