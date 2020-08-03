@@ -2,6 +2,7 @@
 # pylint: disable=broad-except,E0401
 """modis_collect.py: Collect raw MODIS data into HDF5 file."""
 from concurrent.futures import ProcessPoolExecutor, wait
+from datetime import datetime
 import logging
 import multiprocessing as mp
 from pathlib import Path
@@ -22,6 +23,7 @@ from modape.modis import ModisRawH5
 @click.option('--interleave', is_flag=True, help='Interleave MOD13 & MYD13 products to MXD (only works for VIM!)')
 @click.option('--parallel-tiles', type=click.INT, default=1, help='Number of tiles processed in parallel (default = None)')
 @click.option('--cleanup', is_flag=True, help='Remove collected HDF files')
+@click.option('--last-collected', type=click.DateTime(formats=['%Y%j']), help='Last collected date in julian format (YYYYDDD - %Y%j)')
 def cli(src_dir: str,
         targetdir: str,
         compression: str,
@@ -29,6 +31,7 @@ def cli(src_dir: str,
         interleave: bool,
         parallel_tiles: int,
         cleanup: bool,
+        last_collected: datetime,
         ) -> None:
     """Collect raw MODIS hdf files into a raw MODIS HDF5 file.
 
@@ -46,6 +49,7 @@ def cli(src_dir: str,
         interleave (bool): Interleave 16-day NDVI/EVI products to 8-day.
         parallel_tiles (int): Process tiles in parallel (number can't exceed ncores - 1).
         cleanup (bool): Remove collected HDF files.
+        last_collected (datetime.datetime): Julian day of last collected raw timestep.
     """
 
     log = logging.getLogger(__name__)
@@ -62,6 +66,9 @@ def cli(src_dir: str,
     assert targetdir.is_dir(), "Target directory (targetdir) not a direcory!"
     targetdir.mkdir(exist_ok=True)
     assert targetdir.exists(), "Target directory (targetdir) doesn't exist!"
+
+    if last_collected is not None:
+        last_collected = last_collected.strftime("%Y%j")
 
     click.echo("Starting MODIS COLLECT!")
 
@@ -101,7 +108,8 @@ def cli(src_dir: str,
             interleave=interleave,
             group_id=group.replace('M.', 'MX'),
             compression=compression,
-            vam_product_code=vam_code
+            vam_product_code=vam_code,
+            last_collected=last_collected,
         )
 
         processing_dict.update({group: parameters})
@@ -131,7 +139,7 @@ def cli(src_dir: str,
                         parameters["targetdir"],
                         parameters["vam_product_code"],
                         parameters["interleave"],
-                        parameters["compression"],
+                        parameters["last_collected"],
                     )
                 )
 
@@ -166,6 +174,7 @@ def cli(src_dir: str,
                 parameters["vam_product_code"],
                 parameters["interleave"],
                 parameters["compression"],
+                parameters["last_collected"],
             )
 
             assert result
@@ -181,7 +190,7 @@ def cli(src_dir: str,
 
     click.echo("MODIS COLLECT completed!")
 
-def _worker(files, targetdir, vam_code, interleave, compression):
+def _worker(files, targetdir, vam_code, interleave, compression, last_collected):
 
     raw_h5 = ModisRawH5(
         files=files,
@@ -192,6 +201,11 @@ def _worker(files, targetdir, vam_code, interleave, compression):
 
     if not raw_h5.exists:
         raw_h5.create(compression=compression)
+
+    if last_collected is not None:
+        click.echo(f"check dates! {last_collected} == {raw_h5.last_collected}")
+        assert last_collected == raw_h5.last_collected, \
+         f"Last collected date in file is {raw_h5.last_collected} not {last_collected}"
 
     raw_h5.update()
 
