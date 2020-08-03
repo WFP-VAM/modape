@@ -337,3 +337,14 @@ class ModisRawH5(HDF5Base):
         with h5py.File(self.filename, 'r+', libver='latest') as h5f:
             dates = h5f.get('dates')
             dates[...] = np.array(dates_combined, dtype='S8')
+
+    @property
+    def last_collected(self):
+        """Last collected date in file"""
+        assert self.exists, "File doesn't exist!"
+
+        with h5py.File(self.filename, 'r') as h5_open:
+            dates = h5_open.get("dates")
+            last_date = dates[-1].decode()
+
+        return last_date
