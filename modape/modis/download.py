@@ -89,8 +89,6 @@ class ModisQuery(object):
         # get all results
         results_all = self.api.get_all()
 
-        # TODO: check for duplicates?
-
         for result in self._parse_response(results_all):
 
             # skip tiles outside of filter

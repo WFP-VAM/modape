@@ -13,6 +13,7 @@ import multiprocessing
 import multiprocessing.pool
 import os
 import pickle
+from typing import List
 
 import numpy as np
 import requests
@@ -25,7 +26,6 @@ from modape.whittaker import lag1corr, ws2d, ws2dp, ws2doptv, ws2doptvp # pylint
 
 __all__ = [
     'SessionWithHeaderRedirection',
-    'FileHandler',
     'NoDaemonProcess',
     'Pool',
     'DateHelper',
@@ -79,42 +79,6 @@ class SessionWithHeaderRedirection(requests.Session):
             redirect_parsed = requests.utils.urlparse(url)
             if (original_parsed.hostname != redirect_parsed.hostname) and redirect_parsed.hostname != self.AUTH_HOST and original_parsed.hostname != self.AUTH_HOST:
                 del headers['Authorization']
-
-
-class FileHandler(object):
-    """Filehandler class to handle GDAL file references."""
-
-    def __init__(self, files, sds):
-        """Creates handler instance
-
-        Args:
-            files: List of total file paths
-            sds: Subdataset to extract
-        """
-
-        self.files = files
-        self.sds = sds
-
-    def open(self):
-        """Opens the files and store handles."""
-
-        self.handles = []
-        for f in self.files:
-
-            # try statement to catch problem with reading file
-            try:
-                fl_o = gdal.Open(f)
-                val_sds = [x[0] for x in fl_o.GetSubDatasets() if self.sds in x[0]][0]
-                self.handles.append(gdal.Open(val_sds))
-                fl_o = None
-            except AttributeError:
-                self.handles.append(None)
-
-    def close(self):
-        """Closes the files."""
-
-        for ii in range(len(self.handles)):
-            self.handles[ii] = None
 
 
 class NoDaemonProcess(multiprocessing.Process):
@@ -207,6 +171,30 @@ class DateHelper(object):
         """
 
         return [self.daily.index(x) for x in self.target]
+
+def check_sequential(
+        reference: List[str],
+        update: List[str]
+) -> bool:
+    """Helper to check if update continues sequence.
+
+    Helps to check if updated dates are all in sequence.
+
+    Args:
+        reference (List[str]): Reference list of dates to be updated.
+        update (List[str]): New dates to update.
+
+    Returns:
+        bool: True if sequential, False if not.
+
+    """
+
+    index = [i for i, item in enumerate(reference) if item in set(update)]
+    index_it = iter(index)
+    first_item = next(index_it)
+    is_sequential = all(a == b for a, b in enumerate(index_it, first_item + 1))
+
+    return is_sequential
 
 
 def pdump(obj, filename):

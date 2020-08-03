@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """modis_download.py: Query and download MODIS HDF files."""
-
+# pylint: disable=E0401
 import datetime
 import os
 import pathlib

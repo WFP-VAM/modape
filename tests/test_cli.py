@@ -3,10 +3,11 @@
 from pathlib import Path
 import shutil
 import unittest
-from unittest.mock import patch, Mock, MagicMock
+from unittest.mock import patch, Mock, MagicMock, PropertyMock, call
 from click.testing import CliRunner
 
 from modape.scripts.modis_download import cli as modis_download_cli
+from modape.scripts.modis_collect import cli as modis_collect_cli
 
 class TestConsoleScripts(unittest.TestCase):
     """Test class for console scripts."""
@@ -15,12 +16,33 @@ class TestConsoleScripts(unittest.TestCase):
     def setUpClass(cls):
         '''Set up testing class'''
 
-        cls.testpath = Path(__name__).parent
+        cls.testpath = Path('/tmp')
+
+        cls.lst_files = ['MYD11A2.A2002193.h18v06.006.2015146152945.hdf',
+                         'MOD11A2.A2002209.h18v06.006.2015145152020.hdf',
+                         'MYD11A2.A2002201.h18v06.006.2015146153241.hdf',
+                         'MYD11A2.A2002185.h18v06.006.2015146152642.hdf',
+                         'MOD11A2.A2002177.h18v06.006.2015144183717.hdf',
+                         'MYD11A2.A2002209.h18v06.006.2015152152813.hdf',
+                         'MOD11A2.A2002185.h18v06.006.2015145002847.hdf',
+                         'MOD11A2.A2002193.h18v06.006.2015145055806.hdf',
+                         'MOD11A2.A2002201.h18v06.006.2015145105749.hdf']
+
+        cls.vim_files = ['MYD13A2.A2002201.h18v06.006.2015149071105.hdf',
+                         'MYD13A2.A2002185.h18v06.006.2015149071113.hdf',
+                         'MOD13A2.A2002177.h18v06.006.2015149001129.hdf',
+                         'MOD13A2.A2002209.h18v06.006.2015149180726.hdf',
+                         'MOD13A2.A2002193.h18v06.006.2015149022847.hdf']
 
     @classmethod
     def tearDownClass(cls):
         try:
             shutil.rmtree('__pycache__')
+        except: #pylint: disable=W0702
+            pass
+
+        try:
+            shutil.rmtree('/tmp/data')
         except: #pylint: disable=W0702
             pass
 
@@ -111,3 +133,83 @@ class TestConsoleScripts(unittest.TestCase):
             result = self.runner.invoke(modis_download_cli, ["MOD13A2", "--roi", "10,20,20,30,50"])
             mocked_query.assert_not_called()
             assert result.exit_code == 1
+
+    def test_modis_collect(self):
+        """Test modis_collect.py"""
+        result = self.runner.invoke(modis_collect_cli, ["/not_an_exist_dir"])
+        self.assertEqual(result.exit_code, 1)
+
+        testfile = Path('/tmp/file.txt')
+        testfile.touch()
+        result = self.runner.invoke(modis_collect_cli, [str(testfile)])
+        self.assertEqual(result.exit_code, 1)
+        testfile.unlink()
+
+        result = self.runner.invoke(modis_collect_cli, ["/tmp"])
+        self.assertEqual(result.exit_code, 1)
+
+        data_dir = self.testpath.joinpath('data')
+        data_dir.mkdir()
+
+        for file in self.lst_files:
+            file_path = data_dir.joinpath(file)
+            file_path.touch()
+
+        calls = []
+        for product in ['MOD11', 'MYD11']:
+            product_files = [str(x) for x in data_dir.glob("*hdf") if product in x.name]
+            product_files.sort()
+            calls.append(
+                call(product_files, data_dir, None, False, "gzip", None),
+            )
+
+        with patch("modape.scripts.modis_collect._worker") as mocked_worker:
+            mocked_worker.return_value = True
+            result = self.runner.invoke(modis_collect_cli, ["/tmp/data"])
+            mocked_worker.assert_called()
+            self.assertEqual(mocked_worker.call_count, 2)
+            mocked_worker.assert_has_calls(calls, any_order=False)
+
+        _ = [x.unlink() for x in data_dir.glob("*hdf")]
+
+        for file in self.vim_files:
+            file_path = data_dir.joinpath(file)
+            file_path.touch()
+
+        with patch("modape.scripts.modis_collect._worker") as mocked_worker:
+            mocked_worker.return_value = True
+            product_files = [str(x) for x in data_dir.glob("*hdf")]
+            result = self.runner.invoke(modis_collect_cli, ["/tmp/data", "--interleave", "--cleanup"])
+            mocked_worker.assert_called_once()
+            product_files.sort()
+            mocked_worker.assert_called_with(product_files, data_dir, None, True, "gzip", None)
+
+        tracefile = data_dir.joinpath('.collected')
+        self.assertTrue(tracefile.exists())
+        self.assertTrue(not any([Path(x).exists() for x in product_files]))
+        with open(str(tracefile), 'r') as thefile:
+            collected = [x.strip() for x in thefile.readlines()]
+        self.assertEqual(collected, [x.split('/')[-1] for x in product_files])
+
+        for file in self.vim_files:
+            file_path = data_dir.joinpath(file)
+            file_path.touch()
+
+        with patch("modape.scripts.modis_collect._worker") as mocked_worker:
+            mocked_worker.return_value = True
+            product_files = [str(x) for x in data_dir.glob("*hdf")]
+            product_files.sort()
+            result = self.runner.invoke(modis_collect_cli, ["/tmp/data", "--interleave", "--cleanup", "--last-collected", "2002-01-01"])
+            mocked_worker.assert_not_called()
+            self.assertEqual(result.exit_code, 2)
+
+        with patch("modape.scripts.modis_collect.ModisRawH5") as mocked_rawfile:
+            mocked_rawfile.return_value = MagicMock(exists=True, last_collected="2020001")
+            result = self.runner.invoke(modis_collect_cli, ["/tmp/data", "--interleave", "--cleanup", "--last-collected", "2020365"])
+            mocked_rawfile.assert_called_once()
+            self.assertEqual(result.exit_code, 1)
+
+            mocked_rawfile.reset_mock()
+            result = self.runner.invoke(modis_collect_cli, ["/tmp/data", "--interleave", "--cleanup", "--last-collected", "2020001"])
+            mocked_rawfile.assert_called_once()
+            self.assertEqual(result.exit_code, 0)

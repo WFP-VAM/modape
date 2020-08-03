@@ -3,37 +3,42 @@ MODIS raw HDF5 class.
 
 This file contains the class representing a raw MODIS HDF5 file.
 
-Author: Valentin Pesendorfer, April 2019
+Author: Valentin Pesendorfer, July 2020
 """
-from __future__ import absolute_import, division, print_function
-
+#pylint: disable=E0401
+from datetime import datetime
 import gc
-import os
-try:
-    from pathlib2 import Path
-except ImportError:
-    from pathlib import Path
+import logging
+from pathlib import Path
 import re
-import time
-import traceback
+from typing import List, Tuple
 import warnings
 
+import h5py
 import numpy as np
-try:
-    import gdal
-except ImportError:
-    from osgeo import gdal
-import h5py # pylint: disable=import-error
-from modape.utils import dtype_GDNP, FileHandler
+from modape.constants import (
+    LST_NAME_LUD,
+    REGEX_PATTERNS,
+    TEMPORAL_DICT,
+    VAM_PRODUCT_CODES,
+)
+from modape.exceptions import HDF5CreationError, HDF5WriteError
+from modape.modis.io import HDF5Base, HDFHandler
+from modape.utils import fromjulian
 
-class ModisRawH5(object):
+log = logging.getLogger(__name__)
+
+class ModisRawH5(HDF5Base):
     """Class for raw MODIS data collected into HDF5 file, ready for smoothing.
 
     MOD/MYD 13 products can be interleaved into a combined MXD.
     """
 
-    def __init__(self, files, vam_product_code=None,
-                 targetdir=os.getcwd(), interleave=False):
+    def __init__(self,
+                 files: List[str],
+                 targetdir: str,
+                 vam_product_code: str = None,
+                 interleave: bool = False) -> None:
         """Create a ModisRawH5 class
 
         Args:
@@ -43,34 +48,36 @@ class ModisRawH5(object):
             interleave: Boolean flag if MOD/MYD 13  products should be interleaved
         """
 
-        # Patterns for string extraction
-        ppatt = re.compile(r'M\w{6}')
-        vpatt = re.compile(r'.+\.(\d{3})\..+')
-        tpatt = re.compile(r'h\d+v\d+')
-        dtspatt = re.compile(r'.+A(\d{7}).+')
-        ptspatt = re.compile(r'.+(\d{13}).+')
-
         self.targetdir = Path(targetdir)
-        #self.resdict = dict(zip(['250m','500m','1km','0.05_Deg'],[x/112000 for x in [250,500,1000,5600]])) ## commented for original resolution
-        self.vam_product_code_dict = dict(zip(['VIM', 'VEM', 'LTD', 'LTN'],
-                                              ['NDVI', 'EVI', 'LST_Day', 'LST_Night']))
 
-        self.rawdates = [re.findall(dtspatt, x)[0] for x in files]
+        # check if all files provided are either VIM or TDA
+        for file in files:
+            if not re.match(REGEX_PATTERNS['VIMLST'], file.split('/')[-1]):
+                log.error("File %s not NDVI or LST", file)
+                raise ValueError("MODIS collect processing only implemented for M{O|Y}D {11,13} products!")
+
+        self.rawdates = [re.findall(REGEX_PATTERNS["date"], x)[0] for x in files]
         self.files = [x for (y, x) in sorted(zip(self.rawdates, files))]
         self.rawdates.sort()
-        self.nfiles = len(self.files)
-        self.reference_file = Path(self.files[0])
 
-        # class works only for M.D11 and M.D13 products
-        if not re.match(r'M.D13\w\d', self.reference_file.name) and not re.match(r'M.D11\w\d', self.reference_file.name):
-            raise SystemExit("Processing only implemented for M*D11 or M*13 products!")
+        # extract product patterns
+        products = []
+        for file_tmp in self.files:
+            products.append(
+                re.findall(REGEX_PATTERNS["product"], file_tmp.split('/')[-1])[0]
+            )
 
-        # make sure number of dates is equal to number of files, so no duplicates!
-        processing_timestamps = [int(re.sub(ptspatt, '\\1', x)) for x in self.files]
+        # Make sure it's the same product
+        assert len({x[3:] for x in products}) == 1, "Found different products in input files!"
 
-        # check for duplicates
-        if len(set(self.rawdates)) != self.nfiles:
-            warnings.warn("Possibly duplicate files in {}! Using files with most recent processing date.".format(self.targetdir.as_posix()), Warning)
+        # remove duplicates
+        if len(set(self.rawdates)) != len(self.files):
+            duplicate_warning_msg = f"Possibly duplicate files in {self.targetdir}! Using files with most recent processing date."
+            log.warning("Found duplicate files in %s", str(self.targetdir))
+            warnings.warn(duplicate_warning_msg, Warning)
+
+            # make sure number of dates is equal to number of files, so no duplicates!
+            processing_timestamps = [int(re.sub(REGEX_PATTERNS["processing_timestamp"], '\\1', x)) for x in self.files]
 
             dups = []
             dt_prev = None
@@ -95,40 +102,43 @@ class ModisRawH5(object):
                 del self.rawdates[ix]
                 del processing_timestamps[ix]
 
-            self.nfiles = len(self.files)
-            self.reference_file = Path(self.files[0])
-
             # assert that there are no duplicates now
-            assert len(set(self.rawdates)) == self.nfiles
+            assert len(set(self.rawdates)) == len(self.files)
 
-        # Open reference file
-        ref = gdal.Open(self.reference_file.as_posix())
+        if vam_product_code is None:
 
-        # When no product is selected, the default is VIM and LTD
-        if not vam_product_code:
-            ref_sds = [x[0] for x in ref.GetSubDatasets() if self.vam_product_code_dict['VIM'] in x[0] or self.vam_product_code_dict['LTD'] in x[0]][0]
-            self.vam_product_code = [key for key, value in self.vam_product_code_dict.items() if value in ref_sds][0]
-            ref_sds = None
-        elif vam_product_code in self.vam_product_code_dict.keys():
-            self.vam_product_code = vam_product_code
+            refname = self.files[0].split('/')[-1]
+
+            if re.match(REGEX_PATTERNS["VIM"], refname):
+                self.vam_product_code = "VIM"
+
+            elif re.match(REGEX_PATTERNS["LST"], refname):
+                self.vam_product_code = "LTD"
+            else:
+                pass
         else:
-            raise ValueError('VAM product code string not recognized. Available products are %s.' % [x for x in self.vam_product_code_dict.keys()])
-        ref = None
+            assert vam_product_code in VAM_PRODUCT_CODES, "Supplied product code not supported."
+            self.vam_product_code = vam_product_code
 
-        # VAM product code to be included in filename
-        fname_vpc = self.vam_product_code
+        satset = {x[:3] for x in products}
 
-        # check for MOD/MYD interleaving
-        if interleave and self.vam_product_code == 'VIM':
-            self.product = [re.sub(r'M[O|Y]D', 'MXD', re.findall(ppatt, self.reference_file.name)[0])]
-            self.temporalresolution = 8
-            self.tshift = 8
+        if not self.vam_product_code == "VIM":
+            log.debug("Interleaving only possible for M{O|Y}D13 (VIM) products! Proceeding without interleave.")
+            interleave = False
+
+        if interleave:
+
+            # assert we have both satellites
+            assert len(satset) == 2, "Interleaving needs MOD & MYD products!"
+            self.satellite = "MXD"
+            self.product = f"MXD{products[0][3:]}"
 
             # for interleaving, exclude all dates before 1st aqua date
             ix = 0
+            min_date = fromjulian("2002185")
             for x in self.rawdates:
                 start = ix
-                if int(x) >= 2002185:
+                if fromjulian(x) >= min_date:
                     break
                 ix += 1
 
@@ -136,122 +146,111 @@ class ModisRawH5(object):
             self.files = self.files[start:]
             self.rawdates = self.rawdates[start:]
 
-            self.nfiles = len(self.files)
-            self.reference_file = Path(self.files[0])
-
         else:
-            self.product = re.findall(ppatt, self.reference_file.name)
-            if re.match(r'M[O|Y]D13\w\d', self.product[0]):
-                self.temporalresolution = 16
-                self.tshift = 8
-            elif re.match(r'M[O|Y]D11\w\d', self.product[0]):
-                self.temporalresolution = 8
-                self.tshift = 4
+            # if no interleave, only one satellite allowed
+            assert len(satset) == 1, "Without interleave, only one satellite allowed!"
+            self.satellite = list(satset)[0]
+            self.product = products[0]
 
-                # LST has specific VAM product codes for the file naming
-                if self.vam_product_code == 'LTD':
-                    if re.match(r'MOD11\w\d', self.product[0]):
-                        fname_vpc = 'TDT'
-                    elif re.match(r'MYD11\w\d', self.product[0]):
-                        fname_vpc = 'TDA'
-                    else:
-                        pass
-                elif self.vam_product_code == 'LTN':
-                    if re.match(r'MOD11\w\d', self.product[0]):
-                        fname_vpc = 'TNT'
-                    elif re.match(r'MYD11\w\d', self.product[0]):
-                        fname_vpc = 'TNA'
-                    else:
-                        pass
+        tempinfo = TEMPORAL_DICT[self.product[:5]]
 
-        # Name of file to be created/updated
-        self.outname = Path('{}/{}/{}.{}.h5'.format(
-            self.targetdir.as_posix(),
-            self.vam_product_code,
-            '.'.join(self.product + re.findall(tpatt, self.reference_file.name) + [re.sub(vpatt, '\\1', self.reference_file.name)]),
-            fname_vpc))
+        self.temporalresolution = tempinfo["temporalresolution"]
+        self.tshift = tempinfo["tshift"]
+        self.nfiles = len(self.files)
+        self.reference_file = Path(self.files[0])
 
-        self.exists = self.outname.exists()
-        ref = None
+        ## Build filename
 
-    def create(self, compression='gzip', chunk=None):
-        """Creates the HDF5 file.
+        # LST has specific VAM product codes for the file naming
+        if self.vam_product_code in ["LTD", "LTN"]:
+            fn_code = LST_NAME_LUD[self.vam_product_code][self.satellite]
+            test_vampc = REGEX_PATTERNS["LST"]
+        else:
+            fn_code = self.vam_product_code
+            test_vampc = REGEX_PATTERNS["VIM"]
+
+        assert test_vampc.match(self.product), f"Incomaptible VAM code {self.vam_product_code} for product {self.product}"
+
+        refname = self.reference_file.name
+
+        tile = REGEX_PATTERNS["tile"].findall(refname)
+        version = REGEX_PATTERNS["version"].findall(refname)
+        tile_version = '.'.join(tile + version)
+
+        filename = f"{self.targetdir}/{fn_code}/{self.product}.{tile_version}.{fn_code}.h5"
+
+        super().__init__(filename=filename)
+
+    def create(self,
+               compression: str = 'gzip',
+               chunks: Tuple[int] = None) -> None:
+        """Creates HDF5 file for raw data.
 
         Args:
-            compression: Compression method to be used (default = gzip)
-            chunk: Number of pixels per chunk (needs to define equal sized chunks!)
+            compression (str): Compression for data (default = gzip).
+            chunks (Tuple[int]): Chunksize for data (tuple of 2 int; default = (rows//25, 1)).
         """
 
-        ref = gdal.Open(self.reference_file.as_posix())
-        ref_sds = [x[0] for x in ref.GetSubDatasets() if self.vam_product_code_dict[self.vam_product_code] in x[0]][0]
+        sds_indicator = VAM_PRODUCT_CODES[self.vam_product_code]
 
-        # reference raster
-        rst = gdal.Open(ref_sds)
-        ref_sds = None
-        ref = None
-        nrows = rst.RasterYSize
-        ncols = rst.RasterXSize
+        ref_metadata = self._get_reference_metadata(
+            reference_file=str(self.reference_file),
+            sds_filter=sds_indicator
+        )
+
+        row_number = ref_metadata["RasterYSize"]
+        col_number = ref_metadata["RasterXSize"]
 
         # check chunksize
-        if not chunk:
-            self.chunks = ((nrows*ncols)//25, 10) # default
+        if chunks is None:
+            chunks = ((row_number*col_number)//25, 1) # default
         else:
-            self.chunks = (chunk, 10)
-
-        # Check if chunksize is OK
-        if not ((nrows*ncols)/self.chunks[0]).is_integer():
-            rst = None # close ref file
-            raise ValueError('\n\nChunksize must result in equal number of chunks. Please adjust chunksize!')
-
-        self.nodata_value = int(rst.GetMetadataItem('_FillValue'))
-
-        # Read datatype
-        dt = rst.GetRasterBand(1).DataType
-
-        # Parse datatype - on error use default Int16
-        try:
-            self.datatype = dtype_GDNP(dt)
-        except IndexError:
-            print('\n\n Couldn\'t read data type from dataset. Using default Int16!\n')
-            self.datatype = (3, 'int16')
-
-        trans = rst.GetGeoTransform()
-        prj = rst.GetProjection()
-        rst = None
+            assert isinstance(chunks, tuple), "Need chunks as tuple of length = 2"
+            assert len(chunks) == 2, "Need chunks as tuple of length = 2"
 
         # Create directory if necessary
-        self.outname.parent.mkdir(parents=True, exist_ok=True)
+        self.filename.parent.mkdir(parents=True, exist_ok=True)
+
+        log.info("Creating %s", str(self.filename))
 
         # Create HDF5 file
         try:
-            with h5py.File(self.outname.as_posix(), 'x', libver='latest') as h5f:
-                dset = h5f.create_dataset('data',
-                                          shape=(nrows*ncols, self.nfiles),
-                                          dtype=self.datatype[1],
-                                          maxshape=(nrows*ncols, None),
-                                          chunks=self.chunks,
-                                          compression=compression,
-                                          fillvalue=self.nodata_value)
 
-                h5f.create_dataset('dates',
-                                   shape=(self.nfiles,),
-                                   maxshape=(None,),
-                                   dtype='S8',
-                                   compression=compression)
+            with h5py.File(self.filename, 'x', libver='latest') as h5f:
 
-                dset.attrs['geotransform'] = trans
-                dset.attrs['projection'] = prj
-                dset.attrs['resolution'] = trans[1] # res ## commented for original resolution
-                dset.attrs['nodata'] = self.nodata_value
-                dset.attrs['temporalresolution'] = self.temporalresolution
-                dset.attrs['tshift'] = self.tshift
-                dset.attrs['RasterXSize'] = ncols
-                dset.attrs['RasterYSize'] = nrows
+                # create data array
+                dset = h5f.create_dataset(
+                    name='data',
+                    shape=(row_number*col_number, self.nfiles),
+                    dtype="int16",
+                    maxshape=(row_number*col_number, None),
+                    chunks=chunks,
+                    compression=compression,
+                    fillvalue=ref_metadata["nodata"])
+
+                # create dates
+                _ = h5f.create_dataset(
+                    name='dates',
+                    shape=(self.nfiles,),
+                    maxshape=(None,),
+                    dtype='S8',
+                    compression=compression
+                )
+
+                # set attributes of data array
+                # reference metadata
+                dset.attrs.update(ref_metadata)
+
+                # teporal information
+                dset.attrs.update({
+                    "temporalresolution": self.temporalresolution,
+                    "tshift": self.tshift,
+                })
+
             self.exists = True
-        except:
-            print('\n\nError creating {}! Check input parameters (especially if compression/filter is available) and try again. Corrupt file will be removed now. \n\nError message: \n'.format(self.outname.as_posix()))
-            self.outname.unlink()
-            raise
+        except Exception as _:
+            log.error("Error creating %s", str(self.filename))
+            raise HDF5CreationError(f"Error creating {str(self.filename)}! Check if file exists, or if compression / chunksize is OK.")
 
     def update(self):
         """Update MODIS raw HDF5 file with raw data.
@@ -259,73 +258,93 @@ class ModisRawH5(object):
         When a new HDF5 file is created, update will also handle the first data ingest.
         """
 
-        try:
-            with h5py.File(self.outname.as_posix(), 'r+', libver='latest') as h5f:
-                dset = h5f.get('data')
-                dates = h5f.get('dates')
-                self.chunks = dset.chunks
-                self.nodata_value = dset.attrs['nodata'].item()
-                self.ncols = dset.attrs['RasterXSize'].item()
-                self.nrows = dset.attrs['RasterYSize'].item()
-                self.datatype = dtype_GDNP(dset.dtype.name)
-                dset.attrs['processingtimestamp'] = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
+        log.info("Updating %s", str(self.filename))
 
-                # Load any existing dates and combine with new dates
-                dates_combined = [x.decode() for x in dates[...] if len(x) > 0 and x.decode() not in self.rawdates]
-                _ = [dates_combined.append(x) for x in self.rawdates]
+        with h5py.File(self.filename, 'r+', libver='latest') as h5f:
+            dset = h5f.get('data')
+            dates = h5f.get('dates')
+            dataset_shape = dset.shape
 
-                # New total temporal length
-                dates_length = len(dates_combined)
+            # set processing timestamp
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            dset.attrs['processingtimestamp'] = timestamp
 
-                # if new total temporal length is bigger than dataset, datasets need to be resized for additional data
-                if dates_length > dset.shape[1]:
-                    dates.resize((dates_length,))
-                    dset.resize((dset.shape[0], dates_length))
+            # Load any existing dates and combine with new dates
+            dates_stored = [x.decode() for x in dates[...] if x and x.decode() not in self.rawdates]
+            dates_combined = dates_stored + self.rawdates
+            dates_combined.sort()
 
-                # Sorting index to ensure temporal continuity
-                sort_ix = np.argsort(dates_combined)
+            # assert all dates are after last update
+            assert dates_combined[:-len(self.rawdates)] == dates_stored, \
+                "Files to be collected need to be sequential and AFTER dates of previous updates!"
 
-                # Manual garbage collect to prevent out of memory
-                _ = [gc.collect() for x in range(3)]
+            # New total temporal length
+            dates_length = len(dates_combined)
 
-                # preallocate array
-                arr = np.zeros((self.chunks[0], dates_length), dtype=self.datatype[1])
+            # if new total temporal length is bigger than dataset, datasets need to be resized for additional data
+            if dates_length > dataset_shape[1]:
+                dates.resize((dates_length,))
+                dset.resize((dataset_shape[0], dates_length))
 
-                # Open all files and keep reference in handler
-                handler = FileHandler(self.files, self.vam_product_code_dict[self.vam_product_code])
-                handler.open()
-                ysize = self.chunks[0]//self.ncols
+            # get required metadata
+            attrs = {key: dset.attrs[key] for key in ["nodata", "RasterXSize", "RasterYSize"]}
+            chunks = dset.chunks
 
-                for b in range(0, dset.shape[0], self.chunks[0]):
-                    yoff = b//self.ncols
+        # start index for write
+        start_index = dates_combined.index(self.rawdates[0])
 
-                    for b1 in range(0, dates_length, self.chunks[1]):
-                        arr[..., b1:b1+self.chunks[1]] = dset[b:b+self.chunks[0], b1:b1+self.chunks[1]]
-                    del b1
+        # Manual garbage collect to prevent out of memory
+        _ = [gc.collect() for x in range(3)]
 
-                    for fix, f in enumerate(self.files):
-                        try:
-                            arr[..., dates_combined.index(self.rawdates[fix])] = handler.handles[fix].ReadAsArray(xoff=0,
-                                                                                                                  yoff=yoff,
-                                                                                                                  xsize=self.ncols,
-                                                                                                                  ysize=ysize).flatten()
-                        except AttributeError:
-                            print('Error reading from {}. Using nodata ({}) value.'.format(f, self.nodata_value))
-                            arr[..., dates_combined.index(self.rawdates[fix])] = self.nodata_value
-                    arr = arr[..., sort_ix]
+        # preallocate array
+        arr = np.full((chunks[0], self.nfiles), attrs["nodata"], dtype="int16")
 
-                    for b1 in range(0, dates_length, self.chunks[1]):
-                        dset[b:b+self.chunks[0], b1:b1+self.chunks[1]] = arr[..., b1:b1+self.chunks[1]]
-                handler.close()
+        sds_indicator = VAM_PRODUCT_CODES[self.vam_product_code]
+        ysize = chunks[0]//attrs["RasterXSize"]
 
-                # Write back date list
-                dates_combined.sort()
-                dates[...] = np.array(dates_combined, dtype='S8')
-        except:
-            print('Error updating {}! File may be corrupt, consider creating the file from scratch, or closer investigation. \n\nError message: \n'.format(self.outname.as_posix()))
-            traceback.print_exc()
-            raise
+        hdf_datasets = HDFHandler(files=self.files, sds=sds_indicator)
 
-    def __str__(self):
-        """String to be displayed when printing an instance of the class object"""
-        return 'ModisRawH5 object: {} - {} files - exists on disk: {}'.format(self.outname.as_posix(), self.nfiles, self.exists)
+        block_gen = ((x, x//attrs["RasterXSize"]) for x in range(0, dataset_shape[0], chunks[0]))
+
+        log.debug("Opening HDF files ... ")
+        with hdf_datasets.open_datasets():
+            log.debug("Iterating chunks ... ")
+            for yoff_ds, yoff_rst in block_gen:
+                log.debug("Processing chunk (%s, %s)", yoff_ds, yoff_rst)
+
+                for ii, hdf in hdf_datasets.iter_handles():
+                    try:
+                        arr[:, ii] = hdf_datasets.read_chunk(hdf, yoff=int(yoff_rst), ysize=int(ysize)).flatten()
+                    except AttributeError:
+                        log.warning("Error reading from %s, using nodata.", hdf_datasets.files[ii])
+                        arr[:, ii] = attrs["nodata"]
+
+                # write to HDF5
+                write_check = self.write_chunk(
+                    dataset="data",
+                    arr_in=arr,
+                    xchunk=10,
+                    xoff=start_index,
+                    yoff=yoff_ds
+                )
+
+                if not write_check:
+                    msg = "Error writing to %s"
+                    log.error(msg, self.filename)
+                    raise HDF5WriteError(msg % self.filename)
+
+        # Write back date list
+        with h5py.File(self.filename, 'r+', libver='latest') as h5f:
+            dates = h5f.get('dates')
+            dates[...] = np.array(dates_combined, dtype='S8')
+
+    @property
+    def last_collected(self):
+        """Last collected date in file"""
+        assert self.exists, "File doesn't exist!"
+
+        with h5py.File(self.filename, 'r') as h5_open:
+            dates = h5_open.get("dates")
+            last_date = dates[-1].decode()
+
+        return last_date

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# pylint: disable=invalid-name
+# pylint: disable=invalid-name,E0401
 """setup.py for MODAPE"""
 
 from setuptools import setup, Extension, find_packages
@@ -50,7 +50,7 @@ setup(
     entry_points={
         'console_scripts':[
             'modis_download=modape.scripts.modis_download:cli_wrap',
-            'modis_collect=modape.scripts.modis_collect:main',
+            'modis_collect=modape.scripts.modis_collect:cli_wrap',
             'modis_smooth=modape.scripts.modis_smooth:main',
             'modis_window=modape.scripts.modis_window:main',
             'modis_info=modape.scripts.modis_info:main',
