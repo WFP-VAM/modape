@@ -4,12 +4,17 @@
   - #### v 1.0.0
     - New Dockerfile (fix #82)
     - Improved downloading based on python requests #93
-      - Better catching of failed downloads #29 
+      - Better catching of failed downloads #29
       - new executable script
       - add option for strict date handling #87
       - allows downloading all available data from NASA CMR #86
       - adds option to fail if target directory is not empty #90
-
+    - Reworked collection into MODIS raw HDF5 (#98)
+     - new executable script
+     - new `io` module with HDF5Base class
+     - reworked `ModisRawH5` class with inheritance from HDF5Base
+     - enable cleanup of collected HDF files with tracefile (#91)
+     - enable check on last_collected
 
 - ## v 0.3
   - #### v 0.3.0:
