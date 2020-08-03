@@ -13,7 +13,6 @@ import click
 from modape.constants import REGEX_PATTERNS
 from modape.modis import ModisRawH5
 
-# TODO: Implement checks requested by RM
 @click.command()
 @click.argument("src_dir", type=click.Path(dir_okay=True, resolve_path=True))
 @click.option("-d", "--targetdir", type=click.Path(dir_okay=True, writable=True, resolve_path=True),
@@ -121,8 +120,7 @@ def cli(src_dir: str,
         available_cores = mp.cpu_count() - 1
 
         if parallel_tiles > available_cores:
-            log.warning("Number of parallel tiles bigger than CPUs available. Scaling down.")
-            parallel_tiles = available_cores
+            log.warning("Number of parallel tiles bigger than CPUs available!")
 
         futures = []
 
@@ -139,6 +137,7 @@ def cli(src_dir: str,
                         parameters["targetdir"],
                         parameters["vam_product_code"],
                         parameters["interleave"],
+                        parameters["compression"],
                         parameters["last_collected"],
                     )
                 )
@@ -203,9 +202,14 @@ def _worker(files, targetdir, vam_code, interleave, compression, last_collected)
         raw_h5.create(compression=compression)
 
     if last_collected is not None:
-        click.echo(f"check dates! {last_collected} == {raw_h5.last_collected}")
-        assert last_collected == raw_h5.last_collected, \
-         f"Last collected date in file is {raw_h5.last_collected} not {last_collected}"
+
+        last_collected_infile = raw_h5.last_collected
+
+        if not last_collected_infile:
+            raise ValueError(f"No last_collected recorded in {raw_h5.filename}")
+
+        assert last_collected == last_collected_infile, \
+         f"Last collected date in file is {last_collected_infile} not {last_collected}"
 
     raw_h5.update()
 
