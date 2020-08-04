@@ -5,33 +5,35 @@ This file contains the class representing a smoothed MODIS HDF5 file.
 
 Author: Valentin Pesendorfer, April 2019
 """
-from __future__ import absolute_import, division, print_function
-
+# pylint: disable=import-error
 from array import array
 from datetime import timedelta
+import logging
 import multiprocessing as mp
-import os
-from os.path import basename
-try:
-    from pathlib2 import Path
-except ImportError:
-    from pathlib import Path
+from pathlib import Path
 import time
 
+from modape.constants import TEMPINT_LABELS
+from modape.exceptions import HDF5CreationError, HDF5WriteError
+from modape.modis.io import HDF5Base
 import numpy as np
-import h5py # pylint: disable=import-error
+import h5py
 
 from modape.utils import (DateHelper, execute_ws2d, execute_ws2d_sgrid, execute_ws2d_vc,
-                          fromjulian, init_parameters, init_shared, init_worker, tonumpyarray, txx)
+                          fromjulian, init_parameters, init_shared, init_worker, tonumpyarray)
 from modape.whittaker import lag1corr, ws2d, ws2dp, ws2doptv, ws2doptvp # pylint: disable=no-name-in-module
 
-class ModisSmoothH5(object):
+log = logging.getLogger(__name__)
+
+class ModisSmoothH5(HDF5Base):
 
     """Class for smoothed MODIS data collected into HDF5 file."""
 
-    def __init__(self, rawfile, startdate=None,
-                 tempint=None, nsmooth=0, nupdate=0,
-                 targetdir=os.getcwd(), nworkers=1):
+    def __init__(self,
+                 rawfile: str,
+                 targetdir: str,
+                 startdate=None,
+                 tempint=None):
         """Create ModisSmoothH5 object.
 
         Args:
@@ -42,116 +44,104 @@ class ModisSmoothH5(object):
             targetdir: Path to target directory for smoothed HDF5 file
             nworkers: Number of worker processes used in parallel as integer
         """
-        if nsmooth and nupdate:
-            if nsmooth < nupdate:
-                raise ValueError('nsmooth must be bigger or equal (>=) to nupdate!')
+        # if nsmooth and nupdate:
+        #     if nsmooth < nupdate:
+        #         raise ValueError('nsmooth must be bigger or equal (>=) to nupdate!')
 
-        self.targetdir = Path(targetdir)
-        self.rawfile = rawfile
-        self.nworkers = nworkers
-        self.nupdate = nupdate
-        self.nsmooth = nsmooth
-        self.array_offset = nsmooth - nupdate
+        self.rawfile = Path(rawfile)
         self.startdate = startdate
-
-        # Get info from raw HDF5
-        with h5py.File(self.rawfile, 'r') as h5f:
-            dates = h5f.get('dates')
-            self.rawdates_nsmooth = [x.decode() for x in dates[-self.nsmooth:]]
+        assert self.rawfile.exists(), f"Raw HDF5 file {self.rawfile} does not exist."
 
         # Parse tempint to get flag for filename
-        try:
-            txflag = txx(tempint)
-        except ValueError:
-            raise SystemExit('Value for temporal interpolation not valid (interger for number of days required)!')
-        if txflag != 'n':
+        if tempint is not None:
+            try:
+                txflag = TEMPINT_LABELS[int(tempint)]
+            except KeyError:
+                txflag = "c"
+
             self.tinterpolate = True
             self.temporalresolution = tempint
-            if self.startdate:
-                txflag = 'c'
+
         else:
+            txflag = "n"
             self.tinterpolate = False
             self.temporalresolution = None
 
         # Filename for smoothed HDF5
-        self.outname = Path('{}/{}.tx{}.{}.h5'.format(
-            self.targetdir.as_posix(),
-            '.'.join(basename(rawfile).split('.')[:-2]),
-            txflag,
-            basename(rawfile).split('.')[-2:-1][0]))
+        rawfile_trunk = rawfile.name.split('.')
+        smoothfile_trunk = ".".join(
+            rawfile_trunk[:-2] + \
+            ["tx"+txflag] + \
+            rawfile_trunk[-2:-1]
+        )
 
-        self.exists = self.outname.exists()
+        filename = f"{targetdir}/{smoothfile_trunk}.h5"
+
+        super().__init__(filename=filename)
 
     def create(self):
         """Creates smoothed HDF5 file on disk."""
 
         # Try reading info from raw HDF5
-        try:
-            with h5py.File(self.rawfile, 'r') as h5f:
-                dset = h5f.get('data')
-                raw_dates_all = [x.decode() for x in h5f.get('dates')[...]]
-                dt = dset.dtype.name
-                cmpr = dset.compression
-                rawshape = dset.shape
-                ncols = dset.attrs['RasterXSize']
-                nrows = dset.attrs['RasterYSize']
-                rawchunks = dset.chunks
-                rgt = dset.attrs['geotransform']
-                rpj = dset.attrs['projection']
-                rres = dset.attrs['resolution']
-                rnd = dset.attrs['nodata']
-                rtres = dset.attrs['temporalresolution'].item()
-        except Exception as e:
-            raise SystemExit('Error reading rawfile {}. File may be corrupt. \n\n Error message: \n\n {}'.format(self.rawfile, e))
 
-        # Read native temporal resolution if no user input was supplied
-        if not self.temporalresolution:
-            self.temporalresolution = rtres
+        #pylint: disable=R1721
+        with h5py.File(self.rawfile, 'r') as h5f_raw:
+            dset = h5f_raw.get('data')
+            rawshape = dset.shape
+            rawchunks = dset.chunks
+            datatype = dset.dtype
+            compression = dset.compression
+            raw_dates_all = [x.decode() for x in h5f_raw.get('dates')[...]]
+            raw_attrs = {key:value for key, value in dset.attrs.items()}
+
+        if self.temporalresolution is None:
+            tempres = raw_attrs["temporalresolution"]
+        else:
+            tempres = self.temporalresolution
 
         dates = DateHelper(rawdates=raw_dates_all,
-                           rtres=rtres,
-                           stres=self.temporalresolution,
+                           rtres=raw_attrs["temporalresolution"],
+                           stres=tempres,
                            start=self.startdate)
 
         dates_length = len(dates.target)
 
+        nrows = raw_attrs["RasterYSize"]
+        ncols = raw_attrs["RasterXSize"]
+
         try:
-            with h5py.File(self.outname.as_posix(), 'x', libver='latest') as h5f:
+            with h5py.File(self.filename, 'x', libver='latest') as h5f:
+
                 dset = h5f.create_dataset('data',
                                           shape=(rawshape[0], dates_length),
-                                          dtype=dt, maxshape=(rawshape[0], None),
+                                          dtype=datatype, maxshape=(rawshape[0], None),
                                           chunks=rawchunks,
-                                          compression=cmpr,
-                                          fillvalue=rnd)
+                                          compression=compression,
+                                          fillvalue=raw_attrs["nodata"])
 
                 h5f.create_dataset('sgrid',
                                    shape=(nrows*ncols,),
                                    dtype='float32',
                                    maxshape=(nrows*ncols,),
                                    chunks=(rawchunks[0],),
-                                   compression=cmpr)
+                                   compression=compression)
 
                 h5f.create_dataset('dates',
                                    shape=(dates_length,),
                                    maxshape=(None,),
                                    dtype='S8',
-                                   compression=cmpr,
+                                   compression=compression,
                                    data=np.array(dates.target, dtype='S8'))
 
-                dset.attrs['geotransform'] = rgt
-                dset.attrs['projection'] = rpj
-                dset.attrs['resolution'] = rres
-                dset.attrs['nodata'] = rnd
-                dset.attrs['temporalresolution'] = self.temporalresolution
-                dset.attrs['RasterYSize'] = nrows
-                dset.attrs['RasterXSize'] = ncols
-        except:
-            print('\n\nError creating {}! Check input parameters (especially if compression/filter is available) and try again. Corrupt file will be removed now. \n\nError message: \n'.format(self.outname.as_posix()))
-            os.remove(self.outname.unlink())
-            raise
+                raw_attrs["temporalresolution"] = tempres
+                dset.attrs.update(raw_attrs)
 
-        self.exists = True
+                self.exist = True
+        except Exception as _:
+            log.error("Error creating %s", str(self.filename))
+            raise HDF5CreationError(f"Error creating {str(self.filename)}!")
 
+'''
     def ws2d(self, s):
         """Apply whittaker smoother with fixed s-value to data.
 
@@ -687,3 +677,4 @@ class ModisSmoothH5(object):
                     else:
                         for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(self.array_offset, arr_raw.shape[1], smoothchunks[1])):
                             smt_ds[br:br+rawchunks[0], bcs:bcs+smoothchunks[1]] = arr_raw[:, bcr:bcr+smoothchunks[1]]
+'''
