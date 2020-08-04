@@ -47,7 +47,7 @@ def create_h5temp(rows: int,
 
     """
 
-    fn = Path(f'/tmp/MXD13A2.h21v10.006.VIM.h5')
+    fn = Path('/tmp/data/MXD13A2.h21v10.006.VIM.h5')
 
 
     with h5py.File(fn, 'a', driver='core', backing_store=True) as h5f:
@@ -495,11 +495,17 @@ class TestModisSmooth(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        cls.testpath = Path('/tmp/data')
+        cls.testpath.mkdir(exist_ok=True)
         cls.testfile = create_h5temp(1200, 1200, 8, 8)
 
     @classmethod
     def tearDownClass(cls):
         cls.testfile.unlink()
+        try:
+            shutil.rmtree(str(cls.testpath))
+        except:
+            pass
 
     def test_smooth_instance(self):
         """Test creation of class instance"""
@@ -536,6 +542,36 @@ class TestModisSmooth(unittest.TestCase):
         self.assertTrue(smtH5.tinterpolate)
         self.assertEqual(smtH5.temporalresolution, 5)
         self.assertEqual(str(smtH5.filename), "/tmp/MXD13A2.h21v10.006.txp.VIM.h5")
+
+    def test_create(self):
+        """Test creation of smooth HDF5"""
+
+        smtH5 = ModisSmoothH5(
+            rawfile=self.testfile,
+            targetdir="/tmp/data",
+        )
+
+        self.assertFalse(smtH5.exists)
+        smtH5.create()
+        self.assertTrue(smtH5.exists)
+
+        with h5py.File(smtH5.filename, 'r') as hdf5_file:
+            ds = hdf5_file.get('data')
+            self.assertTrue(ds)
+
+            attrs = ds.attrs
+            ysize = attrs['RasterYSize'] * attrs['RasterXSize']
+            self.assertEqual(ds.shape, (ysize, 4))
+            self.assertEqual(attrs["temporalresolution"], 8)
+
+            dates = hdf5_file.get('dates')
+            self.assertTrue(dates)
+
+        smtH5.filename.unlink()
+
+
+
+
 
 
 #
