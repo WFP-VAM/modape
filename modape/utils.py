@@ -265,24 +265,6 @@ def ldom(x):
         mn += 1
     return datetime.date(yr, mn, 1) - datetime.timedelta(days=1)
 
-def txx(x):
-    # pylint: disable=no-else-return
-    """Converts tempint integer to flag.
-
-    Returns:
-        Temporal interpolation flag for smooth HDF5 filename
-    """
-
-    if x:
-        if int(x) == 5:
-            return 'p'
-        elif int(x) == 10:
-            return 'd'
-        else:
-            return 'c'
-    else:
-        return 'n'
-
 def fromjulian(x):
     """Parses julian date string to datetime object.
 
