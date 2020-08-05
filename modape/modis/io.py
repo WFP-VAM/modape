@@ -53,29 +53,38 @@ class HDF5Base(object):
         with h5py.File(self.filename, 'r') as h5f_open:
 
             ds = h5f_open.get(dataset)
+            ds_shape = ds.shape
             assert ds, f"Dataset '{dataset}' not found!"
-            assert ds.ndim == 2, "Expected 2-d array as dataset!"
 
-            ysize, xsize = ds.shape
-
-            if xchunk is None:
-                ychunk, xchunk = ds.chunks
+            if len(ds_shape) == 1:
+                xsize = None
+                xchunk = None
             else:
-                ychunk, _ = ds.chunks
+                xsize = ds_shape[1]
+                if xchunk is None:
+                    xchunk = ds.chunks[1]
+
+            ychunk = ds.chunks[0]
 
             if arr_out is None:
-                arr_out = np.full((ychunk, xsize), fill_value=ds.fillvalue, dtype=ds.dtype.name)
+                if len(ds_shape) == 1:
+                    arr_out = np.full((ychunk,), fill_value=ds.fillvalue, dtype=ds.dtype.name)
+                else:
+                    arr_out = np.full((ychunk, ds_shape[1]), fill_value=ds.fillvalue, dtype=ds.dtype.name)
             else:
-                assert isinstance(arr_out, np.ndarray), "arr_out must be 2-d numpy array!"
-                assert arr_out.ndim == 2, "Expected 2-d array as output!"
+                assert isinstance(arr_out, np.ndarray)
+                assert arr_out.ndim <= 2, "Expected 1 or 2-d array as output!"
 
-        for yb in range(0, ysize, ychunk):
+        for yb in range(0, ds_shape[0], ychunk):
 
             with h5py.File(self.filename, 'r') as h5f_open:
                 ds = h5f_open.get(dataset)
 
-                for xb in range(0, xsize, xchunk):
-                    arr_out[:, xb:(xb+xchunk)] = ds[yb:(yb+ychunk), xb:(xb+xchunk)]
+                if xsize is not None:
+                    for xb in range(0, xsize, xchunk):
+                        arr_out[:, xb:(xb+xchunk)] = ds[yb:(yb+ychunk), xb:(xb+xchunk)]
+                else:
+                    arr_out[...] = ds[yb:(yb+ychunk)]
 
             yield arr_out
 
@@ -105,30 +114,36 @@ class HDF5Base(object):
         """
 
         assert isinstance(arr_in, np.ndarray), "arr_in must be 2-d numpy array!"
-        assert arr_in.ndim == 2, "Expected 2-d array as input!"
+        assert arr_in.ndim <= 2, "Expected 1-d or 2-d array as input!"
 
         with h5py.File(self.filename, 'r+') as h5f_open:
 
             ds = h5f_open.get(dataset)
             assert ds, f"Dataset '{dataset}' not found!"
-            assert ds.ndim == 2, "Expected 2-d array as dataset!"
+            assert ds.ndim <= 2, "Expected 1-d or 2-d array as dataset!"
 
-            if xchunk is None:
-                ychunk, xchunk = ds.chunks
-            else:
-                ychunk, _ = ds.chunks
+            ychunk = ds.chunks[0]
 
-            ysize, xsize = arr_in.shape
+            try:
+                ysize, xsize = arr_in.shape
+            except ValueError:
+                ysize, = arr_in.shape
+                xsize = None
 
             ysize = max(ysize, ychunk)
             assert ysize <= ychunk
 
             log.debug("arr_in shape: %s", arr_in.shape)
 
-            for xb in range(0, xsize, xchunk):
-                xb_data = xb + xoff
-                log.debug("Writing dataset[%s : %s, %s : %s] from arr_in[:, %s : %s]", yoff, yoff+ysize, xb_data, xb_data+xchunk, xb, xb+xchunk)
-                ds[yoff:(yoff+ysize), xb_data:(xb_data+xchunk)] = arr_in[:, xb:(xb+xchunk)]
+            if xsize is not None:
+
+                for xb in range(0, xsize, xchunk):
+                    xb_data = xb + xoff
+                    log.debug("Writing dataset[%s : %s, %s : %s] from arr_in[:, %s : %s]", yoff, yoff+ysize, xb_data, xb_data+xchunk, xb, xb+xchunk)
+                    ds[yoff:(yoff+ysize), xb_data:(xb_data+xchunk)] = arr_in[:, xb:(xb+xchunk)]
+            else:
+                log.debug("Writing dataset[%s : %s] from arr_in", yoff, yoff+ysize)
+                ds[yoff:(yoff+ysize)] = arr_in[...]
 
         return True
 
