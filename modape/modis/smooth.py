@@ -158,8 +158,8 @@ class ModisSmoothH5(HDF5Base):
                 raise ValueError('nsmooth must be bigger or equal (>=) to nupdate!')
 
         if voptimize and srange is not None:
-            assert isinstance(srange, np.ndarray), \
-                "srange needs to be supplied as numpy array"
+            if not isinstance(srange, np.ndarray):
+                raise ValueError("srange needs to be supplied as numpy array")
 
         log.info("Runnig smoother on %s", str(self.filename))
 
@@ -360,8 +360,11 @@ class ModisSmoothH5(HDF5Base):
                 except KeyError:
                     pass
 
+            processing_info.update({
+                "processingtimestamp": processing_starttime
+                })
+
             smt_ds.attrs.update(processing_info)
-            smt_ds.attrs.update(processing_starttime)
 
     #pylint: disable=C0103
     @staticmethod
