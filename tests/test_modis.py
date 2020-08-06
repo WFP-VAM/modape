@@ -5,7 +5,7 @@ from pathlib import Path
 import pickle
 import shutil
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 from uuid import uuid4
 
 import numpy as np
@@ -15,7 +15,7 @@ try:
 except ImportError:
     from osgeo import gdal
 
-from modape.exceptions import DownloadError
+from modape.exceptions import DownloadError, HDF5WriteError
 from modape.modis import ModisQuery, ModisRawH5, ModisSmoothH5, modis_tiles
 from modape.utils import SessionWithHeaderRedirection
 
@@ -497,7 +497,8 @@ class TestModisSmooth(unittest.TestCase):
     def setUpClass(cls):
         cls.testpath = Path('/tmp/data')
         cls.testpath.mkdir(exist_ok=True)
-        cls.testfile = create_h5temp(1200, 1200, 8, 8)
+        cls.testfile = create_h5temp(12, 12, 8, 8)
+        cls.y_chunksize = 12*12//25
 
     @classmethod
     def tearDownClass(cls):
@@ -569,10 +570,111 @@ class TestModisSmooth(unittest.TestCase):
 
         smtH5.filename.unlink()
 
+    @patch.object(ModisSmoothH5, "read_chunked")
+    @patch.object(ModisSmoothH5, "write_chunk", return_value=False)
+    @patch("modape.modis.smooth.HDF5Base.read_chunked")
+    def test_smooth(self, mock_hdf5base_read, mocked_write, mocked_read):
+        """Test smoothing method"""
 
+        ones = np.ones((self.y_chunksize, 4))
 
+        mock_hdf5base_read.return_value = [ones]
 
+        smtH5 = ModisSmoothH5(
+            rawfile=self.testfile,
+            targetdir="/tmp/data",
+        )
 
+        smtH5.create()
+        self.assertTrue(smtH5.exists)
+
+        with self.assertRaises(ValueError):
+            smtH5.smooth(nsmooth=1, nupdate=2)
+
+        with self.assertRaises(ValueError):
+            smtH5.smooth(voptimize=True, srange=[1, 2, 3])
+
+        ts_test = ones[0, :].copy()
+
+        with patch("modape.modis.smooth.ws2d") as mocked_whit:
+            with self.assertRaises(HDF5WriteError):
+                mocked_whit.return_value = ts_test
+                smtH5.smooth(log10s=1)
+
+        mocked_write.return_value = True
+
+        with patch("modape.modis.smooth.ws2d") as mocked_whit:
+            mocked_whit.return_value = ts_test
+            smtH5.smooth(log10s=1)
+
+        mocked_whit.assert_called()
+        self.assertEqual(mocked_whit.call_count, self.y_chunksize)
+        _, mkwargs = mocked_whit.call_args
+        np.testing.assert_array_equal(mkwargs["y"], ts_test)
+        np.testing.assert_array_equal(mkwargs["w"], ts_test)
+        self.assertEqual(mkwargs["lmda"], 10)
+
+        with patch("modape.modis.smooth.ws2dp") as mocked_whit:
+            mocked_whit.return_value = ts_test
+            smtH5.smooth(log10s=1, p=0.90)
+
+        mocked_whit.assert_called()
+        self.assertEqual(mocked_whit.call_count, self.y_chunksize)
+        _, mkwargs = mocked_whit.call_args
+        np.testing.assert_array_equal(mkwargs["y"], ts_test)
+        np.testing.assert_array_equal(mkwargs["w"], ts_test)
+        self.assertEqual(mkwargs["lmda"], 10)
+        self.assertEqual(mkwargs["p"], 0.90)
+
+        with patch("modape.modis.smooth.ws2d") as mocked_whit:
+            mocked_read.return_value = iter([ones[:, 0]])
+            mocked_whit.return_value = ts_test
+            smtH5.smooth()
+
+        mocked_whit.assert_called()
+        self.assertEqual(mocked_whit.call_count, self.y_chunksize)
+        _, mkwargs = mocked_whit.call_args
+        np.testing.assert_array_equal(mkwargs["y"], ts_test)
+        np.testing.assert_array_equal(mkwargs["w"], ts_test)
+        self.assertEqual(mkwargs["lmda"], 10)
+
+        with patch("modape.modis.smooth.ws2doptv") as mocked_whit:
+            mocked_read.return_value = iter([ones[:, 0]])
+            mocked_whit.return_value = (ts_test, 10)
+            smtH5.smooth(voptimize=True)
+
+        mocked_whit.assert_called()
+        self.assertEqual(mocked_whit.call_count, self.y_chunksize)
+        _, mkwargs = mocked_whit.call_args
+        np.testing.assert_array_equal(mkwargs["y"], ts_test)
+        np.testing.assert_array_equal(mkwargs["w"], ts_test)
+        np.testing.assert_array_equal(mkwargs["llas"], np.arange(-1, 1.2, 0.2).round(2))
+
+        with patch("modape.modis.smooth.ws2doptv") as mocked_whit:
+            mocked_read.return_value = iter([ones[:, 0]])
+            mocked_whit.return_value = (ts_test, 10)
+            with patch("modape.modis.smooth.lag1corr", return_value=0.1):
+                smtH5.smooth(voptimize=True)
+
+        mocked_whit.assert_called()
+        self.assertEqual(mocked_whit.call_count, self.y_chunksize)
+        _, mkwargs = mocked_whit.call_args
+        np.testing.assert_array_equal(mkwargs["llas"], np.arange(0, 3.2, 0.2).round(2))
+
+        with patch("modape.modis.smooth.ws2doptv") as mocked_whit1, patch("modape.modis.smooth.ws2doptvp") as mocked_whit2:
+            mocked_read.return_value = iter([ones[:, 0]])
+            mocked_whit2.return_value = (ts_test, 10)
+            with patch("modape.modis.smooth.lag1corr", return_value=0.8):
+                smtH5.smooth(voptimize=True, p=0.9)
+
+        mocked_whit1.assert_not_called()
+        mocked_whit2.assert_called()
+        self.assertEqual(mocked_whit2.call_count, self.y_chunksize)
+        _, mkwargs = mocked_whit2.call_args
+        np.testing.assert_array_equal(mkwargs["llas"], np.arange(-2, 1.2, 0.2).round(2))
+        np.testing.assert_array_equal(mkwargs["p"], 0.9)
+
+        smtH5.filename.unlink()
 
 #
 # class TestMODIS(unittest.TestCase):
