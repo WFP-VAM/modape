@@ -53,8 +53,8 @@ class HDF5Base(object):
         with h5py.File(self.filename, 'r') as h5f_open:
 
             ds = h5f_open.get(dataset)
-            ds_shape = ds.shape
             assert ds, f"Dataset '{dataset}' not found!"
+            ds_shape = ds.shape
 
             if len(ds_shape) == 1:
                 xsize = None
@@ -126,6 +126,8 @@ class HDF5Base(object):
 
             try:
                 ysize, xsize = arr_in.shape
+                if xchunk is None:
+                    xchunk = xsize
             except ValueError:
                 ysize, = arr_in.shape
                 xsize = None
