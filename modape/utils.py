@@ -33,7 +33,6 @@ __all__ = [
     'pload',
     'dtype_GDNP',
     'ldom',
-    'txx',
     'fromjulian',
     'tvec',
     'pentvec',
@@ -163,14 +162,14 @@ class DateHelper(object):
 
         return np.full(len(self.daily), nd, dtype='double')
 
-    def getDIX(self):
+    def getDIX(self, nupdate=0):
         """Gets indices of target dates in daily no-data array.
 
         Returns:
             list with indices of target dates in no-data array
         """
 
-        return [self.daily.index(x) for x in self.target]
+        return [self.daily.index(x) for x in self.target[-nupdate:]]
 
 def check_sequential(
         reference: List[str],
