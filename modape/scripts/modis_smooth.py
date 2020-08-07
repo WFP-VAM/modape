@@ -11,13 +11,13 @@ from typing import Tuple
 
 import click
 import numpy as np
-from modale.exceptions import SgridNotInitializedError
+from modape.exceptions import SgridNotInitializedError
 from modape.modis import ModisSmoothH5
 
 log = logging.getLogger(__name__)
 
 @click.command(name="Smooth, gapfill and interpolate processed raw MODIS HDF5 files")
-@click.arument("src", type=click.Path(dir_okay=True, resolve_path=True))
+@click.argument("src", type=click.Path(dir_okay=True, resolve_path=True))
 @click.option("-d", "--targetdir",
               type=click.Path(dir_okay=True, resolve_path=True),
               help='Target directory for smoothed output'
@@ -131,7 +131,7 @@ def cli(src: str,
         nupdate=nupdate,
         voptimize=voptimize,
     )
-    # TODO: LAST COLLECTED!
+
     if parallel_tiles > 1:
         log.debug("Processing %s parallel tiles!", parallel_tiles)
         available_cores = mp.cpu_count() - 1
