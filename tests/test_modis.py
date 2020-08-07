@@ -602,13 +602,13 @@ class TestModisSmooth(unittest.TestCase):
         with patch("modape.modis.smooth.ws2d") as mocked_whit:
             with self.assertRaises(HDF5WriteError):
                 mocked_whit.return_value = ts_test
-                smtH5.smooth(log10s=1)
+                smtH5.smooth(svalue=1)
 
         mocked_write.return_value = True
 
         with patch("modape.modis.smooth.ws2d") as mocked_whit:
             mocked_whit.return_value = ts_test
-            smtH5.smooth(log10s=1)
+            smtH5.smooth(svalue=1)
 
         mocked_whit.assert_called()
         self.assertEqual(mocked_whit.call_count, self.y_chunksize)
@@ -619,7 +619,7 @@ class TestModisSmooth(unittest.TestCase):
 
         with patch("modape.modis.smooth.ws2dp") as mocked_whit:
             mocked_whit.return_value = ts_test
-            smtH5.smooth(log10s=1, p=0.90)
+            smtH5.smooth(svalue=1, p=0.90)
 
         mocked_whit.assert_called()
         self.assertEqual(mocked_whit.call_count, self.y_chunksize)
