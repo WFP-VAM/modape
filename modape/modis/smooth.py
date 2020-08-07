@@ -124,7 +124,7 @@ class ModisSmoothH5(HDF5Base):
                                    data=np.array(dates.target, dtype='S8'))
 
                 h5f.create_dataset('rawdates',
-                                   shape=(raw_dates_all,),
+                                   shape=(len(raw_dates_all),),
                                    maxshape=(None,),
                                    dtype='S8',
                                    compression=compression,
