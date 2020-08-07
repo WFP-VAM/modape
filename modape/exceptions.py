@@ -26,7 +26,7 @@ Failed downloads:
         super(DownloadError, self).__init__(message)
 
 
-class TargetNotEmpty(Exception):
+class TargetNotEmptyError(Exception):
     """Exception when target directory is not empty
     when it's required to be."""
     pass
@@ -37,4 +37,8 @@ class HDF5CreationError(Exception):
 
 class HDF5WriteError(Exception):
     """Exception when writing to HDF5 file"""
+    pass
+
+class SgridNotInitializedError(Exception):
+    """Exception when requiring non existing sgrid"""
     pass
