@@ -9,7 +9,7 @@ import sys
 from typing import List
 
 import click
-from modape.exceptions import TargetNotEmpty
+from modape.exceptions import TargetNotEmptyError
 from modape.modis import ModisQuery
 
 @click.command()
@@ -89,7 +89,7 @@ def cli(products: List[str],
     if target_empty:
         for _ in targetdir.glob("M*hdf"):
             try:
-                raise TargetNotEmpty("Found HDF files in target directory with flag --target-empty set!")
+                raise TargetNotEmptyError("Found HDF files in target directory with flag --target-empty set!")
             except StopIteration:
                 pass
 
