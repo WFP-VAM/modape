@@ -51,7 +51,7 @@ setup(
         'console_scripts':[
             'modis_download=modape.scripts.modis_download:cli_wrap',
             'modis_collect=modape.scripts.modis_collect:cli_wrap',
-            'modis_smooth=modape.scripts.modis_smooth:main',
+            'modis_smooth=modape.scripts.modis_smooth:cli_wrap',
             'modis_window=modape.scripts.modis_window:main',
             'modis_info=modape.scripts.modis_info:main',
             'modis_product_table=modape.scripts.modis_product_table:main',
