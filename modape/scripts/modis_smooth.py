@@ -31,6 +31,7 @@ log = logging.getLogger(__name__)
 @click.option("-u", "--nupdate", type=click.INT, default=0, help="Number of smoothed timesteps to be updated in HDF5 file")
 @click.option("--voptimize", is_flag=True, help="Use V-curve for s value optimization")
 @click.option("--parallel-tiles", type=click.INT, help="Number of tiles processed in parallel", default=1)
+@click.option('--last-collected', type=click.DateTime(formats=['%Y%j']), help='Last collected date in julian format (YYYYDDD - %Y%j)')
 def cli(src: str,
         targetdir: str,
         svalue: float,
@@ -41,7 +42,9 @@ def cli(src: str,
         nsmooth: int,
         nupdate: int,
         voptimize: bool,
-        parallel_tiles: int) -> None:
+        parallel_tiles: int,
+        last_collected: str,
+        ) -> None:
     """Smooth, gapfill and interpolate processed raw MODIS HDF5 files.
 
         The smoothing function takes a previously created raw MODIS HDF file (as created by modis_collect) as input.
@@ -73,6 +76,7 @@ def cli(src: str,
         nupdate (int): Number of smoothed timesteps to be updated in HDF5 file.
         voptimize (bool): Flag for V-Curve optimization of S.
         parallel_tiles (int): Number of paralell HDF5s being processed.
+        last_collected (str): Last collected rawdate on which smoothing is performed on.
 
     """
 
@@ -150,6 +154,7 @@ def cli(src: str,
                         targetdir,
                         tempint,
                         tempint_start,
+                        last_collected,
                         **smoothing_parameters
                     )
                 )
@@ -171,6 +176,7 @@ def cli(src: str,
                 targetdir,
                 tempint,
                 tempint_start,
+                last_collected,
                 **smoothing_parameters
             )
 
@@ -182,6 +188,7 @@ def _worker(rawfile: str,
             targetdir: str,
             tempint: int,
             tempint_start: str,
+            last_collected: str,
             **kwargs: dict):
 
     smt_h5 = ModisSmoothH5(
@@ -196,6 +203,16 @@ def _worker(rawfile: str,
             msg = "Smoothing requires Sgrid which has not been initialized. Please run --voptimize first!"
             raise SgridNotInitializedError(msg)
         smt_h5.create()
+
+    if last_collected is not None:
+
+        last_collected_infile = smt_h5.last_collected
+
+        if not last_collected_infile:
+            raise ValueError(f"No last_collected recorded in {smt_h5.filename}")
+
+        assert last_collected == last_collected_infile, \
+         f"Last collected date in file is {last_collected_infile} not {last_collected}"
 
     smt_h5.smooth(**kwargs)
 
