@@ -23,7 +23,7 @@ log = logging.getLogger(__name__)
               help='Target directory for smoothed output'
              )
 @click.option("-s", "--svalue", type=click.FLOAT, help="S value for smoothing (in log10)")
-@click.option("-S", "--srange", type=click.FLOAT, nargs=2, help="S value range for V-curve (float log10(s) values as smin smax sstep - default -1 1 0)")
+@click.option("-S", "--srange", type=click.FLOAT, nargs=3, help="S value range for V-curve (float log10(s) values as smin smax sstep - default -1 1 0)")
 @click.option("-p", "--pvalue", type=click.FLOAT, help="P value for asymmetric smoothing")
 @click.option("-t", "--tempint", type=click.INT, help="Value for temporal interpolation (integer required - default is native temporal resolution i.e. no interpolation)")
 @click.option("--tempint-start", type=click.DateTime(formats=["%Y-%m-%d", "%Y%j"]), help="Startdate for temporal interpolation")
@@ -97,6 +97,10 @@ def cli(src: str,
         log.error(msg)
         raise ValueError(msg)
 
+    if (nsmooth != 0) and (nupdate != 0):
+        if nsmooth < nupdate:
+            raise ValueError('nsmooth must be bigger or equal (>=) to nupdate!')
+
     if targetdir is None:
         if input_raw.is_dir():
             targetdir = input_raw
@@ -113,9 +117,15 @@ def cli(src: str,
         log.error(msg)
         raise ValueError(msg)
 
+    if tempint_start is not None:
+        tempint_start = tempint_start.strftime("%Y%j")
+
+    if last_collected is not None:
+        last_collected = last_collected.strftime("%Y%j")
+
     click.echo("Starting MODIS SMOOTH!")
 
-    if srange is not None:
+    if len(srange) != 0:
         assert len(srange) == 3, "Expected 3 values for s-range"
 
         srange = np.arange(srange[0],
@@ -126,7 +136,7 @@ def cli(src: str,
     smoothing_parameters = dict(
         svalue=svalue,
         srange=srange,
-        pvalue=pvalue,
+        p=pvalue,
         nsmooth=nsmooth,
         nupdate=nupdate,
         voptimize=voptimize,
@@ -192,8 +202,8 @@ def _worker(rawfile: str,
             **kwargs: dict):
 
     smt_h5 = ModisSmoothH5(
-        rawfile=rawfile,
-        targetdir=targetdir,
+        rawfile=str(rawfile),
+        targetdir=str(targetdir),
         tempint=tempint,
         startdate=tempint_start
     )
@@ -205,7 +215,6 @@ def _worker(rawfile: str,
         smt_h5.create()
 
     if last_collected is not None:
-
         last_collected_infile = smt_h5.last_collected
 
         if not last_collected_infile:

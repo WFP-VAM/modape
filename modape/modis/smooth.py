@@ -139,7 +139,7 @@ class ModisSmoothH5(HDF5Base):
             raise HDF5CreationError(f"Error creating {str(self.filename)}!")
 
     def smooth(self,
-               log10s: float = None,
+               svalue: float = None,
                p: float = None,
                voptimize: bool = None,
                srange: np.ndarray = None,
@@ -149,7 +149,7 @@ class ModisSmoothH5(HDF5Base):
         """Applies smoothing do the data.
 
         Args:
-            log10s (float): Log10 value of smoothing parameter S (for fixed smoothing).
+            svalue (float): Log10 value of smoothing parameter S (for fixed smoothing).
             p (float): P value for asymmetric smoothing.
             voptimize (bool): Flag for V-curve optimization.
             srange (np.ndarray): S-range for V-curve optimization.
@@ -160,7 +160,7 @@ class ModisSmoothH5(HDF5Base):
 
         assert self.filename.exists(), "File doesn't exist! Can't run smoother."
 
-        if nsmooth and nupdate:
+        if (nsmooth != 0) and (nupdate != 0):
             if nsmooth < nupdate:
                 raise ValueError('nsmooth must be bigger or equal (>=) to nupdate!')
 
@@ -244,7 +244,7 @@ class ModisSmoothH5(HDF5Base):
             arr_out=arr_raw,
             )
 
-        if voptimize or log10s is None:
+        if voptimize or svalue is None:
             sgrid_generator = self.read_chunked(dataset="sgrid")
         else:
             sgrid_generator = None
@@ -291,11 +291,11 @@ class ModisSmoothH5(HDF5Base):
 
                 else:
                     log.debug("Using fixed S")
-                    if log10s is None:
+                    if svalue is None:
                         log.debug("Reading S from grid")
                         s = 10 ** arr_sgrid[ix]
                     else:
-                        s = 10 ** log10s
+                        s = 10 ** svalue
 
                     if p is None:
                         arr_raw[ix, :] = ws2d(y=arr_raw[ix, :], lmda=s, w=wts[ix, :])
@@ -350,10 +350,10 @@ class ModisSmoothH5(HDF5Base):
             processing_info = {"lastrun": "V-curve optimization of s"}
 
         else:
-            if log10s is None:
+            if svalue is None:
                 processing_info = {"lastrun": "fixed s from grid"}
             else:
-                processing_info = {"lastrun": f"fixed s {log10s} (log10)"}
+                processing_info = {"lastrun": f"fixed s {svalue} (log10)"}
 
         if p is not None:
             processing_info.update({"pvalue": p})
