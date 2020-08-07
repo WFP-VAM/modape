@@ -123,6 +123,13 @@ class ModisSmoothH5(HDF5Base):
                                    compression=compression,
                                    data=np.array(dates.target, dtype='S8'))
 
+                h5f.create_dataset('rawdates',
+                                   shape=(raw_dates_all,),
+                                   maxshape=(None,),
+                                   dtype='S8',
+                                   compression=compression,
+                                   data=np.array(raw_dates_all, dtype='S8'))
+
                 raw_attrs["temporalresolution"] = tempres
                 dset.attrs.update(raw_attrs)
 
@@ -365,6 +372,20 @@ class ModisSmoothH5(HDF5Base):
                 })
 
             smt_ds.attrs.update(processing_info)
+
+            dates_ds = h5f_open.get('rawdates')
+            dates_ds[...] = np.array(raw_dates_all, dtype='S8')
+
+    @property
+    def last_collected(self):
+        """Last collected date in file"""
+        assert self.exists, "File doesn't exist!"
+
+        with h5py.File(self.filename, 'r') as h5_open:
+            dates = h5_open.get("rawdates")
+            last_date = dates[-1].decode()
+
+        return last_date
 
     #pylint: disable=C0103
     @staticmethod
