@@ -15,6 +15,11 @@
      - reworked `ModisRawH5` class with inheritance from HDF5Base
      - enable cleanup of collected HDF files with tracefile (#91)
      - enable check on last_collected
+    - Reworked smoothing of raw HDF5 files (#100)
+      - new executable script
+      - reworked `ModisSmoothH5` class with inheritance from HDF5Base and single smoothing method which covers all Whittaker options
+      - enable check on last_collected
+      - fail if smoothing from non-initialized sgrid is requested (#80)
 
 - ## v 0.3
   - #### v 0.3.0:
