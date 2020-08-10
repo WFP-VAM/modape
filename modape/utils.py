@@ -33,7 +33,6 @@ __all__ = [
     'pload',
     'dtype_GDNP',
     'ldom',
-    'txx',
     'fromjulian',
     'tvec',
     'pentvec',
@@ -163,14 +162,14 @@ class DateHelper(object):
 
         return np.full(len(self.daily), nd, dtype='double')
 
-    def getDIX(self):
+    def getDIX(self, nupdate=0):
         """Gets indices of target dates in daily no-data array.
 
         Returns:
             list with indices of target dates in no-data array
         """
 
-        return [self.daily.index(x) for x in self.target]
+        return [self.daily.index(x) for x in self.target[-nupdate:]]
 
 def check_sequential(
         reference: List[str],
@@ -264,24 +263,6 @@ def ldom(x):
     else:
         mn += 1
     return datetime.date(yr, mn, 1) - datetime.timedelta(days=1)
-
-def txx(x):
-    # pylint: disable=no-else-return
-    """Converts tempint integer to flag.
-
-    Returns:
-        Temporal interpolation flag for smooth HDF5 filename
-    """
-
-    if x:
-        if int(x) == 5:
-            return 'p'
-        elif int(x) == 10:
-            return 'd'
-        else:
-            return 'c'
-    else:
-        return 'n'
 
 def fromjulian(x):
     """Parses julian date string to datetime object.

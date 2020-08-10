@@ -53,3 +53,8 @@ LST_NAME_LUD = {
         "MYD": "TNA"
     },
 }
+
+TEMPINT_LABELS = {
+    5: "p",
+    10: "d",
+}

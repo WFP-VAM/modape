@@ -3,11 +3,15 @@
 from pathlib import Path
 import shutil
 import unittest
-from unittest.mock import patch, Mock, MagicMock, PropertyMock, call
+from unittest.mock import patch, Mock, MagicMock, call
 from click.testing import CliRunner
 
 from modape.scripts.modis_download import cli as modis_download_cli
 from modape.scripts.modis_collect import cli as modis_collect_cli
+from modape.scripts.modis_smooth import cli as modis_smooth_cli
+import numpy as np
+
+from test_modis import create_h5temp
 
 class TestConsoleScripts(unittest.TestCase):
     """Test class for console scripts."""
@@ -213,3 +217,116 @@ class TestConsoleScripts(unittest.TestCase):
             result = self.runner.invoke(modis_collect_cli, ["/tmp/data", "--interleave", "--cleanup", "--last-collected", "2020001"])
             mocked_rawfile.assert_called_once()
             self.assertEqual(result.exit_code, 0)
+
+    def test_modis_smooth(self):
+        """Test modis_smooth.py"""
+
+        result = self.runner.invoke(modis_smooth_cli, ["/not_an_exist_dir"])
+        self.assertEqual(result.exit_code, 1)
+
+        result = self.runner.invoke(modis_smooth_cli, ["/tmp"])
+        self.assertEqual(result.exit_code, 1)
+
+        raw_h5 = create_h5temp(10, 10, 8, 8)
+
+        with patch("modape.scripts.modis_smooth._worker", return_value=True) as mocked_worker:
+
+            result = self.runner.invoke(modis_smooth_cli,
+                                        [str(raw_h5),
+                                         "--targetdir",
+                                         str(raw_h5)])
+
+            mocked_worker.assert_not_called()
+            self.assertEqual(result.exit_code, 1)
+
+            result = self.runner.invoke(modis_smooth_cli,
+                                        [str(raw_h5),
+                                         "--nsmooth", 1,
+                                         "--nupdate", 10])
+
+            mocked_worker.assert_not_called()
+            self.assertEqual(result.exit_code, 1)
+
+            result = self.runner.invoke(modis_smooth_cli,
+                                        [str(raw_h5),
+                                         "--srange", 0, 1])
+
+
+            mocked_worker.assert_not_called()
+            self.assertEqual(result.exit_code, 2)
+
+            result = self.runner.invoke(modis_smooth_cli,
+                                        [str(raw_h5),
+                                         "--srange", 0, 1, 0.2])
+
+
+            mocked_worker.assert_called()
+            self.assertEqual(result.exit_code, 0)
+
+
+        with patch("modape.scripts.modis_smooth._worker", return_value=False) as mocked_worker:
+            result = self.runner.invoke(modis_smooth_cli, [str(raw_h5)])
+            mocked_worker.assert_called()
+            self.assertEqual(result.exit_code, 1)
+
+            mocked_worker.reset_mock()
+            mocked_worker.return_value = True
+
+            result = self.runner.invoke(modis_smooth_cli, [str(raw_h5)])
+            mocked_worker.assert_called()
+            self.assertEqual(result.exit_code, 0)
+
+        with patch("modape.scripts.modis_smooth._worker", return_value=True) as mocked_worker:
+
+            result = self.runner.invoke(
+                modis_smooth_cli,
+                [str(raw_h5),
+                 "--targetdir", "/tmp",
+                 "--svalue", 1.0,
+                 "--srange", 0, 1, 0.2,
+                 "--pvalue", 0.90,
+                 "--tempint", 10,
+                 "--tempint-start", "2001001",
+                 "--nsmooth", 10,
+                 "--nupdate", 10,
+                 "--voptimize",
+                 "--last-collected", "2002001",
+                ])
+
+            mocked_worker.assert_called_once()
+            margs, mkwargs = mocked_worker.call_args
+
+            self.assertEqual(margs[0], str(raw_h5))
+            self.assertEqual(margs[1], Path('/tmp'))
+            self.assertEqual(margs[2], 10)
+            self.assertEqual(margs[3], "2001001")
+            self.assertEqual(margs[4], "2002001")
+
+            self.assertEqual(mkwargs["svalue"], 1.0)
+            np.testing.assert_array_equal(mkwargs["srange"], np.arange(0, 1.2, 0.2).round(2))
+            self.assertEqual(mkwargs["p"], 0.90)
+            self.assertEqual(mkwargs["nsmooth"], 10)
+            self.assertEqual(mkwargs["nupdate"], 10)
+            self.assertTrue(mkwargs["voptimize"])
+
+            self.assertEqual(result.exit_code, 0)
+
+        with patch("modape.scripts.modis_smooth.ModisSmoothH5") as mocked_smoothfile:
+            mocked_smoothfile.return_value = MagicMock(exists=False)
+            result = self.runner.invoke(modis_smooth_cli, [str(raw_h5)])
+            mocked_smoothfile.assert_called_once()
+            self.assertEqual(result.exit_code, 1)
+
+            mocked_smoothfile.reset_mock()
+            mocked_smoothfile.return_value = MagicMock(exists=True, last_collected="2020001")
+            result = self.runner.invoke(modis_smooth_cli, [str(raw_h5), "--last-collected", "2020002"])
+            mocked_smoothfile.assert_called_once()
+            self.assertEqual(result.exit_code, 1)
+
+            mocked_smoothfile.reset_mock()
+            mocked_smoothfile.return_value = MagicMock(exists=True, last_collected="2020001")
+            result = self.runner.invoke(modis_smooth_cli, [str(raw_h5), "--last-collected", "2020001"])
+            mocked_smoothfile.assert_called_once()
+            self.assertEqual(result.exit_code, 0)
+
+        raw_h5.unlink()

@@ -1,12 +1,12 @@
 """test_modis.py: Test MODIS classes and functions."""
-# pylint: disable=E0401,E0611,W0702,W0613
+# pylint: disable=E0401,E0611,W0702,W0613,C0103
 from datetime import datetime
 from pathlib import Path
 import pickle
 import shutil
 import unittest
-from unittest.mock import Mock, patch
-import uuid
+from unittest.mock import patch
+from uuid import uuid4
 
 import numpy as np
 import h5py #pylint: disable=import-error
@@ -15,7 +15,7 @@ try:
 except ImportError:
     from osgeo import gdal
 
-from modape.exceptions import DownloadError
+from modape.exceptions import DownloadError, HDF5WriteError
 from modape.modis import ModisQuery, ModisRawH5, ModisSmoothH5, modis_tiles
 from modape.utils import SessionWithHeaderRedirection
 
@@ -26,24 +26,61 @@ def create_gdal(x, y):
         GDAL dataset object
     """
     driver = gdal.GetDriverByName('GTiff')
-    ds = driver.Create('/vsimem/{}.tif'.format(str(uuid.uuid4())), x, y, 1, 3)
+    ds = driver.Create('/vsimem/{}.tif'.format(str(uuid4())), x, y, 1, 3)
     return ds
 
-def create_h5(fn, x, y, tr, ts, r):
-    '''Create HDF5 file for testing.'''
+def create_h5temp(rows: int,
+                  cols: int,
+                  tr: int,
+                  ts: int,
+                  ) -> Path:
+    """Create temporary HDF5 rawfile.
+
+    Args:
+        rows (int): Number of rows.
+        cols (int): Number of columns.
+        tr (int): Temporal resolution of rawfile.
+        ts (int): Temporal shift.
+
+    Returns:
+        Path: Path object of filename.
+
+    """
+
+    fn = Path('/tmp/data/MXD13A2.h21v10.006.VIM.h5')
+
 
     with h5py.File(fn, 'a', driver='core', backing_store=True) as h5f:
-        dset = h5f.create_dataset('data', shape=(x*y, 4), dtype='Int16', maxshape=(x*y, None), chunks=((x*y)//25, 10), compression='gzip', fillvalue=-3000)
-        h5f.create_dataset('dates', shape=(4,), data=np.array(['2002185', '2002193', '2002201', '2002209'], dtype='S8'), maxshape=(None,), dtype='S8', compression='gzip')
-        dset.attrs['nodata'] = -3000
-        dset.attrs['temporalresolution'] = tr
-        dset.attrs['tshift'] = ts
-        dset.attrs['RasterXSize'] = x
-        dset.attrs['RasterYSize'] = y
-        dset.attrs['geotransform'] = (0, 0, 0, 0, 0)
-        dset.attrs['projection'] = 'PRJ'
-        dset.attrs['resolution'] = r
 
+        dset = h5f.create_dataset('data',
+                                  shape=(rows*cols, 4),
+                                  dtype='Int16',
+                                  maxshape=(rows*cols, None),
+                                  chunks=((rows*cols)//25, 10),
+                                  compression='gzip',
+                                  fillvalue=-3000)
+
+        dset.attrs.update(
+            dict(
+                nodata=-3000,
+                temporalresolution=tr,
+                tshift=ts,
+                RasterXSize=rows,
+                RasterYSize=cols,
+                geotransform=(0, 0, 0, 0, 0),
+                projection='EPSG:4326',
+                resolution=(1000, -1000),
+                )
+        )
+
+        h5f.create_dataset('dates',
+                           shape=(4,),
+                           data=np.array(['2002185', '2002193', '2002201', '2002209'], dtype='S8'),
+                           maxshape=(None,),
+                           dtype='S8',
+                           compression='gzip')
+
+    return fn
 
 class TestModisQuery(unittest.TestCase):
     """Test class for ModisQuery tests."""
@@ -452,6 +489,195 @@ class TestModisCollect(unittest.TestCase):
 
             with self.assertRaises(AssertionError):
                 h5f.update()
+
+class TestModisSmooth(unittest.TestCase):
+    """Test class for ModisSmooth tests"""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.testpath = Path('/tmp/data')
+        cls.testpath.mkdir(exist_ok=True)
+        cls.testfile = create_h5temp(12, 12, 8, 8)
+        cls.y_chunksize = 12*12//25
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.testfile.unlink()
+        try:
+            shutil.rmtree(str(cls.testpath))
+        except:
+            pass
+
+    def test_smooth_instance(self):
+        """Test creation of class instance"""
+
+        smtH5 = ModisSmoothH5(
+            rawfile=self.testfile,
+            targetdir="/tmp",
+        )
+
+        self.assertFalse(smtH5.exists)
+        self.assertFalse(smtH5.tinterpolate)
+        self.assertEqual(smtH5.temporalresolution, None)
+        self.assertEqual(str(smtH5.filename), "/tmp/MXD13A2.h21v10.006.txn.VIM.h5")
+
+        smtH5 = ModisSmoothH5(
+            rawfile=self.testfile,
+            targetdir="/tmp",
+            tempint=10,
+        )
+
+        self.assertFalse(smtH5.exists)
+        self.assertTrue(smtH5.tinterpolate)
+        self.assertEqual(smtH5.temporalresolution, 10)
+        self.assertEqual(str(smtH5.filename), "/tmp/MXD13A2.h21v10.006.txd.VIM.h5")
+
+
+        smtH5 = ModisSmoothH5(
+            rawfile=self.testfile,
+            targetdir="/tmp",
+            tempint=5,
+        )
+
+        self.assertFalse(smtH5.exists)
+        self.assertTrue(smtH5.tinterpolate)
+        self.assertEqual(smtH5.temporalresolution, 5)
+        self.assertEqual(str(smtH5.filename), "/tmp/MXD13A2.h21v10.006.txp.VIM.h5")
+
+    def test_create(self):
+        """Test creation of smooth HDF5"""
+
+        smtH5 = ModisSmoothH5(
+            rawfile=self.testfile,
+            targetdir="/tmp/data",
+        )
+
+        self.assertFalse(smtH5.exists)
+        smtH5.create()
+        self.assertTrue(smtH5.exists)
+
+        with h5py.File(smtH5.filename, 'r') as hdf5_file:
+            ds = hdf5_file.get('data')
+            self.assertTrue(ds)
+
+            attrs = ds.attrs
+            ysize = attrs['RasterYSize'] * attrs['RasterXSize']
+            self.assertEqual(ds.shape, (ysize, 4))
+            self.assertEqual(attrs["temporalresolution"], 8)
+
+            dates = hdf5_file.get('dates')
+            self.assertTrue(dates)
+
+        self.assertNotEqual(smtH5.last_collected, "2002201")
+        self.assertEqual(smtH5.last_collected, "2002209")
+
+        smtH5.filename.unlink()
+
+    @patch.object(ModisSmoothH5, "read_chunked")
+    @patch.object(ModisSmoothH5, "write_chunk", return_value=False)
+    @patch("modape.modis.smooth.HDF5Base.read_chunked")
+    def test_smooth(self, mock_hdf5base_read, mocked_write, mocked_read):
+        """Test smoothing method"""
+
+        ones = np.ones((self.y_chunksize, 4))
+
+        mock_hdf5base_read.return_value = [ones]
+
+        smtH5 = ModisSmoothH5(
+            rawfile=self.testfile,
+            targetdir="/tmp/data",
+        )
+
+        smtH5.create()
+        self.assertTrue(smtH5.exists)
+
+        with self.assertRaises(ValueError):
+            smtH5.smooth(nsmooth=1, nupdate=2)
+
+        with self.assertRaises(ValueError):
+            smtH5.smooth(voptimize=True, srange=[1, 2, 3])
+
+        ts_test = ones[0, :].copy()
+
+        with patch("modape.modis.smooth.ws2d") as mocked_whit:
+            with self.assertRaises(HDF5WriteError):
+                mocked_whit.return_value = ts_test
+                smtH5.smooth(svalue=1)
+
+        mocked_write.return_value = True
+
+        with patch("modape.modis.smooth.ws2d") as mocked_whit:
+            mocked_whit.return_value = ts_test
+            smtH5.smooth(svalue=1)
+
+        mocked_whit.assert_called()
+        self.assertEqual(mocked_whit.call_count, self.y_chunksize)
+        _, mkwargs = mocked_whit.call_args
+        np.testing.assert_array_equal(mkwargs["y"], ts_test)
+        np.testing.assert_array_equal(mkwargs["w"], ts_test)
+        self.assertEqual(mkwargs["lmda"], 10)
+
+        with patch("modape.modis.smooth.ws2dp") as mocked_whit:
+            mocked_whit.return_value = ts_test
+            smtH5.smooth(svalue=1, p=0.90)
+
+        mocked_whit.assert_called()
+        self.assertEqual(mocked_whit.call_count, self.y_chunksize)
+        _, mkwargs = mocked_whit.call_args
+        np.testing.assert_array_equal(mkwargs["y"], ts_test)
+        np.testing.assert_array_equal(mkwargs["w"], ts_test)
+        self.assertEqual(mkwargs["lmda"], 10)
+        self.assertEqual(mkwargs["p"], 0.90)
+
+        with patch("modape.modis.smooth.ws2d") as mocked_whit:
+            mocked_read.return_value = iter([ones[:, 0]])
+            mocked_whit.return_value = ts_test
+            smtH5.smooth()
+
+        mocked_whit.assert_called()
+        self.assertEqual(mocked_whit.call_count, self.y_chunksize)
+        _, mkwargs = mocked_whit.call_args
+        np.testing.assert_array_equal(mkwargs["y"], ts_test)
+        np.testing.assert_array_equal(mkwargs["w"], ts_test)
+        self.assertEqual(mkwargs["lmda"], 10)
+
+        with patch("modape.modis.smooth.ws2doptv") as mocked_whit:
+            mocked_read.return_value = iter([ones[:, 0]])
+            mocked_whit.return_value = (ts_test, 10)
+            smtH5.smooth(voptimize=True)
+
+        mocked_whit.assert_called()
+        self.assertEqual(mocked_whit.call_count, self.y_chunksize)
+        _, mkwargs = mocked_whit.call_args
+        np.testing.assert_array_equal(mkwargs["y"], ts_test)
+        np.testing.assert_array_equal(mkwargs["w"], ts_test)
+        np.testing.assert_array_equal(mkwargs["llas"], np.arange(-1, 1.2, 0.2).round(2))
+
+        with patch("modape.modis.smooth.ws2doptv") as mocked_whit:
+            mocked_read.return_value = iter([ones[:, 0]])
+            mocked_whit.return_value = (ts_test, 10)
+            with patch("modape.modis.smooth.lag1corr", return_value=0.1):
+                smtH5.smooth(voptimize=True)
+
+        mocked_whit.assert_called()
+        self.assertEqual(mocked_whit.call_count, self.y_chunksize)
+        _, mkwargs = mocked_whit.call_args
+        np.testing.assert_array_equal(mkwargs["llas"], np.arange(0, 3.2, 0.2).round(2))
+
+        with patch("modape.modis.smooth.ws2doptv") as mocked_whit1, patch("modape.modis.smooth.ws2doptvp") as mocked_whit2:
+            mocked_read.return_value = iter([ones[:, 0]])
+            mocked_whit2.return_value = (ts_test, 10)
+            with patch("modape.modis.smooth.lag1corr", return_value=0.8):
+                smtH5.smooth(voptimize=True, p=0.9)
+
+        mocked_whit1.assert_not_called()
+        mocked_whit2.assert_called()
+        self.assertEqual(mocked_whit2.call_count, self.y_chunksize)
+        _, mkwargs = mocked_whit2.call_args
+        np.testing.assert_array_equal(mkwargs["llas"], np.arange(-2, 1.2, 0.2).round(2))
+        np.testing.assert_array_equal(mkwargs["p"], 0.9)
+
+        smtH5.filename.unlink()
 
 #
 # class TestMODIS(unittest.TestCase):

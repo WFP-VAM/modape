@@ -5,685 +5,398 @@ This file contains the class representing a smoothed MODIS HDF5 file.
 
 Author: Valentin Pesendorfer, April 2019
 """
-from __future__ import absolute_import, division, print_function
-
+# pylint: disable=import-error
 from array import array
-from datetime import timedelta
-import multiprocessing as mp
-import os
-from os.path import basename
-try:
-    from pathlib2 import Path
-except ImportError:
-    from pathlib import Path
-import time
+from datetime import datetime, timedelta
+import logging
+from pathlib import Path
 
-import numpy as np
-import h5py # pylint: disable=import-error
-
-from modape.utils import (DateHelper, execute_ws2d, execute_ws2d_sgrid, execute_ws2d_vc,
-                          fromjulian, init_parameters, init_shared, init_worker, tonumpyarray, txx)
+import h5py
+from modape.constants import TEMPINT_LABELS
+from modape.exceptions import HDF5CreationError, HDF5WriteError
+from modape.modis.io import HDF5Base
+from modape.utils import DateHelper, fromjulian
 from modape.whittaker import lag1corr, ws2d, ws2dp, ws2doptv, ws2doptvp # pylint: disable=no-name-in-module
+import numpy as np
 
-class ModisSmoothH5(object):
+log = logging.getLogger(__name__)
 
+class ModisSmoothH5(HDF5Base):
     """Class for smoothed MODIS data collected into HDF5 file."""
 
-    def __init__(self, rawfile, startdate=None,
-                 tempint=None, nsmooth=0, nupdate=0,
-                 targetdir=os.getcwd(), nworkers=1):
-        """Create ModisSmoothH5 object.
+    def __init__(self,
+                 rawfile: str,
+                 targetdir: str,
+                 startdate: str = None,
+                 tempint: int = None) -> None:
+        """Create class instance.
 
         Args:
-            rawfile: Full path to a ModisRawH5 file
-            tempint: Integer specifying temporal interpolation (default is None, so native temporal resolution)
-            nsmooth: Number of raw timesteps used for smoothing (default is all)
-            nupdate: Number of smoothed timesteps to be updated (default is all)
-            targetdir: Path to target directory for smoothed HDF5 file
-            nworkers: Number of worker processes used in parallel as integer
+            rawfile (str): Full path to raw HDF5 file.
+            targetdir (str): Target directory for smooth HDF5 file.
+            startdate (str): Start date for temporal interpolation (as julian date YYYYDDD).
+            tempint (int): timesteps for temporal interpolation.
+
         """
-        if nsmooth and nupdate:
-            if nsmooth < nupdate:
-                raise ValueError('nsmooth must be bigger or equal (>=) to nupdate!')
 
-        self.targetdir = Path(targetdir)
-        self.rawfile = rawfile
-        self.nworkers = nworkers
-        self.nupdate = nupdate
-        self.nsmooth = nsmooth
-        self.array_offset = nsmooth - nupdate
+        self.rawfile = Path(rawfile)
         self.startdate = startdate
-
-        # Get info from raw HDF5
-        with h5py.File(self.rawfile, 'r') as h5f:
-            dates = h5f.get('dates')
-            self.rawdates_nsmooth = [x.decode() for x in dates[-self.nsmooth:]]
+        assert self.rawfile.exists(), f"Raw HDF5 file {self.rawfile} does not exist."
 
         # Parse tempint to get flag for filename
-        try:
-            txflag = txx(tempint)
-        except ValueError:
-            raise SystemExit('Value for temporal interpolation not valid (interger for number of days required)!')
-        if txflag != 'n':
+        if tempint is not None:
+            try:
+                txflag = TEMPINT_LABELS[int(tempint)]
+            except KeyError:
+                txflag = "c"
+
             self.tinterpolate = True
             self.temporalresolution = tempint
-            if self.startdate:
-                txflag = 'c'
+
         else:
+            txflag = "n"
             self.tinterpolate = False
             self.temporalresolution = None
 
         # Filename for smoothed HDF5
-        self.outname = Path('{}/{}.tx{}.{}.h5'.format(
-            self.targetdir.as_posix(),
-            '.'.join(basename(rawfile).split('.')[:-2]),
-            txflag,
-            basename(rawfile).split('.')[-2:-1][0]))
+        rawfile_trunk = self.rawfile.name.split('.')
+        smoothfile_trunk = ".".join(
+            rawfile_trunk[:-2] + \
+            ["tx"+txflag] + \
+            rawfile_trunk[-2:-1]
+        )
 
-        self.exists = self.outname.exists()
+        filename = f"{targetdir}/{smoothfile_trunk}.h5"
+
+        super().__init__(filename=filename)
 
     def create(self):
         """Creates smoothed HDF5 file on disk."""
 
         # Try reading info from raw HDF5
-        try:
-            with h5py.File(self.rawfile, 'r') as h5f:
-                dset = h5f.get('data')
-                raw_dates_all = [x.decode() for x in h5f.get('dates')[...]]
-                dt = dset.dtype.name
-                cmpr = dset.compression
-                rawshape = dset.shape
-                ncols = dset.attrs['RasterXSize']
-                nrows = dset.attrs['RasterYSize']
-                rawchunks = dset.chunks
-                rgt = dset.attrs['geotransform']
-                rpj = dset.attrs['projection']
-                rres = dset.attrs['resolution']
-                rnd = dset.attrs['nodata']
-                rtres = dset.attrs['temporalresolution'].item()
-        except Exception as e:
-            raise SystemExit('Error reading rawfile {}. File may be corrupt. \n\n Error message: \n\n {}'.format(self.rawfile, e))
+        #pylint: disable=R1721
+        with h5py.File(self.rawfile, 'r') as h5f_raw:
+            dset = h5f_raw.get('data')
+            rawshape = dset.shape
+            rawchunks = dset.chunks
+            datatype = dset.dtype
+            compression = dset.compression
+            raw_dates_all = [x.decode() for x in h5f_raw.get('dates')[...]]
+            raw_attrs = {key:value for key, value in dset.attrs.items()}
 
-        # Read native temporal resolution if no user input was supplied
-        if not self.temporalresolution:
-            self.temporalresolution = rtres
+        if self.temporalresolution is None:
+            tempres = raw_attrs["temporalresolution"]
+        else:
+            tempres = self.temporalresolution
 
         dates = DateHelper(rawdates=raw_dates_all,
-                           rtres=rtres,
-                           stres=self.temporalresolution,
+                           rtres=int(raw_attrs["temporalresolution"]),
+                           stres=int(tempres),
                            start=self.startdate)
 
         dates_length = len(dates.target)
 
+        nrows = raw_attrs["RasterYSize"]
+        ncols = raw_attrs["RasterXSize"]
+
         try:
-            with h5py.File(self.outname.as_posix(), 'x', libver='latest') as h5f:
+            with h5py.File(self.filename, 'x', libver='latest') as h5f:
+
                 dset = h5f.create_dataset('data',
                                           shape=(rawshape[0], dates_length),
-                                          dtype=dt, maxshape=(rawshape[0], None),
+                                          dtype=datatype, maxshape=(rawshape[0], None),
                                           chunks=rawchunks,
-                                          compression=cmpr,
-                                          fillvalue=rnd)
+                                          compression=compression,
+                                          fillvalue=raw_attrs["nodata"])
 
                 h5f.create_dataset('sgrid',
                                    shape=(nrows*ncols,),
                                    dtype='float32',
                                    maxshape=(nrows*ncols,),
                                    chunks=(rawchunks[0],),
-                                   compression=cmpr)
+                                   compression=compression)
 
                 h5f.create_dataset('dates',
                                    shape=(dates_length,),
                                    maxshape=(None,),
                                    dtype='S8',
-                                   compression=cmpr,
+                                   compression=compression,
                                    data=np.array(dates.target, dtype='S8'))
 
-                dset.attrs['geotransform'] = rgt
-                dset.attrs['projection'] = rpj
-                dset.attrs['resolution'] = rres
-                dset.attrs['nodata'] = rnd
-                dset.attrs['temporalresolution'] = self.temporalresolution
-                dset.attrs['RasterYSize'] = nrows
-                dset.attrs['RasterXSize'] = ncols
-        except:
-            print('\n\nError creating {}! Check input parameters (especially if compression/filter is available) and try again. Corrupt file will be removed now. \n\nError message: \n'.format(self.outname.as_posix()))
-            os.remove(self.outname.unlink())
-            raise
+                h5f.create_dataset('rawdates',
+                                   shape=(len(raw_dates_all),),
+                                   maxshape=(None,),
+                                   dtype='S8',
+                                   compression=compression,
+                                   data=np.array(raw_dates_all, dtype='S8'))
 
-        self.exists = True
+                raw_attrs["temporalresolution"] = tempres
+                dset.attrs.update(raw_attrs)
 
-    def ws2d(self, s):
-        """Apply whittaker smoother with fixed s-value to data.
+                self.exists = True
+        except Exception as _:
+            log.error("Error creating %s", str(self.filename))
+            raise HDF5CreationError(f"Error creating {str(self.filename)}!")
+
+    def smooth(self,
+               svalue: float = None,
+               p: float = None,
+               voptimize: bool = None,
+               srange: np.ndarray = None,
+               nsmooth: int = 0,
+               nupdate: int = 0,
+               ) -> None:
+        """Applies smoothing do the data.
 
         Args:
-            s: log10 value of s (float)
+            svalue (float): Log10 value of smoothing parameter S (for fixed smoothing).
+            p (float): P value for asymmetric smoothing.
+            voptimize (bool): Flag for V-curve optimization.
+            srange (np.ndarray): S-range for V-curve optimization.
+            nsmooth (int): Number of raw timesteps for smoothing.
+            nupdate (int): Number of smooth timesteps updated in file.
+
         """
 
-        with h5py.File(self.rawfile, 'r') as rawh5, h5py.File(self.outname.as_posix(), 'r+') as smth5:
-            raw_ds = rawh5.get('data')
-            raw_dates_all = [x.decode() for x in rawh5.get('dates')[...]]
-            rtres = raw_ds.attrs['temporalresolution'].item()
-            smt_ds = smth5.get('data')
-            smt_dates = smth5.get('dates')
-            rawshape = raw_ds.shape
-            rawchunks = raw_ds.chunks
-            smoothshape = smt_ds.shape
-            smoothchunks = smt_ds.chunks
-            nodata = raw_ds.attrs['nodata'].item()
-            self.temporalresolution = smt_ds.attrs['temporalresolution'].item()
-            tshift = raw_ds.attrs['tshift'].item()
+        assert self.filename.exists(), "File doesn't exist! Can't run smoother."
 
-            # Store run parameters for infotool
-            smt_ds.attrs['processingtimestamp'] = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
-            smt_ds.attrs['lastrun'] = "fixed s: log10(sopt) = {}".format(s)
-            smt_ds.attrs['log10sopt'] = s
-            try:
-                del smt_ds.attrs['pvalue']
-            except KeyError:
-                pass
+        if (nsmooth != 0) and (nupdate != 0):
+            if nsmooth < nupdate:
+                raise ValueError('nsmooth must be bigger or equal (>=) to nupdate!')
+
+        if voptimize and srange is not None:
+            if not isinstance(srange, np.ndarray):
+                raise ValueError("srange needs to be supplied as numpy array")
+
+        log.info("Runnig smoother on %s", str(self.filename))
+
+        processing_starttime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+        log.debug("Reading metadata from HDF5s")
+        with h5py.File(self.rawfile, 'r') as h5f_open:
+            raw_ds = h5f_open.get('data')
+            raw_chunks = raw_ds.chunks
+            raw_attrs = dict(raw_ds.attrs.items())
+            raw_dates_all = [x.decode() for x in h5f_open.get('dates')[...]]
+            raw_dates_nsmooth = raw_dates_all[-nsmooth:]
+
+        with h5py.File(self.filename, 'r') as h5f_open:
+            smt_ds = h5f_open.get('data')
+            smt_attrs = smt_ds.attrs
+            smt_shape = smt_ds.shape
+            smt_chunks = smt_ds.chunks
+            temporalresolution = smt_attrs['temporalresolution']
+            tshift = int(smt_attrs["tshift"])
 
             dates = DateHelper(rawdates=raw_dates_all,
-                               rtres=rtres,
-                               stres=self.temporalresolution,
+                               rtres=int(raw_attrs['temporalresolution']),
+                               stres=int(temporalresolution),
                                start=self.startdate)
 
-            dix = dates.getDIX()[-self.nupdate:]
-
             # Resize if date list is bigger than shape of smoothed data
-            if dates.target_length > smoothshape[1]:
+            if dates.target_length > smt_shape[1]:
+                log.debug("Resizing dataset! Current %s, required %s", smt_shape[1], dates.target_length)
+                smt_dates = h5f_open.get('dates')
                 smt_dates.resize((dates.target_length,))
-                smt_ds.resize((smoothshape[0], dates.target_length))
+                smt_ds.resize((smt_shape[0], dates.target_length))
                 smt_dates[...] = np.array(dates.target, dtype='S8')
-                smoothshape = smt_ds.shape
+                smt_shape = smt_ds.shape
 
-            # calculate offsets
-            rawoffset = raw_dates_all.index(self.rawdates_nsmooth[0])
+            smt_dates_all = [x.decode() for x in h5f_open.get('dates')[...]]
 
-            # if dataset is smaller or equal then nupdate, take index 0
-            try:
-                smoothoffset = [x.decode() for x in smt_dates[...]].index(dates.target[-self.nupdate])
-            except IndexError:
-                smoothoffset = [x.decode() for x in smt_dates[...]].index(dates.target[0])
+        nodata = raw_attrs["nodata"]
+        dix = dates.getDIX(nupdate)
 
-            new_dim = smoothshape[1] - smoothoffset
+        # if dataset is smaller or equal then nupdate, take index 0
+        try:
+            smt_offset = smt_dates_all.index(dates.target[-nupdate])
+        except IndexError:
+            smt_offset = smt_dates_all.index(dates.target[0])
 
-            if self.nworkers > 1:
-                if self.tinterpolate:
-                    shared_array_smooth = init_shared(smoothchunks[0] * new_dim)
-                    arr_smooth = tonumpyarray(shared_array_smooth)
-                    arr_smooth.shape = (smoothchunks[0], new_dim)
-                    arr_smooth[...] = nodata
-                    vector_daily = dates.getDV(nodata)
+        new_dim = smt_shape[1] - smt_offset
 
-                    # Shift for interpolation
-                    for rdate in self.rawdates_nsmooth:
-                        vector_daily[dates.daily.index((fromjulian(rdate) + timedelta(tshift)).strftime('%Y%j'))] = -1
-                else:
-                    vector_daily = None
-                    shared_array_smooth = None
-                    arr_smooth = None
-                shared_array_raw = init_shared(rawchunks[0] * len(self.rawdates_nsmooth))
+        arr_raw = np.zeros((raw_chunks[0], len(raw_dates_nsmooth)), dtype='double')
 
-                parameters = init_parameters(rdim=(rawchunks[0], len(self.rawdates_nsmooth)),
-                                             sdim=(smoothchunks[0], new_dim),
-                                             nd=nodata,
-                                             s=s,
-                                             shared_array_smooth=shared_array_smooth,
-                                             vec_dly=vector_daily,
-                                             dix=dix)
+        # Create weights array
+        wts = arr_raw.copy()
 
-                arr_raw = tonumpyarray(shared_array_raw)
-                arr_raw.shape = (rawchunks[0], len(self.rawdates_nsmooth))
+        if self.tinterpolate:
+            log.debug("Temporal interpolation triggered!")
+            arr_smt = np.zeros((smt_chunks[0], new_dim), dtype='double')
+            vector_daily = dates.getDV(nodata)
+            array_offset = 0
 
-                pool = mp.Pool(processes=self.nworkers, initializer=init_worker, initargs=(shared_array_raw, parameters))
-                # load raw data
-                for br in range(0, rawshape[0], rawchunks[0]):
-                    for bc in range(0, arr_raw.shape[1], rawchunks[1]):
-                        bco = bc + rawoffset
-                        arr_raw[:, bc:bc+rawchunks[1]] = raw_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]]
-                    ndix = np.sum(arr_raw != nodata, 1) >= (arr_raw.shape[1] * 0.2) # 20%+ data
-                    map_index = np.where(ndix)[0]
-                    if map_index.size == 0:
-                        continue #no data points, skipping to next block
-                    _ = pool.map(execute_ws2d, map_index)
+            # Shift for interpolation
+            for rdate in raw_dates_nsmooth:
+                rdate_shift = (fromjulian(rdate) + timedelta(tshift)).strftime('%Y%j')
+                dd_index = dates.daily.index(rdate_shift)
+                vector_daily[dd_index] = -1
+        else:
+            arr_smt = arr_raw[...]
+            array_offset = nsmooth - nupdate
 
-                    # write back data
-                    if self.tinterpolate:
-                        for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(0, arr_smooth.shape[1], smoothchunks[1])):
-                            smt_ds[br:br+smoothchunks[0], bcs:bcs+smoothchunks[1]] = arr_smooth[:, bcr:bcr+smoothchunks[1]]
-                        arr_smooth[...] = nodata
-                    else:
-                        for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(self.array_offset, arr_raw.shape[1], smoothchunks[1])):
-                            smt_ds[br:br+smoothchunks[0], bcs:bcs+smoothchunks[1]] = arr_raw[:, bcr:bcr+smoothchunks[1]]
+        # use HDF5 base for reading rawdata
+        raw_h5 = HDF5Base(str(self.rawfile))
 
-                # close pool
-                pool.close()
-                pool.join()
+        chunk_generator = raw_h5.read_chunked(
+            dataset="data",
+            xchunk=10,
+            arr_out=arr_raw,
+            )
 
-            else:
-                arr_raw = np.zeros((rawchunks[0], len(self.rawdates_nsmooth)), dtype='double')
+        if voptimize or svalue is None:
+            sgrid_generator = self.read_chunked(dataset="sgrid")
+        else:
+            sgrid_generator = None
+            arr_sgrid = None
 
-                # Create weights array
-                wts = arr_raw.copy()
+        # counter
+        chunk_counter = 0
 
-                if self.tinterpolate:
-                    arr_smooth = np.zeros((smoothchunks[0], new_dim), dtype='double')
-                    vector_daily = dates.getDV(nodata)
+        # iterate over chunks
+        log.debug("Iterating over chunks")
+        for arr_raw_chunk in chunk_generator:
+            log.debug("Chunk %s", chunk_counter)
 
-                    # Shift for interpolation
-                    for rdate in self.rawdates_nsmooth:
-                        vector_daily[dates.daily.index((fromjulian(rdate) + timedelta(tshift)).strftime('%Y%j'))] = -1
-                else:
-                    arr_smooth = None
+            wts[...] = (arr_raw_chunk != nodata)*1
 
-                for br in range(0, rawshape[0], rawchunks[0]):
-                    try:
-                        arr_smooth[...] = nodata
-                    except TypeError:
-                        pass
-                    wts[...] = 0
+            ndix = np.sum(wts, 1) >= (arr_raw.shape[1] * 0.2) # 20%+ data
+            map_index = np.where(ndix)[0]
 
-                    for bc in range(0, arr_raw.shape[1], rawchunks[1]):
-                        bco = bc + rawoffset
-                        arr_raw[:, bc:bc+rawchunks[1]] = raw_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]]
-                    wts[...] = (arr_raw != nodata)*1
+            if sgrid_generator:
+                arr_sgrid = next(sgrid_generator)
 
-                    ndix = np.sum(wts, 1) >= (arr_raw.shape[1] * 0.2) # 20%+ data
-                    map_index = np.where(ndix)[0]
+            for ix in map_index:
 
-                    if map_index.size == 0:
-                        continue #no data points, skipping to next block
-
-                    for ix in map_index:
-                        arr_raw[ix, :] = ws2d(y=arr_raw[ix, :], lmda=10**s, w=wts[ix, :])
-                        if self.tinterpolate:
-                            z2 = vector_daily.copy()
-                            z2[z2 != nodata] = arr_raw[ix, :]
-                            z2[...] = ws2d(y=z2, lmda=0.0001, w=np.array((z2 != nodata) * 1, dtype='double'))
-                            arr_smooth[ix, :] = z2[dix]
+                if voptimize:
+                    log.debug("Running V-curve optimization")
+                    if srange is None:
+                        lag_correlation = lag1corr(arr_raw[ix, :-1], arr_raw[ix, 1:], nodata)
+                        if lag_correlation > 0.5:
+                            sr = np.arange(-2, 1.2, 0.2).round(2)
+                        elif lag_correlation <= 0.5:
+                            sr = np.arange(0, 3.2, 0.2).round(2)
                         else:
-                            pass
+                            sr = np.arange(-1, 1.2, 0.2).round(2)
 
-                    # write back data
-                    if self.tinterpolate:
-                        for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(0, arr_smooth.shape[1], smoothchunks[1])):
-                            smt_ds[br:br+smoothchunks[0], bcs:bcs+smoothchunks[1]] = arr_smooth[:, bcr:bcr+smoothchunks[1]]
-                        arr_smooth[...] = nodata
+                    if p is not None:
+                        arr_raw[ix, :], arr_sgrid[ix] = ws2doptvp(y=arr_raw[ix, :],
+                                                                  w=wts[ix, :],
+                                                                  llas=array('d', sr),
+                                                                  p=p)
                     else:
-                        for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(self.array_offset, arr_raw.shape[1], smoothchunks[1])):
-                            smt_ds[br:br+rawchunks[0], bcs:bcs+smoothchunks[1]] = arr_raw[:, bcr:bcr+smoothchunks[1]]
+                        arr_raw[ix, :], arr_sgrid[ix] = ws2doptv(y=arr_raw[ix, :],
+                                                                 w=wts[ix, :],
+                                                                 llas=array('d', sr))
 
-    def ws2d_sgrid(self, p=None):
-        """Apply whittaker smootehr with fixed s to data.
+                else:
+                    log.debug("Using fixed S")
+                    if svalue is None:
+                        log.debug("Reading S from grid")
+                        s = 10 ** arr_sgrid[ix]
+                    else:
+                        s = 10 ** svalue
 
-        This fixed s version reads a pixel based s value from file, so it needs
-        a previous run of V-curve s-optimization.
-        """
+                    if p is None:
+                        arr_raw[ix, :] = ws2d(y=arr_raw[ix, :], lmda=s, w=wts[ix, :])
+                    else:
+                        arr_raw[ix, :] = ws2dp(y=arr_raw[ix, :], lmda=s, w=wts[ix, :], p=p)
 
-        with h5py.File(self.rawfile, 'r') as rawh5, h5py.File(self.outname.as_posix(), 'r+') as smth5:
-            raw_ds = rawh5.get('data')
-            raw_dates_all = [x.decode() for x in rawh5.get('dates')[...]]
-            rtres = raw_ds.attrs['temporalresolution'].item()
-            rtres = raw_ds.attrs['temporalresolution'].item()
-            smt_ds = smth5.get('data')
-            smt_dates = smth5.get('dates')
-            smt_sgrid = smth5.get('sgrid')
-            rawshape = raw_ds.shape
-            rawchunks = raw_ds.chunks
-            smoothshape = smt_ds.shape
-            smoothchunks = smt_ds.chunks
-            nodata = raw_ds.attrs['nodata'].item()
-            self.temporalresolution = smt_ds.attrs['temporalresolution'].item()
-            tshift = raw_ds.attrs['tshift'].item()
 
-            # Store run parameters for infotool
-            smt_ds.attrs['processingtimestamp'] = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
+                if self.tinterpolate:
 
-            if p:
-                smt_ds.attrs['lastrun'] = 'fixed s from grid with p = {}'.format(p)
-                smt_ds.attrs['pvalue'] = p
+                    arr_smt[ix, :] = self._apply_tinterpolate(
+                        z1=arr_raw[ix, :],
+                        nodata=nodata,
+                        vector_daily=vector_daily,
+                        dix=dix,
+                    )
+
+            arr_smt = np.rint(arr_smt, out=arr_smt)
+
+            write_check = self.write_chunk(
+                dataset="data",
+                arr_in=arr_smt,
+                xchunk=10,
+                xoff=array_offset,
+                yoff=chunk_counter*raw_chunks[0],
+            )
+
+            if not write_check:
+                msg = "Error writing to %s"
+                log.error(msg, self.filename)
+                raise HDF5WriteError(msg % self.filename)
+
+            if arr_sgrid is not None:
+
+                arr_sgrid[arr_sgrid > 0] = np.log10(arr_sgrid[arr_sgrid > 0])
+
+                write_check = self.write_chunk(
+                    dataset="sgrid",
+                    arr_in=arr_sgrid,
+                    yoff=chunk_counter*raw_chunks[0],
+                )
+
+                if not write_check:
+                    msg = "Error writing sgrid to %s"
+                    log.error(msg, self.filename)
+                    raise HDF5WriteError(msg % self.filename)
+
+            # increment counter
+            chunk_counter += 1
+
+        # processing information for modis_info
+        if voptimize:
+            processing_info = {"lastrun": "V-curve optimization of s"}
+
+        else:
+            if svalue is None:
+                processing_info = {"lastrun": "fixed s from grid"}
             else:
-                smt_ds.attrs['lastrun'] = 'fixed s from grid'
+                processing_info = {"lastrun": f"fixed s {svalue} (log10)"}
+
+        if p is not None:
+            processing_info.update({"pvalue": p})
+            processing_info["lastrun"] = processing_info["lastrun"] + f" and with P-value of {p}"
+
+        with h5py.File(self.filename, 'r+') as h5f_open:
+            smt_ds = h5f_open.get("data")
+
+            if p is None:
                 try:
                     del smt_ds.attrs['pvalue']
                 except KeyError:
                     pass
 
+            processing_info.update({
+                "processingtimestamp": processing_starttime
+                })
 
-            dates = DateHelper(rawdates=raw_dates_all,
-                               rtres=rtres,
-                               stres=self.temporalresolution,
-                               start=self.startdate)
+            smt_ds.attrs.update(processing_info)
 
+            dates_ds = h5f_open.get('rawdates')
+            dates_ds[...] = np.array(raw_dates_all, dtype='S8')
 
-            dix = dates.getDIX()[-self.nupdate:]
+    @property
+    def last_collected(self):
+        """Last collected date in file"""
+        assert self.exists, "File doesn't exist!"
 
-            # Resize if date list is bigger than shape of smoothed data
-            if len(dates.target) > smoothshape[1]:
-                smt_dates.resize((dates.target_length,))
-                smt_ds.resize((smoothshape[0], dates.target_length))
-                smt_dates[...] = np.array(dates.target, dtype='S8')
-                smoothshape = smt_ds.shape
+        with h5py.File(self.filename, 'r') as h5_open:
+            dates = h5_open.get("rawdates")
+            last_date = dates[-1].decode()
 
-            # calculate offsets
-            rawoffset = raw_dates_all.index(self.rawdates_nsmooth[0])
+        return last_date
 
-            # if dataset is smaller or equal then nupdate, take index 0
-            try:
-                smoothoffset = [x.decode() for x in smt_dates[...]].index(dates.target[-self.nupdate])
-            except IndexError:
-                smoothoffset = [x.decode() for x in smt_dates[...]].index(dates.target[0])
+    #pylint: disable=C0103
+    @staticmethod
+    def _apply_tinterpolate(z1, nodata, vector_daily, dix):
+        z2 = vector_daily.copy()
+        z2[z2 != nodata] = z1
+        z2[...] = ws2d(
+            y=z2,
+            lmda=0.0001,
+            w=np.array((z2 != nodata) * 1, dtype='double')
+        )
 
-            new_dim = smoothshape[1] - smoothoffset
-
-            if self.nworkers > 1:
-                if self.tinterpolate:
-                    shared_array_smooth = init_shared(smoothchunks[0] * new_dim)
-                    arr_smooth = tonumpyarray(shared_array_smooth)
-                    arr_smooth.shape = (smoothchunks[0], new_dim)
-                    arr_smooth[...] = nodata
-                    vector_daily = dates.getDV(nodata)
-
-                    # Shift for interpolation
-                    for rdate in self.rawdates_nsmooth:
-                        vector_daily[dates.daily.index((fromjulian(rdate) + timedelta(tshift)).strftime('%Y%j'))] = -1
-                else:
-                    vector_daily = None
-                    shared_array_smooth = None
-                    arr_smooth = None
-                shared_array_raw = init_shared(rawchunks[0] * len(self.rawdates_nsmooth))
-
-                parameters = init_parameters(rdim=(rawchunks[0], len(self.rawdates_nsmooth)),
-                                             sdim=(smoothchunks[0], new_dim),
-                                             nd=nodata,
-                                             shared_array_smooth=shared_array_smooth,
-                                             vec_dly=vector_daily,
-                                             dix=dix,
-                                             p=p)
-
-                parameters['shared_array_sgrid'] = init_shared(rawchunks[0])
-                arr_raw = tonumpyarray(shared_array_raw)
-                arr_raw.shape = (rawchunks[0], len(self.rawdates_nsmooth))
-                arr_sgrid = tonumpyarray(parameters['shared_array_sgrid'])
-
-                pool = mp.Pool(processes=self.nworkers, initializer=init_worker, initargs=(shared_array_raw, parameters))
-                # load raw data
-                for br in range(0, rawshape[0], rawchunks[0]):
-                    for bc in range(0, arr_raw.shape[1], rawchunks[1]):
-                        bco = bc + rawoffset
-                        arr_raw[:, bc:bc+rawchunks[1]] = raw_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]]
-
-                    ndix = np.sum(arr_raw != nodata, 1) >= (arr_raw.shape[1] * 0.2) # 20%+ data
-                    map_index = np.where(ndix)[0]
-                    if map_index.size == 0:
-                        continue #no data points, skipping to next block
-
-                    arr_sgrid[...] = smt_sgrid[br:br+rawchunks[0]]
-                    _ = pool.map(execute_ws2d_sgrid, map_index)
-
-                    # write back data
-                    if self.tinterpolate:
-                        for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(0, arr_smooth.shape[1], smoothchunks[1])):
-                            smt_ds[br:br+smoothchunks[0], bcs:bcs+smoothchunks[1]] = arr_smooth[:, bcr:bcr+smoothchunks[1]]
-                        arr_smooth[...] = nodata
-                    else:
-                        for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(self.array_offset, arr_raw.shape[1], smoothchunks[1])):
-                            smt_ds[br:br+smoothchunks[0], bcs:bcs+smoothchunks[1]] = arr_raw[:, bcr:bcr+smoothchunks[1]]
-
-                # close pool
-                pool.close()
-                pool.join()
-
-            else:
-                arr_raw = np.zeros((rawchunks[0], len(self.rawdates_nsmooth)), dtype='double')
-                arr_sgrid = np.zeros((rawchunks[0],), dtype='double')
-
-                # Create weights array
-                wts = arr_raw.copy()
-                if self.tinterpolate:
-                    arr_smooth = np.zeros((smoothchunks[0], new_dim), dtype='double')
-                    vector_daily = dates.getDV(nodata)
-
-                    # Shift for interpolation
-                    for rdate in self.rawdates_nsmooth:
-                        vector_daily[dates.daily.index((fromjulian(rdate) + timedelta(tshift)).strftime('%Y%j'))] = -1
-                else:
-                    arr_smooth = None
-
-                for br in range(0, rawshape[0], rawchunks[0]):
-                    try:
-                        arr_smooth[...] = nodata
-                    except TypeError:
-                        pass
-                    wts[...] = 0
-
-                    for bc in range(0, arr_raw.shape[1], rawchunks[1]):
-                        bco = bc + rawoffset
-                        arr_raw[:, bc:bc+rawchunks[1]] = raw_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]]
-                    wts[...] = (arr_raw != nodata)*1
-                    ndix = np.sum(wts, 1) >= (arr_raw.shape[1] * 0.2) # 20%+ data
-                    map_index = np.where(ndix)[0]
-
-                    if map_index.size == 0:
-                        continue #no data points, skipping to next block
-                    arr_sgrid[...] = smt_sgrid[br:br+rawchunks[0]]
-
-                    for ix in map_index:
-                        if not p:
-                            arr_raw[ix, :] = ws2d(y=arr_raw[ix, :], lmda=10**arr_sgrid[ix], w=wts[ix, :])
-                        else:
-                            arr_raw[ix, :] = ws2dp(y=arr_raw[ix, :], lmda=10**arr_sgrid[ix], w=wts[ix, :], p=p)
-                        if self.tinterpolate:
-                            z2 = vector_daily.copy()
-                            z2[z2 != nodata] = arr_raw[ix, :]
-                            z2[...] = ws2d(y=z2, lmda=0.0001, w=np.array((z2 != nodata)*1, dtype='double'))
-                            arr_smooth[ix, :] = z2[dix]
-                        else:
-                            pass
-
-                    # write back data
-                    if self.tinterpolate:
-                        for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(0, arr_smooth.shape[1], smoothchunks[1])):
-                            smt_ds[br:br+smoothchunks[0], bcs:bcs+smoothchunks[1]] = arr_smooth[:, bcr:bcr+smoothchunks[1]]
-                        arr_smooth[...] = nodata
-                    else:
-                        for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(self.array_offset, arr_raw.shape[1], smoothchunks[1])):
-                            smt_ds[br:br+rawchunks[0], bcs:bcs+smoothchunks[1]] = arr_raw[:, bcr:bcr+smoothchunks[1]]
-
-    def ws2d_vc(self, srange, p=None):
-        """Apply whittaker smoother V-curve optimization of s.
-
-        Optionally, p value can be specified to use asymmetric smoothing.
-
-        Args:
-            srange: array of s-values to apply
-            p: Percentile value (float)
-        """
-
-        with h5py.File(self.rawfile, 'r') as rawh5, h5py.File(self.outname.as_posix(), 'r+') as smth5:
-            raw_ds = rawh5.get('data')
-            raw_dates_all = [x.decode() for x in rawh5.get('dates')[...]]
-            rtres = raw_ds.attrs['temporalresolution'].item()
-            rtres = raw_ds.attrs['temporalresolution'].item()
-            smt_ds = smth5.get('data')
-            smt_dates = smth5.get('dates')
-            smt_sgrid = smth5.get('sgrid')
-            rawshape = raw_ds.shape
-            rawchunks = raw_ds.chunks
-            smoothshape = smt_ds.shape
-            smoothchunks = smt_ds.chunks
-            nodata = raw_ds.attrs['nodata'].item()
-            self.temporalresolution = smt_ds.attrs['temporalresolution'].item()
-            tshift = raw_ds.attrs['tshift'].item()
-
-            # Store run vampceters for infotool
-            smt_ds.attrs['processingtimestamp'] = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
-
-            if p:
-                smt_ds.attrs['lastrun'] = 'V-curve optimization of s with p = {}'.format(p)
-                smt_ds.attrs['pvalue'] = p
-            else:
-                smt_ds.attrs['lastrun'] = 'V-curve optimization of s'
-                try:
-                    del smt_ds.attrs['pvalue']
-                except KeyError:
-                    pass
-
-            dates = DateHelper(rawdates=raw_dates_all,
-                               rtres=rtres,
-                               stres=self.temporalresolution,
-                               start=self.startdate)
-
-            dix = dates.getDIX()[-self.nupdate:]
-
-            # Resize if date list is bigger than shape of smoothed data
-            if dates.target_length > smoothshape[1]:
-                smt_dates.resize((dates.target_length,))
-                smt_ds.resize((smoothshape[0], dates.target_length))
-                smt_dates[...] = np.array(dates.target, dtype='S8')
-                smoothshape = smt_ds.shape
-
-            # calculate offsets
-            rawoffset = raw_dates_all.index(self.rawdates_nsmooth[0])
-
-            # if dataset is smaller or equal then nupdate, take index 0
-            try:
-                smoothoffset = [x.decode() for x in smt_dates[...]].index(dates.target[-self.nupdate])
-            except IndexError:
-                smoothoffset = [x.decode() for x in smt_dates[...]].index(dates.target[0])
-
-            new_dim = smoothshape[1] - smoothoffset
-
-            if self.nworkers > 1:
-                if self.tinterpolate:
-                    shared_array_smooth = init_shared(smoothchunks[0] * new_dim)
-                    arr_smooth = tonumpyarray(shared_array_smooth)
-                    arr_smooth.shape = (smoothchunks[0], new_dim)
-                    arr_smooth[...] = nodata
-                    vector_daily = dates.getDV(nodata)
-
-                    # Shift for interpolation
-                    for rdate in self.rawdates_nsmooth:
-                        vector_daily[dates.daily.index((fromjulian(rdate) + timedelta(tshift)).strftime('%Y%j'))] = -1
-                else:
-                    vector_daily = None
-                    shared_array_smooth = None
-                    arr_smooth = None
-                shared_array_raw = init_shared(rawchunks[0] * len(self.rawdates_nsmooth))
-
-                parameters = init_parameters(rdim=(rawchunks[0], len(self.rawdates_nsmooth)),
-                                             sdim=(smoothchunks[0], new_dim),
-                                             nd=nodata,
-                                             p=p,
-                                             shared_array_smooth=shared_array_smooth,
-                                             vec_dly=vector_daily,
-                                             dix=dix,
-                                             srange=srange)
-
-                parameters['shared_array_sgrid'] = init_shared(rawchunks[0])
-                arr_raw = tonumpyarray(shared_array_raw)
-                arr_raw.shape = (rawchunks[0], len(self.rawdates_nsmooth))
-                arr_sgrid = tonumpyarray(parameters['shared_array_sgrid'])
-
-                pool = mp.Pool(processes=self.nworkers, initializer=init_worker, initargs=(shared_array_raw, parameters))
-                # load raw data
-                for br in range(0, rawshape[0], rawchunks[0]):
-                    for bc in range(0, arr_raw.shape[1], rawchunks[1]):
-                        bco = bc + rawoffset
-                        arr_raw[:, bc:bc+rawchunks[1]] = raw_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]]
-                    ndix = np.sum(arr_raw != nodata, 1) >= (arr_raw.shape[1] * 0.2) # 20%+ data
-                    map_index = np.where(ndix)[0]
-                    if map_index.size == 0:
-                        continue #no data points, skipping to next block
-
-                    _ = pool.map(execute_ws2d_vc, map_index)
-
-                    # write back data
-                    arr_sgrid[arr_sgrid > 0] = np.log10(arr_sgrid[arr_sgrid > 0])
-                    smt_sgrid[br:br+rawchunks[0]] = arr_sgrid[...]
-                    arr_sgrid[...] = 0
-
-                    if self.tinterpolate:
-                        for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(0, arr_smooth.shape[1], smoothchunks[1])):
-                            smt_ds[br:br+smoothchunks[0], bcs:bcs+smoothchunks[1]] = arr_smooth[:, bcr:bcr+smoothchunks[1]]
-                        arr_smooth[...] = nodata
-                    else:
-                        for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(self.array_offset, arr_raw.shape[1], smoothchunks[1])):
-                            smt_ds[br:br+smoothchunks[0], bcs:bcs+smoothchunks[1]] = arr_raw[:, bcr:bcr+smoothchunks[1]]
-
-                # close pool
-                pool.close()
-                pool.join()
-
-            else:
-                arr_raw = np.zeros((rawchunks[0], len(self.rawdates_nsmooth)), dtype='double')
-                arr_sgrid = np.zeros((rawchunks[0],), dtype='double')
-                wts = arr_raw.copy() # Create weights array
-
-                if self.tinterpolate:
-                    arr_smooth = np.zeros((smoothchunks[0], new_dim), dtype='double')
-                    vector_daily = dates.getDV(nodata)
-
-                    # Shift for interpolation
-                    for rdate in self.rawdates_nsmooth:
-                        vector_daily[dates.daily.index((fromjulian(rdate) + timedelta(tshift)).strftime('%Y%j'))] = -1
-                else:
-                    arr_smooth = None
-                for br in range(0, rawshape[0], rawchunks[0]):
-                    try:
-                        arr_smooth[...] = nodata
-                    except TypeError:
-                        pass
-                    wts[...] = 0
-                    for bc in range(0, arr_raw.shape[1], rawchunks[1]):
-                        bco = bc + rawoffset
-                        arr_raw[:, bc:bc+rawchunks[1]] = raw_ds[br:br+rawchunks[0], bco:bco+rawchunks[1]]
-                    wts[...] = (arr_raw != nodata)*1
-                    ndix = np.sum(wts, 1) >= (arr_raw.shape[1] * 0.2) # 20%+ data
-                    map_index = np.where(ndix)[0]
-                    if map_index.size == 0:
-                        continue #no data points, skipping to next block
-
-                    for ix in map_index:
-                        if not isinstance(srange, np.ndarray):
-                            lag_correlation = lag1corr(arr_raw[ix, :-1], arr_raw[ix, 1:], nodata)
-                            if lag_correlation > 0.5:
-                                sr = np.arange(-2, 1.2, 0.2).round(2)
-                            elif lag_correlation <= 0.5:
-                                sr = np.arange(0, 3.2, 0.2).round(2)
-                            else:
-                                sr = np.arange(-1, 1.2, 0.2).round(2)
-                        else:
-                            sr = srange
-                        if p:
-                            arr_raw[ix, :], arr_sgrid[ix] = ws2doptvp(y=arr_raw[ix, :],
-                                                                      w=np.array((arr_raw[ix, :] != nodata)*1, dtype='double'),
-                                                                      llas=array('d', sr),
-                                                                      p=p)
-                        else:
-                            arr_raw[ix, :], arr_sgrid[ix] = ws2doptv(y=arr_raw[ix, :],
-                                                                     w=np.array((arr_raw[ix, :] != nodata)*1, dtype='double'),
-                                                                     llas=array('d', sr))
-
-                        if self.tinterpolate:
-                            z2 = vector_daily.copy()
-                            z2[z2 != nodata] = arr_raw[ix, :]
-                            z2[...] = ws2d(y=z2,
-                                           lmda=0.0001,
-                                           w=np.array((z2 != nodata)*1, dtype='double'))
-                            arr_smooth[ix, :] = z2[dix]
-                        else:
-                            pass
-
-                    # write back data
-                    arr_sgrid[arr_sgrid > 0] = np.log10(arr_sgrid[arr_sgrid > 0])
-                    smt_sgrid[br:br+rawchunks[0]] = arr_sgrid[...]
-                    arr_sgrid[...] = 0
-
-                    if self.tinterpolate:
-                        for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(0, arr_smooth.shape[1], smoothchunks[1])):
-                            smt_ds[br:br+smoothchunks[0], bcs:bcs+smoothchunks[1]] = arr_smooth[:, bcr:bcr+smoothchunks[1]]
-                        arr_smooth[...] = nodata
-                    else:
-                        for bcs, bcr in zip(range(smoothoffset, smoothshape[1], smoothchunks[1]), range(self.array_offset, arr_raw.shape[1], smoothchunks[1])):
-                            smt_ds[br:br+rawchunks[0], bcs:bcs+smoothchunks[1]] = arr_raw[:, bcr:bcr+smoothchunks[1]]
+        return z2[dix]

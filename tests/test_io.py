@@ -30,6 +30,16 @@ class TestHDF5io(unittest.TestCase):
                 )
 
                 _ = h5f.create_dataset(
+                    'sgrid',
+                    shape=(100,),
+                    dtype='int16',
+                    maxshape=(100,),
+                    chunks=(10,),
+                    compression='gzip',
+                    fillvalue=-1
+                )
+
+                _ = h5f.create_dataset(
                     'dates',
                     shape=(100,),
                     maxshape=(None,),
@@ -49,7 +59,6 @@ class TestHDF5io(unittest.TestCase):
         """Test read and write to HDF5 file"""
 
         test_array = np.arange(0, 10000, dtype='int16').reshape(100, 100)
-
         hdf5_file = HDF5Base(self.testfile)
 
         for ii in range(0, 100, 10):
@@ -70,6 +79,21 @@ class TestHDF5io(unittest.TestCase):
             assert read_array is test_array
             assert np.alltrue(read_array != -1)
 
+        # test 1d read/write
+        test_array = np.arange(100, dtype='int16')
+        for ii in range(0, 100, 10):
+            arr_sub = test_array[ii:ii+10]
+            hdf5_file.write_chunk('sgrid', arr_in=arr_sub, yoff=ii)
+
+        ii = 0
+        for read_array in hdf5_file.read_chunked('sgrid'):
+            jj = ii*10
+            np.testing.assert_array_equal(
+                read_array,
+                test_array[jj:(jj+10)]
+            )
+            ii += 1
+
     def test_assertions(self):
         """Test assertions in class"""
         hdf5_file = HDF5Base(self.testfile)
@@ -78,30 +102,4 @@ class TestHDF5io(unittest.TestCase):
             next(hdf5_file.read_chunked('not_a_dataset', xchunk=10))
 
         with self.assertRaises(AssertionError):
-            next(hdf5_file.read_chunked('dates', xchunk=10))
-
-        test_array = np.arange(0, 10000, dtype='int16')
-
-        with self.assertRaises(AssertionError):
             next(hdf5_file.read_chunked('dates', xchunk=10, arr_out="not_an_array"))
-
-        with self.assertRaises(AssertionError):
-            next(hdf5_file.read_chunked('dates', xchunk=10, arr_out=test_array))
-
-        del test_array
-
-        test_array = np.full((1000, ), -1, dtype='int16')
-
-        with self.assertRaises(AssertionError):
-            hdf5_file.write_chunk('data', arr_in='not_an_array', yoff=0)
-
-        with self.assertRaises(AssertionError):
-            hdf5_file.write_chunk('data', arr_in=test_array, yoff=0)
-
-        test_array = test_array.reshape((10, 100))
-
-        with self.assertRaises(AssertionError):
-            hdf5_file.write_chunk('not_a_dataset', arr_in=test_array, yoff=0)
-
-        with self.assertRaises(AssertionError):
-            hdf5_file.write_chunk('dates', arr_in=test_array, yoff=0)
