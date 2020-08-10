@@ -357,6 +357,7 @@ class ModisSmoothH5(HDF5Base):
 
         if p is not None:
             processing_info.update({"pvalue": p})
+            processing_info["lastrun"] = processing_info["lastrun"] + f" and with P-value of {p}"
 
         with h5py.File(self.filename, 'r+') as h5f_open:
             smt_ds = h5f_open.get("data")
