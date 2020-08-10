@@ -132,6 +132,8 @@ def cli(src: str,
                            srange[1] + srange[2],
                            srange[2],
                            ).round(2)
+    else:
+        srange = None
 
     smoothing_parameters = dict(
         svalue=svalue,
