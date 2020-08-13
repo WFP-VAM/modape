@@ -16,12 +16,9 @@ from modape.modis import ModisMosaic
 
 log = logging.getLogger(__name__)
 
-@click.command(name="Generate GeoTIFF Mosaics from HDF5 files", context_settings=dict(
-    ignore_unknown_options=True,
-    allow_extra_args=True,
-))
+@click.command()
 @click.argument("src")
-@click.option("-d", "--targetdir", click.Path(dir_okay=True, resolve_path=True, writable=True), help="Target directory for Tiffs")
+@click.option("-d", "--targetdir", type=click.Path(dir_okay=True, resolve_path=True, writable=True), help="Target directory for Tiffs")
 @click.option("-b", "--begin-date", type=click.DateTime(formats=["%Y-%m-%d"]), help="Begin date for Tiffs")
 @click.option("-e", "--end-date", type=click.DateTime(formats=["%Y-%m-%d"]), help="End date for Tiffs")
 @click.option("--roi", type=click.STRING, help="AOI for clipping (as ULX,ULY,LRX,LRY)")
@@ -33,11 +30,10 @@ log = logging.getLogger(__name__)
 @click.option("--target-srs", help="Target spatial reference for warping", default="EPSG:4326")
 @click.option('--co', multiple=True, help="GDAL creationOptions", default=["COMPRESS=LZW", "PREDICTOR=2"])
 @click.option("--clip-valid", is_flag=True, help="clip values to valid range for product")
-@click.option("--round-integer", type=click.INT, help="Round to integer palces (either decimals or exponent of 10)")
+@click.option("--round-int", type=click.INT, help="Round to integer palces (either decimals or exponent of 10)")
+@click.option("--gdal-kwarg", type=click.STRING, multiple=True, help="Addition kwargs for GDAL in form KEY=VALUE (multiple allowed)")
 @click.option("--overwrite", is_flag=True, help="Overwrite existsing Tiffs")
-@click.pass_context
-def cli(ctx: click.core.Context,
-        src_dir: str,
+def cli(src: str,
         targetdir: str,
         begin_date: datetime.date,
         end_date: datetime.date,
@@ -51,6 +47,7 @@ def cli(ctx: click.core.Context,
         co: Tuple[str],
         clip_valid: bool,
         round_int: int,
+        gdal_kwarg: Tuple[str],
         overwrite: bool) -> None:
     """Creates GeoTiff Mosaics from HDF5 files.
 
@@ -65,13 +62,13 @@ def cli(ctx: click.core.Context,
     exponent of 10 (round_int will be multiplied by -1 and passed to np.round!!!)
     Specific creation options can be passed to gdalwarp and gdaltranslate using the `--co` flag. The flag can be used multiple times,
     each input needs to be in the gdal format for COs, e.g. `KEY=VALUE`.
-    Additional options can be passed to gdal.Translate (and with restrictions to warp) using keyword arguments, e.g. `--xRes 10`. The
-    keywords are sensitive to how gdal expects them, as they are directly passed to gdal.TranlsateOptions. For details, please check
-    the documentation of gdal.TranslateOptions.
+    Additional options can be passed to gdal.Translate (and with restrictions to warp) using `--gdal-kwarg`,
+    e.g. `--gdal-kwarg xRes=10 --gdal-kwarg yRes=10`. The keywords are sensitive to how gdal expects them,
+    as they are directly passed to gdal.TranlsateOptions. For details, please check the documentation of gdal.TranslateOptions.
 
     Args:
         ctx (click.core.Context): Context for kwargs.
-        src_dir (str): Input directory (or file).
+        src (str): Input directory (or file).
         targetdir (str): Target directory.
         begin_date (datetime.date): Start date for tiffs.
         end_date (datetime.date): End date for tiffs.
@@ -89,7 +86,7 @@ def cli(ctx: click.core.Context,
 
     """
 
-    src_input = Path(src_dir)
+    src_input = Path(src)
 
     if not src_input.exists():
         msg = "src_dir does not exist."
@@ -150,7 +147,13 @@ def cli(ctx: click.core.Context,
     if round_int is not None:
         round_int = round_int * -1
 
-    gdal_kwargs = {ctx.args[i][2:]: ctx.args[i+1] for i in range(0, len(ctx.args), 2)}
+    gdal_kwargs = {}
+    if gdal_kwarg:
+        gdal_kwargs.update(
+            {key:value for x in gdal_kwarg for key, value in [x.split("=")]}
+        )
+
+    click.echo("\nSTARTING modis_window.py!")
 
     for group in groups:
         log.debug("Processing group %s", group)
@@ -160,23 +163,23 @@ def cli(ctx: click.core.Context,
 
         mosaic = ModisMosaic(group_files)
 
-        write_check = mosaic.generate_mosaics(
-                        dataset=dataset,
-                        targetdir=targetdir,
-                        target_srs=target_srs,
-                        aoi=roi,
-                        overwrite=overwrite,
-                        force_doy=force_doy,
-                        prefix=region,
-                        start=begin_date,
-                        stop=end_date,
-                        clip_valid=clip_valid,
-                        round_int=round_int,
-                        creationOptions=list(co),
-                        **gdal_kwargs,
+        mosaic.generate_mosaics(
+            dataset=dataset,
+            targetdir=targetdir,
+            target_srs=target_srs,
+            aoi=roi,
+            overwrite=overwrite,
+            force_doy=force_doy,
+            prefix=region,
+            start=begin_date,
+            stop=end_date,
+            clip_valid=clip_valid,
+            round_int=round_int,
+            creationOptions=list(co),
+            **gdal_kwargs,
         )
 
-        assert write_check
+    click.echo("\nCOMPLETED modis_window.py!")
 
 def cli_wrap():
     """Wrapper for cli"""
