@@ -12,6 +12,6 @@ License: MIT
 from .collect import ModisRawH5
 from .download import ModisQuery
 from .smooth import ModisSmoothH5
-from .window import ModisMosaic, modis_tiles
+from .window import ModisMosaic
 
-__all__ = ['ModisRawH5', 'ModisQuery', 'ModisSmoothH5', 'ModisMosaic', 'modis_tiles']
+__all__ = ['ModisRawH5', 'ModisQuery', 'ModisSmoothH5', 'ModisMosaic']
