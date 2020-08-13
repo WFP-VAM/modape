@@ -71,7 +71,7 @@ class ModisMosaic(object):
                          clip_valid: bool = False,
                          round_int: int = None,
                          **kwargs,
-                        ) -> bool:
+                        ) -> None:
         """Generate TIFF mosaics.
 
         This method is creating a GeoTiff mosaic from the MDF5 files
@@ -93,9 +93,6 @@ class ModisMosaic(object):
             clip_valid (bool): Clip values to valid range for MODIS product.
             round_int (int): Round the output.
             **kwargs (type): **kwags passed on to `gdal.WarpOptions` and `gdal.TranslateOptions`.
-
-        Returns:
-            bool: Flag for success.
 
         """
 
@@ -175,6 +172,8 @@ class ModisMosaic(object):
                         log.info("%s already exists. Please set overwrite to True.")
                         continue
 
+            log.info("Processing %s", filename)
+
             rasters = []
             for file in self.files:
                 rasters.append(
@@ -190,6 +189,7 @@ class ModisMosaic(object):
             translate_options = {
                 "outputType": attrs["dtype"],
                 "noData": attrs["nodata"],
+                "outputSRS": target_srs,
             }
 
             if aoi is not None:
@@ -199,7 +199,7 @@ class ModisMosaic(object):
 
             translate_options.update(kwargs)
 
-            if not attrs["globalproduct"] and target_srs != "EPSG:4326":
+            if not attrs["globalproduct"] or target_srs != "EPSG:4326":
 
                 with self._mosaic(rasters,
                                   target_srs=target_srs,
@@ -233,10 +233,7 @@ class ModisMosaic(object):
                 )
 
                 assert write_check, f"Error writing {filename}"
-
                 gdal.Unlink(rasters[0])
-
-        return True
 
     @staticmethod
     def _get_raster(file: Union[Path, str],
