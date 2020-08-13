@@ -1,275 +1,190 @@
 #!/usr/bin/env python
-# pylint: disable=broad-except
+# pylint: disable=broad-except,C0103
 """modis_window.py: Create mosaics from smooth MODIS HDF5 files and
    save them as GeoTIFFs.
 """
-
-from __future__ import absolute_import, division, print_function
-
-import argparse
-import os
-try:
-    from pathlib2 import Path
-except ImportError:
-    from pathlib import Path
-import pickle
+import datetime
+import logging
+from pathlib import Path
 import re
 import sys
+from typing import Tuple
 
-from modape.modis import modis_tiles, ModisMosaic
+import click
+from modape.constants import REGEX_PATTERNS
+from modape.modis import ModisMosaic
 
-try:
-    import gdal
-except ImportError:
-    from osgeo import gdal
+log = logging.getLogger(__name__)
 
-def main():
-    """Create mosaics (or subsets) from smoothed MODIS HDF5 files.
+@click.command(name="Generate GeoTIFF Mosaics from HDF5 files", context_settings=dict(
+    ignore_unknown_options=True,
+    allow_extra_args=True,
+))
+@click.argument("src")
+@click.option("-d", "--targetdir", click.Path(dir_okay=True, resolve_path=True, writable=True), help="Target directory for Tiffs")
+@click.option("-b", "--begin-date", type=click.DateTime(formats=["%Y-%m-%d"]), help="Begin date for Tiffs")
+@click.option("-e", "--end-date", type=click.DateTime(formats=["%Y-%m-%d"]), help="End date for Tiffs")
+@click.option("--roi", type=click.STRING, help="AOI for clipping (as ULX,ULY,LRX,LRY)")
+@click.option("--region", type=click.STRING, help="Region prefix for Tiffs (default is reg)", default="reg")
+@click.option("--sgrid", is_flag=True, help="Extract sgrid instead of data")
+@click.option("--force-doy", is_flag=True, help="Force DOY filenaming")
+@click.option("--filter-product", type=click.STRING, help="Filter by product")
+@click.option("--filter-vampc", help="Filter by VAM parameter code")
+@click.option("--target-srs", help="Target spatial reference for warping", default="EPSG:4326")
+@click.option('--co', multiple=True, help="GDAL creationOptions", default=["COMPRESS=LZW", "PREDICTOR=2"])
+@click.option("--clip-valid", is_flag=True, help="clip values to valid range for product")
+@click.option("--round-integer", type=click.INT, help="Round to integer palces (either decimals or exponent of 10)")
+@click.option("--overwrite", is_flag=True, help="Overwrite existsing Tiffs")
+@click.pass_context
+def cli(ctx: click.core.Context,
+        src_dir: str,
+        targetdir: str,
+        begin_date: datetime.date,
+        end_date: datetime.date,
+        roi: str,
+        region: str,
+        sgrid: bool,
+        force_doy: bool,
+        filter_product: str,
+        filter_vampc: str,
+        target_srs: str,
+        co: Tuple[str],
+        clip_valid: bool,
+        round_int: int,
+        overwrite: bool) -> None:
+    """Creates GeoTiff Mosaics from HDF5 files.
 
-    Given an ROI and smoothed MODIS files in path, either a mosaic or a subset of smoothed MODIS file(s)
-    is created. Depending on the begin-date and end-date parameters, timesteps within the range are written
-    to disk as GeoTIFF files.
+    The input can be either raw or smoothed HDF5 files. With the latter,
+    the S-grid can also be mosaiced using the `--sgrid` flag.
+    If no ROI is passed, then the full extent of the input files will be mosaiced, otherwise
+    the GeoTiffs will be clipped to the ROI after warping.
+    By default, the MODIS data will be warped to WGS1984 (EPSG:4326), but a custom spatial reference
+    can be passed in with `--target-srs`, in wich case the target resolution has to be manually defined too.
+    If required, the output data can be clipped to the valid data range of the input data using the `--clip-valid` flag.
+    Also, the output data can be rounded, if it's float (eg. sgrid) to defined precision, or if its integer to the defined
+    exponent of 10 (round_int will be multiplied by -1 and passed to np.round!!!)
+    Specific creation options can be passed to gdalwarp and gdaltranslate using the `--co` flag. The flag can be used multiple times,
+    each input needs to be in the gdal format for COs, e.g. `KEY=VALUE`.
+    Additional options can be passed to gdal.Translate (and with restrictions to warp) using keyword arguments, e.g. `--xRes 10`. The
+    keywords are sensitive to how gdal expects them, as they are directly passed to gdal.TranlsateOptions. For details, please check
+    the documentation of gdal.TranslateOptions.
 
-    If ROI is only a point location, the entire intersecting tile or the entire global file will be returned.
+    Args:
+        ctx (click.core.Context): Context for kwargs.
+        src_dir (str): Input directory (or file).
+        targetdir (str): Target directory.
+        begin_date (datetime.date): Start date for tiffs.
+        end_date (datetime.date): End date for tiffs.
+        roi (str): ROI for clipping.
+        region (str): Region for filename.
+        sgrid (bool): Extract sgrid instead of data.
+        force_doy (bool): Force DOY in filename.
+        filter_product (str): Filter input by product code.
+        filter_vampc (str): Filter inpout by vam parameter code.
+        target_srs (str): Target spatial reference (in format GDAL can process).
+        co (Tuple[str]): Creation options passed to gdal.Translate.
+        clip_valid (bool): Clip data to valid range.
+        round_int (int): Round integer.
+        overwrite (bool): Overwrite existsing Tiffs.
+
     """
 
-    parser = argparse.ArgumentParser(description='Extract a window from MODIS products')
-    parser.add_argument('path', help='Path to processed MODIS h5 files')
-    parser.add_argument('-p', '--product', help='MODIS product ID (can be parial match with *)', metavar='')
-    parser.add_argument('--roi', help='Region of interest. Can be LAT/LON point or bounding box in format llx lly urx ury', nargs='+', type=str)
-    parser.add_argument('--region', help='region 3 letter region code (default is \'reg\')', default='reg', metavar='')
-    parser.add_argument('-b', '--begin-date', help='Start date (YYYYMM)/(YYYY-MM-DD)', default=None, metavar='')
-    parser.add_argument('-e', '--end-date', help='End date (YYYYMM)/(YYYY-MM-DD) - if only YYYMM is provided, all days within MM are included.', default=None, metavar='')
-    parser.add_argument('--vampc', help='VAM product code', metavar='')
-    parser.add_argument('-d', '--targetdir', help='Target directory for GeoTIFFs (default current directory)', default=os.getcwd(), metavar='')
-    parser.add_argument('--sgrid', help='Extract (mosaic of) s value grid(s)', action='store_true')
-    parser.add_argument('--force-doy', help='Force filenaming with DOY for 5 & 10 day data', action='store_true')
-    parser.add_argument('--overwrite', help='Force overwrite of output', action='store_true')
+    src_input = Path(src_dir)
 
-    # fail and print help if no arguments supplied
-    if len(sys.argv) == 1:
-        parser.print_help(sys.stderr)
-        sys.exit(0)
+    if not src_input.exists():
+        msg = "src_dir does not exist."
+        log.error(msg)
+        raise ValueError(msg)
 
-    args = parser.parse_args()
-
-    input_dir = Path(args.path)
-    output_dir = Path(args.targetdir)
-
-    if not input_dir.exists():
-        raise SystemExit('directory PATH does not exist!')
-
-    # Check if targetdir exists, create if not
-    if not output_dir.exists():
-        print('\nTarget directory {} does not exist! Creating ... '.format(output_dir.as_posix()), end='')
-        output_dir.mkdir(parents=True)
-        print('done.\n')
-
-    if args.product:
-        args.product = args.product.upper() # force product code upper
+    if src_input.is_dir():
+        files = list(src_input.glob("*.h5"))
     else:
-        args.product = ''
+        files = [src_input]
 
-    # Select dataset
-    if args.sgrid:
-        dset = 'sgrid'
-    else:
-        dset = 'data'
+    if filter_product is not None:
+        product = filter_product.upper()
+        files = [x for x in files if product in x.name]
 
-    # If ROI is a bounding box, change order or corner coordinates for modis_tiles
-    if args.roi and len(args.roi) == 4:
-        args.roi = [float(args.roi[i]) for i in [0, 3, 2, 1]]
+    if filter_vampc:
+        vampc = filter_vampc.upper()
+        files = [x for x in files if vampc in x.name]
 
-    # Load product table
-    this_dir = Path(__file__).parent
-    with open(this_dir.parent.joinpath('data', 'MODIS_V6_PT.pkl').as_posix(), 'rb') as table_raw:
-        product_table = pickle.load(table_raw)
+    if not files:
+        msg = "No files found to process! Please check src and/or adjust filters!"
+        log.error(msg)
+        raise ValueError(msg)
 
-    # List HDF5 files in path
+    groups = [REGEX_PATTERNS["tile"].sub("*", x.name) for x in files]
+    group_check = {".".join(x.split(".")[:-2]) for x in groups}
+    if len(group_check) > 1:
+        raise ValueError("Multiple product groups in input. Please filter or use separate directories!")
 
-    if not input_dir.is_file():
+    groups = list(set(groups))
 
-        h5files = list(input_dir.glob(args.product + '*h5'))
+    if roi is not None:
+        roi = roi.split(',')
+        if len(roi) != 4:
+            raise ValueError("ROI for clip needs to be bounding box in format ULX,ULY,LRX,LRY")
 
-    else:
-
-        h5files = [input_dir]
-
-    # Make sure only compatible files are used for the mosaic
-    if not h5files:
-        raise ValueError('\nNo products found in specified path (for specified product) - please check input!\n')
-
-    #if len({re.sub(r'h\d{2}v\d{2}.', '', x.name) for x in h5files}) > 1:
-    #raise ValueError('\nMultiple product types found! Please specify and/or check product parameter!\n')
-
-    groups = {re.sub(r'h\d{2}v\d{2}.', '*', x.name) for x in h5files}
-
-    for grp in groups:
-
-        h5files_select = [x for x in h5files if re.match(grp, x.name)]
-
-        # Extract product ID from referece
-        product_ = re.sub(r'(M\w{6}).+', '\\1', h5files_select[0].name)
-
-        print('\nProcessing product {}'.format(product_))
-
-        # Check if product is global
-        if 'MXD' in product_:
-            global_flag = int(product_table[re.sub('MXD', 'MOD', product_)]['pixel_size']) == 5600
+    if targetdir is None:
+        if src_input.is_dir():
+            targetdir = src_input
         else:
-            global_flag = int(product_table[product_]['pixel_size']) == 5600
+            targetdir = src_input.parent
+    else:
+        targetdir = Path(targetdir)
 
-        # If the product is not global and there's an ROI, we need to query the intersecting tiles
-        if not global_flag and args.roi:
-            tiles = modis_tiles([float(x) for x in args.roi])
-            if not tiles:
-                raise ValueError('\nNo MODIS tile(s) found for location. Please check coordinates!')
+    if not targetdir.exists():
+        targetdir.mkdir()
 
-            # Regexp for tiles
-            tile_regexp = re.compile('|'.join(tiles))
+    if not targetdir.is_dir():
+        msg = "Target directory needs to be a valid path!"
+        log.error(msg)
+        raise ValueError(msg)
 
-            # Files for tile result
-            h5files_select = [x for x in h5files_select if re.search(tile_regexp, x.name)]
+    if sgrid:
+        dataset = "sgrid"
+    else:
+        dataset = "data"
 
-        # Filter for product code
-        if args.vampc:
-            h5files_select = [x for x in h5files_select if args.vampc in x.name]
+    if round_int is not None:
+        round_int = round_int * -1
 
-        # Assert that there are results
-        assert h5files_select, '\nNo processed MODIS HDF5 files found for combination of product/tile (and VAM product code)'
+    gdal_kwargs = {ctx.args[i][2:]: ctx.args[i+1] for i in range(0, len(ctx.args), 2)}
 
-        # Iterate over VPCs (could be multiple if unspecified)
-        for vam_code in {re.sub(r'.+([^\W\d_]{3}).h5', '\\1', x.name) for x in h5files_select}:
-            print('\n')
+    for group in groups:
+        log.debug("Processing group %s", group)
 
-            h5files_select_vpc = [x.as_posix() for x in h5files_select if vam_code in x.name] # Subset files for vam_code
+        group_pattern = re.compile(group)
+        group_files = [str(x) for x in files if group_pattern.match(x.name)]
 
-            # Get mosaic
-            mosaic = ModisMosaic(files=h5files_select_vpc,
-                                 datemin=args.begin_date,
-                                 datemax=args.end_date,
-                                 global_flag=global_flag)
+        mosaic = ModisMosaic(group_files)
 
-            # Extract s-grid if True
-            if args.sgrid:
-                filename = output_dir.joinpath(args.region.lower() + vam_code.lower() + '_sgrid.tif')
+        write_check = mosaic.generate_mosaics(
+                        dataset=dataset,
+                        targetdir=targetdir,
+                        target_srs=target_srs,
+                        aoi=roi,
+                        overwrite=overwrite,
+                        force_doy=force_doy,
+                        prefix=region,
+                        start=begin_date,
+                        stop=end_date,
+                        clip_valid=clip_valid,
+                        round_int=round_int,
+                        creationOptions=list(co),
+                        **gdal_kwargs,
+        )
 
-                if filename.exists() and not args.overwrite:
-                    print('{} exists! Please specify --overwrite if applicable. Skipping ... '.format(filename))
-                    continue
+        assert write_check
 
-                print('Processing file {}'.format(filename.name))
-                with mosaic.get_raster(dset, None) as mosaic_ropen:
-                    # Subset if bbox was supplied
-                    try:
-                        if args.roi and len(args.roi) > 2:
-                            wopt = gdal.WarpOptions(
-                                dstSRS='EPSG:4326',
-                                outputType=mosaic_ropen.dt_gdal[0],
-                                xRes=mosaic_ropen.resolution_degrees,
-                                yRes=mosaic_ropen.resolution_degrees,
-                                srcNodata=mosaic.nodata,
-                                dstNodata=mosaic.nodata,
-                                outputBounds=(args.roi[0], args.roi[3], args.roi[2], args.roi[1]),
-                                resampleAlg='near',
-                                multithread=True,
-                                creationOptions=['COMPRESS=LZW', 'PREDICTOR=2'],
-                            )
+def cli_wrap():
+    """Wrapper for cli"""
 
-                            _ = gdal.Warp(
-                                filename.as_posix(),
-                                mosaic_ropen.raster,
-                                options=wopt,
-                            )
-
-                            _ = None
-                        else:
-                            wopt = gdal.WarpOptions(
-                                dstSRS='EPSG:4326',
-                                outputType=mosaic_ropen.dt_gdal[0],
-                                xRes=mosaic_ropen.resolution_degrees,
-                                yRes=mosaic_ropen.resolution_degrees,
-                                srcNodata=mosaic.nodata,
-                                dstNodata=mosaic.nodata,
-                                resampleAlg='near',
-                                multithread=True,
-                                creationOptions=['COMPRESS=LZW', 'PREDICTOR=2'],
-                            )
-
-                            _ = gdal.Warp(
-                                filename.as_posix(),
-                                mosaic_ropen.raster,
-                                options=wopt,
-                            )
-
-                            _ = None
-                    except Exception as e:
-                        print('Error while reading {} data for {}! Please check if dataset exits within file. \n\n Error message:\n\n {}'.format(args.dataset, filename, e))
-                del mosaic_ropen
-            else:
-                # If the dataset is not s-grid, we need to iterate over dates
-                for ix in mosaic.temp_index:
-
-                    if mosaic.labels and not args.force_doy:
-
-                        filename = output_dir.joinpath(args.region.lower() + vam_code.lower() + mosaic.labels[ix] + '.tif')
-
-                    else:
-
-                        filename = output_dir.joinpath(args.region.lower() + vam_code.lower() + mosaic.dates[ix][0:4] + 'j' + mosaic.dates[ix][4:7] + '.tif')
-
-                    if filename.exists() and not args.overwrite:
-                        print('{} exists! Please specify --overwrite if applicable. Skipping ... '.format(filename))
-                        continue
-
-                    print('Processing file {}'.format(filename.name))
-
-                    with mosaic.get_raster(dset, ix) as mosaic_ropen:
-                        try:
-                            if args.roi and len(args.roi) > 2:
-                                wopt = gdal.WarpOptions(
-                                    dstSRS='EPSG:4326',
-                                    outputType=mosaic_ropen.dt_gdal[0],
-                                    xRes=mosaic_ropen.resolution_degrees,
-                                    yRes=mosaic_ropen.resolution_degrees,
-                                    srcNodata=mosaic.nodata,
-                                    dstNodata=mosaic.nodata,
-                                    outputBounds=(args.roi[0], args.roi[3], args.roi[2], args.roi[1]),
-                                    resampleAlg='near',
-                                    multithread=True,
-                                    creationOptions=['COMPRESS=LZW', 'PREDICTOR=2']
-                                )
-
-                                _ = gdal.Warp(
-                                    filename.as_posix(),
-                                    mosaic_ropen.raster,
-                                    options=wopt,
-                                )
-
-                                _ = None
-                            else:
-                                wopt = gdal.WarpOptions(
-                                    dstSRS='EPSG:4326',
-                                    outputType=mosaic_ropen.dt_gdal[0],
-                                    xRes=mosaic_ropen.resolution_degrees,
-                                    yRes=mosaic_ropen.resolution_degrees,
-                                    srcNodata=mosaic.nodata,
-                                    dstNodata=mosaic.nodata,
-                                    resampleAlg='near',
-                                    multithread=True,
-                                    creationOptions=['COMPRESS=LZW', 'PREDICTOR=2'],
-                                )
-
-                                _ = gdal.Warp(
-                                    filename.as_posix(),
-                                    mosaic_ropen.raster,
-                                    options=wopt,
-                                )
-
-                                _ = None
-                        except Exception as e:
-                            print('Error while reading {} data for {}! Please check if dataset exits within file. \n\n Error message:\n\n {}'.format(args.dataset, filename, e))
-                    del mosaic_ropen
+    if len(sys.argv) == 1:
+        cli.main(['--help'])
+    else:
+        cli() #pylint: disable=E1120
 
 if __name__ == '__main__':
-    main()
+    cli_wrap()
