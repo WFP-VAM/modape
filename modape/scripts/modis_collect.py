@@ -84,13 +84,24 @@ def cli(src_dir: str,
 
     # Seperate input files into group
     for file in hdf_files:
-        products.append(*REGEX_PATTERNS["product"].findall(file.name))
-        tiles.append(*REGEX_PATTERNS["tile"].findall(file.name))
-        versions.append(*REGEX_PATTERNS["version"].findall(file.name))
+
+        product = REGEX_PATTERNS["product"].findall(file.name)
+        if not product:
+            raise ValueError("Could not extract product from Filename!")
+        products.append(*product)
+
+        version = REGEX_PATTERNS["version"].findall(file.name)
+        if not version:
+            raise ValueError("Could not extract version from Filename!")
+        versions.append(*version)
+
+        tile = REGEX_PATTERNS["tile"].findall(file.name)
+        if not tile:
+            tile = ['']
+        tiles.append(*tile)
 
     groups = [".*".join(x) for x in zip(products, tiles, versions)]
-    if interleave:
-        groups = list({re.sub('(M.{1})(D.+)', 'M.'+'\\2', x) if REGEX_PATTERNS["VIM"].match(x) else x for x in groups}) # Join MOD13/MYD13
+    groups = list({re.sub('(M.{1})(D.+)', 'M.'+'\\2', x) if REGEX_PATTERNS["VIM"].match(x) else x for x in groups}) # Join MOD13/MYD13
     groups.sort()
     log.debug("Parsed groups: %s", groups)
 
