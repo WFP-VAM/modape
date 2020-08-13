@@ -58,21 +58,21 @@ class ModisMosaic(object):
                 dates = h5f_open.get("dates")[...]
         self.dates = [fromjulian(x.decode()) for x in dates]
 
-    def generate_mosaic(self,
-                        dataset,
-                        targetdir,
-                        target_srs: str,
-                        aoi: List[float] = None,
-                        overwrite: bool = False,
-                        force_doy: bool = False,
-                        prefix: str = None,
-                        start: datetime.date = None,
-                        stop: datetime.date = None,
-                        clip_valid: bool = False,
-                        round_int: int = None,
-                        **kwargs,
+    def generate_mosaics(self,
+                         dataset,
+                         targetdir,
+                         target_srs: str,
+                         aoi: List[float] = None,
+                         overwrite: bool = False,
+                         force_doy: bool = False,
+                         prefix: str = None,
+                         start: datetime.date = None,
+                         stop: datetime.date = None,
+                         clip_valid: bool = False,
+                         round_int: int = None,
+                         **kwargs,
                         ) -> bool:
-        """Generate TIFF mosaic.
+        """Generate TIFF mosaics.
 
         This method is creating a GeoTiff mosaic from the MDF5 files
         passed to the class instance.
@@ -92,7 +92,7 @@ class ModisMosaic(object):
             stop (datetime.date): Stop date for mosaics.
             clip_valid (bool): Clip values to valid range for MODIS product.
             round_int (int): Round the output.
-            **kwargs (type): **kwags passed on to `gdal.TranslateOptions`.
+            **kwargs (type): **kwags passed on to `gdal.WarpOptions` and `gdal.TranslateOptions`.
 
         Returns:
             bool: Flag for success.
@@ -105,7 +105,7 @@ class ModisMosaic(object):
             raise ValueError(f"Supplied dataset {dataset} doesn't exist.")
 
         if prefix is None:
-            prefix = "reg"
+            prefix = ""
 
         try:
             labels = DATE_LABELS[attrs["temporalresolution"]]
@@ -113,10 +113,18 @@ class ModisMosaic(object):
             labels = None
             force_doy = True
 
-        if not attrs["globalproduct"]:
-            output_res = attrs["resolution"] / 112000
+        if "xRes" in kwargs.keys() and "yRes" in kwargs.keys():
+            output_res = [kwargs['xRes'], kwargs['yRes']]
+
+        elif target_srs == "EPSG:4326":
+
+            if not attrs["globalproduct"]:
+                output_res = attrs["resolution"] / 112000
+            else:
+                output_res = attrs["resolution"]
+
         else:
-            output_res = attrs["resolution"]
+            output_res = [None, None]
 
         try:
             nodata = kwargs["nodata"]
@@ -179,34 +187,54 @@ class ModisMosaic(object):
                     )
                 )
 
-            with self._mosaic(rasters,
-                              target_srs=target_srs,
-                              resample=resample,
-                              dtype=dtype,
-                              nodata=nodata,
-                              resolution=output_res,
-                             ) as warped_mosaic:
+            translate_options = {
+                "outputType": attrs["dtype"],
+                "noData": attrs["nodata"],
+            }
 
-                translate_options = {
-                    "outputType": attrs["dtype"],
-                    "noData": attrs["nodata"],
-                }
+            if aoi is not None:
+                translate_options.update(
+                    {"projWin": aoi}
+                )
 
-                if aoi is not None:
-                    translate_options.update(
-                        {"projWin": aoi}
+            translate_options.update(kwargs)
+
+            if not attrs["globalproduct"] and target_srs != "EPSG:4326":
+
+                with self._mosaic(rasters,
+                                  target_srs=target_srs,
+                                  resample=resample,
+                                  dtype=dtype,
+                                  nodata=nodata,
+                                  resolution=output_res,
+                                 ) as warped_mosaic:
+
+                    log.debug("Writing to disk")
+
+                    write_check = self._translate(
+                        src=warped_mosaic,
+                        dst=filename,
+                        **translate_options
                     )
 
-                translate_options.update(kwargs)
+                    assert write_check, f"Error writing {filename}"
+
+            else:
+
+                log.debug("Processing global file with EPSG:4326! Skipping warp")
+                assert len(rasters) == 1, "Expected only one raster!"
+
                 log.debug("Writing to disk")
-                print(warped_mosaic)
+
                 write_check = self._translate(
-                    src=warped_mosaic,
+                    src=rasters[0],
                     dst=filename,
                     **translate_options
                 )
 
                 assert write_check, f"Error writing {filename}"
+
+                gdal.Unlink(rasters[0])
 
         return True
 
