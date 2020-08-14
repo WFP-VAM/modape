@@ -141,6 +141,7 @@ def cli(src: str,
 
     if sgrid:
         dataset = "sgrid"
+        clip_valid = False
     else:
         dataset = "data"
 
