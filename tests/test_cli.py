@@ -1,5 +1,6 @@
 """test_cli.py: Test command line scripts."""
 #pylint: disable=E0401
+from datetime import date
 from pathlib import Path
 import shutil
 import unittest
@@ -9,6 +10,7 @@ from click.testing import CliRunner
 from modape.scripts.modis_download import cli as modis_download_cli
 from modape.scripts.modis_collect import cli as modis_collect_cli
 from modape.scripts.modis_smooth import cli as modis_smooth_cli
+from modape.scripts.modis_window import cli as modis_window_cli
 import numpy as np
 
 from test_modis import create_h5temp
@@ -330,3 +332,111 @@ class TestConsoleScripts(unittest.TestCase):
             self.assertEqual(result.exit_code, 0)
 
         raw_h5.unlink()
+
+    @patch("modape.scripts.modis_window.ModisMosaic.generate_mosaics")
+    def test_modis_window(self, mocked_mosaic):
+        """Test modis_window.py"""
+
+        raw_h5 = create_h5temp(10, 10, 8, 8)
+
+        result = self.runner.invoke(modis_window_cli, ["/not_an_exist_dir"])
+        self.assertEqual(result.exit_code, 1)
+
+        result = self.runner.invoke(modis_window_cli, ["/tmp/data", "--roi", "10,20"])
+        print(result.output)
+        self.assertEqual(result.exit_code, 1)
+
+        result = self.runner.invoke(modis_window_cli, [str(raw_h5)])
+        self.assertEqual(result.exit_code, 0)
+        mocked_mosaic.assert_called_once()
+
+        mocked_mosaic.reset_mock()
+
+        result = self.runner.invoke(modis_window_cli, ["/tmp/data"])
+        self.assertEqual(result.exit_code, 0)
+        mocked_mosaic.assert_called_once()
+        _, mkwargs = mocked_mosaic.call_args
+
+        self.assertEqual(mkwargs["dataset"], "data")
+        self.assertEqual(mkwargs["targetdir"], Path("/tmp/data"))
+        self.assertEqual(mkwargs["target_srs"], "EPSG:4326")
+        self.assertEqual(mkwargs["aoi"], None)
+        self.assertEqual(mkwargs["overwrite"], False)
+        self.assertEqual(mkwargs["force_doy"], False)
+        self.assertEqual(mkwargs["prefix"], "reg")
+        self.assertEqual(mkwargs["start"], None)
+        self.assertEqual(mkwargs["stop"], None)
+        self.assertEqual(mkwargs["clip_valid"], False)
+        self.assertEqual(mkwargs["round_int"], None)
+        self.assertEqual(mkwargs["creationOptions"], ["COMPRESS=LZW", "PREDICTOR=2"])
+
+        mocked_mosaic.reset_mock()
+
+        result = self.runner.invoke(
+            modis_window_cli,
+            ["/tmp/data",
+             "-b", "2020-01-01",
+             "-e", "2020-05-01",
+             "--roi", "0,0,10,10",
+             "--sgrid",
+             "--co", "COMPRESS=DEFLATE",
+             "--co", "PREDICTOR=1",
+             "--co", "TILED=YES",
+             "--target-srs", "EPSG:3857",
+             "--round-int", 2,
+             "--clip-valid"]
+        )
+        self.assertEqual(result.exit_code, 0)
+        mocked_mosaic.assert_called_once()
+        _, mkwargs = mocked_mosaic.call_args
+        self.assertEqual(mkwargs["dataset"], "sgrid")
+        self.assertEqual(mkwargs["target_srs"], "EPSG:3857")
+        self.assertEqual(mkwargs["start"], date(2020, 1, 1))
+        self.assertEqual(mkwargs["stop"], date(2020, 5, 1))
+        self.assertEqual(mkwargs["aoi"], [0, 0, 10, 10])
+        self.assertEqual(mkwargs["creationOptions"], ["COMPRESS=DEFLATE", "PREDICTOR=1", "TILED=YES"])
+        self.assertEqual(mkwargs["clip_valid"], False)
+        self.assertEqual(mkwargs["round_int"], -2)
+
+        mocked_mosaic.reset_mock()
+
+        result = self.runner.invoke(
+            modis_window_cli,
+            ["/tmp/data",
+             "--gdal-kwarg", "xRes=10",
+             "--gdal-kwarg", "yRes=10",
+             "--gdal-kwarg", "outputType=1",
+             "--gdal-kwarg", "resampleAlg=bilinear",
+             "--gdal-kwarg", "noData=0"]
+        )
+        self.assertEqual(result.exit_code, 0)
+        mocked_mosaic.assert_called_once()
+        _, mkwargs = mocked_mosaic.call_args
+        self.assertEqual(mkwargs["xRes"], "10")
+        self.assertEqual(mkwargs["yRes"], "10")
+        self.assertEqual(mkwargs["outputType"], "1")
+        self.assertEqual(mkwargs["noData"], "0")
+        self.assertEqual(mkwargs["resampleAlg"], "bilinear")
+
+        mocked_mosaic.reset_mock()
+
+        with patch("modape.scripts.modis_window.ModisMosaic.__init__", return_value=None) as mock_init:
+            src = self.testpath.joinpath("data")
+            src.joinpath("MXD13A2.h21v10.006.VEM.h5").touch()
+            result = self.runner.invoke(modis_window_cli, ["/tmp/data"])
+            self.assertEqual(result.exit_code, 0)
+            mock_init.assert_called()
+            self.assertEqual(mock_init.call_count, 2)
+            mocked_mosaic.assert_called()
+            self.assertEqual(mocked_mosaic.call_count, 2)
+
+        mocked_mosaic.reset_mock()
+        src.joinpath("MYD11A2.h21v10.006.TDA.h5").touch()
+
+        with patch("modape.scripts.modis_window.ModisMosaic.__init__", return_value=None) as mock_init:
+            src = self.testpath.joinpath("data")
+            src.joinpath("MXD13A2.h21v10.006.VEM.h5").touch()
+            result = self.runner.invoke(modis_window_cli, ["/tmp/data"])
+            self.assertEqual(result.exit_code, 1)
+            mock_init.assert_not_called()
+            mocked_mosaic.assert_not_called()
