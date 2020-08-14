@@ -5,7 +5,7 @@ This file contains the classes and functions for extracting GeoTIFFs from HDF5 f
 
 Author: Valentin Pesendorfer, April 2019
 """
-# pylint: disable=import-error,R0903
+# pylint: disable=import-error,R0903,W0706
 from contextlib import contextmanager
 import datetime
 import logging
@@ -124,7 +124,7 @@ class ModisMosaic(object):
             output_res = [None, None]
 
         try:
-            nodata = kwargs["nodata"]
+            nodata = kwargs["noData"]
         except KeyError:
             nodata = attrs["nodata"]
 
@@ -217,7 +217,13 @@ class ModisMosaic(object):
                         **translate_options
                     )
 
-                    assert write_check, f"Error writing {filename}"
+                    try:
+                        assert write_check, f"Error writing {filename}"
+                    except:
+                        raise
+                    finally:
+                        _ = [gdal.Unlink(x) for x in rasters]
+
 
             else:
 
@@ -232,8 +238,12 @@ class ModisMosaic(object):
                     **translate_options
                 )
 
-                assert write_check, f"Error writing {filename}"
-                gdal.Unlink(rasters[0])
+                try:
+                    assert write_check, f"Error writing {filename}"
+                except:
+                    raise
+                finally:
+                    _ = [gdal.Unlink(x) for x in rasters]
 
     @staticmethod
     def _get_raster(file: Union[Path, str],
@@ -349,11 +359,10 @@ class ModisMosaic(object):
         wrp = None
         vrt = None
 
-        to_remove = input_rasters + [vrt_tempname, wrp_tempname]
-        for remove in to_remove:
-            return_code = gdal.Unlink(remove)
-            if return_code != 0:
-                log.warning("Received return code %s while removing MemRasters", return_code)
+        rc1 = gdal.Unlink(vrt_tempname)
+        rc2 = gdal.Unlink(wrp_tempname)
+        if rc1 != 0 or rc2 != 0:
+            log.warning("Received return codes [%s, %s] while removing MemRasters", rc1, rc2)
 
     @staticmethod
     def _translate(src, dst, **kwargs):
