@@ -20,6 +20,14 @@
       - reworked `ModisSmoothH5` class with inheritance from HDF5Base and single smoothing method which covers all Whittaker options
       - enable check on last_collected
       - fail if smoothing from non-initialized sgrid is requested (#80)
+    - Reworked mosaicing to GeoTiff from HDF5 (#104)
+      - new executable script
+      - reworked `ModisMosaic` leveraging `gdal` VRT and in-memory rasters for performing the mosaicing
+      - Warping can now be performed to user defined target spatial reference instead of just EPSG:4326
+      - Optional clipping is now performed after warp, generating coherent results independent of the medthod (#85)
+      - Improved control over gdal's `creationOptions`, including ability to pass kwargs directly to `gdal.Translate` (#89)
+      - Optional clipping to valid data range or MODIS NDVI and LST (#88)
+      - Optional rounding of integers to exponents of 10 (#88)
 
 - ## v 0.3
   - #### v 0.3.0:
