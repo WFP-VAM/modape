@@ -72,15 +72,13 @@ setup(
     setup_requires=['pytest-runner'],
     tests_require=['pytest', 'click'],
     install_requires=[
+        'click>=8.0',
         'numpy>=1.16.1',
         'gdal>=2, <3',
         'h5py>=2.9',
         'python-cmr>=0.4',
         'requests>=2',
-        'progress>=1.5',
         'pandas>=0.24',
-        'mock;python_version<"3.0"',
-        'pathlib2;python_version<"3.0"'
     ],
     python_requires='>=2.7.11, <4',
 )
