@@ -119,7 +119,7 @@ def cli(src: str,
     groups = list(set(groups))
 
     if roi is not None:
-        roi = roi.split(',')
+        roi = [float(x) for x in roi.split(',')]
         if len(roi) != 4:
             raise ValueError("ROI for clip needs to be bounding box in format ULX,ULY,LRX,LRY")
 
@@ -138,6 +138,12 @@ def cli(src: str,
         msg = "Target directory needs to be a valid path!"
         log.error(msg)
         raise ValueError(msg)
+
+    if begin_date:
+        begin_date = begin_date.date()
+
+    if end_date:
+        end_date = end_date.date()
 
     if sgrid:
         dataset = "sgrid"
