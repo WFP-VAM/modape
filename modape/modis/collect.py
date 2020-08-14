@@ -154,6 +154,7 @@ class ModisRawH5(HDF5Base):
 
         tempinfo = TEMPORAL_DICT[self.product[:5]]
 
+        self.globalproduct = False
         self.temporalresolution = tempinfo["temporalresolution"]
         self.tshift = tempinfo["tshift"]
         self.nfiles = len(self.files)
@@ -176,6 +177,9 @@ class ModisRawH5(HDF5Base):
         tile = REGEX_PATTERNS["tile"].findall(refname)
         version = REGEX_PATTERNS["version"].findall(refname)
         tile_version = '.'.join(tile + version)
+
+        if not tile:
+            self.globalproduct = True
 
         filename = f"{self.targetdir}/{fn_code}/{self.product}.{tile_version}.{fn_code}.h5"
 
@@ -241,10 +245,20 @@ class ModisRawH5(HDF5Base):
                 # reference metadata
                 dset.attrs.update(ref_metadata)
 
+                if self.vam_product_code == "VIM":
+                    valid_range = (-2000, 10000)
+                elif self.vam_product_code in ["LTD", "LTN"]:
+                    valid_range = (7500, 65535)
+                else:
+                    pass
+
                 # teporal information
                 dset.attrs.update({
                     "temporalresolution": self.temporalresolution,
                     "tshift": self.tshift,
+                    "globalproduct": self.globalproduct,
+                    "vamcode": self.filename.name.split('.')[-2],
+                    "valid_range": valid_range,
                 })
 
             self.exists = True

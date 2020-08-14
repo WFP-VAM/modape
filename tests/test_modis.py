@@ -16,7 +16,7 @@ except ImportError:
     from osgeo import gdal
 
 from modape.exceptions import DownloadError, HDF5WriteError
-from modape.modis import ModisQuery, ModisRawH5, ModisSmoothH5, modis_tiles
+from modape.modis import ModisQuery, ModisRawH5, ModisSmoothH5, ModisMosaic
 from modape.utils import SessionWithHeaderRedirection
 
 def create_gdal(x, y):
@@ -70,6 +70,55 @@ def create_h5temp(rows: int,
                 geotransform=(0, 0, 0, 0, 0),
                 projection='EPSG:4326',
                 resolution=(1000, -1000),
+                globalproduct=False,
+                vamcode="VIM",
+                )
+        )
+
+        h5f.create_dataset('dates',
+                           shape=(4,),
+                           data=np.array(['2002185', '2002193', '2002201', '2002209'], dtype='S8'),
+                           maxshape=(None,),
+                           dtype='S8',
+                           compression='gzip')
+
+    return fn
+
+def create_h5temp_global() -> Path:
+    """Create temporary global HDF5 rawfile.
+
+    Returns:
+        Path: Path object of filename.
+
+    """
+
+    fn = Path('/tmp/data/MXD13A2.006.VIM.h5')
+
+    rows = 2000
+    cols = 7200
+
+    with h5py.File(fn, 'a', driver='core', backing_store=True) as h5f:
+
+        dset = h5f.create_dataset('data',
+                                  shape=(rows*cols, 4),
+                                  dtype='Int16',
+                                  maxshape=(rows*cols, None),
+                                  chunks=((rows*cols)//25, 10),
+                                  compression='gzip',
+                                  fillvalue=-3000)
+
+        dset.attrs.update(
+            dict(
+                nodata=-3000,
+                temporalresolution=8,
+                tshift=8,
+                RasterXSize=rows,
+                RasterYSize=cols,
+                geotransform=(0, 0, 0, 0, 0),
+                projection='EPSG:4326',
+                resolution=(0.05, 0.05),
+                globalproduct=True,
+                vamcode="VIM",
                 )
         )
 
@@ -679,207 +728,249 @@ class TestModisSmooth(unittest.TestCase):
 
         smtH5.filename.unlink()
 
-#
-# class TestMODIS(unittest.TestCase):
-#     """Test class for MODIS tests."""
-#
-#     @classmethod
-#     def setUpClass(cls):
-#         pass
-#
-#     @classmethod
-#     def tearDownClass(cls):
-#         pass
-#
-#     def setUp(self):
-#         pass
-#
-#     def tearDown(self):
-#         pass
-#
-#
-#     @patch('modape.modis.collect.gdal.Dataset.GetMetadataItem', return_value=-3000)
-#     @patch('modape.modis.collect.gdal.Dataset.GetSubDatasets', return_value=[['NDVI']])
-#     @patch('modape.modis.collect.gdal.Open', return_value=create_gdal(1200, 1200))
-#     def test_raw_hdf5(self, mock_ds, mock_sds, mock_nodata):
-#         """Test raw tiled NDVI with 8-day interleaving of MOD/MYD and raw global LST DAY."""
-#         rawfiles = [
-#             'MOD13A2.A2002193.h18v06.006.2019256103823.hdf',
-#             'MOD13A2.A2002209.h18v06.006.2019256103823.hdf',
-#             'MYD13A2.A2002185.h18v06.006.2019256103823.hdf',
-#             'MYD13A2.A2002201.h18v06.006.2019256103823.hdf',
-#         ]
-#         rawh5 = ModisRawH5(files=rawfiles, interleave=True)
-#         mock_ds.assert_called_with('MYD13A2.A2002185.h18v06.006.2019256103823.hdf')
-#
-#         self.assertEqual(rawh5.nfiles, 4)
-#         self.assertFalse(rawh5.exists)
-#         self.assertEqual(rawh5.outname.name, 'MXD13A2.h18v06.006.VIM.h5')
-#         self.assertEqual(rawh5.temporalresolution, 8)
-#         self.assertEqual(rawh5.tshift, 8)
-#         self.assertEqual(rawh5.rawdates, [
-#             '2002185',
-#             '2002193',
-#             '2002201',
-#             '2002209',
-#         ])
-#
-#         rawh5.create()
-#         self.assertTrue(rawh5.exists)
-#         self.assertEqual(rawh5.nodata_value, -3000)
-#         self.assertEqual(rawh5.chunks, ((1200*1200)//25, 10))
-#
-#         shutil.rmtree(rawh5.outname.parent.name)
-#
-#         # Test handling of duplicate files
-#         rawfiles = [
-#             'MOD13A2.A2002193.h18v06.006.2019256103823.hdf',
-#             'MOD13A2.A2002209.h18v06.006.2019256103823.hdf',
-#             'MOD13A2.A2002209.h18v06.006.2018256103823.hdf',
-#             'MYD13A2.A2002185.h18v06.006.2019256103823.hdf',
-#             'MYD13A2.A2002185.h18v06.006.2018256103823.hdf',
-#             'MYD13A2.A2002201.h18v06.006.2019256103823.hdf',
-#         ]
-#         rawh5 = ModisRawH5(files=rawfiles, interleave=True)
-#         mock_ds.assert_called_with('MYD13A2.A2002185.h18v06.006.2019256103823.hdf')
-#
-#         self.assertEqual(rawh5.nfiles, 4)
-#         self.assertEqual(rawh5.temporalresolution, 8)
-#         self.assertEqual(rawh5.tshift, 8)
-#         self.assertEqual(rawh5.rawdates, [
-#             '2002185',
-#             '2002193',
-#             '2002201',
-#             '2002209',
-#         ])
-#
-#         # Test raw global LST DAY
-#         rawfiles = [
-#             'MYD11C2.A2002193.*.006.2019256103823.hdf',
-#             'MYD11C2.A2002209.*.006.2019256103823.hdf',
-#             'MYD11C2.A2002185.*.006.2019256103823.hdf',
-#             'MYD11C2.A2002201.*.006.2019256103823.hdf',
-#         ]
-#
-#         mock_ds.return_value = create_gdal(7200, 3600)
-#         mock_sds.return_value = [['LST_Day']]
-#
-#         rawh5 = ModisRawH5(files=rawfiles)
-#         mock_ds.assert_called_with('MYD11C2.A2002185.*.006.2019256103823.hdf')
-#         self.assertEqual(rawh5.nfiles, 4)
-#         self.assertFalse(rawh5.exists)
-#         self.assertEqual(rawh5.outname.name, 'MYD11C2.006.TDA.h5')
-#         self.assertEqual(rawh5.temporalresolution, 8)
-#         self.assertEqual(rawh5.tshift, 4)
-#         self.assertEqual(rawh5.rawdates, [
-#             '2002185',
-#             '2002193',
-#             '2002201',
-#             '2002209',
-#         ])
-#
-#         rawh5.create()
-#         self.assertTrue(rawh5.exists)
-#         self.assertEqual(rawh5.nodata_value, -3000)
-#         self.assertEqual(rawh5.chunks, ((3600*7200)//25, 10))
-#
-#         shutil.rmtree(rawh5.outname.parent.name)
-#
-#         # Test handling of duplicate files
-#         rawfiles = [
-#             'MYD11C2.A2002193.*.006.2019256103823.hdf',
-#             'MYD11C2.A2002209.*.006.2019256103823.hdf',
-#             'MYD11C2.A2002209.*.006.2018256103823.hdf',
-#             'MYD11C2.A2002185.*.006.2019256103823.hdf',
-#             'MYD11C2.A2002201.*.006.2019256103823.hdf',
-#             'MYD11C2.A2002201.*.006.2018256103823.hdf',
-#         ]
-#
-#         rawh5 = ModisRawH5(files=rawfiles)
-#         mock_ds.assert_called_with('MYD11C2.A2002185.*.006.2019256103823.hdf')
-#         self.assertEqual(rawh5.nfiles, 4)
-#         self.assertEqual(rawh5.outname.name, 'MYD11C2.006.TDA.h5')
-#         self.assertEqual(rawh5.temporalresolution, 8)
-#         self.assertEqual(rawh5.tshift, 4)
-#         self.assertEqual(rawh5.rawdates, [
-#             '2002185',
-#             '2002193',
-#             '2002201',
-#             '2002209',
-#         ])
-#
-#     def test_smoothHDF5(self):
-#         """Test smooth tiled 10-day NDVI and global 5-day LST Day."""
-#         try:
-#             create_h5(fn='MXD13A2.h18v06.006.VIM.h5', x=1200, y=1200, tr=8, ts=8, r=0.009)
-#             smth5 = ModisSmoothH5('MXD13A2.h18v06.006.VIM.h5', tempint=10)
-#
-#             self.assertEqual(smth5.outname.name, 'MXD13A2.h18v06.006.txd.VIM.h5')
-#             self.assertEqual(smth5.rawdates_nsmooth, [
-#                 '2002185',
-#                 '2002193',
-#                 '2002201',
-#                 '2002209',
-#             ])
-#             self.assertTrue(smth5.tinterpolate)
-#             self.assertEqual(smth5.temporalresolution, 10)
-#             self.assertFalse(smth5.exists)
-#
-#             smth5.create()
-#             self.assertTrue(smth5.exists)
-#
-#             with h5py.File('MXD13A2.h18v06.006.txd.VIM.h5', 'r+') as h5f:
-#                 self.assertEqual([x.decode() for x in h5f.get('dates')[...]],
-#                                  ['2002186', '2002196', '2002206', '2002217'])
-#         except:
-#             try:
-#                 os.remove('MXD13A2.h18v06.006.VIM.h5')
-#                 os.remove('MXD13A2.h18v06.006.txd.VIM.h5')
-#             except:
-#                 pass
-#             raise
-#         else:
-#             os.remove('MXD13A2.h18v06.006.VIM.h5')
-#             os.remove('MXD13A2.h18v06.006.txd.VIM.h5')
-#
-#         # Test smooth global 5-day LST Day
-#         try:
-#             create_h5(fn='MOD11C2.006.LTD.h5', x=3600, y=7200, tr=8, ts=4, r=0.05)
-#             smth5 = ModisSmoothH5('MOD11C2.006.LTD.h5', tempint=5)
-#
-#             self.assertEqual(smth5.outname.name, 'MOD11C2.006.txp.LTD.h5')
-#             self.assertEqual(smth5.rawdates_nsmooth, [
-#                 '2002185',
-#                 '2002193',
-#                 '2002201',
-#                 '2002209',
-#             ])
-#
-#             self.assertTrue(smth5.tinterpolate)
-#             self.assertEqual(smth5.temporalresolution, 5)
-#             self.assertFalse(smth5.exists)
-#
-#             smth5.create()
-#             self.assertTrue(smth5.exists)
-#
-#             with h5py.File('MOD11C2.006.txp.LTD.h5', 'r+') as h5f:
-#                 self.assertEqual([x.decode() for x in h5f.get('dates')[...]],
-#                                  ['2002189', '2002194', '2002199', '2002204', '2002209', '2002215'])
-#         except:
-#             try:
-#                 os.remove('MOD11C2.006.LTD.h5')
-#                 os.remove('MOD11C2.006.txp.LTD.h5')
-#             except:
-#                 pass
-#             raise
-#         else:
-#             os.remove('MOD11C2.006.LTD.h5')
-#             os.remove('MOD11C2.006.txp.LTD.h5')
-#
-#     def test_modis_tiles(self):
-#         """Test modis_tiles."""
-#         tiles = modis_tiles([12, 19, 29, 1]) # xmin, ymax, xmax, ymin
-#         self.assertEqual(tiles, ['h19v07', 'h19v08', 'h20v07', 'h20v08'])
+class TestModisMosaic(unittest.TestCase):
+    """Test class for ModisMosaic"""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.testpath = Path('/tmp/data')
+        cls.testpath.mkdir(exist_ok=True)
+        cls.testfile = create_h5temp(12, 12, 8, 8)
+        cls.testfile_global = create_h5temp_global()
+
+        smt_file = ModisSmoothH5(cls.testfile, targetdir='/tmp/data', tempint=5)
+        smt_file.create()
+        cls.testfile_smt = smt_file.filename
+
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.testfile.unlink()
+        try:
+            shutil.rmtree(str(cls.testpath))
+        except:
+            pass
+
+    def test_instance(self):
+        """Test instance creation"""
+
+        mosaic = ModisMosaic([self.testfile]*5)
+
+        with h5py.File(self.testfile, "r") as h5f_open:
+            dts = [x.decode() for x in h5f_open.get("dates")[...]]
+
+        self.assertEqual(
+            [x.strftime("%Y%j") for x in mosaic.dates],
+            dts
+        )
+        self.assertTrue(len(mosaic.files), 5)
+
+        mosaic = ModisMosaic(self.testfile)
+        self.assertEqual(
+            [x.strftime("%Y%j") for x in mosaic.dates],
+            dts
+        )
+        self.assertTrue(len(mosaic.files), 1)
+
+    @patch("modape.modis.window.ModisMosaic._get_raster", return_value='/vsimem/inmem.tif')
+    @patch("modape.modis.window.ModisMosaic._mosaic")
+    @patch("modape.modis.window.ModisMosaic._translate")
+    def test_generate_mosaics_basic(self, mock_translate, mock_mosaic, mock_raster):
+        """Test mosaic creation"""
+        mosaic = ModisMosaic(self.testfile)
+
+        mock_mosaic.return_value.__enter__.return_value = '/inmem/warped.tif'
+
+        with self.assertRaises(ValueError):
+            mosaic.generate_mosaics("not_a_dataset", "/tmp/data", "EPSG:4326")
+
+        mosaic.generate_mosaics("data", "/tmp/data", "EPSG:4326")
+
+        mock_raster.assert_called()
+        margs, mkwargs = mock_raster.call_args
+        self.assertEqual(mock_raster.call_count, len(mosaic.dates))
+        self.assertEqual(margs[0], mosaic.files[0])
+        self.assertEqual(margs[1], "data")
+        self.assertEqual(margs[2], False)
+        self.assertEqual(mkwargs["round_int"], None)
+        self.assertEqual(mkwargs["ix"], len(mosaic.dates)-1)
+
+        mock_mosaic.assert_called()
+        margs, mkwargs = mock_mosaic.call_args
+        self.assertEqual(mock_mosaic.call_count, len(mosaic.dates))
+        self.assertEqual(margs[0], ["/vsimem/inmem.tif"])
+        self.assertEqual(mkwargs["target_srs"], "EPSG:4326")
+        self.assertEqual(mkwargs["dtype"], 3)
+        self.assertEqual(mkwargs["nodata"], -3000)
+        np.testing.assert_almost_equal(mkwargs['resolution'], [1000/112000, (1000/112000)*-1])
+
+        mock_translate.assert_called()
+        _, mkwargs = mock_translate.call_args
+        self.assertEqual(mock_translate.call_count, len(mosaic.dates))
+        self.assertEqual(mkwargs["src"], '/inmem/warped.tif')
+        self.assertEqual(mkwargs["dst"], '/tmp/data/vim2002j209.tif')
+        self.assertEqual(mkwargs["outputSRS"], "EPSG:4326")
+        self.assertEqual(mkwargs["noData"], -3000)
+        self.assertEqual(mkwargs["outputType"], 3)
+
+
+    @patch("modape.modis.window.ModisMosaic._get_raster", return_value='/vsimem/inmem.tif')
+    @patch("modape.modis.window.ModisMosaic._mosaic")
+    @patch("modape.modis.window.ModisMosaic._translate")
+    def test_generate_mosaics_sgrid(self, mock_translate, mock_mosaic, mock_raster):
+        """Test mosaic creation"""
+        mosaic = ModisMosaic(self.testfile_smt)
+
+        mock_mosaic.return_value.__enter__.return_value = '/inmem/warped.tif'
+
+        mosaic.generate_mosaics("sgrid", "/tmp/data", "EPSG:4326")
+
+        mock_raster.assert_called()
+        margs, mkwargs = mock_raster.call_args
+        self.assertEqual(mock_raster.call_count, 1)
+        self.assertEqual(margs[0], mosaic.files[0])
+        self.assertEqual(margs[1], "sgrid")
+        self.assertEqual(margs[2], False)
+        self.assertEqual(mkwargs["round_int"], None)
+        self.assertEqual(mkwargs["ix"], None)
+
+        mock_mosaic.assert_called()
+        margs, mkwargs = mock_mosaic.call_args
+        self.assertEqual(mock_mosaic.call_count, 1)
+        self.assertEqual(margs[0], ["/vsimem/inmem.tif"])
+        self.assertEqual(mkwargs["target_srs"], "EPSG:4326")
+        self.assertEqual(mkwargs["dtype"], 6)
+        self.assertEqual(mkwargs["nodata"], 0)
+        np.testing.assert_almost_equal(mkwargs['resolution'], [1000/112000, (1000/112000)*-1])
+
+        mock_translate.assert_called()
+        _, mkwargs = mock_translate.call_args
+        self.assertEqual(mock_translate.call_count, 1)
+        self.assertEqual(mkwargs["src"], '/inmem/warped.tif')
+        self.assertEqual(mkwargs["dst"], '/tmp/data/vim_sgrid.tif')
+        self.assertEqual(mkwargs["outputSRS"], "EPSG:4326")
+        self.assertEqual(mkwargs["noData"], 0)
+        self.assertEqual(mkwargs["outputType"], 6)
+
+    @patch("modape.modis.window.ModisMosaic._get_raster", return_value='/vsimem/inmem.tif')
+    @patch("modape.modis.window.ModisMosaic._mosaic")
+    @patch("modape.modis.window.ModisMosaic._translate")
+    def test_generate_mosaics_kwarg_propagation(self, mock_translate, mock_mosaic, mock_raster):
+        """Test mosaic creation"""
+        mosaic = ModisMosaic(self.testfile)
+
+        mock_mosaic.return_value.__enter__.return_value = '/inmem/warped.tif'
+
+        cos = ["COMPRESS=LZW", "PREDICTOR=2"]
+        aoi = [0, 0, 10, 10]
+
+        mosaic.generate_mosaics("data",
+                                "/tmp/data",
+                                "EPSG:3857",
+                                aoi=aoi,
+                                overwrite=True,
+                                force_doy=True,
+                                prefix='test',
+                                clip_valid=True,
+                                round_int=-2,
+                                xRes=10,
+                                yRes=10,
+                                noData=-1,
+                                outputType=0,
+                                creationOptions=cos,
+                                resampleAlg="bilinear",
+                                )
+
+        mock_raster.assert_called()
+        margs, mkwargs = mock_raster.call_args
+        self.assertEqual(margs[2], True)
+        self.assertEqual(mkwargs["round_int"], -2)
+
+        mock_mosaic.assert_called()
+        margs, mkwargs = mock_mosaic.call_args
+
+        self.assertEqual(margs[0], ["/vsimem/inmem.tif"])
+        self.assertEqual(mkwargs["target_srs"], "EPSG:3857")
+        self.assertEqual(mkwargs["dtype"], 0)
+        self.assertEqual(mkwargs["nodata"], -1)
+        self.assertEqual(mkwargs["resample"], "bilinear")
+        np.testing.assert_almost_equal(mkwargs['resolution'], [10, 10])
+
+        mock_translate.assert_called()
+        _, mkwargs = mock_translate.call_args
+        self.assertEqual(mkwargs["src"], '/inmem/warped.tif')
+        self.assertEqual(mkwargs["dst"], '/tmp/data/testvim2002j209.tif')
+        self.assertEqual(mkwargs["outputSRS"], "EPSG:3857")
+        self.assertEqual(mkwargs["noData"], -1)
+        self.assertEqual(mkwargs["outputType"], 0)
+        self.assertEqual(mkwargs["creationOptions"], cos)
+        self.assertEqual(mkwargs["xRes"], 10)
+        self.assertEqual(mkwargs["yRes"], 10)
+        self.assertEqual(mkwargs["resampleAlg"], "bilinear")
+        self.assertEqual(mkwargs["projWin"], aoi)
+
+
+    @patch("modape.modis.window.ModisMosaic._get_raster", return_value='/vsimem/inmem.tif')
+    @patch("modape.modis.window.ModisMosaic._mosaic")
+    @patch("modape.modis.window.ModisMosaic._translate")
+    def test_generate_mosaics_global(self, mock_translate, mock_mosaic, mock_raster):
+        """Test mosaic creation"""
+
+        mosaic = ModisMosaic(self.testfile_global)
+        mock_mosaic.return_value.__enter__.return_value = '/inmem/warped.tif'
+        mosaic.generate_mosaics("data", "/tmp/data", "EPSG:4326")
+
+        mock_raster.assert_called()
+        self.assertEqual(mock_raster.call_count, len(mosaic.dates))
+        mock_mosaic.assert_not_called()
+
+        mock_translate.assert_called()
+        _, mkwargs = mock_translate.call_args
+        self.assertEqual(mock_translate.call_count, len(mosaic.dates))
+        self.assertEqual(mkwargs["src"], '/vsimem/inmem.tif')
+        self.assertEqual(mkwargs["dst"], '/tmp/data/vim2002j209.tif')
+        self.assertEqual(mkwargs["outputSRS"], "EPSG:4326")
+
+        mock_translate.reset_mock()
+
+        mosaic.generate_mosaics("data", "/tmp/data", "EPSG:3857")
+        mock_mosaic.assert_called()
+        self.assertEqual(mock_mosaic.call_count, len(mosaic.dates))
+        margs, mkwargs = mock_mosaic.call_args
+        self.assertEqual(margs[0], ["/vsimem/inmem.tif"])
+        self.assertEqual(mkwargs["target_srs"], "EPSG:3857")
+        self.assertEqual(mkwargs['resolution'], [None, None])
+
+        _, mkwargs = mock_translate.call_args
+        self.assertEqual(mock_translate.call_count, len(mosaic.dates))
+        self.assertEqual(mkwargs["src"], '/inmem/warped.tif')
+        self.assertEqual(mkwargs["dst"], '/tmp/data/vim2002j209.tif')
+        self.assertEqual(mkwargs["outputSRS"], "EPSG:3857")
+
+    @patch("modape.modis.window.ModisMosaic._get_raster", return_value='/vsimem/inmem.tif')
+    @patch("modape.modis.window.ModisMosaic._mosaic")
+    @patch("modape.modis.window.ModisMosaic._translate")
+    def test_generate_mosaics_dates(self, mock_translate, mock_mosaic, mock_raster):
+        """Test mosaic creation"""
+        mosaic = ModisMosaic(self.testfile)
+
+        mock_mosaic.return_value.__enter__.return_value = '/inmem/warped.tif'
+
+        mosaic.generate_mosaics("data",
+                                "/tmp/data",
+                                "EPSG:4326",
+                                start=datetime(2002, 7, 10).date(),
+                                stop=datetime(2002, 7, 21).date())
+
+        n = len(mosaic.dates[1:3])
+
+        mock_raster.assert_called()
+        self.assertEqual(mock_raster.call_count, n)
+        mock_mosaic.assert_called()
+        self.assertEqual(mock_mosaic.call_count, n)
+        mock_translate.assert_called()
+        self.assertEqual(mock_translate.call_count, n)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -42,3 +42,6 @@ class HDF5WriteError(Exception):
 class SgridNotInitializedError(Exception):
     """Exception when requiring non existing sgrid"""
     pass
+
+class HDF5MosaicError(Exception):
+    """Exception when mosaicing incompatible HDF5s"""

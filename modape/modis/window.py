@@ -5,280 +5,384 @@ This file contains the classes and functions for extracting GeoTIFFs from HDF5 f
 
 Author: Valentin Pesendorfer, April 2019
 """
-from __future__ import absolute_import, division, print_function
-
+# pylint: disable=import-error,R0903,W0706
 from contextlib import contextmanager
-from datetime import datetime
-from os.path import basename
-try:
-    from pathlib2 import Path
-except ImportError:
-    from pathlib import Path
-import re
+import datetime
+import logging
+from os.path import exists
+from pathlib import Path
+from typing import Union, List
+from uuid import uuid4
 
-
-import numpy as np
 try:
     import gdal
 except ImportError:
     from osgeo import gdal
-import h5py # pylint: disable=import-error
+import h5py
+from modape.constants import DATE_LABELS
+from modape.exceptions import HDF5MosaicError
+from modape.utils import fromjulian
+import numpy as np
 
-from modape.utils import date2label, dtype_GDNP, fromjulian, ldom
+log = logging.getLogger(__name__)
 
 class ModisMosaic(object):
-    """Class for mosaic of MODIS tiles.
+    """Class for creating mosaics from multiple HDF5 files"""
 
-    Moisaics tiles per Product, parameter and timestep. Enables extraction as GeoTiff.
-    """
-
-    def __init__(self, files, datemin, datemax, global_flag):
-        """ Creates ModisMosaic object.
+    def __init__(self,
+                 input_files: List[str]) -> None:
+        """Create instance
 
         Args:
-            files: List of paths to files used for creating the mosaic
-            datemin: Datestring for date of earliest mosaic (format YYYYMM)
-            datemax: Datestring for date of latest mosaic (format YYYYMM)
-            global_flag: Boolean flag if mosaic is global product
+            input_files (List[str]): List of paths to HDF5 files for mosaicing.
+
         """
+        # check if files are temporal coherernt
+        if isinstance(input_files, list):
 
-        tile_re = re.compile(r'.+(h\d+v\d+).+') # Regular expression for tile ID
-        self.global_flag = global_flag
-        self.tiles = [re.sub(tile_re, '\\1', basename(x)) for x in files]
-        self.tiles.sort()
-        self.files = files
+            reference = None
+            for file in input_files:
+                with h5py.File(file, "r") as h5f_open:
+                    dates = h5f_open.get("dates")[...]
+                    if reference is None:
+                        reference = dates
+                    try:
+                        np.testing.assert_array_equal(dates, reference)
+                    except AssertionError:
+                        raise HDF5MosaicError("Teporal axis of HDF5 input files incompatible for Mosaic")
 
-        # Extract tile IDs
-        self.h_ix = list({re.sub(r'(h\d+)(v\d+)', '\\1', x) for x in self.tiles})
-        self.h_ix.sort()
-        self.v_ix = list({re.sub(r'(h\d+)(v\d+)', '\\2', x) for x in self.tiles})
-        self.v_ix.sort()
-
-        # get referece tile identifiers
-        ref_tile_h = min([x for x in self.tiles if min(self.h_ix) in x])
-        ref_tile_v = min([x for x in self.tiles if min(self.v_ix) in x])
-
-        # vertical reference tile is top (left)
-        ref = [x for x in self.files if ref_tile_v in x][0]
-
-        # Read metadata from HDF5
-        try:
-            with h5py.File(ref, 'r') as h5f:
-                dset = h5f.get('data')
-                self.tile_rws = dset.attrs['RasterYSize'].item()
-                self.tile_cls = dset.attrs['RasterXSize'].item()
-                temporalresolution = dset.attrs['temporalresolution']
-                self.datatype = dset.dtype
-                gt_temp_v = dset.attrs['geotransform']
-                self.prj = dset.attrs['projection']
-                self.nodata = dset.attrs['nodata'].item()
-                self.labels = []
-
-                # If file is global, resolution is already in degrees, otherwhise it's resolution divided with 112000
-                if self.global_flag:
-                    self.resolution_degrees = dset.attrs['resolution']
-                else:
-                    self.resolution = dset.attrs['resolution']
-                    self.resolution_degrees = self.resolution/112000
-                dset = None
-                self.dates = [x.decode() for x in h5f.get('dates')[...]]
-
-                # if dates are either 5 or 10 days, retrive pentad or dekad labels
-                if int(temporalresolution) == 5 or int(temporalresolution) == 10:
-                    self.labels = date2label(self.dates, temporalresolution)
-
-            # checking referece tile for h
-            ref = [x for x in self.files if ref_tile_h in x][0]
-
-            with h5py.File(ref, 'r') as h5f:
-                dset = h5f.get('data')
-                gt_temp_h = dset.attrs['geotransform']
-                dset = None
-            self.gt = [y for x in [gt_temp_h[0:3], gt_temp_v[3:6]] for y in x]
-        except Exception as e:
-            print('\nError reading referece file {} for mosaic! Error message: {}\n'.format(ref, e))
-            raise
-
-        # Create temporal index from dates available and min max input
-        dates_dt = [fromjulian(x) for x in self.dates]
-
-        if datemin:
-            try:
-                datemin_p = datetime.strptime(datemin, '%Y%m').date()
-            except ValueError:
-                try:
-                    datemin_p = datetime.strptime(datemin, '%Y-%m-%d').date()
-                except ValueError:
-                    raise ValueError('Invalid begin time specified for mosaic. Accepted formats: {%Y%m, %Y-%m-%d}')
-
+            self.files = input_files
         else:
-            datemin_p = dates_dt[0]
+            self.files = [input_files]
+            with h5py.File(input_files, "r") as h5f_open:
+                dates = h5f_open.get("dates")[...]
+        self.dates = [fromjulian(x.decode()) for x in dates]
 
-        if datemax:
-            try:
-                datemax_p = ldom(datetime.strptime(datemax, '%Y%m'))
-            except ValueError:
-                try:
-                    datemax_p = datetime.strptime(datemax, '%Y-%m-%d').date()
-                except ValueError:
-                    raise ValueError('Invalid end time specified for mosaic. Accepted formats: {%Y%m, %Y-%m-%d}')
-        else:
-            datemax_p = dates_dt[-1]
+    def generate_mosaics(self,
+                         dataset,
+                         targetdir,
+                         target_srs: str,
+                         aoi: List[float] = None,
+                         overwrite: bool = False,
+                         force_doy: bool = False,
+                         prefix: str = None,
+                         start: datetime.date = None,
+                         stop: datetime.date = None,
+                         clip_valid: bool = False,
+                         round_int: int = None,
+                         **kwargs,
+                        ) -> None:
+        """Generate TIFF mosaics.
 
-        self.temp_index = np.flatnonzero(np.array([datemin_p <= x <= datemax_p for x in dates_dt]))
-
-    def get_array(self, dataset, ix, dt):
-        """Reads values for mosaic into array.
-
-        Args:
-            dataset: Defines dataset to be read from HDF5 file (default is 'data')
-            ix: Temporal index
-            dt: Datatype (default will be read from file)
-
-        Returns
-            Array for mosaic
-        """
-
-        # Initialize array
-        tiles_array = np.full(((len(self.v_ix) * self.tile_rws), len(self.h_ix) * self.tile_cls), self.nodata, dtype=dt)
-
-        # read data from intersecting HDF5 files
-        for h5f in self.files:
-            # Extract tile ID from filename
-            t_h = re.sub(r'.+(h\d+)(v\d+).+', '\\1', basename(h5f))
-            t_v = re.sub(r'.+(h\d+)(v\d+).+', '\\2', basename(h5f))
-
-            # Caluclate row/column offset
-            xoff = self.h_ix.index(t_h) * self.tile_cls
-            yoff = self.v_ix.index(t_v) * self.tile_rws
-
-            try:
-                with h5py.File(h5f, 'r') as h5f_o:
-                    # Dataset 'sgrid' is 2D, so no idex needed
-                    if dataset == 'sgrid':
-                        tiles_array[yoff:(yoff+self.tile_rws),
-                                    xoff:(xoff+self.tile_cls)] = h5f_o.get(dataset)[...].reshape(self.tile_rws, self.tile_cls)
-                    else:
-                        tiles_array[yoff:(yoff+self.tile_rws),
-                                    xoff:(xoff+self.tile_cls)] = h5f_o.get(dataset)[..., ix].reshape(self.tile_rws, self.tile_cls)
-            except Exception as e:
-                print('Error reading data from file {} to array! Error message {}:\n'.format(h5f, e))
-                raise
-        return tiles_array
-
-    def get_array_global(self, dataset, ix, dt):
-        """Reads values for global mosaic into array.
-
-        Since files are global, the array will be a spatial and temporal subset rather than a mosaic.
+        This method is creating a GeoTiff mosaic from the MDF5 files
+        passed to the class instance.
+        Internally, a virtual raster for each timestep is created,
+        warped to the desired SRS and then optionally clipped to the
+        area of interest.
 
         Args:
-            dataset: Defines dataset to be read from HDF5 file (default is 'data')
-            ix: Temporal index
-            dt: Datatype (default will be read from file)
+            dataset (type): Dataset to mosaic (data or sgrid).
+            targetdir (type): Target directory for output Tiffs.
+            target_srs (str): Target spatial reference (as expected by gdalwarp).
+            aoi (List[float]): AOI bouning box as ULX,ULY,LRX,LRY.
+            overwrite (bool): Flag for overwriting existing Tiffs.
+            force_doy (bool): Force DOY filenaming instead of VAM labels.
+            prefix (str): Perfix for Tiff filenames.
+            start (datetime.date): Start date for mosaics.
+            stop (datetime.date): Stop date for mosaics.
+            clip_valid (bool): Clip values to valid range for MODIS product.
+            round_int (int): Round the output.
+            **kwargs (type): **kwags passed on to `gdal.WarpOptions` and `gdal.TranslateOptions`.
 
-        Returns
-            Array for mosaic
-        """
-
-        global_array = np.full((self.tile_rws, self.tile_cls), self.nodata, dtype=dt)
-
-        for h5f in self.files:
-            try:
-                with h5py.File(h5f, 'r') as h5f_o:
-                    if dataset == 'sgrid':
-                        global_array[...] = h5f_o.get(dataset)[...].reshape(self.tile_rws, self.tile_cls)
-                    else:
-                        global_array[...] = h5f_o.get(dataset)[..., ix].reshape(self.tile_rws, self.tile_cls)
-            except Exception as e:
-                print('Error reading data from file {} to array! Error message {}:\n'.format(h5f, e))
-                raise
-        return global_array
-
-    @contextmanager
-    def get_raster(self, dataset, ix):
-        """Generator for mosaic raster.
-
-        This generator can be used within a context manager and will yield an in-memory raster.
-
-        Args:
-            dataset: Defines dataset to be read from HDF5 file (default is 'data')
-            ix: Temporal index
-
-        Yields:
-            in-memory raster to be passed to GDAL warp
         """
 
         try:
-            if dataset == 'sgrid':
-                self.dt_gdal = dtype_GDNP('float32') # dtype for sgrid is set to float32
+            attrs = self._get_metadata(self.files[0], dataset)
+        except AssertionError:
+            raise ValueError(f"Supplied dataset {dataset} doesn't exist.")
+
+        if prefix is None:
+            prefix = ""
+
+        try:
+            labels = DATE_LABELS[attrs["temporalresolution"]]
+        except KeyError:
+            labels = None
+            force_doy = True
+
+        if "xRes" in kwargs.keys() and "yRes" in kwargs.keys():
+            output_res = [kwargs['xRes'], kwargs['yRes']]
+
+        elif target_srs == "EPSG:4326":
+
+            if not attrs["globalproduct"]:
+                output_res = attrs["resolution"] / 112000
             else:
-                self.dt_gdal = dtype_GDNP(self.datatype.name)
-        except IndexError:
-            print('\n\n Couldn\'t read data type from dataset. Using default Int16!\n')
-            self.dt_gdal = (3, 'int16')
+                output_res = attrs["resolution"]
 
-        # Use the corresponding getArray function if global_flag
-        if self.global_flag:
-            value_array = self.get_array_global(dataset, ix, self.dt_gdal[1])
         else:
-            value_array = self.get_array(dataset, ix, self.dt_gdal[1])
-        height, width = value_array.shape
-        driver = gdal.GetDriverByName('GTiff')
+            output_res = [None, None]
 
-        # Create in-memory dataset with virtual filename driver
-        self.raster = driver.Create('/vsimem/inmem.tif', width, height, 1, self.dt_gdal[0])
-        self.raster.SetGeoTransform(self.gt)
-        self.raster.SetProjection(self.prj)
-        rb = self.raster.GetRasterBand(1)
-        rb.SetNoDataValue(self.nodata)
+        try:
+            nodata = kwargs["noData"]
+        except KeyError:
+            nodata = attrs["nodata"]
 
-        # Write array
-        rb.WriteArray(value_array)
-        yield self
+        try:
+            dtype = kwargs["outputType"]
+        except KeyError:
+            dtype = attrs["dtype"]
 
-        # Cleanup to be exectuted when context manager closes after yield
-        gdal.Unlink('/vsimem/inmem.tif')
-        self.raster = None
-        driver = None
-        del value_array
+        try:
+            resample = kwargs["resampleAlg"]
+        except KeyError:
+            resample = "near"
 
-def modis_tiles(aoi):
-    """Function for querying MODIS tiles.
+        filename_root = f"{targetdir}/{prefix}{attrs['vamcode'].lower()}"
 
-    Converts AOI coordinates to MODIS tile numbers by extracting values from MODIS_TILES.tif.
+        if len(attrs["dataset_shape"]) == 1:
+            date_index = [None]
 
-    Args:
-        aoi: AOI coordinates, either LAT LON or XMIN, YMAX, XMAX, YMIN
+        else:
+            if start is None:
+                start = self.dates[0]
 
-    Returns:
-        List of MODIS tile IDs intersecting AOI
-    """
+            if stop is None:
+                stop = self.dates[-1]
 
-    # Load MODIS_TILES.tif from data directory
-    this_dir = Path(__file__).parent
-    ds = gdal.Open(this_dir.parent.joinpath('data', 'MODIS_TILES.tif').as_posix())
+            date_index = [x for x, y in enumerate(self.dates) if start <= y <= stop]
 
-    # Try to catch TIFF issues
-    try:
-        gt = ds.GetGeoTransform()
-    except AttributeError:
-        raise SystemExit('Could not find \'MODIS_TILES.tif\' index raster. Try re-installing the package.')
+        for ii in date_index:
 
-    # Indices fpr point AOI
-    if len(aoi) == 2:
-        xo = int(round((aoi[1]-gt[0])/gt[1]))
-        yo = int(round((gt[3]-aoi[0])/gt[1]))
-        xd = 1
-        yd = 1
-    # Indices for bounding box AOI
-    elif len(aoi) == 4:
-        xo = int(round((aoi[0]-gt[0])/gt[1]))
-        yo = int(round((gt[3]-aoi[1])/gt[1]))
-        xd = int(round((aoi[2] - aoi[0])/gt[1]))
-        yd = int(round((aoi[1] - aoi[3])/gt[1]))
-    tile_extract = ds.ReadAsArray(xo, yo, xd, yd) # Read
-    ds = None
-    tile_tmp = np.unique(tile_extract/100) # Tile IDs are stored as H*100+V
-    tiles = ['{:05.2f}'.format(x) for x in tile_tmp[tile_tmp != 0]]
+            if ii is None:
+                assert dataset == "sgrid"
+                filename = filename_root + "_sgrid.tif"
 
-    return ['h{}v{}'.format(*x.split('.')) for x in tiles]
+            else:
+
+                date = self.dates[ii]
+
+                if force_doy:
+                    filename = filename_root + date.strftime("%Yj%j") + ".tif"
+                else:
+                    filename = f"{filename_root}{date.year}{date.month:02}{labels[date.day]}.tif"
+
+                if exists(filename):
+                    if not overwrite:
+                        log.info("%s already exists. Please set overwrite to True.")
+                        continue
+
+            log.info("Processing %s", filename)
+
+            rasters = []
+            for file in self.files:
+                rasters.append(
+                    self._get_raster(
+                        file,
+                        dataset,
+                        clip_valid,
+                        round_int=round_int,
+                        ix=ii,
+                    )
+                )
+
+            translate_options = {
+                "outputType": attrs["dtype"],
+                "noData": attrs["nodata"],
+                "outputSRS": target_srs,
+            }
+
+            if aoi is not None:
+                translate_options.update(
+                    {"projWin": aoi}
+                )
+
+            translate_options.update(kwargs)
+
+            if not attrs["globalproduct"] or target_srs != "EPSG:4326":
+
+                with self._mosaic(rasters,
+                                  target_srs=target_srs,
+                                  resample=resample,
+                                  dtype=dtype,
+                                  nodata=nodata,
+                                  resolution=output_res,
+                                 ) as warped_mosaic:
+
+                    log.debug("Writing to disk")
+
+                    write_check = self._translate(
+                        src=warped_mosaic,
+                        dst=filename,
+                        **translate_options
+                    )
+
+                    try:
+                        assert write_check, f"Error writing {filename}"
+                    except:
+                        raise
+                    finally:
+                        _ = [gdal.Unlink(x) for x in rasters]
+
+
+            else:
+
+                log.debug("Processing global file with EPSG:4326! Skipping warp")
+                assert len(rasters) == 1, "Expected only one raster!"
+
+                log.debug("Writing to disk")
+
+                write_check = self._translate(
+                    src=rasters[0],
+                    dst=filename,
+                    **translate_options
+                )
+
+                try:
+                    assert write_check, f"Error writing {filename}"
+                except:
+                    raise
+                finally:
+                    _ = [gdal.Unlink(x) for x in rasters]
+
+    @staticmethod
+    def _get_raster(file: Union[Path, str],
+                    dataset: str,
+                    clip_valid: bool,
+                    round_int: int,
+                    ix: int = None) -> str:
+
+        if dataset not in ["data", "sgrid"]:
+            raise NotImplementedError("_get_raster only implemented for datasetds 'data' and 'sgrid'")
+
+        with h5py.File(file, "r") as h5f_open:
+            ds = h5f_open.get(dataset)
+            assert ds, "Dataset doesn't exist!"
+            dataset_shape = ds.shape
+
+            if len(dataset_shape) < 2:
+                sgrid = True
+                attrs = dict(h5f_open.get("data").attrs)
+
+            else:
+                if ix is None:
+                    raise ValueError("Need index for 2-d dataset!")
+                sgrid = False
+                attrs = dict(ds.attrs)
+
+            chunks = ds.chunks
+            dtype = ds.dtype.num
+
+            driver = gdal.GetDriverByName('GTiff')
+            fn = f'/vsimem/{uuid4()}.tif'
+
+            raster = driver.Create(
+                fn,
+                int(attrs["RasterXSize"]),
+                int(attrs["RasterYSize"]),
+                1,
+                int(dtype),
+            )
+            raster.SetGeoTransform(attrs["geotransform"])
+            raster.SetProjection(attrs["projection"])
+
+            raster_band = raster.GetRasterBand(1)
+
+            if not sgrid:
+                raster_band.SetNoDataValue(int(attrs["nodata"]))
+
+            block_gen = ((x, x//attrs["RasterXSize"]) for x in range(0, dataset_shape[0], chunks[0]))
+
+            for yblock_ds, yblock in block_gen:
+
+                if sgrid:
+                    arr = ds[yblock_ds:(yblock_ds+chunks[0])]
+                else:
+                    arr = ds[yblock_ds:(yblock_ds+chunks[0]), ix]
+
+                if clip_valid:
+                    vmin, vmax = attrs["valid_range"]
+                    arr = np.clip(arr, vmin, vmax, out=arr, where=arr != attrs["nodata"])
+
+                if round_int is not None:
+                    arr = np.round(arr, round_int)
+
+                raster_band.WriteArray(
+                    arr.reshape(-1, int(attrs["RasterXSize"])),
+                    xoff=0,
+                    yoff=int(yblock)
+                )
+
+            raster_band.FlushCache()
+            raster.FlushCache()
+            raster_band, raster, driver = (None, None, None)
+
+            return fn
+
+    @staticmethod
+    @contextmanager
+    def _mosaic(input_rasters,
+                target_srs,
+                resample,
+                resolution,
+                dtype,
+                nodata):
+
+        vrt_tempname = f'/vsimem/{uuid4()}.vrt'
+        vrt = gdal.BuildVRT(vrt_tempname, input_rasters)
+        assert vrt
+        vrt.FlushCache()
+        vrt = None
+        log.debug("Created VRT")
+
+        wrp_tempname = f'/vsimem/{uuid4()}.tif'
+        wopt = gdal.WarpOptions(
+            dstSRS=target_srs,
+            outputType=dtype,
+            resampleAlg=resample,
+            xRes=resolution[0],
+            yRes=resolution[1],
+            srcNodata=nodata,
+            dstNodata=nodata,
+            multithread=True,
+        )
+
+        wrp = gdal.Warp(wrp_tempname, vrt_tempname, options=wopt)
+        assert wrp
+
+        log.debug("Created WRP")
+
+        yield wrp
+
+        log.debug("Performing Cleanup")
+
+        wrp = None
+        vrt = None
+
+        rc1 = gdal.Unlink(vrt_tempname)
+        rc2 = gdal.Unlink(wrp_tempname)
+        if rc1 != 0 or rc2 != 0:
+            log.warning("Received return codes [%s, %s] while removing MemRasters", rc1, rc2)
+
+    @staticmethod
+    def _translate(src, dst, **kwargs):
+
+        topt = gdal.TranslateOptions(**kwargs)
+
+        ds = gdal.Translate(dst, src, options=topt)
+        assert ds
+        ds = None
+        return True
+
+    @staticmethod
+    def _get_metadata(reference, dataset):
+        with h5py.File(reference, "r") as h5f_open:
+            ds = h5f_open.get(dataset)
+            assert ds
+
+            attrs = dict(h5f_open.get("data").attrs)
+            attrs["dataset_shape"] = ds.shape
+            attrs["nodata"] = ds.fillvalue
+            attrs["dtype"] = gdal.GetDataTypeByName(ds.dtype.name)
+
+        return attrs

@@ -181,7 +181,7 @@ class HDF5Base(object):
         if sds_filter is None:
             sds = sds_all[0][0]
         else:
-            sds, = [x[0] for x in sds_all if sds_filter in x[0]]
+            sds = [x[0] for x in sds_all if sds_filter in x[0]][0]
 
         sds_open = gdal.Open(sds)
         c, a, b, f, d, e = sds_open.GetGeoTransform()
@@ -267,7 +267,7 @@ class HDFHandler(object):
         for xx in x:
             try:
                 ds = gdal.Open(xx)
-                ds_sds, = [x[0] for x in ds.GetSubDatasets() if sds in x[0]]
+                ds_sds = [x[0] for x in ds.GetSubDatasets() if sds in x[0]][0]
                 yield gdal.Open(ds_sds)
                 ds = None
 
