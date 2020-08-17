@@ -14,10 +14,7 @@ from pathlib import Path
 from typing import Union, List
 from uuid import uuid4
 
-try:
-    import gdal
-except ImportError:
-    from osgeo import gdal
+from osgeo import gdal
 import h5py
 from modape.constants import DATE_LABELS
 from modape.exceptions import HDF5MosaicError

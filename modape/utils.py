@@ -16,11 +16,8 @@ import pickle
 from typing import List
 
 import numpy as np
+from osgeo import gdal
 import requests
-try:
-    import gdal
-except ImportError:
-    from osgeo import gdal
 
 from modape.whittaker import lag1corr, ws2d, ws2dp, ws2doptv, ws2doptvp # pylint: disable=no-name-in-module
 

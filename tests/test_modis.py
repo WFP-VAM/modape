@@ -10,10 +10,7 @@ from uuid import uuid4
 
 import numpy as np
 import h5py #pylint: disable=import-error
-try:
-    import gdal
-except ImportError:
-    from osgeo import gdal
+from osgeo import gdal
 
 from modape.exceptions import DownloadError, HDF5WriteError
 from modape.modis import ModisQuery, ModisRawH5, ModisSmoothH5, ModisMosaic

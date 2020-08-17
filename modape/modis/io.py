@@ -5,10 +5,7 @@ import logging
 from pathlib import Path
 from typing import List, Tuple
 
-try:
-    import gdal
-except ImportError:
-    from osgeo import gdal
+from osgeo import gdal
 import h5py
 import numpy as np
 
