@@ -4,45 +4,22 @@ Utility classes and functions used in MODIS processing chain.
 
 Author: Valentin Pesendorfer, April 2019
 """
-from __future__ import absolute_import, division, print_function
-
-from array import array
-import ctypes
+#pylint: disable=E0401
 import datetime
-import multiprocessing
-import multiprocessing.pool
-import os
-import pickle
 from typing import List
 
 import numpy as np
-from osgeo import gdal
 import requests
 
-from modape.whittaker import lag1corr, ws2d, ws2dp, ws2doptv, ws2doptvp # pylint: disable=no-name-in-module
 
 __all__ = [
     'SessionWithHeaderRedirection',
-    'NoDaemonProcess',
-    'Pool',
     'DateHelper',
-    'pdump',
-    'pload',
-    'dtype_GDNP',
-    'ldom',
     'fromjulian',
     'tvec',
     'pentvec',
     'dekvec',
-    'init_shared',
-    'tonumpyarray',
-    'init_parameters',
-    'init_worker',
-    'execute_ws2d',
-    'execute_ws2d_sgrid',
-    'execute_ws2d_vc',
     ]
-
 
 class SessionWithHeaderRedirection(requests.Session):
     """Session class for MODIS query.
@@ -75,24 +52,6 @@ class SessionWithHeaderRedirection(requests.Session):
             redirect_parsed = requests.utils.urlparse(url)
             if (original_parsed.hostname != redirect_parsed.hostname) and redirect_parsed.hostname != self.AUTH_HOST and original_parsed.hostname != self.AUTH_HOST:
                 del headers['Authorization']
-
-
-class NoDaemonProcess(multiprocessing.Process):
-    """Class for no-daemon process.
-
-    Enables a process to be spawned by another sub-process.
-    Adapted from https://stackoverflow.com/questions/17223301/python-multiprocessing-is-it-possible-to-have-a-pool-inside-of-a-pool/17229030#17229030
-    """
-    # make 'daemon' attribute always return False
-    def _get_daemon(self): # pylint: disable=no-self-use
-        return False
-    def _set_daemon(self, value):
-        pass
-    daemon = property(_get_daemon, _set_daemon)
-
-class Pool(multiprocessing.pool.Pool): # pylint: disable=abstract-method
-    """Processing pool which uses no-deamon processes."""
-    Process = NoDaemonProcess
 
 
 class DateHelper(object):
@@ -192,75 +151,6 @@ def check_sequential(
 
     return is_sequential
 
-
-def pdump(obj, filename):
-    """Pickle dump wrapper.
-
-    Args:
-        obj: Python object to be pickled
-        filename: name of target pickle file
-    """
-
-    with open(filename, 'wb') as pkl:
-        pickle.dump(obj, pkl)
-
-def pload(filename):
-    """Pickle load wrapper.
-
-    Args:
-        filename: name of target pickle file
-
-    Returns:
-        Pickled object
-    """
-
-    with open(filename, 'rb') as pkl:
-        return pickle.load(pkl)
-
-def dtype_GDNP(dt):
-    """GDAL/NP DataType helper.
-
-    Parses datatype in str or GDAL int.
-
-    Args:
-        dt: DataType (as string or INT)
-
-    Returns:
-        Tuple with DataType as GDAL integer and string
-    """
-
-    dt_dict = {
-        1: 'uint8',
-        2: 'uint16',
-        3: 'int16',
-        4: 'uint32',
-        5: 'int32',
-        6: 'float32',
-        7: 'float64',
-    }
-
-    dt_tuple = [(k, v) for k, v in dt_dict.items() if dt in (k, v)]
-    return dt_tuple[0]
-
-def ldom(x):
-    """Get last day of month.
-
-    Args:
-        x: Input date (as datetime)
-
-    Returns:
-        Datetime object
-    """
-
-    yr = x.year
-    mn = x.month
-    if mn == 12:
-        mn = 1
-        yr += 1
-    else:
-        mn += 1
-    return datetime.date(yr, mn, 1) - datetime.timedelta(days=1)
-
 def fromjulian(x):
     """Parses julian date string to datetime object.
 
@@ -323,190 +213,3 @@ def dekvec(yr):
         for x in ['05', '15', '25'] for y in [str(z).zfill(2)
                                               for z in range(1, 13)]
     ])
-
-def date2label(dates, tr):
-    """Get p or d labels for given list of dates
-
-    Args:
-        dates: list of dates
-        tr: temporal resolution (int)
-
-    Returns:
-        list of labels
-    """
-
-    PENTS = dict(zip([3, 8, 13, 18, 23, 28], ['p1', 'p2', 'p3', 'p4', 'p5', 'p6']))
-
-    DEKS = dict(zip([5, 15, 25], ['d1', 'd2', 'd3']))
-
-    if int(tr) == 5:
-
-        try:
-            labels = ['{}{:02d}{}'.format(fromjulian(x).year, fromjulian(x).month, PENTS[fromjulian(x).day]) for x in dates]
-        except KeyError:
-            raise ValueError('Error getting labels from days! Check if supplied temporal resolution matches with dates!')
-
-    elif int(tr) == 10:
-        try:
-            labels = ['{}{:02d}{}'.format(fromjulian(x).year, fromjulian(x).month, DEKS[fromjulian(x).day]) for x in dates]
-        except KeyError:
-            raise ValueError('Error getting labels from days! Check if supplied temporal resolution matches with dates!')
-
-    else:
-        raise ValueError('Temporal resolution has to be 5 or 10!')
-
-    return labels
-
-
-def init_shared(ncell):
-    """Create shared value array for smoothing.
-
-    Args:
-        ncell: number of cells in the array
-
-    Returns:
-        base of shared array
-    """
-
-    shared_array_base = multiprocessing.Array(ctypes.c_double, ncell, lock=False)
-    return shared_array_base
-
-def tonumpyarray(shared_array):
-    """Create numpy array from shared memory.
-
-    Args:
-        shared_array: base of shared array
-
-    Returns:
-        numpy array
-    """
-    nparray = np.frombuffer(shared_array, dtype=ctypes.c_double)
-    assert nparray.base is shared_array
-    return nparray
-
-def init_parameters(**kwargs):
-    """Initialize parameters for smoothing in workers.
-
-    Returns:
-         dict with kwargs containing processing parameters for worker
-    """
-
-    params = {}
-    for key, value in kwargs.items():
-        params[key] = value
-    return params
-
-def init_worker(shared_array_, parameters_):
-    """Initialize worker for smoothing.
-
-    Args:
-        shared_array_: Object returned by init_shared
-        parameters_: Dictionary returned by init_parameters
-    """
-
-    global arr_raw
-    global arr_smooth
-    global arr_sgrid
-    global parameters
-
-    arr_raw = tonumpyarray(shared_array_)
-    parameters = parameters_
-    arr_raw.shape = parameters['rdim']
-    try:
-        arr_sgrid = tonumpyarray(parameters['shared_array_sgrid'])
-    except (KeyError, AttributeError):
-        arr_sgrid = None
-    try:
-        arr_smooth = tonumpyarray(parameters['shared_array_smooth'])
-        arr_smooth.shape = parameters['sdim']
-    except (KeyError, AttributeError):
-        arr_smooth = None
-
-def execute_ws2d(ix):
-    """Execute whittaker smoother with fixed s in worker.
-
-    Args:
-        ix: Row index for array
-    """
-
-    arr_raw[ix, :] = ws2d(y=arr_raw[ix, :],
-                          lmda=10**parameters['s'],
-                          w=np.array((arr_raw[ix, :] != parameters['nd'])*1, dtype='double'))
-
-    if parameters['shared_array_smooth']:
-        z2 = parameters['vec_dly'].copy()
-        z2[z2 != parameters['nd']] = arr_raw[ix, :]
-        z2[...] = ws2d(y=z2,
-                       lmda=0.0001,
-                       w=np.array((z2 != parameters['nd'])*1, dtype='double'))
-
-        arr_smooth[ix, :] = z2[parameters['dix']]
-
-def execute_ws2d_sgrid(ix):
-    """Execute whittaker smoother with s from grid in worker.
-
-    Args:
-        ix: Row index for array
-    """
-
-    if not parameters['p']:
-
-        arr_raw[ix, :] = ws2d(y=arr_raw[ix, :],
-                              lmda=10**arr_sgrid[ix],
-                              w=np.array((arr_raw[ix, :] != parameters['nd'])*1, dtype='double'))
-    else:
-        arr_raw[ix, :] = ws2dp(y=arr_raw[ix, :],
-                               lmda=10**arr_sgrid[ix],
-                               w=np.array((arr_raw[ix, :] != parameters['nd'])*1, dtype='double'),
-                               p=parameters['p'])
-
-    if parameters['shared_array_smooth']:
-        z2 = parameters['vec_dly'].copy()
-        z2[z2 != parameters['nd']] = arr_raw[ix, :]
-        z2[...] = ws2d(y=z2,
-                       lmda=0.0001,
-                       w=np.array((z2 != parameters['nd'])*1, dtype='double'))
-
-        arr_smooth[ix, :] = z2[parameters['dix']]
-
-def execute_ws2d_vc(ix):
-    """Execute whittaker smoother with V-curve optimization of s in worker.
-
-    If no p-Value is supplied, the normal V-curve smoothing (ws2doptv) will be executed.
-    If a p-Value but no srange is supplied, the srange will be determined on a per-pixel
-    basis depending on the lag-1-correlation of the time series.
-
-    Args:
-        ix: Row index for array
-    """
-
-    if not parameters['p']:
-        arr_raw[ix, :], arr_sgrid[ix] = ws2doptv(y=arr_raw[ix, :],
-                                                 w=np.array((arr_raw[ix, :] != parameters['nd'])*1, dtype='double'),
-                                                 llas=array('d', parameters['srange']))
-    else:
-        if not isinstance(parameters['srange'], np.ndarray):
-            lc = lag1corr(arr_raw[ix, :-1],
-                          arr_raw[ix, 1:],
-                          int(parameters['nd']))
-            if lc > 0.5:
-                srange = np.arange(-2, 1.2, 0.2).round(2)
-            elif lc <= 0.5:
-                srange = np.arange(0, 3.2, 0.2).round(2)
-            else:
-                srange = np.arange(-1, 1.2, 0.2).round(2)
-        else:
-            srange = parameters['srange']
-
-        arr_raw[ix, :], arr_sgrid[ix] = ws2doptvp(y=arr_raw[ix, :],
-                                                  w=np.array((arr_raw[ix, :] != parameters['nd'])*1, dtype='double'),
-                                                  llas=array('d', srange),
-                                                  p=parameters['p'])
-
-    if parameters['shared_array_smooth']:
-        z2 = parameters['vec_dly'].copy()
-        z2[z2 != parameters['nd']] = arr_raw[ix, :]
-        z2[...] = ws2d(y=z2,
-                       lmda=0.0001,
-                       w=np.array((z2 != parameters['nd'])*1, dtype='double'))
-        arr_smooth[ix, :] = z2[parameters['dix']]
