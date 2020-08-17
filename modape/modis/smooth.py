@@ -141,7 +141,7 @@ class ModisSmoothH5(HDF5Base):
     def smooth(self,
                svalue: float = None,
                p: float = None,
-               voptimize: bool = None,
+               soptimize: bool = None,
                srange: np.ndarray = None,
                nsmooth: int = 0,
                nupdate: int = 0,
@@ -151,7 +151,7 @@ class ModisSmoothH5(HDF5Base):
         Args:
             svalue (float): Log10 value of smoothing parameter S (for fixed smoothing).
             p (float): P value for asymmetric smoothing.
-            voptimize (bool): Flag for V-curve optimization.
+            soptimize (bool): Flag for V-curve optimization.
             srange (np.ndarray): S-range for V-curve optimization.
             nsmooth (int): Number of raw timesteps for smoothing.
             nupdate (int): Number of smooth timesteps updated in file.
@@ -164,7 +164,7 @@ class ModisSmoothH5(HDF5Base):
             if nsmooth < nupdate:
                 raise ValueError('nsmooth must be bigger or equal (>=) to nupdate!')
 
-        if voptimize and srange is not None:
+        if soptimize and srange is not None:
             if not isinstance(srange, np.ndarray):
                 raise ValueError("srange needs to be supplied as numpy array")
 
@@ -244,7 +244,7 @@ class ModisSmoothH5(HDF5Base):
             arr_out=arr_raw,
             )
 
-        if voptimize or svalue is None:
+        if soptimize or svalue is None:
             sgrid_generator = self.read_chunked(dataset="sgrid")
         else:
             sgrid_generator = None
@@ -268,7 +268,7 @@ class ModisSmoothH5(HDF5Base):
 
             for ix in map_index:
 
-                if voptimize:
+                if soptimize:
                     log.debug("Running V-curve optimization")
                     if srange is None:
                         lag_correlation = lag1corr(arr_raw[ix, :-1], arr_raw[ix, 1:], nodata)
@@ -346,7 +346,7 @@ class ModisSmoothH5(HDF5Base):
             chunk_counter += 1
 
         # processing information for modis_info
-        if voptimize:
+        if soptimize:
             processing_info = {"lastrun": "V-curve optimization of s"}
 
         else:

@@ -291,7 +291,7 @@ class TestConsoleScripts(unittest.TestCase):
                  "--tempint-start", "2001001",
                  "--nsmooth", 10,
                  "--nupdate", 10,
-                 "--voptimize",
+                 "--soptimize",
                  "--last-collected", "2002001",
                 ])
 
@@ -309,7 +309,7 @@ class TestConsoleScripts(unittest.TestCase):
             self.assertEqual(mkwargs["p"], 0.90)
             self.assertEqual(mkwargs["nsmooth"], 10)
             self.assertEqual(mkwargs["nupdate"], 10)
-            self.assertTrue(mkwargs["voptimize"])
+            self.assertTrue(mkwargs["soptimize"])
 
             self.assertEqual(result.exit_code, 0)
 

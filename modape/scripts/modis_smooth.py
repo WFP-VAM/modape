@@ -29,7 +29,7 @@ log = logging.getLogger(__name__)
 @click.option("--tempint-start", type=click.DateTime(formats=["%Y-%m-%d", "%Y%j"]), help="Startdate for temporal interpolation")
 @click.option("-n", "--nsmooth", type=click.INT, default=0, help="Number of raw timesteps used for smoothing")
 @click.option("-u", "--nupdate", type=click.INT, default=0, help="Number of smoothed timesteps to be updated in HDF5 file")
-@click.option("--voptimize", is_flag=True, help="Use V-curve for s value optimization")
+@click.option("--soptimize", is_flag=True, help="Use V-curve for s value optimization")
 @click.option("--parallel-tiles", type=click.INT, help="Number of tiles processed in parallel", default=1)
 @click.option('--last-collected', type=click.DateTime(formats=['%Y%j']), help='Last collected date in julian format (YYYYDDD - %Y%j)')
 def cli(src: str,
@@ -41,7 +41,7 @@ def cli(src: str,
         tempint_start: str,
         nsmooth: int,
         nupdate: int,
-        voptimize: bool,
+        soptimize: bool,
         parallel_tiles: int,
         last_collected: str,
         ) -> None:
@@ -74,7 +74,7 @@ def cli(src: str,
         tempint_start (str): Start date for custom temporal interpolation.
         nsmooth (int): Number of raw timesteps used for smoothing".
         nupdate (int): Number of smoothed timesteps to be updated in HDF5 file.
-        voptimize (bool): Flag for V-Curve optimization of S.
+        soptimize (bool): Flag for V-Curve optimization of S.
         parallel_tiles (int): Number of paralell HDF5s being processed.
         last_collected (str): Last collected rawdate on which smoothing is performed on.
 
@@ -141,7 +141,7 @@ def cli(src: str,
         p=pvalue,
         nsmooth=nsmooth,
         nupdate=nupdate,
-        voptimize=voptimize,
+        soptimize=soptimize,
     )
 
     if parallel_tiles > 1:
@@ -211,8 +211,8 @@ def _worker(rawfile: str,
     )
 
     if not smt_h5.exists:
-        if not kwargs["voptimize"] and not kwargs["svalue"]:
-            msg = "Smoothing requires Sgrid which has not been initialized. Please run --voptimize first!"
+        if not kwargs["soptimize"] and not kwargs["svalue"]:
+            msg = "Smoothing requires Sgrid which has not been initialized. Please run --soptimize first!"
             raise SgridNotInitializedError(msg)
         smt_h5.create()
 

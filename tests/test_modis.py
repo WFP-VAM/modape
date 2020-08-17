@@ -641,7 +641,7 @@ class TestModisSmooth(unittest.TestCase):
             smtH5.smooth(nsmooth=1, nupdate=2)
 
         with self.assertRaises(ValueError):
-            smtH5.smooth(voptimize=True, srange=[1, 2, 3])
+            smtH5.smooth(soptimize=True, srange=[1, 2, 3])
 
         ts_test = ones[0, :].copy()
 
@@ -690,7 +690,7 @@ class TestModisSmooth(unittest.TestCase):
         with patch("modape.modis.smooth.ws2doptv") as mocked_whit:
             mocked_read.return_value = iter([ones[:, 0]])
             mocked_whit.return_value = (ts_test, 10)
-            smtH5.smooth(voptimize=True)
+            smtH5.smooth(soptimize=True)
 
         mocked_whit.assert_called()
         self.assertEqual(mocked_whit.call_count, self.y_chunksize)
@@ -703,7 +703,7 @@ class TestModisSmooth(unittest.TestCase):
             mocked_read.return_value = iter([ones[:, 0]])
             mocked_whit.return_value = (ts_test, 10)
             with patch("modape.modis.smooth.lag1corr", return_value=0.1):
-                smtH5.smooth(voptimize=True)
+                smtH5.smooth(soptimize=True)
 
         mocked_whit.assert_called()
         self.assertEqual(mocked_whit.call_count, self.y_chunksize)
@@ -714,7 +714,7 @@ class TestModisSmooth(unittest.TestCase):
             mocked_read.return_value = iter([ones[:, 0]])
             mocked_whit2.return_value = (ts_test, 10)
             with patch("modape.modis.smooth.lag1corr", return_value=0.8):
-                smtH5.smooth(voptimize=True, p=0.9)
+                smtH5.smooth(soptimize=True, p=0.9)
 
         mocked_whit1.assert_not_called()
         mocked_whit2.assert_called()
