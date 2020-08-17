@@ -5,6 +5,8 @@ Author: Valentin Pesendorfer, April 2019
 e-mail: valentin.pesendorfer@wfp.org
 License: MIT
 '''
+import logging
+logging.basicConfig(level=logging.INFO)
 
 __all__ = [
     'whittaker',
