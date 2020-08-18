@@ -28,6 +28,9 @@
       - Improved control over gdal's `creationOptions`, including ability to pass kwargs directly to `gdal.Translate` (#89)
       - Optional clipping to valid data range or MODIS NDVI and LST (#88)
       - Optional rounding of integers to exponents of 10 (#88)
+    - Reworked `csv_smooth.py`
+      - New executable script
+      - fix #83
 
 - ## v 0.3
   - #### v 0.3.0:
