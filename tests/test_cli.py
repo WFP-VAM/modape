@@ -1,6 +1,8 @@
 """test_cli.py: Test command line scripts."""
 #pylint: disable=E0401
+from array import array
 from datetime import date
+from os.path import exists
 from pathlib import Path
 import shutil
 import unittest
@@ -11,7 +13,9 @@ from modape.scripts.modis_download import cli as modis_download_cli
 from modape.scripts.modis_collect import cli as modis_collect_cli
 from modape.scripts.modis_smooth import cli as modis_smooth_cli
 from modape.scripts.modis_window import cli as modis_window_cli
+from modape.scripts.csv_smooth import cli as csv_smooth_cli
 import numpy as np
+import pandas as pd
 
 from test_modis import create_h5temp
 
@@ -440,3 +444,51 @@ class TestConsoleScripts(unittest.TestCase):
             self.assertEqual(result.exit_code, 1)
             mock_init.assert_not_called()
             mocked_mosaic.assert_not_called()
+
+    @patch("modape.scripts.csv_smooth.ws2doptvp", return_value=(np.random.rand(100), 10))
+    @patch("modape.scripts.csv_smooth.ws2doptv", return_value=(np.random.rand(100), 10))
+    @patch("modape.scripts.csv_smooth.ws2d", return_value=np.random.rand(100))
+    def test_csv_smooth(self, mock_ws2d, mock_ws2doptv, mock_ws2doptvp):
+        """Test csv_smooth,py"""
+        result = self.runner.invoke(csv_smooth_cli, ["/tmp/not_an_existing.csv"])
+        self.assertEqual(result.exit_code, 2)
+
+        result = self.runner.invoke(csv_smooth_cli, ["/tmp/not_a_csv.txt"])
+        self.assertEqual(result.exit_code, 2)
+
+        testfile = "/tmp/test.csv"
+        _ = pd.DataFrame({"TS1": np.random.rand(100), "TS2": np.random.rand(100)}).to_csv(testfile)
+
+        result = self.runner.invoke(csv_smooth_cli, [testfile])
+        self.assertEqual(result.exit_code, 1)
+
+        result = self.runner.invoke(csv_smooth_cli, [testfile, "-s", "0.1"])
+        mock_ws2d.assert_called()
+        self.assertEqual(result.exit_code, 0)
+        self.assertTrue(exists("/tmp/test_filt0.csv"))
+
+        default_srange = array("d", np.arange(0, 4.1, 0.1).round(2))
+
+        result = self.runner.invoke(csv_smooth_cli, [testfile, "--soptimize"])
+        mock_ws2doptv.assert_called()
+        margs, _ = mock_ws2doptv.call_args
+        self.assertEqual(result.exit_code, 0)
+        self.assertTrue(exists("/tmp/test_filtoptv.csv"))
+        np.testing.assert_array_equal(margs[2], default_srange)
+
+        mock_ws2doptv.reset_mock()
+        mock_ws2doptv.return_value = (np.random.rand(100), 10)
+
+        custom_srange = array("d", np.arange(-2, 2.2, 0.2).round(2))
+        result = self.runner.invoke(csv_smooth_cli, [testfile, "--soptimize", "--srange", "-2.0", "2.0", "0.2"])
+        mock_ws2doptv.assert_called()
+        margs, _ = mock_ws2doptv.call_args
+        self.assertEqual(result.exit_code, 0)
+        np.testing.assert_array_equal(margs[2], custom_srange)
+
+        result = self.runner.invoke(csv_smooth_cli, [testfile, "--soptimize", "-p", "0.90"])
+        mock_ws2doptvp.assert_called()
+        self.assertEqual(result.exit_code, 0)
+        self.assertTrue(exists("/tmp/test_filtoptvp.csv"))
+
+        _ = [x.unlink() for x in Path("/tmp/").glob("*csv")]
