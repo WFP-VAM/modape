@@ -53,10 +53,8 @@ setup(
             'modis_collect=modape.scripts.modis_collect:cli_wrap',
             'modis_smooth=modape.scripts.modis_smooth:cli_wrap',
             'modis_window=modape.scripts.modis_window:cli_wrap',
-            'modis_info=modape.scripts.modis_info:main',
-            'modis_product_table=modape.scripts.modis_product_table:main',
             'csv_smooth=modape.scripts.csv_smooth:cli_wrap',
-            'rts_smooth=modape.scripts.rts_smooth:main',
+            'modis_info=modape.scripts.modis_info:main',
             'modape_version=_version.version_info:main',
         ]
     },
