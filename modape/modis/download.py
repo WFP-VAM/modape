@@ -53,7 +53,7 @@ class ModisQuery(object):
             version (str): MODIS collection version.
         """
 
-        assert products, 'No product IDs supplied!'
+        assert products, "No product IDs supplied!"
 
         self.begin = begindate
         self.end = enddate
@@ -102,19 +102,19 @@ class ModisQuery(object):
         for result in self._parse_response(results_all):
 
             # skip tiles outside of filter
-            if self.tile_filter and result['tile']:
-                if result['tile'] not in self.tile_filter:
+            if self.tile_filter and result["tile"]:
+                if result["tile"] not in self.tile_filter:
                     continue
 
             # enforce dates if required
 
             if strict_dates:
                 if self.begin is not None:
-                    if result['time_start'] < self.begin.date():
+                    if result["time_start"] < self.begin.date():
                         continue
 
                 if self.end is not None:
-                    if result['time_end'] > self.end.date():
+                    if result["time_end"] > self.end.date():
                         continue
 
             self.results.append(result)
@@ -137,20 +137,20 @@ class ModisQuery(object):
 
         """
 
-        tile_regxp = re.compile(r'.+(h\d+v\d+).+')
+        tile_regxp = re.compile(r".+(h\d+v\d+).+")
 
         for entry in query:
 
             entry_parsed = dict(
-                file_id=entry['producer_granule_id'],
-                time_start=pd.Timestamp(entry['time_start']).date(),
-                time_end=pd.Timestamp(entry['time_end']).date(),
-                updated=entry['updated'],
-                link=entry['links'][0]['href'],
+                file_id=entry["producer_granule_id"],
+                time_start=pd.Timestamp(entry["time_start"]).date(),
+                time_end=pd.Timestamp(entry["time_end"]).date(),
+                updated=entry["updated"],
+                link=entry["links"][0]["href"],
             )
 
             try:
-                tile = tile_regxp.search(entry_parsed['file_id']).group(1)
+                tile = tile_regxp.search(entry_parsed["file_id"]).group(1)
             except AttributeError:
                 tile = None
 
@@ -178,7 +178,7 @@ class ModisQuery(object):
 
         """
 
-        filename = destination.joinpath(url.split('/')[-1])
+        filename = destination.joinpath(url.split("/")[-1])
 
         if not exists(filename) or overwrite:
 
@@ -227,18 +227,18 @@ class ModisQuery(object):
 
             retries = Retry(total=5, backoff_factor=1, status_forcelist=[502, 503, 504])
             session.mount(
-                'https://',
+                "https://",
                 HTTPAdapter(pool_connections=nthreads, pool_maxsize=nthreads*2, max_retries=retries)
             )
 
             if multithread:
                 log.debug("Multithreaded download using %s threads. Warming up connection pool.", nthreads)
                 # warm up pool
-                _ = session.get(self.results[0]['link'], stream=True, allow_redirects=True)
+                _ = session.get(self.results[0]["link"], stream=True, allow_redirects=True)
 
                 with ThreadPoolExecutor(nthreads) as executor:
 
-                    futures = [executor.submit(self._fetch_hdf, session, x['link'], targetdir, overwrite)
+                    futures = [executor.submit(self._fetch_hdf, session, x["link"], targetdir, overwrite)
                                for x in self.results]
 
                 downloaded_files = [x.result() for x in futures]
@@ -250,7 +250,7 @@ class ModisQuery(object):
                 for result in self.results:
 
                     downloaded_files.append(
-                        self._fetch_hdf(session, result['link'], targetdir, overwrite)
+                        self._fetch_hdf(session, result["link"], targetdir, overwrite)
                     )
 
         errors = []

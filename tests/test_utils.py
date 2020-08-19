@@ -12,7 +12,7 @@ class TestUtils(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        with open('{}/data/MXD_dates.pkl'.format(os.path.dirname(__file__).replace('tests', 'modape')), 'rb') as pkl:
+        with open("{}/data/MXD_dates.pkl".format(os.path.dirname(__file__).replace("tests", "modape")), "rb") as pkl:
             cls.dates = pickle.load(pkl)
 
     @classmethod
@@ -34,7 +34,7 @@ class TestUtils(unittest.TestCase):
 
     def test_fj(self):
         """Testing ldom and fromjulian."""
-        test_day = fromjulian('2016032')
+        test_day = fromjulian("2016032")
 
         self.assertEqual(test_day.year, 2016)
         self.assertEqual(test_day.month, 2)
@@ -42,7 +42,7 @@ class TestUtils(unittest.TestCase):
 
     def test_tvec(self):
         """Testing tvec."""
-        self.assertEqual(tvec(2003, 8), [x for x in self.dates if '2003' in x])
+        self.assertEqual(tvec(2003, 8), [x for x in self.dates if "2003" in x])
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

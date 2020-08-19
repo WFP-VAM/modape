@@ -47,7 +47,7 @@ class HDF5Base(object):
 
         """
 
-        with h5py.File(self.filename, 'r') as h5f_open:
+        with h5py.File(self.filename, "r") as h5f_open:
 
             ds = h5f_open.get(dataset)
             assert ds, f"Dataset '{dataset}' not found!"
@@ -74,7 +74,7 @@ class HDF5Base(object):
 
         for yb in range(0, ds_shape[0], ychunk):
 
-            with h5py.File(self.filename, 'r') as h5f_open:
+            with h5py.File(self.filename, "r") as h5f_open:
                 ds = h5f_open.get(dataset)
 
                 if xsize is not None:
@@ -113,7 +113,7 @@ class HDF5Base(object):
         assert isinstance(arr_in, np.ndarray), "arr_in must be 2-d numpy array!"
         assert arr_in.ndim <= 2, "Expected 1-d or 2-d array as input!"
 
-        with h5py.File(self.filename, 'r+') as h5f_open:
+        with h5py.File(self.filename, "r+") as h5f_open:
 
             ds = h5f_open.get(dataset)
             assert ds, f"Dataset '{dataset}' not found!"
@@ -189,7 +189,7 @@ class HDF5Base(object):
             geotransform=(c, a, b, f, d, e),
             projection=sds_open.GetProjection(),
             resolution=(a, e),
-            nodata=int(sds_open.GetMetadataItem('_FillValue')),
+            nodata=int(sds_open.GetMetadataItem("_FillValue")),
         )
 
         sds_open = None

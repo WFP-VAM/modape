@@ -59,7 +59,7 @@ class ModisSmoothH5(HDF5Base):
             self.temporalresolution = None
 
         # Filename for smoothed HDF5
-        rawfile_trunk = self.rawfile.name.split('.')
+        rawfile_trunk = self.rawfile.name.split(".")
         smoothfile_trunk = ".".join(
             rawfile_trunk[:-2] + \
             ["tx"+txflag] + \
@@ -75,13 +75,13 @@ class ModisSmoothH5(HDF5Base):
 
         # Try reading info from raw HDF5
         #pylint: disable=R1721
-        with h5py.File(self.rawfile, 'r') as h5f_raw:
-            dset = h5f_raw.get('data')
+        with h5py.File(self.rawfile, "r") as h5f_raw:
+            dset = h5f_raw.get("data")
             rawshape = dset.shape
             rawchunks = dset.chunks
             datatype = dset.dtype
             compression = dset.compression
-            raw_dates_all = [x.decode() for x in h5f_raw.get('dates')[...]]
+            raw_dates_all = [x.decode() for x in h5f_raw.get("dates")[...]]
             raw_attrs = {key:value for key, value in dset.attrs.items()}
 
         if self.temporalresolution is None:
@@ -100,35 +100,35 @@ class ModisSmoothH5(HDF5Base):
         ncols = raw_attrs["RasterXSize"]
 
         try:
-            with h5py.File(self.filename, 'x', libver='latest') as h5f:
+            with h5py.File(self.filename, "x", libver="latest") as h5f:
 
-                dset = h5f.create_dataset('data',
+                dset = h5f.create_dataset("data",
                                           shape=(rawshape[0], dates_length),
                                           dtype=datatype, maxshape=(rawshape[0], None),
                                           chunks=rawchunks,
                                           compression=compression,
                                           fillvalue=raw_attrs["nodata"])
 
-                h5f.create_dataset('sgrid',
+                h5f.create_dataset("sgrid",
                                    shape=(nrows*ncols,),
-                                   dtype='float32',
+                                   dtype="float32",
                                    maxshape=(nrows*ncols,),
                                    chunks=(rawchunks[0],),
                                    compression=compression)
 
-                h5f.create_dataset('dates',
+                h5f.create_dataset("dates",
                                    shape=(dates_length,),
                                    maxshape=(None,),
-                                   dtype='S8',
+                                   dtype="S8",
                                    compression=compression,
-                                   data=np.array(dates.target, dtype='S8'))
+                                   data=np.array(dates.target, dtype="S8"))
 
-                h5f.create_dataset('rawdates',
+                h5f.create_dataset("rawdates",
                                    shape=(len(raw_dates_all),),
                                    maxshape=(None,),
-                                   dtype='S8',
+                                   dtype="S8",
                                    compression=compression,
-                                   data=np.array(raw_dates_all, dtype='S8'))
+                                   data=np.array(raw_dates_all, dtype="S8"))
 
                 raw_attrs["temporalresolution"] = tempres
                 dset.attrs.update(raw_attrs)
@@ -162,7 +162,7 @@ class ModisSmoothH5(HDF5Base):
 
         if (nsmooth != 0) and (nupdate != 0):
             if nsmooth < nupdate:
-                raise ValueError('nsmooth must be bigger or equal (>=) to nupdate!')
+                raise ValueError("nsmooth must be bigger or equal (>=) to nupdate!")
 
         if soptimize and srange is not None:
             if not isinstance(srange, np.ndarray):
@@ -170,39 +170,39 @@ class ModisSmoothH5(HDF5Base):
 
         log.info("Runnig smoother on %s", str(self.filename))
 
-        processing_starttime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        processing_starttime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         log.debug("Reading metadata from HDF5s")
-        with h5py.File(self.rawfile, 'r') as h5f_open:
-            raw_ds = h5f_open.get('data')
+        with h5py.File(self.rawfile, "r") as h5f_open:
+            raw_ds = h5f_open.get("data")
             raw_chunks = raw_ds.chunks
             raw_attrs = dict(raw_ds.attrs.items())
-            raw_dates_all = [x.decode() for x in h5f_open.get('dates')[...]]
+            raw_dates_all = [x.decode() for x in h5f_open.get("dates")[...]]
             raw_dates_nsmooth = raw_dates_all[-nsmooth:]
 
-        with h5py.File(self.filename, 'r') as h5f_open:
-            smt_ds = h5f_open.get('data')
+        with h5py.File(self.filename, "r") as h5f_open:
+            smt_ds = h5f_open.get("data")
             smt_attrs = smt_ds.attrs
             smt_shape = smt_ds.shape
             smt_chunks = smt_ds.chunks
-            temporalresolution = smt_attrs['temporalresolution']
+            temporalresolution = smt_attrs["temporalresolution"]
             tshift = int(smt_attrs["tshift"])
 
             dates = DateHelper(rawdates=raw_dates_all,
-                               rtres=int(raw_attrs['temporalresolution']),
+                               rtres=int(raw_attrs["temporalresolution"]),
                                stres=int(temporalresolution),
                                start=self.startdate)
 
             # Resize if date list is bigger than shape of smoothed data
             if dates.target_length > smt_shape[1]:
                 log.debug("Resizing dataset! Current %s, required %s", smt_shape[1], dates.target_length)
-                smt_dates = h5f_open.get('dates')
+                smt_dates = h5f_open.get("dates")
                 smt_dates.resize((dates.target_length,))
                 smt_ds.resize((smt_shape[0], dates.target_length))
-                smt_dates[...] = np.array(dates.target, dtype='S8')
+                smt_dates[...] = np.array(dates.target, dtype="S8")
                 smt_shape = smt_ds.shape
 
-            smt_dates_all = [x.decode() for x in h5f_open.get('dates')[...]]
+            smt_dates_all = [x.decode() for x in h5f_open.get("dates")[...]]
 
         nodata = raw_attrs["nodata"]
         dix = dates.getDIX(nupdate)
@@ -215,20 +215,20 @@ class ModisSmoothH5(HDF5Base):
 
         new_dim = smt_shape[1] - smt_offset
 
-        arr_raw = np.zeros((raw_chunks[0], len(raw_dates_nsmooth)), dtype='double')
+        arr_raw = np.zeros((raw_chunks[0], len(raw_dates_nsmooth)), dtype="double")
 
         # Create weights array
         wts = arr_raw.copy()
 
         if self.tinterpolate:
             log.debug("Temporal interpolation triggered!")
-            arr_smt = np.zeros((smt_chunks[0], new_dim), dtype='double')
+            arr_smt = np.zeros((smt_chunks[0], new_dim), dtype="double")
             vector_daily = dates.getDV(nodata)
             array_offset = 0
 
             # Shift for interpolation
             for rdate in raw_dates_nsmooth:
-                rdate_shift = (fromjulian(rdate) + timedelta(tshift)).strftime('%Y%j')
+                rdate_shift = (fromjulian(rdate) + timedelta(tshift)).strftime("%Y%j")
                 dd_index = dates.daily.index(rdate_shift)
                 vector_daily[dd_index] = -1
         else:
@@ -282,12 +282,12 @@ class ModisSmoothH5(HDF5Base):
                     if p is not None:
                         arr_raw[ix, :], arr_sgrid[ix] = ws2doptvp(y=arr_raw[ix, :],
                                                                   w=wts[ix, :],
-                                                                  llas=array('d', sr),
+                                                                  llas=array("d", sr),
                                                                   p=p)
                     else:
                         arr_raw[ix, :], arr_sgrid[ix] = ws2doptv(y=arr_raw[ix, :],
                                                                  w=wts[ix, :],
-                                                                 llas=array('d', sr))
+                                                                 llas=array("d", sr))
 
                 else:
                     log.debug("Using fixed S")
@@ -359,12 +359,12 @@ class ModisSmoothH5(HDF5Base):
             processing_info.update({"pvalue": p})
             processing_info["lastrun"] = processing_info["lastrun"] + f" and with P-value of {p}"
 
-        with h5py.File(self.filename, 'r+') as h5f_open:
+        with h5py.File(self.filename, "r+") as h5f_open:
             smt_ds = h5f_open.get("data")
 
             if p is None:
                 try:
-                    del smt_ds.attrs['pvalue']
+                    del smt_ds.attrs["pvalue"]
                 except KeyError:
                     pass
 
@@ -374,15 +374,15 @@ class ModisSmoothH5(HDF5Base):
 
             smt_ds.attrs.update(processing_info)
 
-            dates_ds = h5f_open.get('rawdates')
-            dates_ds[...] = np.array(raw_dates_all, dtype='S8')
+            dates_ds = h5f_open.get("rawdates")
+            dates_ds[...] = np.array(raw_dates_all, dtype="S8")
 
     @property
     def last_collected(self):
         """Last collected date in file"""
         assert self.exists, "File doesn't exist!"
 
-        with h5py.File(self.filename, 'r') as h5_open:
+        with h5py.File(self.filename, "r") as h5_open:
             dates = h5_open.get("rawdates")
             last_date = dates[-1].decode()
 
@@ -396,7 +396,7 @@ class ModisSmoothH5(HDF5Base):
         z2[...] = ws2d(
             y=z2,
             lmda=0.0001,
-            w=np.array((z2 != nodata) * 1, dtype='double')
+            w=np.array((z2 != nodata) * 1, dtype="double")
         )
 
         return z2[dix]

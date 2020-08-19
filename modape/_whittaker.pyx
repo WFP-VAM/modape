@@ -17,7 +17,7 @@ import numpy as np
 tFloat = np.double
 ctypedef np.double_t dtype_t
 
-__all__ = ['lag1corr', 'ws2d', 'ws2dp', 'ws2doptv', 'ws2doptvp']
+__all__ = ["lag1corr", "ws2d", "ws2dp", "ws2doptv", "ws2doptvp"]
 
 cpdef lag1corr(np.ndarray[dtype_t] data1, np.ndarray[dtype_t] data2, double nd):
     """Calculates Lag-1 autocorrelation.
@@ -65,7 +65,7 @@ cpdef lag1corr(np.ndarray[dtype_t] data1, np.ndarray[dtype_t] data2, double nd):
     return (cross_mean - mean1 * mean2) / (std1 * std2)
 
 cpdef ws2d(np.ndarray[dtype_t] y, double lmda, np.ndarray[dtype_t] w):
-    cdef array dbl_array_template = array('d', [])
+    cdef array dbl_array_template = array("d", [])
     cdef int i, i1, i2, m, n
     cdef array z, d, c, e
 
@@ -118,7 +118,7 @@ cdef _ws2d(np.ndarray[dtype_t] y, double lmda, array[double] w):
         smoothed time-series array z
     """
 
-    cdef array dbl_array_template = array('d', [])
+    cdef array dbl_array_template = array("d", [])
     cdef int i, i1, i2, m, n
     cdef array z, d, c, e
 
@@ -171,7 +171,7 @@ cpdef ws2dp(np.ndarray[dtype_t] y, double lmda, np.ndarray[dtype_t] w, double p)
   Returns:
       Smoothed time-series array z
   """
-  cdef array template = array('d', [])
+  cdef array template = array("d", [])
   cdef int m, i, j
   cdef double y_tmp, z_tmp, p1
 
@@ -180,7 +180,7 @@ cpdef ws2dp(np.ndarray[dtype_t] y, double lmda, np.ndarray[dtype_t] w, double p)
   j = 0
   p1 = 1-p
 
-  template = array('d', [])
+  template = array("d", [])
   z = clone(template, m, True)
   znew = clone(template, m, True)
   wa = clone(template, m, False)
@@ -224,7 +224,7 @@ cpdef ws2doptv(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[double] llas)
     Returns:
         Smoothed time-series array z and optimized lambda (S) value lopt
     """
-    cdef array template = array('d', [])
+    cdef array template = array("d", [])
     cdef array fits, pens, diff1, lamids, v, z
     cdef int m, m1, m2, nl, nl1, lix, i, k
     cdef double w_tmp, y_tmp, z_tmp, z2, llastep, f1, f2, p1, p2, l, l1, l2, vmin, lopt
@@ -237,7 +237,7 @@ cpdef ws2doptv(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[double] llas)
     i = 0
     k = 0
 
-    template = array('d', [])
+    template = array("d", [])
 
     fits = clone(template, nl, True)
     pens = clone(template, nl, True)
@@ -305,7 +305,7 @@ cpdef ws2doptvp(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[double] llas
     Returns:
         Smoothed time-series array z and optimized lambda (S) value lopt
     """
-    cdef array template = array('d', [])
+    cdef array template = array("d", [])
     cdef array fits, pens, diff1, lamids, v, z
     cdef int m, m1, m2, nl, nl1, lix, i, j, k
     cdef double w_tmp, y_tmp, z_tmp, z2, llastep, fit1, fit2, pen1, pen2, l, l1, l2, vmin, lopt, p1
@@ -320,7 +320,7 @@ cpdef ws2doptvp(np.ndarray[dtype_t] y, np.ndarray[dtype_t] w, array[double] llas
     j = 0
     p1 = 1-p
 
-    template = array('d', [])
+    template = array("d", [])
     fits = clone(template, nl, True)
     pens = clone(template, nl, True)
     z = clone(template, m, True)

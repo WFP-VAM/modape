@@ -52,7 +52,7 @@ class ModisRawH5(HDF5Base):
 
         # check if all files provided are either VIM or TDA
         for file in files:
-            if not re.match(REGEX_PATTERNS['VIMLST'], file.split('/')[-1]):
+            if not re.match(REGEX_PATTERNS["VIMLST"], file.split("/")[-1]):
                 log.error("File %s not NDVI or LST", file)
                 raise ValueError("MODIS collect processing only implemented for M{O|Y}D {11,13} products!")
 
@@ -64,7 +64,7 @@ class ModisRawH5(HDF5Base):
         products = []
         for file_tmp in self.files:
             products.append(
-                re.findall(REGEX_PATTERNS["product"], file_tmp.split('/')[-1])[0]
+                re.findall(REGEX_PATTERNS["product"], file_tmp.split("/")[-1])[0]
             )
 
         # Make sure it's the same product
@@ -77,7 +77,7 @@ class ModisRawH5(HDF5Base):
             warnings.warn(duplicate_warning_msg, Warning)
 
             # make sure number of dates is equal to number of files, so no duplicates!
-            processing_timestamps = [int(re.sub(REGEX_PATTERNS["processing_timestamp"], '\\1', x)) for x in self.files]
+            processing_timestamps = [int(re.sub(REGEX_PATTERNS["processing_timestamp"], "\\1", x)) for x in self.files]
 
             dups = []
             dt_prev = None
@@ -107,7 +107,7 @@ class ModisRawH5(HDF5Base):
 
         if vam_product_code is None:
 
-            refname = self.files[0].split('/')[-1]
+            refname = self.files[0].split("/")[-1]
 
             if re.match(REGEX_PATTERNS["VIM"], refname):
                 self.vam_product_code = "VIM"
@@ -176,7 +176,7 @@ class ModisRawH5(HDF5Base):
 
         tile = REGEX_PATTERNS["tile"].findall(refname)
         version = REGEX_PATTERNS["version"].findall(refname)
-        tile_version = '.'.join(tile + version)
+        tile_version = ".".join(tile + version)
 
         if not tile:
             self.globalproduct = True
@@ -186,7 +186,7 @@ class ModisRawH5(HDF5Base):
         super().__init__(filename=filename)
 
     def create(self,
-               compression: str = 'gzip',
+               compression: str = "gzip",
                chunks: Tuple[int] = None) -> None:
         """Creates HDF5 file for raw data.
 
@@ -220,11 +220,11 @@ class ModisRawH5(HDF5Base):
         # Create HDF5 file
         try:
 
-            with h5py.File(self.filename, 'x', libver='latest') as h5f:
+            with h5py.File(self.filename, "x", libver="latest") as h5f:
 
                 # create data array
                 dset = h5f.create_dataset(
-                    name='data',
+                    name="data",
                     shape=(row_number*col_number, self.nfiles),
                     dtype="int16",
                     maxshape=(row_number*col_number, None),
@@ -234,10 +234,10 @@ class ModisRawH5(HDF5Base):
 
                 # create dates
                 _ = h5f.create_dataset(
-                    name='dates',
+                    name="dates",
                     shape=(self.nfiles,),
                     maxshape=(None,),
-                    dtype='S8',
+                    dtype="S8",
                     compression=compression
                 )
 
@@ -257,7 +257,7 @@ class ModisRawH5(HDF5Base):
                     "temporalresolution": self.temporalresolution,
                     "tshift": self.tshift,
                     "globalproduct": self.globalproduct,
-                    "vamcode": self.filename.name.split('.')[-2],
+                    "vamcode": self.filename.name.split(".")[-2],
                     "valid_range": valid_range,
                 })
 
@@ -274,14 +274,14 @@ class ModisRawH5(HDF5Base):
 
         log.info("Updating %s", str(self.filename))
 
-        with h5py.File(self.filename, 'r+', libver='latest') as h5f:
-            dset = h5f.get('data')
-            dates = h5f.get('dates')
+        with h5py.File(self.filename, "r+", libver="latest") as h5f:
+            dset = h5f.get("data")
+            dates = h5f.get("dates")
             dataset_shape = dset.shape
 
             # set processing timestamp
-            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            dset.attrs['processingtimestamp'] = timestamp
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            dset.attrs["processingtimestamp"] = timestamp
 
             # Load any existing dates and combine with new dates
             dates_stored = [x.decode() for x in dates[...] if x and x.decode() not in self.rawdates]
@@ -348,16 +348,16 @@ class ModisRawH5(HDF5Base):
                     raise HDF5WriteError(msg % self.filename)
 
         # Write back date list
-        with h5py.File(self.filename, 'r+', libver='latest') as h5f:
-            dates = h5f.get('dates')
-            dates[...] = np.array(dates_combined, dtype='S8')
+        with h5py.File(self.filename, "r+", libver="latest") as h5f:
+            dates = h5f.get("dates")
+            dates[...] = np.array(dates_combined, dtype="S8")
 
     @property
     def last_collected(self):
         """Last collected date in file"""
         assert self.exists, "File doesn't exist!"
 
-        with h5py.File(self.filename, 'r') as h5_open:
+        with h5py.File(self.filename, "r") as h5_open:
             dates = h5_open.get("dates")
             last_date = dates[-1].decode()
 

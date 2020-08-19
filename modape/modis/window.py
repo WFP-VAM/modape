@@ -108,7 +108,7 @@ class ModisMosaic(object):
             force_doy = True
 
         if "xRes" in kwargs.keys() and "yRes" in kwargs.keys():
-            output_res = [kwargs['xRes'], kwargs['yRes']]
+            output_res = [kwargs["xRes"], kwargs["yRes"]]
 
         elif target_srs == "EPSG:4326":
 
@@ -270,8 +270,8 @@ class ModisMosaic(object):
             chunks = ds.chunks
             dtype = ds.dtype.num
 
-            driver = gdal.GetDriverByName('GTiff')
-            fn = f'/vsimem/{uuid4()}.tif'
+            driver = gdal.GetDriverByName("GTiff")
+            fn = f"/vsimem/{uuid4()}.tif"
 
             raster = driver.Create(
                 fn,
@@ -325,14 +325,14 @@ class ModisMosaic(object):
                 dtype,
                 nodata):
 
-        vrt_tempname = f'/vsimem/{uuid4()}.vrt'
+        vrt_tempname = f"/vsimem/{uuid4()}.vrt"
         vrt = gdal.BuildVRT(vrt_tempname, input_rasters)
         assert vrt
         vrt.FlushCache()
         vrt = None
         log.debug("Created VRT")
 
-        wrp_tempname = f'/vsimem/{uuid4()}.tif'
+        wrp_tempname = f"/vsimem/{uuid4()}.tif"
         wopt = gdal.WarpOptions(
             dstSRS=target_srs,
             outputType=dtype,
