@@ -68,7 +68,7 @@ Some of these packages (eg. GDAL) can be difficult to build, especially on windo
 
 .. code:: bash
 
-    $ pip install modape
+    $ pip3 install modape
 
 
 Bugs, typos & feature requests
