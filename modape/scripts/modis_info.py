@@ -1,13 +1,12 @@
 #!/usr/bin/env python
 """modis_info.py: Return metadata stored in MODIS HDF5 files."""
-
-from __future__ import absolute_import, division, print_function
+#pylint: disable=E0401
 import argparse
 import os
 import sys
 import time
 
-import h5py ## pylint: disable=import-error
+import h5py
 
 def main():
     """Info tool for processed MODIS HDF5 files.

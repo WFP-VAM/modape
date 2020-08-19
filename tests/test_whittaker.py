@@ -1,15 +1,12 @@
 """test_whittaker.py: Test core whittaker functions."""
-# pylint: disable=invalid-name
-from __future__ import absolute_import, division, print_function
-
+# pylint: disable=invalid-name,E0401,E0611
 from array import array
 import os
 import pickle
 import unittest
 
 import numpy as np
-
-from modape.whittaker import lag1corr, ws2d, ws2dp, ws2doptv, ws2doptvp # pylint: disable=E0611
+from modape.whittaker import lag1corr, ws2d, ws2dp, ws2doptv, ws2doptvp
 
 class TestWhittaker(unittest.TestCase):
     """Test class for core whittaker functions."""
