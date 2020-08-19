@@ -236,9 +236,9 @@ class ModisQuery(object):
                 # warm up pool
                 _ = session.get(self.results[0]['link'], stream=True, allow_redirects=True)
 
-                with ThreadPoolExecutor(nthreads) as pool:
+                with ThreadPoolExecutor(nthreads) as executor:
 
-                    futures = [pool.submit(self._fetch_hdf, session, x['link'], targetdir, overwrite)
+                    futures = [executor.submit(self._fetch_hdf, session, x['link'], targetdir, overwrite)
                                for x in self.results]
 
                 downloaded_files = [x.result() for x in futures]
