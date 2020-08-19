@@ -141,6 +141,12 @@ class TestModisQuery(unittest.TestCase):
             cls.api_response = pickle.load(pkl)
 
         cls.testpath = Path(__name__).parent
+        cls.query = ModisQuery(
+            products=['MOD13A2', 'MYD13A2'],
+            aoi=(10, 10, 20, 20),
+            begindate=datetime(2020, 1, 1),
+            enddate=datetime(2020, 7, 24),
+        )
 
     @classmethod
     def tearDownClass(cls):
@@ -148,18 +154,6 @@ class TestModisQuery(unittest.TestCase):
             shutil.rmtree('__pycache__')
         except:
             pass
-
-    def setUp(self):
-        '''Set up test'''
-
-        # create query
-
-        self.query = ModisQuery(
-            products=['MOD13A2', 'MYD13A2'],
-            aoi=(10, 10, 20, 20),
-            begindate=datetime(2020, 1, 1),
-            enddate=datetime(2020, 7, 24),
-        )
 
     def test_query(self):
         '''Test API query'''
@@ -211,23 +205,25 @@ class TestModisQuery(unittest.TestCase):
         except FileNotFoundError:
             pass
 
-        # Raise AssertionError when file is missing
-        with self.assertRaises(AssertionError):
+        with patch("modape.modis.download.SessionWithHeaderRedirection"):
+
+            # Raise AssertionError when file is missing
+            with self.assertRaises(AssertionError):
+                self.query.download(
+                    targetdir=self.testpath,
+                    username='test',
+                    password='test',
+                    multithread=True,
+                )
+
+            future_result[0].touch()
+
             self.query.download(
                 targetdir=self.testpath,
                 username='test',
                 password='test',
                 multithread=True,
             )
-
-        future_result[0].touch()
-
-        self.query.download(
-            targetdir=self.testpath,
-            username='test',
-            password='test',
-            multithread=True,
-        )
 
         with patch("modape.modis.download.ModisQuery._fetch_hdf", return_value=future_result) as mocked_fetch:
             self.query.download(
@@ -246,17 +242,18 @@ class TestModisQuery(unittest.TestCase):
 
         future_result[0].unlink()
 
-        # Download Error
-        future_result = (f"http://datalocation.com/{self.query.results[0]['file_id']}", "Error")
-        mock_submit.return_value.__enter__.return_value.submit.return_value.result.return_value = future_result
+        with patch("modape.modis.download.SessionWithHeaderRedirection"):
+            # Download Error
+            future_result = (f"http://datalocation.com/{self.query.results[0]['file_id']}", "Error")
+            mock_submit.return_value.__enter__.return_value.submit.return_value.result.return_value = future_result
 
-        with self.assertRaises(DownloadError):
-            self.query.download(
-                targetdir=self.testpath,
-                username='test',
-                password='test',
-                multithread=True
-            )
+            with self.assertRaises(DownloadError):
+                self.query.download(
+                    targetdir=self.testpath,
+                    username='test',
+                    password='test',
+                    multithread=True
+                )
 
 class TestModisCollect(unittest.TestCase):
     """Test class for ModisQuery tests."""
