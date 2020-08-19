@@ -77,5 +77,5 @@ setup(
         'requests>=2',
         'pandas>=0.24',
     ],
-    python_requires='>3, <4',
+    python_requires='>=3, <4',
 )
