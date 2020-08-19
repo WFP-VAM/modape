@@ -64,7 +64,6 @@ setup(
     include_package_data=True,
     classifiers=[
         'Development Status :: 4 - Beta',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
     ],
     setup_requires=['pytest-runner'],
@@ -78,5 +77,5 @@ setup(
         'requests>=2',
         'pandas>=0.24',
     ],
-    python_requires='>=2.7.11, <4',
+    python_requires='>3, <4',
 )
