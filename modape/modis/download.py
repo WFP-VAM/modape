@@ -11,6 +11,8 @@ Author: Valentin Pesendorfer, July 2020
 
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
+import logging
+from os.path import exists
 from pathlib import Path
 import re
 import shutil
@@ -18,10 +20,14 @@ from typing import List, Tuple, Union
 
 from cmr import GranuleQuery
 import pandas as pd
+from requests.adapters import HTTPAdapter
 from requests.exceptions import HTTPError
+from requests.packages.urllib3.util.retry import Retry
 
 from modape.exceptions import DownloadError
 from modape.utils import SessionWithHeaderRedirection
+
+log = logging.getLogger(__name__)
 
 class ModisQuery(object):
     """Class for querying and downloading MODIS data."""
@@ -86,8 +92,12 @@ class ModisQuery(object):
         if self.begin is None and self.end is None:
             strict_dates = False
 
+        log.debug("Starting query")
+
         # get all results
         results_all = self.api.get_all()
+
+        log.debug("Query complete, filtering results")
 
         for result in self._parse_response(results_all):
 
@@ -111,6 +121,8 @@ class ModisQuery(object):
 
         # final results
         self.nresults = len(self.results)
+
+        log.debug("Search complete. Total results: %s, filtered: %s", len(results_all), self.nresults)
 
 
     @staticmethod
@@ -149,7 +161,8 @@ class ModisQuery(object):
     @staticmethod
     def _fetch_hdf(session: SessionWithHeaderRedirection,
                    url: str,
-                   destination: Path
+                   destination: Path,
+                   overwrite: bool,
                    ) -> Tuple[str, Union[None, Exception]]:
         """Helper function to fetch HDF files
 
@@ -157,6 +170,7 @@ class ModisQuery(object):
             session (SessionWithHeaderRedirection): requests session to fetch file.
             url (str): URL for file.
             destination (Path): target directory.
+            overwrite (bool): Overwrite existing.
 
         Returns:
             Tuple[str, Union[None, Exception]]: Returns tuple with
@@ -164,29 +178,34 @@ class ModisQuery(object):
 
         """
 
-        try:
+        filename = destination.joinpath(url.split('/')[-1])
 
-            filename = destination.joinpath(url.split('/')[-1])
+        if not exists(filename) or overwrite:
 
-            with session.get(url, stream=True) as response:
-                response.raise_for_status()
+            try:
 
-                with open(filename, "wb") as openfile:
-                    shutil.copyfileobj(response.raw, openfile)
+                with session.get(url, stream=True, allow_redirects=True) as response:
+                    response.raise_for_status()
 
-            assert filename.exists()
+                    with open(filename, "wb") as openfile:
+                        shutil.copyfileobj(response.raw, openfile, length=16*1024*1024)#
 
-        except (HTTPError, AssertionError) as e:
-            return (url, e)
+                assert filename.exists(), "File not on disk after download!"
+
+            except (HTTPError, AssertionError) as e:
+                return (url, e)
+        else:
+            log.info("%s exists in target. Please set overwrite to True.", filename)
 
         return (filename, None)
-
 
     def download(self,
                  targetdir: Path,
                  username: str,
                  password: str,
-                 multithread: bool = False
+                 overwrite: bool = False,
+                 multithread: bool = False,
+                 nthreads: int = 4,
                 ) -> None:
         """Download queried MODIS files.
 
@@ -194,7 +213,9 @@ class ModisQuery(object):
             targetdir (Path): target directory for file being downloaded.
             username (str): Earthdata username.
             password (str): Earthdata password.
+            overwrite (bool): Replace existing.
             multithread (bool): use multiple threads for downloading.
+            nthreads (int): Number of threads.
 
         """
 
@@ -204,23 +225,32 @@ class ModisQuery(object):
 
         with SessionWithHeaderRedirection(username, password) as session:
 
+            retries = Retry(total=5, backoff_factor=1, status_forcelist=[502, 503, 504])
+            session.mount(
+                'https://',
+                HTTPAdapter(pool_connections=nthreads, pool_maxsize=nthreads*2, max_retries=retries)
+            )
+
             if multithread:
+                log.debug("Multithreaded download using %s threads. Warming up connection pool.", nthreads)
+                # warm up pool
+                _ = session.get(self.results[0]['link'], stream=True, allow_redirects=True)
 
-                with ThreadPoolExecutor(4) as pool:
+                with ThreadPoolExecutor(nthreads) as pool:
 
-                    futures = [pool.submit(self._fetch_hdf, session, x['link'], targetdir)
+                    futures = [pool.submit(self._fetch_hdf, session, x['link'], targetdir, overwrite)
                                for x in self.results]
 
                 downloaded_files = [x.result() for x in futures]
 
             else:
-
+                log.debug("Serial download")
                 downloaded_files = []
 
                 for result in self.results:
 
                     downloaded_files.append(
-                        self._fetch_hdf(session, result['link'], targetdir)
+                        self._fetch_hdf(session, result['link'], targetdir, overwrite)
                     )
 
         errors = []

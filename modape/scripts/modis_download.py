@@ -26,7 +26,9 @@ from modape.modis import ModisQuery
 @click.option("--strict-dates", is_flag=True, help="Don't allow files with timestamps outside of provided date(s)")
 @click.option("--return-results", is_flag=True, help="Print results to console")
 @click.option("--download", is_flag=True, help="Download data")
+@click.option("--overwrite", is_flag=True, help="Overwrite existing files")
 @click.option("--multithread", is_flag=True, help="Use multiple threads for downloading")
+@click.option("--nthreads", type=click.INT, help="Number of threads to use", default=4)
 @click.option("-c", "--collection", type=click.STRING, default="006", help="MODIS collection")
 def cli(products: List[str],
         begin_date: datetime.datetime,
@@ -40,7 +42,9 @@ def cli(products: List[str],
         strict_dates: bool,
         return_results: bool,
         download: bool,
+        overwrite: bool,
         multithread: bool,
+        nthreads: int,
         collection: str,
         ) -> None:
     """Query and download MODIS products.
@@ -64,7 +68,9 @@ def cli(products: List[str],
         password (str): Earthdata password.
         strict_dates (bool): Strict date handling.
         download (bool): Download data.
+        overwrite (bool): Replace existing.
         multithread (bool): Use multiple threads for downloading.
+        nthreads (int): Number of threads for multithread.
         collection (str): MODIS collection version.
     """
 
@@ -159,7 +165,9 @@ def cli(products: List[str],
                 targetdir=targetdir,
                 username=username,
                 password=password,
-                multithread=multithread
+                overwrite=overwrite,
+                multithread=multithread,
+                nthreads=nthreads,
             )
 
     click.echo('modis_download.py COMPLETED! Bye! \n')
