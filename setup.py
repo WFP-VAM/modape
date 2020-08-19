@@ -54,7 +54,7 @@ setup(
             'modis_smooth=modape.scripts.modis_smooth:cli_wrap',
             'modis_window=modape.scripts.modis_window:cli_wrap',
             'csv_smooth=modape.scripts.csv_smooth:cli_wrap',
-            'modis_info=modape.scripts.modis_info:main',
+            'modis_info=modape.scripts.modis_info:cli_wrap',
             'modape_version=_version.version_info:main',
         ]
     },

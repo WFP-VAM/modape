@@ -1,121 +1,89 @@
 #!/usr/bin/env python
 """modis_info.py: Return metadata stored in MODIS HDF5 files."""
 #pylint: disable=E0401
-import argparse
-import os
 import sys
 import time
 
+import click
 import h5py
 
-def main():
+@click.command()
+@click.argument("file", type=click.Path(exists=True, file_okay=True, resolve_path=True))
+def cli(file):
     """Info tool for processed MODIS HDF5 files.
 
     Returns metadata on processed MODIS HDF5 files, both for raw and smoothed files.
     """
 
-    parser = argparse.ArgumentParser(description='Get MODIS raw/smooth file info')
-    parser.add_argument('file', help='Full path to MODIS h5 file')
-
-    # Fail and print help if no arguments supplied
-    if len(sys.argv) == 1:
-        parser.print_help(sys.stderr)
-        sys.exit(0)
-
-    args = parser.parse_args()
-
-    # Check if file exists
-    if not os.path.isfile(args.file):
-        raise SystemExit('File not found!')
-
-    # Message head
-    message_head = 'MODAPE info tool - {}'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()))
-
     # Read metadata
     try:
-        with h5py.File(args.file, 'r') as h5f:
+        with h5py.File(file, 'r') as h5f:
             dset = h5f.get('data')
             dates = h5f.get('dates')
+            rawdates = h5f.get('rawdates')
             dim = dset.shape
+            attrs = dict(dset.attrs)
+
+            # get dates
             startdate = dates[0].decode()
             enddate = dates[-1].decode()
-            temporalresolution = dset.attrs['temporalresolution']
-            resolution = dset.attrs['resolution']
-            nodata_value = dset.attrs['nodata']
-            processing_timestamp = dset.attrs['processingtimestamp']
-            ncols = dset.attrs['RasterXSize'].item()
-            nrows = dset.attrs['RasterYSize'].item()
 
-            # If reading lastrun fails, it's assumed the product is a raw HDF5 file
-            try:
-                last_run = dset.attrs['lastrun']
-            except KeyError:
-                last_run = None
+            if rawdates:
+                last_collected = rawdates[-1].decode()
+            else:
+                last_collected = enddate
+
+        temporalresolution = attrs['temporalresolution']
+        resolution = attrs['resolution']
+        nodata_value = attrs['nodata']
+        processing_timestamp = attrs['processingtimestamp']
+        ncols = attrs['RasterXSize']
+        nrows = attrs['RasterYSize']
+
+        try:
+            last_run = attrs['lastrun']
+            hdf5_type = "smoothed"
+        except KeyError:
+            last_run = None
+            hdf5_type = "raw"
+
     except:
         raise SystemExit('Error reading file information.')
 
-    # If lastrun attribute is not none (aka product is smooth HDF5)
-    if last_run:
-        message = '''
-File: {}
+    message_head = '\n\n MODAPE info tool - {}'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()))
 
-Type: MODIS smoothed HDF5
+    click.secho(message_head, bold=True, fg="red")
 
-Dimensions:
+    lines = [
+        " \n --- \n"
+        f"\n File: {file}\n",
+        f"\n Type: MODIS {hdf5_type} HDF5\n",
+        "\n Dimensions:\n",
+        f"\n     -{nrows} rows\n",
+        f"\n     -{ncols} columns\n",
+        f"\n     -{dim[1]} timesteps\n",
+        f"\n Start date: {startdate}\n",
+        f"\n End date: {enddate}\n",
+        f"\n Last collected: {last_collected}\n",
+        f"\n Temporal resolution: {temporalresolution}\n",
+        f"\n Spatial resolution: {resolution}\n",
+        f"\n NoData value: {nodata_value}\n",
+        f"\n Last modified: {processing_timestamp}\n",
+    ]
 
-    - {} rows
+    if last_run is not None:
+        lines.append(f"\n Last smoothing run: Whittaker smoother with {last_run}\n")
 
-    - {} columns
+    click.echo_via_pager(lines)
+    click.echo(" --- \n")
 
-    - {} temporal units
+def cli_wrap():
+    """Wrapper for cli"""
 
-Start date: {}
-
-End date: {}
-
-Temporal resolution: {} daily
-
-Spatial resolution: {} m
-
-NoData value: {}
-
-Last modified: {}
-
-Last smoothing run: Whittaker smoother with {}\n'''.format(args.file, nrows, ncols, dim[1],
-                                                           startdate, enddate, temporalresolution, resolution,
-                                                           nodata_value, processing_timestamp, last_run)
-
+    if len(sys.argv) == 1:
+        cli.main(['--help'])
     else:
-        message = '''
-File: {}
-
-Type: MODIS raw daily HDF5
-
-Dimensions:
-
-    - {} rows
-
-    - {} columns
-
-    - {} temporal units
-
-Start date: {}
-
-End date: {}
-
-Temporal resolution: {} daily
-
-Spatial resolution: {} m
-
-NoData value: {}
-
-Last modified: {}\n'''.format(args.file, nrows, ncols,
-                              dim[1], startdate, enddate, temporalresolution,
-                              resolution, nodata_value, processing_timestamp)
-
-    # Print message - header is centered
-    print(' ', message_head.center(os.get_terminal_size().columns), ' ', sep='\n')
-    print(message)
+        cli() #pylint: disable=E1120
 
 if __name__ == '__main__':
-    main()
+    cli_wrap()
