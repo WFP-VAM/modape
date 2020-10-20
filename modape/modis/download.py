@@ -106,15 +106,11 @@ class ModisQuery(object):
                 if result["tile"] not in self.tile_filter:
                     continue
 
-            # enforce dates if required
+            # enforce begin date if required
 
             if strict_dates:
                 if self.begin is not None:
                     if result["time_start"] < self.begin.date():
-                        continue
-
-                if self.end is not None:
-                    if result["time_end"] > self.end.date():
                         continue
 
             self.results.append(result)
