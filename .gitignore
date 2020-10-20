@@ -103,3 +103,5 @@ ENV/
 # cred files
 wsmtk.cred.pkl
 wsmtk.key.pkl
+
+.idea/
