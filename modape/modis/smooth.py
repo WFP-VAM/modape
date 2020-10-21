@@ -222,7 +222,7 @@ class ModisSmoothH5(HDF5Base):
 
         if self.tinterpolate:
             log.debug("Temporal interpolation triggered!")
-            arr_smt = np.zeros((smt_chunks[0], new_dim), dtype="double")
+            arr_smt = np.full((smt_chunks[0], new_dim), fill_value=nodata, dtype="double")
             vector_daily = dates.getDV(nodata)
             array_offset = 0
 
@@ -232,7 +232,7 @@ class ModisSmoothH5(HDF5Base):
                 dd_index = dates.daily.index(rdate_shift)
                 vector_daily[dd_index] = -1
         else:
-            arr_smt = arr_raw[...]
+            arr_smt = arr_raw
             array_offset = nsmooth - nupdate
 
         # use HDF5 base for reading rawdata
@@ -269,7 +269,6 @@ class ModisSmoothH5(HDF5Base):
             for ix in map_index:
 
                 if soptimize:
-                    log.debug("Running V-curve optimization")
                     if srange is None:
                         lag_correlation = lag1corr(arr_raw[ix, :-1], arr_raw[ix, 1:], nodata)
                         if lag_correlation > 0.5:
@@ -290,9 +289,7 @@ class ModisSmoothH5(HDF5Base):
                                                                  llas=array("d", sr))
 
                 else:
-                    log.debug("Using fixed S")
                     if svalue is None:
-                        log.debug("Reading S from grid")
                         s = 10 ** arr_sgrid[ix]
                     else:
                         s = 10 ** svalue
@@ -345,6 +342,9 @@ class ModisSmoothH5(HDF5Base):
             # increment counter
             chunk_counter += 1
 
+            # flush smooth array
+            arr_smt[...] = nodata
+
         # processing information for modis_info
         if soptimize:
             processing_info = {"lastrun": "V-curve optimization of s"}
@@ -358,6 +358,8 @@ class ModisSmoothH5(HDF5Base):
         if p is not None:
             processing_info.update({"pvalue": p})
             processing_info["lastrun"] = processing_info["lastrun"] + f" and with P-value of {p}"
+
+        log.debug("Last run: %s", processing_info["lastrun"])
 
         with h5py.File(self.filename, "r+") as h5f_open:
             smt_ds = h5f_open.get("data")
