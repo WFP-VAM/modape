@@ -342,8 +342,9 @@ class ModisSmoothH5(HDF5Base):
             # increment counter
             chunk_counter += 1
 
-            # flush smooth array
-            arr_smt[...] = nodata
+            if self.tinterpolate:
+                # flush smooth array
+                arr_smt[...] = nodata
 
         # processing information for modis_info
         if soptimize:
