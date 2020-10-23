@@ -63,7 +63,7 @@ class TestHDF5io(unittest.TestCase):
 
         for ii in range(0, 100, 10):
             arr_sub = test_array[ii:ii+10, :]
-            hdf5_file.write_chunk("data", arr_in=arr_sub, yoff=ii)
+            hdf5_file.write_chunk("data", arr_in=arr_sub, yoffset=ii)
 
         ii = 0
         for read_array in hdf5_file.read_chunked("data", xchunk=10):
@@ -83,7 +83,7 @@ class TestHDF5io(unittest.TestCase):
         test_array = np.arange(100, dtype="int16")
         for ii in range(0, 100, 10):
             arr_sub = test_array[ii:ii+10]
-            hdf5_file.write_chunk("sgrid", arr_in=arr_sub, yoff=ii)
+            hdf5_file.write_chunk("sgrid", arr_in=arr_sub, yoffset=ii)
 
         ii = 0
         for read_array in hdf5_file.read_chunked("sgrid"):
