@@ -79,6 +79,15 @@ class TestHDF5io(unittest.TestCase):
             assert read_array is test_array
             assert np.alltrue(read_array != -1)
 
+        # test atomatic array size for nsmooth
+        # nsmooth = 36
+        xoffset = 100 - 36
+        for read_array in hdf5_file.read_chunked("data", xoffset=xoffset, xchunk=10):
+            assert read_array.shape == (10, 36)
+            break
+
+        del read_array
+
         # test 1d read/write
         test_array = np.arange(100, dtype="int16")
         for ii in range(0, 100, 10):
