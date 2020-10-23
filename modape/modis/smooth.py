@@ -203,19 +203,8 @@ class ModisSmoothH5(HDF5Base):
                 smt_dates[...] = np.array(dates.target, dtype="S8")
                 smt_shape = smt_ds.shape
 
-            #smt_dates_all = [x.decode() for x in h5f_open.get("dates")[...]]
-
         nodata = raw_attrs["nodata"]
         dix = dates.getDIX(nupdate)
-
-        # if dataset is smaller or equal then nupdate, take index 0
-
-        # try:
-        #     smt_offset = smt_dates_all.index(dates.target[-nupdate])
-        # except IndexError:
-        #     smt_offset = smt_dates_all.index(dates.target[0])
-
-        #new_dim = smt_shape[1] - smt_offset
 
         arr_raw = np.zeros((raw_chunks[0], len(raw_dates_nsmooth)), dtype="double")
 
@@ -229,7 +218,6 @@ class ModisSmoothH5(HDF5Base):
             log.debug("Temporal interpolation triggered!")
             arr_smt = np.full((smt_chunks[0], len(dix)), fill_value=nodata, dtype="double")
             vector_daily = dates.getDV(nodata)
-            #array_offset = 0
 
             # Shift for interpolation
             for rdate in raw_dates_nsmooth:
@@ -238,7 +226,6 @@ class ModisSmoothH5(HDF5Base):
                 vector_daily[dd_index] = -1
         else:
             arr_smt = arr_raw
-            #array_offset = nsmooth - nupdate
 
         # use HDF5 base for reading rawdata
         raw_h5 = HDF5Base(str(self.rawfile))
