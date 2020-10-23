@@ -175,6 +175,7 @@ class ModisSmoothH5(HDF5Base):
         log.debug("Reading metadata from HDF5s")
         with h5py.File(self.rawfile, "r") as h5f_open:
             raw_ds = h5f_open.get("data")
+            raw_shape = raw_ds.shape
             raw_chunks = raw_ds.chunks
             raw_attrs = dict(raw_ds.attrs.items())
             raw_dates_all = [x.decode() for x in h5f_open.get("dates")[...]]
@@ -202,29 +203,33 @@ class ModisSmoothH5(HDF5Base):
                 smt_dates[...] = np.array(dates.target, dtype="S8")
                 smt_shape = smt_ds.shape
 
-            smt_dates_all = [x.decode() for x in h5f_open.get("dates")[...]]
+            #smt_dates_all = [x.decode() for x in h5f_open.get("dates")[...]]
 
         nodata = raw_attrs["nodata"]
         dix = dates.getDIX(nupdate)
 
         # if dataset is smaller or equal then nupdate, take index 0
-        try:
-            smt_offset = smt_dates_all.index(dates.target[-nupdate])
-        except IndexError:
-            smt_offset = smt_dates_all.index(dates.target[0])
 
-        new_dim = smt_shape[1] - smt_offset
+        # try:
+        #     smt_offset = smt_dates_all.index(dates.target[-nupdate])
+        # except IndexError:
+        #     smt_offset = smt_dates_all.index(dates.target[0])
+
+        #new_dim = smt_shape[1] - smt_offset
 
         arr_raw = np.zeros((raw_chunks[0], len(raw_dates_nsmooth)), dtype="double")
+
+        read_offset = max(0, raw_shape[1] - nsmooth)
+        write_offset = max(0, smt_shape[1] - nupdate)
 
         # Create weights array
         wts = arr_raw.copy()
 
         if self.tinterpolate:
             log.debug("Temporal interpolation triggered!")
-            arr_smt = np.full((smt_chunks[0], new_dim), fill_value=nodata, dtype="double")
+            arr_smt = np.full((smt_chunks[0], len(dix)), fill_value=nodata, dtype="double")
             vector_daily = dates.getDV(nodata)
-            array_offset = 0
+            #array_offset = 0
 
             # Shift for interpolation
             for rdate in raw_dates_nsmooth:
@@ -233,13 +238,14 @@ class ModisSmoothH5(HDF5Base):
                 vector_daily[dd_index] = -1
         else:
             arr_smt = arr_raw
-            array_offset = nsmooth - nupdate
+            #array_offset = nsmooth - nupdate
 
         # use HDF5 base for reading rawdata
         raw_h5 = HDF5Base(str(self.rawfile))
 
         chunk_generator = raw_h5.read_chunked(
             dataset="data",
+            xoffset=read_offset,
             xchunk=10,
             arr_out=arr_raw,
             )
@@ -314,9 +320,9 @@ class ModisSmoothH5(HDF5Base):
             write_check = self.write_chunk(
                 dataset="data",
                 arr_in=arr_smt,
+                xoffset=write_offset,
                 xchunk=10,
-                xoff=array_offset,
-                yoff=chunk_counter*raw_chunks[0],
+                yoffset=chunk_counter*raw_chunks[0],
             )
 
             if not write_check:
@@ -331,7 +337,7 @@ class ModisSmoothH5(HDF5Base):
                 write_check = self.write_chunk(
                     dataset="sgrid",
                     arr_in=arr_sgrid,
-                    yoff=chunk_counter*raw_chunks[0],
+                    yoffset=chunk_counter*raw_chunks[0],
                 )
 
                 if not write_check:
@@ -378,7 +384,12 @@ class ModisSmoothH5(HDF5Base):
             smt_ds.attrs.update(processing_info)
 
             dates_ds = h5f_open.get("rawdates")
+
+            if len(raw_dates_all) > dates_ds.size:
+                dates_ds.resize((len(raw_dates_all),))
+
             dates_ds[...] = np.array(raw_dates_all, dtype="S8")
+
 
     @property
     def last_collected(self):
