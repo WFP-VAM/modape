@@ -25,6 +25,7 @@ class HDF5Base(object):
 
     def read_chunked(self,
                      dataset: str,
+                     xoffset: int = 0,
                      xchunk: int = None,
                      arr_out: np.ndarray = None) -> np.ndarray:
         """Read data from dataset in a chunked manner.
@@ -38,6 +39,7 @@ class HDF5Base(object):
 
         Args:
             dataset (str): Name of the dataset (expect 2d array).
+            xoffset (int): Offset for colums (xaxis) in file.
             xchunk (int): Chunking along row (x) axis.
                           If not specified, it'll be read from the dataset.
             arr_out (np.ndarray): Output array.
@@ -53,33 +55,39 @@ class HDF5Base(object):
             assert ds, f"Dataset '{dataset}' not found!"
             ds_shape = ds.shape
 
-            if len(ds_shape) == 1:
-                xsize = None
-                xchunk = None
-            else:
-                xsize = ds_shape[1]
-                if xchunk is None:
-                    xchunk = ds.chunks[1]
-
             ychunk = ds.chunks[0]
 
             if arr_out is None:
                 if len(ds_shape) == 1:
                     arr_out = np.full((ychunk,), fill_value=ds.fillvalue, dtype=ds.dtype.name)
                 else:
-                    arr_out = np.full((ychunk, ds_shape[1]), fill_value=ds.fillvalue, dtype=ds.dtype.name)
+                    arr_out = np.full((ychunk, ds_shape[1]-xoffset), fill_value=ds.fillvalue, dtype=ds.dtype.name)
+
             else:
                 assert isinstance(arr_out, np.ndarray)
                 assert arr_out.ndim <= 2, "Expected 1 or 2-d array as output!"
+
+            if arr_out.ndim == 1:
+                xsize = None
+                xchunk = None
+            else:
+                xsize = arr_out.shape[1]
+                if xchunk is None:
+                    xchunk = ds.chunks[1]
+
+        log.debug("arr_out shape: %s", arr_out.shape)
 
         for yb in range(0, ds_shape[0], ychunk):
 
             with h5py.File(self.filename, "r") as h5f_open:
                 ds = h5f_open.get(dataset)
-
+                log.debug("Reading chunk %s - %s", yb, yb+ychunk)
                 if xsize is not None:
                     for xb in range(0, xsize, xchunk):
-                        arr_out[:, xb:(xb+xchunk)] = ds[yb:(yb+ychunk), xb:(xb+xchunk)]
+                        xb_data = xb + xoffset
+
+                        log.debug("Reading arr_out[%s : %s, %s : %s] from dataset[:, %s : %s]", yb, yb+ychunk, xb, xb+xchunk, xb_data, xb_data+xchunk)
+                        arr_out[:, xb:(xb+xchunk)] = ds[yb:(yb+ychunk), xb_data:(xb_data+xchunk)]
                 else:
                     arr_out[...] = ds[yb:(yb+ychunk)]
 
@@ -88,9 +96,9 @@ class HDF5Base(object):
     def write_chunk(self,
                     dataset: str,
                     arr_in: np.ndarray,
+                    xoffset: int = 0,
                     xchunk: int = None,
-                    xoff: int = 0,
-                    yoff: int = 0) -> bool:
+                    yoffset: int = 0) -> bool:
         """Write chunk back to HDF5 file.
 
         Writes complete chunk back to HDF5 file, iterating
@@ -102,8 +110,8 @@ class HDF5Base(object):
             arr_in (np.ndarray): Input data to be written to file.
             xchunk (int): Chunking along row (x) axis.
                           If not specified, it'll be read from the dataset.
-            xoff (int): Offset for colums (xaxis) in file.
-            yoff (int): Offset for rows (yaxis) in file.
+            xoffset (int): Offset for colums (xaxis) in file.
+            yoffset (int): Offset for rows (yaxis) in file.
 
         Returns:
             bool: True if write successful.
@@ -137,12 +145,12 @@ class HDF5Base(object):
             if xsize is not None:
 
                 for xb in range(0, xsize, xchunk):
-                    xb_data = xb + xoff
-                    log.debug("Writing dataset[%s : %s, %s : %s] from arr_in[:, %s : %s]", yoff, yoff+ysize, xb_data, xb_data+xchunk, xb, xb+xchunk)
-                    ds[yoff:(yoff+ysize), xb_data:(xb_data+xchunk)] = arr_in[:, xb:(xb+xchunk)]
+                    xb_data = xb + xoffset
+                    log.debug("Writing dataset[%s : %s, %s : %s] from arr_in[:, %s : %s]", yoffset, yoffset+ysize, xb_data, xb_data+xchunk, xb, xb+xchunk)
+                    ds[yoffset:(yoffset+ysize), xb_data:(xb_data+xchunk)] = arr_in[:, xb:(xb+xchunk)]
             else:
-                log.debug("Writing dataset[%s : %s] from arr_in", yoff, yoff+ysize)
-                ds[yoff:(yoff+ysize)] = arr_in[...]
+                log.debug("Writing dataset[%s : %s] from arr_in", yoffset, yoffset+ysize)
+                ds[yoffset:(yoffset+ysize)] = arr_in[...]
 
         return True
 
