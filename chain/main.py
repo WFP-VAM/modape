@@ -98,7 +98,7 @@ def app_noop():
     pass
 
 
-def app_do_processing():
+def app_do_processing(debug=False):
     global app_state
     try:
         # download and ingest:
@@ -166,9 +166,10 @@ def app_do_processing():
                 ModisInterleavedOctad(get_last_date_in_raw_modis_tiles(os.path.join(app_state.basedir, 'VIM')))
             export_dekad = \
                 Dekad(export_octad.getDateTimeEnd(), True)
-            print('')
-            print('Octad-end for last ingested date: {}'.format(str(export_octad.getDateTimeEnd())))
-            print(' > Corresponding dekad: {}'.format(str(export_dekad)))
+            if debug:
+                print('')
+                print('Octad-end for last ingested date: {}'.format(str(export_octad.getDateTimeEnd())))
+                print(' > Corresponding dekad: {}'.format(str(export_dekad)))
 
             while Dekad(export_octad.prev().getDateTimeEnd(), True).Equals(export_dekad) and nexports < 6:
                 nexports = nexports + 1
@@ -176,9 +177,9 @@ def app_do_processing():
 
             first_date = get_first_date_in_raw_modis_tiles(os.path.join(app_state.basedir, 'VIM'))
             while (not export_dekad.startsBeforeDate(first_date)) and nexports <= 6:
-                print('>>Export: {} [Update: {}]'.format(str(export_dekad), str(nexports)))
-                for region, roi in dict(**vars(app_state.export)).items():
-                    md = ['UPDATE_NUMBER={}'.format(nexports), 'FINAL={}'.format('FALSE' if nexports < 6 else 'TRUE')]
+                if debug:
+                    print('>>Export: {} [Update: {}]'.format(str(export_dekad), str(nexports)))
+                for region, roi in app_state.export.items():
                     modis_window(src=os.path.join(app_state.basedir, 'VIM', 'SMOOTH'),
                                  targetdir=os.path.join(app_state.basedir, 'VIM', 'SMOOTH', 'EXPORT'),
                                  begin_date=export_dekad.getDateTimeMid(),
@@ -187,8 +188,10 @@ def app_do_processing():
                                  roi=[roi[0], roi[3], roi[2], roi[1]],
                                  region=region, sgrid=False, force_doy=False,
                                  filter_product=None, filter_vampc=None, target_srs='EPSG:4326',
-                                 co=["COMPRESS=LZW", "PREDICTOR=2"],
-                                 clip_valid=True, round_int=2, gdal_kwarg={'metadataOptions': md},
+                                 co=["COMPRESS=LZW", "PREDICTOR=2"], clip_valid=True, round_int=2,
+                                 gdal_kwarg={'metadataOptions':
+                                                 ['UPDATE_NUMBER={}'.format(nexports),
+                                                  'FINAL={}'.format('FALSE' if nexports < 6 else 'TRUE')]},
                                  overwrite=True
                                  )
 
@@ -228,7 +231,7 @@ def serve(ctx) -> None:
         app_state = json.load(f)
         app_state = Namespace(**app_state)
     if ctx.obj['DEBUG']:
-        app_do_processing()
+        app_do_processing(debug=True)
     else:
         flask_app = Flask(app_state.app_name)
         flask_app.config['JSONIFY_PRETTYPRINT_REGULAR'] = True
@@ -246,7 +249,7 @@ def export(ctx) -> None:
         app_state = json.load(f)
     app_state = Namespace(**app_state)
     app_state.export_only = True
-    app_do_processing()
+    app_do_processing(debug=ctx.obj['DEBUG'])
 
 
 @cli.command()
@@ -257,7 +260,7 @@ def smooth(ctx) -> None:
         app_state = json.load(f)
     app_state = Namespace(**app_state)
     app_state.smooth_only = True
-    app_do_processing()
+    app_do_processing(debug=ctx.obj['DEBUG'])
 
 
 @cli.command()
@@ -268,7 +271,7 @@ def collect(ctx) -> None:
         app_state = json.load(f)
     app_state = Namespace(**app_state)
     app_state.collect_only = True
-    app_do_processing()
+    app_do_processing(debug=ctx.obj['DEBUG'])
 
 
 @cli.command()
@@ -279,7 +282,7 @@ def download(ctx) -> None:
         app_state = json.load(f)
     app_state = Namespace(**app_state)
     app_state.download_only = True
-    app_do_processing()
+    app_do_processing(debug=ctx.obj['DEBUG'])
 
 
 @cli.command()
