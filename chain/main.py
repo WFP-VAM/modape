@@ -199,6 +199,9 @@ def app_do_processing():
                     nexports = nexports + 1
                     export_octad = export_octad.prev()
 
+            if debug or getattr(app_state, 'export_only', False):
+                break
+
     finally:
         app_state.fetcherThread = None
 
