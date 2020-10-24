@@ -77,7 +77,6 @@ def cli(src_dir: str,
     else:
         targetdir = Path(targetdir)
 
-    assert targetdir.is_dir(), "Target directory (targetdir) not a direcory!"
     targetdir.mkdir(exist_ok=True)
     assert targetdir.exists(), "Target directory (targetdir) doesn't exist!"
 
