@@ -33,7 +33,8 @@ log = logging.getLogger(__name__)
 
 @click.command()
 @click.argument("src")
-@click.option("-d", "--targetdir", type=click.Path(dir_okay=True, resolve_path=True, writable=True), help="Target directory for Tiffs")
+@click.option("-d", "--targetdir", type=click.Path(dir_okay=True, resolve_path=True, writable=True),
+              help="Target directory for Tiffs")
 @click.option("-b", "--begin-date", type=click.DateTime(formats=["%Y-%m-%d"]), help="Begin date for Tiffs")
 @click.option("-e", "--end-date", type=click.DateTime(formats=["%Y-%m-%d"]), help="End date for Tiffs")
 @click.option("--roi", type=click.STRING, help="AOI for clipping (as ULX,ULY,LRX,LRY)")
@@ -46,7 +47,8 @@ log = logging.getLogger(__name__)
 @click.option('--co', multiple=True, help="GDAL creationOptions", default=["COMPRESS=LZW", "PREDICTOR=2"])
 @click.option("--clip-valid", is_flag=True, help="clip values to valid range for product")
 @click.option("--round-int", type=click.INT, help="Round to integer palces (either decimals or exponent of 10)")
-@click.option("--gdal-kwarg", type=click.STRING, multiple=True, help="Addition kwargs for GDAL in form KEY=VALUE (multiple allowed)")
+@click.option("--gdal-kwarg", type=click.STRING, multiple=True,
+              help="Addition kwargs for GDAL in form KEY=VALUE (multiple allowed)")
 @click.option("--overwrite", is_flag=True, help="Overwrite existsing Tiffs")
 @register
 def cli(src: str,
@@ -63,7 +65,7 @@ def cli(src: str,
         co: Tuple[str],
         clip_valid: bool,
         round_int: int,
-        gdal_kwarg: Tuple[str],
+        gdal_kwarg: dict,  # Tuple[str],
         overwrite: bool) -> None:
     """Creates GeoTiff Mosaics from HDF5 files.
 
@@ -98,8 +100,8 @@ def cli(src: str,
         co (Tuple[str]): Creation options passed to gdal.Translate.
         clip_valid (bool): Clip data to valid range.
         round_int (int): Round integer.
-        overwrite (bool): Overwrite existsing Tiffs.
-
+        gdal_kwarg: Dictionary that is used to unpack into the TranslateOptions constructor: https://gdal.org/python/osgeo.gdal-module.html#TranslateOptions
+        overwrite (bool): Overwrite existing Tiffs.
     """
 
     src_input = Path(src)
@@ -171,10 +173,12 @@ def cli(src: str,
         round_int = round_int * -1
 
     gdal_kwargs = {}
-    if gdal_kwarg:
+    if not isinstance(gdal_kwarg, dict):
         gdal_kwargs.update(
-            {key:value for x in gdal_kwarg for key, value in [x.split("=")]}
+            {key: value for x in gdal_kwarg for key, value in [x.split("=")]}
         )
+    else:
+        gdal_kwargs = gdal_kwarg
 
     click.echo("\nSTARTING modis_window.py!")
 
@@ -201,7 +205,7 @@ def cli(src: str,
                 clip_valid=clip_valid,
                 round_int=round_int,
                 creationOptions=list(co),
-                **gdal_kwarg
+                **gdal_kwargs
             )
         )
 
