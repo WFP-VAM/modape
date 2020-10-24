@@ -1,0 +1,24 @@
+{
+  "app_name": "Africa MODIS NDVI @1km -- DEVELOPMENT",
+  "nsmooth": 64,
+  "nupdate": 6,
+  "username": "africanriskcapacity",
+  "password": "Nasa4ARC!",
+  "basedir": "/media/data/arc/modis-ndvi/dev-archive",
+  "tile_filter": [
+    "h19v06",
+    "h18v06",
+    "h19v07",
+    "h18v07"
+  ],
+  "init_start_date": "2018-01-01",
+  "init_end_date": "2019-12-31",
+  "repository": "/media/data/arc/modis-ndvi/dev-archive/VIM/SMOOTH/EXPORT",
+  "file_pattern": "*.tif",
+  "mimetype": "application/octet-stream",
+  "_comment_export": "[ LL-lon, LL-lat, UR-lon, UR-lat]",
+  "export": {
+    "NIGER": [0.0, 11.0, 16.0, 24.0]
+  }
+}
+
