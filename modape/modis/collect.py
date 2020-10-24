@@ -338,8 +338,8 @@ class ModisRawH5(HDF5Base):
                     dataset="data",
                     arr_in=arr,
                     xchunk=10,
-                    xoff=start_index,
-                    yoff=yoff_ds
+                    xoffset=start_index,
+                    yoffset=yoff_ds
                 )
 
                 if not write_check:
