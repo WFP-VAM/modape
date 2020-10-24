@@ -13,7 +13,7 @@ from .timeslicing import ModisInterleavedOctad
 
 
 def get_date_from_raw_h5_modis_tile(f, idx):
-    with h5py.File(f) as h5f:
+    with h5py.File(f, 'r') as h5f:
         dates = h5f.get('dates')
         return fromjulian(dates[idx].decode())
 
