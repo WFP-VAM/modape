@@ -180,7 +180,7 @@ class ModisSmoothH5(HDF5Base):
             raw_dates_all = [x.decode() for x in h5f_open.get("dates")[...]]
             raw_dates_nsmooth = raw_dates_all[-nsmooth:]
 
-        with h5py.File(self.filename, "r") as h5f_open:
+        with h5py.File(self.filename, "a") as h5f_open:
             smt_ds = h5f_open.get("data")
             smt_attrs = smt_ds.attrs
             smt_shape = smt_ds.shape
