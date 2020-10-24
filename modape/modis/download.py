@@ -113,6 +113,10 @@ class ModisQuery(object):
                     if result["time_start"] < self.begin.date():
                         continue
 
+                if self.end is not None:
+                    if result["time_start"] > self.end.date():
+                        continue
+
             self.results.append(result)
 
         # final results
