@@ -14,7 +14,22 @@ import click
 from modape.constants import REGEX_PATTERNS
 from modape.modis import ModisMosaic
 
+__modis_window = None
+
+
+def register(f):
+    global __modis_window
+    __modis_window = f
+    return f
+
+
+def modis_window(**kwargs):
+    global __modis_window
+    return __modis_window(**kwargs)
+
+
 log = logging.getLogger(__name__)
+
 
 @click.command()
 @click.argument("src")
@@ -33,6 +48,7 @@ log = logging.getLogger(__name__)
 @click.option("--round-int", type=click.INT, help="Round to integer palces (either decimals or exponent of 10)")
 @click.option("--gdal-kwarg", type=click.STRING, multiple=True, help="Addition kwargs for GDAL in form KEY=VALUE (multiple allowed)")
 @click.option("--overwrite", is_flag=True, help="Overwrite existsing Tiffs")
+@register
 def cli(src: str,
         targetdir: str,
         begin_date: datetime.date,
@@ -118,7 +134,7 @@ def cli(src: str,
 
     groups = list(set(groups))
 
-    if roi is not None:
+    if roi is not None and not isinstance(roi, list):
         roi = [float(x) for x in roi.split(',')]
         if len(roi) != 4:
             raise ValueError("ROI for clip needs to be bounding box in format ULX,ULY,LRX,LRY")
@@ -162,6 +178,7 @@ def cli(src: str,
 
     click.echo("\nSTARTING modis_window.py!")
 
+    mosaics = []
     for group in groups:
         log.debug("Processing group %s", group)
 
@@ -170,31 +187,27 @@ def cli(src: str,
 
         mosaic = ModisMosaic(group_files)
 
-        mosaic.generate_mosaics(
-            dataset=dataset,
-            targetdir=targetdir,
-            target_srs=target_srs,
-            aoi=roi,
-            overwrite=overwrite,
-            force_doy=force_doy,
-            prefix=region,
-            start=begin_date,
-            stop=end_date,
-            clip_valid=clip_valid,
-            round_int=round_int,
-            creationOptions=list(co),
-            **gdal_kwargs,
+        mosaics.extend(
+            mosaic.generate_mosaics(
+                dataset=dataset,
+                targetdir=targetdir,
+                target_srs=target_srs,
+                aoi=roi,
+                overwrite=overwrite,
+                force_doy=force_doy,
+                prefix=region,
+                start=begin_date,
+                stop=end_date,
+                clip_valid=clip_valid,
+                round_int=round_int,
+                creationOptions=list(co),
+                **gdal_kwarg
+            )
         )
 
     click.echo("\nCOMPLETED modis_window.py!")
+    return mosaics
 
-def cli_wrap():
-    """Wrapper for cli"""
-
-    if len(sys.argv) == 1:
-        cli.main(['--help'])
-    else:
-        cli() #pylint: disable=E1120
 
 if __name__ == '__main__':
-    cli_wrap()
+    cli()

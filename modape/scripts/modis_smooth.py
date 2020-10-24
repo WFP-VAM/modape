@@ -14,7 +14,22 @@ import numpy as np
 from modape.exceptions import SgridNotInitializedError
 from modape.modis import ModisSmoothH5
 
+__modis_smooth = None
+
+
+def register(f):
+    global __modis_smooth
+    __modis_smooth = f
+    return f
+
+
+def modis_smooth(**kwargs):
+    global __modis_smooth
+    return __modis_smooth(**kwargs)
+
+
 log = logging.getLogger(__name__)
+
 
 @click.command(name="Smooth, gapfill and interpolate processed raw MODIS HDF5 files")
 @click.argument("src", type=click.Path(dir_okay=True, resolve_path=True))
@@ -32,6 +47,7 @@ log = logging.getLogger(__name__)
 @click.option("--soptimize", is_flag=True, help="Use V-curve for s value optimization")
 @click.option("--parallel-tiles", type=click.INT, help="Number of tiles processed in parallel", default=1)
 @click.option('--last-collected', type=click.DateTime(formats=['%Y%j']), help='Last collected date in julian format (YYYYDDD - %Y%j)')
+@register
 def cli(src: str,
         targetdir: str,
         svalue: float,

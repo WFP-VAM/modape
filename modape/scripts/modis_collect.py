@@ -13,6 +13,20 @@ import click
 from modape.constants import REGEX_PATTERNS
 from modape.modis import ModisRawH5
 
+__modis_collect = None
+
+
+def register(f):
+    global __modis_collect
+    __modis_collect = f
+    return f
+
+
+def modis_collect(**kwargs):
+    global __modis_collect
+    return __modis_collect(**kwargs)
+
+
 @click.command()
 @click.argument("src_dir", type=click.Path(dir_okay=True, resolve_path=True))
 @click.option("-d", "--targetdir", type=click.Path(dir_okay=True, writable=True, resolve_path=True),
@@ -20,9 +34,10 @@ from modape.modis import ModisRawH5
 @click.option('-x', '--compression', type=click.STRING, default='gzip', help='Compression for HDF5 files')
 @click.option('--vam-code', type=click.STRING, help='VAM code for dataset to process')
 @click.option('--interleave', is_flag=True, help='Interleave MOD13 & MYD13 products to MXD (only works for VIM!)')
-@click.option('--parallel-tiles', type=click.INT, default=1, help='Number of tiles processed in parallel (default = None)')
+@click.option('--parallel-tiles', type=click.INT, default=1, help='Number of tiles processed in parallel (default = 1)')
 @click.option('--cleanup', is_flag=True, help='Remove collected HDF files')
 @click.option('--last-collected', type=click.DateTime(formats=['%Y%j']), help='Last collected date in julian format (YYYYDDD - %Y%j)')
+@register
 def cli(src_dir: str,
         targetdir: str,
         compression: str,

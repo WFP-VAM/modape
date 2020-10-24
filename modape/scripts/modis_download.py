@@ -12,6 +12,20 @@ import click
 from modape.exceptions import TargetNotEmptyError
 from modape.modis import ModisQuery
 
+__modis_download = None
+
+
+def register(f):
+    global __modis_download
+    __modis_download = f
+    return f
+
+
+def modis_download(**kwargs):
+    global __modis_download
+    return __modis_download(**kwargs)
+
+
 @click.command()
 @click.argument("products", nargs=-1, type=click.STRING)
 @click.option("--roi", type=click.STRING, help="Region of interest. Either LAT,LON or xmin,ymin,xmax,ymax")
@@ -30,6 +44,7 @@ from modape.modis import ModisQuery
 @click.option("--multithread", is_flag=True, help="Use multiple threads for downloading")
 @click.option("--nthreads", type=click.INT, help="Number of threads to use", default=4)
 @click.option("-c", "--collection", type=click.STRING, default="006", help="MODIS collection")
+@register
 def cli(products: List[str],
         begin_date: datetime.datetime,
         end_date: datetime.datetime,
@@ -46,7 +61,7 @@ def cli(products: List[str],
         multithread: bool,
         nthreads: int,
         collection: str,
-        ) -> None:
+        ) -> list:
     """Query and download MODIS products.
 
     This function allows for querying and downloading MODIS products in bulk.
@@ -72,6 +87,7 @@ def cli(products: List[str],
         multithread (bool): Use multiple threads for downloading.
         nthreads (int): Number of threads for multithread.
         collection (str): MODIS collection version.
+        :rtype: list
     """
 
     click.echo("\nSTART download_modis.py!")
@@ -145,7 +161,7 @@ def cli(products: List[str],
 
     if query.nresults == 0:
         click.echo("No results found! Please check query or make sure CMR is available / reachable.")
-        sys.exit(0)
+        return []
 
     click.echo(f'Done! Found {query.nresults} results!')
 
@@ -171,6 +187,7 @@ def cli(products: List[str],
             )
 
     click.echo('modis_download.py COMPLETED! Bye! \n')
+    return query.results
 
 def cli_wrap():
     """Wrapper for cli"""
