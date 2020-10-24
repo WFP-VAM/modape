@@ -180,7 +180,10 @@ def app_do_processing(debug=False):
                 if debug:
                     print('>>Export: {} [Update: {}]'.format(str(export_dekad), str(nexports)))
                 for region, roi in app_state.export.items():
-                    modis_window(src=os.path.join(app_state.basedir, 'VIM', 'SMOOTH'),
+                    if getattr(app_state, 'region_only', region) != region:
+                        continue
+                    exports = \
+                        modis_window(src=os.path.join(app_state.basedir, 'VIM', 'SMOOTH'),
                                  targetdir=os.path.join(app_state.basedir, 'VIM', 'SMOOTH', 'EXPORT'),
                                  begin_date=export_dekad.getDateTimeMid(),
                                  end_date=export_dekad.getDateTimeMid(),
@@ -194,6 +197,13 @@ def app_do_processing(debug=False):
                                                   'FINAL={}'.format('FALSE' if nexports < 6 else 'TRUE')]},
                                  overwrite=True
                                  )
+
+                    for exp in exports:
+                        md5 = generate_file_md5(exp)
+                        with contextlib.suppress(FileNotFoundError):
+                            os.remove(exp + '.md5')
+                        with open(exp + '.md5', 'w') as f:
+                            f.write(md5)
 
                 nexports = nexports + 1
                 export_octad = export_octad.prev()
@@ -230,6 +240,8 @@ def serve(ctx) -> None:
     with open(ctx.obj['CONFIG']) as f:
         app_state = json.load(f)
         app_state = Namespace(**app_state)
+    if ctx.obj['REGION']:
+        app_state.region_only = ctx.obj['REGION']
     if ctx.obj['DEBUG']:
         app_do_processing(debug=True)
     else:
@@ -248,6 +260,8 @@ def export(ctx) -> None:
     with open(ctx.obj['CONFIG']) as f:
         app_state = json.load(f)
     app_state = Namespace(**app_state)
+    if ctx.obj['REGION']:
+        app_state.region_only = ctx.obj['REGION']
     app_state.export_only = True
     app_do_processing(debug=ctx.obj['DEBUG'])
 
@@ -259,6 +273,7 @@ def smooth(ctx) -> None:
     with open(ctx.obj['CONFIG']) as f:
         app_state = json.load(f)
     app_state = Namespace(**app_state)
+    assert (ctx.obj['REGION'] is None), "Cannot smooth for only a specific region!"
     app_state.smooth_only = True
     app_do_processing(debug=ctx.obj['DEBUG'])
 
@@ -270,6 +285,7 @@ def collect(ctx) -> None:
     with open(ctx.obj['CONFIG']) as f:
         app_state = json.load(f)
     app_state = Namespace(**app_state)
+    assert (ctx.obj['REGION'] is None), "Cannot collect for only a specific region!"
     app_state.collect_only = True
     app_do_processing(debug=ctx.obj['DEBUG'])
 
@@ -281,6 +297,7 @@ def download(ctx) -> None:
     with open(ctx.obj['CONFIG']) as f:
         app_state = json.load(f)
     app_state = Namespace(**app_state)
+    assert (ctx.obj['REGION'] is None), "Cannot download for only a specific region!"
     app_state.download_only = True
     app_do_processing(debug=ctx.obj['DEBUG'])
 
@@ -294,6 +311,7 @@ def init(ctx, download_only, smooth_only, export_only) -> None:
     with open(ctx.obj['CONFIG']) as f:
         args = json.load(f)
         args = Namespace(**args)
+    assert (ctx.obj['REGION'] is None), "Cannot initialize for only a specific region!"
 
     urls = []
     if not smooth_only and not export_only:
@@ -391,8 +409,8 @@ def init(ctx, download_only, smooth_only, export_only) -> None:
                                  # convert from LLX,LLY,URX,URY to ULX,ULY,LRX,LRY
                                  region=region, sgrid=False, force_doy=False,
                                  filter_product=None, filter_vampc=None, target_srs='EPSG:4326',
-                                 co=["COMPRESS=LZW", "PREDICTOR=2"],  # md5=True, metadata=['FINAL=TRUE']})
-                                 clip_valid=True, round_int=2, gdal_kwarg={'metadataOptions': ['FINAL=TRUE']},
+                                 co=["COMPRESS=LZW", "PREDICTOR=2"], clip_valid=True, round_int=2,
+                                 gdal_kwarg={'metadataOptions': ['FINAL=TRUE']},
                                  overwrite=True
                                  )
                 for exp in exports:
