@@ -95,14 +95,55 @@ docker run --rm -it modape modape_version
 
 Since MODAPE was developed for WFP VAM's operational needs, it _heavily_ uses an established naming convention for different variables etc.
 
+The naming for both raw and smooth HDF5 files will be constructed from:
+
+- MODIS product type
+- tile index (if applicable)
+- temporal interpolation code (for smooth files)
+- MODIS collection number
+- VAM parameter code
 
 ### VAM parameter codes
 
-- **VIM**: MODIS NDVI
-- **VEM**: MODIS EVI
-- **LTD**:
-    + **TDA**
-    + **TDT**
-- **LTN**:
-    + **TNA**
-    + **TNT**
+ Parameter code | Reference
+:---: | :---:
+**VIM** | MODIS Normalized Difference Vegetation Index (NDVI)
+**VEM** | MODIS Enhanced Vegetation Index (EVI)
+**TDA** | MODIS Aqua Daytime Land Surface Temperature
+**TNA** | MODIS Aqua Nighttime Land Surface Temperature
+**TDT** | MODIS Terra Daytime Land Surface Temperature
+**TNT** | MODIS Terra Nighttime Land Surface Temperature
+
+### Temporal interpolation codes
+
+Code | Reference
+:---: | :---:
+**TXN** | Native temporal resolution (no interpolation performed)
+**TXD** | 10-day timestep (dekads)
+**TXP** | 5-day timestep (pentads)
+**TXC** | Custom interpolation (as defined by user)
+
+### Examples
+
+#### Raw HDF5 file
+
+- **MOD13A2.h20v08.006.VIM.h5**: this is an example for 1km MODIS NDVI, collection 6, for the tile h20v08 from the Terra satellite
+- **MXD13A2.h20v08.006.VIM.h5**: if both Aqua and Terra get interleaved, the product code changes to **MXD**
+- **MXD13C1.006.VIM.h5**: if the product is global, the filename does not include a tile index
+
+#### Smooth HDF5 file
+
+The filename for a smooth HDF5 file is directly derived from the raw input, so all elements of the raw file will be adopted. The only thing changing is the added information of the temporal interpolation.
+
+- **MXD13A2.h20v08.006.txn.VIM.h5**: smooth version of the rawfile above, without temporal interpolation (so in native timestep)
+- **MXD13A2.h20v08.006.txd.VIM.h5**: same as above, just with temporal interpolation performed to 10-day (dekad) timestep
+
+#### Exported GeoTIFFs
+
+The naming for the exported GeoTIFFs is put together from the region code (supplied by the user - if not, the default is _reg_), VAM code and the timestamp (either in julian format or dekads/pentads if applicable).
+
+_Note: the filenames don't contain any information about the product or tile, so GeoTIFFs from different files can end up having the same name and be easily overwritten. Caution is advised!_
+
+- **regvim2020001.tif**: basic example for an exported NDVI image for either a raw HDF5 file, or a smooth HDF5 file with no or custom temporal interpolation
+
+- **regvim2020d1.tif**: If the temporal interpolation is dekad, the timestamps are converted to dekads (this behavior can be prvented with a flag in the executable)
