@@ -1,0 +1,42 @@
+site_name: modape
+site_description: MODIS Assimilation and Processing Engine
+site_url: "https://wfp-vam.github.io/modape"
+repo_url: https://github.com/WFP-VAM/modape
+repo_name: WFP-VAM/modape
+
+
+theme:
+  name: "material"
+  icon:
+    repo: fontawesome/brands/github
+
+nav:
+    - Home: index.md
+    - Executables:
+        - MODIS processing chain: modis_executables.md
+        - Additional scripts: other_executables.md
+    #- API Reference: api.md
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          # setup_commands:
+          #   - import sys
+          #   - from unittest.mock import MagicMock as mock
+          #   - sys.modules["osgeo"] = mock()
+          #   - sys.modules["gdal"] = mock()
+          #   - sys.modules["modape"] = mock()
+          rendering:
+            show_source: false
+
+# markdown_extensions:
+#   - mkdocs-click
+
+#deploy
+#https://squidfunk.github.io/mkdocs-material/publishing-your-site/
+
+
+#mocking
+#https://pawamoy.github.io/mkdocstrings/handlers/python/#mocking-libraries
