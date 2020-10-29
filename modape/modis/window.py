@@ -71,7 +71,7 @@ class ModisMosaic(object):
                         ) -> None:
         """Generate TIFF mosaics.
 
-        This method is creating a GeoTiff mosaic from the MDF5 files
+        This method is creating a GeoTiff mosaic from the HDF5 files
         passed to the class instance.
         Internally, a virtual raster for each timestep is created,
         warped to the desired SRS and then optionally clipped to the
