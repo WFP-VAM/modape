@@ -12,12 +12,18 @@ import numpy as np
 log = logging.getLogger(__name__)
 
 class HDF5Base(object):
-    """Base class for interaction with HDF5 files"""
+    """Parent class for interaction with HDF5 files
+
+    This class serves as a parent class for ModisRawH5 and ModisSmoothH5,
+    enabling uniform chunked read and write of datasets and attributes to and from HDF5 files."""
     def __init__(self, filename: str) -> None:
-        """initialize class instance.
+        """Initialize HDF5Base instance.
+
+        Creates an instance of the HDF5Base class. This is not stricly intended to be called
+        by itself (although it can be), but rather through a `super` call of the child class.
 
         Args:
-            filename (str): Filename of HDF5 file.
+            filename (str): Full path to the HDF5 file.
         """
 
         self.filename = Path(filename)
@@ -33,19 +39,26 @@ class HDF5Base(object):
         The chunks are iterated in a row by column pattern, where
         each chunk along row axis is yielded once the full
         column size is read into the array. The chunking of
-        the colums (xchunk) can me modified, while the row chunking
-        (ychunk) is strictly defined by the dataset.
+        the colums (`xchunk`) can me modified, while the row chunking
+        (`ychunk`) is strictly defined by the dataset.
+        To enable the `nsmooth` functionality, an `xoffset` can be provided
+        to skip datapoints along the time dimension.
+        If no `arr_out` is provided, a new array will be created with the
+        necessary dimensions.
 
 
         Args:
             dataset (str): Name of the dataset (expect 2d array).
-            xoffset (int): Offset for colums (xaxis) in file.
-            xchunk (int): Chunking along row (x) axis.
+            xoffset (int): Offset for time-dimension (xaxis) in file.
+            xchunk (int): Chunking along time-dimension.
                           If not specified, it'll be read from the dataset.
             arr_out (np.ndarray): Output array.
 
-        Yields:
-            np.ndarray: Yields the output chunk as np.ndarray
+        Returns:
+            Yields the output chunk as np.ndarray
+
+        Raises:
+            AssertionError: Raised when `dataset` not found within HDF5 file and when provided `arr_out` is not correct object or shape
 
         """
 
@@ -102,8 +115,12 @@ class HDF5Base(object):
         """Write chunk back to HDF5 file.
 
         Writes complete chunk back to HDF5 file, iterating
-        over the column (x) dimension. The chunksize for x
-        can be adjusted manually.
+        over the time-dimension (x). The chunksize for x
+        can be adjusted manually using `xchunk`.
+        To implement `nupdate` behaviour, `xoffset` can be used to skip
+        prior datapoints in the time-dimension.
+        To write successive spatial chunks, `yoffset` has to be provided (the default is 0,
+        as it starts at the top left).
 
         Args:
             dataset (str): Name of the dataset (expect 2d array).
@@ -114,7 +131,11 @@ class HDF5Base(object):
             yoffset (int): Offset for rows (yaxis) in file.
 
         Returns:
-            bool: True if write successful.
+            Returns `True` if write was successful.
+
+        Raises:
+            AssertionError: Raised when `dataset` not found within HDF5 file and when provided `arr_in` is not correct object or shape
+
 
         """
 
@@ -206,18 +227,21 @@ class HDF5Base(object):
         return metadata
 
 class HDFHandler(object):
-    """Class to handle HDF files for reading"""
+    """Class to handle reading from MODIS HDF files.
+
+    This class enables reading specific subdatasets and attributes
+    from the raw MODIS HDF files."""
     def __init__(self,
                  files: List[str],
                  sds: str) -> None:
-        """Init the class.
+        """Initialize HDFHandler instance.
 
         Reads the datasets, extracts the subdatasets and keeps
         a reference to the file handlers.
 
         Args:
-            files (List[str]): List of file paths.
-            sds (str): subdataset as returned by constants.VAM_PRODUCT_CODES.
+            files (List[str]): List of file paths to hdf files.
+            sds (str): subdataset as returned by `modape.constants.VAM_PRODUCT_CODES`.
 
         """
 
@@ -227,7 +251,10 @@ class HDFHandler(object):
 
     @contextmanager
     def open_datasets(self) -> None:
-        """Opens the datasets within contextmanager.
+        """Opens the selected subdataset from all files
+        within a context manager and stores them in a class variable.
+        When the context manager closes, the refereces are removed, closing
+        all datasets.
 
         """
         for ds_handle in self._gen_sds_handle(self.files, self.sds):
@@ -239,11 +266,13 @@ class HDFHandler(object):
             self.handles[ii] = None
         self.handles = []
 
-    def iter_handles(self) -> Tuple[int, gdal.Dataset]:
-        """Iterate over file handles.
+    def iter_handles(self) -> Tuple[int, "gdal.Dataset"]:
+        """Iterates over all open dataset handles
+        coming from `open_datasets` and returns a Tuple with index and a
+        `gdal.Dataset` for each.
 
-        Yields:
-            Tuple[int, gdal.Dataset]: Tuple with index and correspomnding gdal dataset
+        Returns:
+            Tuple with index and corresponding `gdal.Dataset`
 
         """
         ix = 0
@@ -252,17 +281,19 @@ class HDFHandler(object):
             ix += 1
 
     @staticmethod
-    def read_chunk(x: gdal.Dataset, **kwargs: dict) -> np.ndarray:
-        """Read chunk of dataset.
+    def read_chunk(x: "gdal.Dataset", **kwargs: dict) -> np.ndarray:
+        """Reads a chunk of an opened subdataset.
 
-        Chunk can be as big as full dataset.
+        The size of the chunk being read is defined by the
+        values passed to `gdal.Dataset.ReadAsArray` with `kwargs` and can
+        be as big as the entire dataset.
 
         Args:
             x (gdal.Dataset): GDAL Dataset.
-            **kwargs (dict): kwargs passed on to gdal.Dataset.ReadAsArray
+            **kwargs (dict): kwargs passed on to `gdal.Dataset.ReadAsArray`
 
         Returns:
-            np.ndarray: array data
+            Requested chunk as `np.ndarray`
 
         """
         return x.ReadAsArray(**kwargs)
