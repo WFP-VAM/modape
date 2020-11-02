@@ -3,7 +3,10 @@ Additional commandline scripts which are not strictly part of the MODIS processi
 
 ### `csv_smooth`
 
-This executable allows to smooth timeseries saved in CSV format. For the different ways the smoother can be applied, please refer to the [`modis_smooth`](../modis_executables/#modis_smooth) documentation.
+This executable allows to smooth timeseries saved in CSV format.
+
+!!! Note
+    For the different ways the smoother can be applied, please refer to the [`modis_smooth`](../modis_executables/#modis_smooth) documentation.
 
 `csv_smooth` expects the timeseries for smoothing to be stored in the columns, therefore each column will be smoothed independently. If a column with dates or another index is present, specify it in `--index-column`.
 

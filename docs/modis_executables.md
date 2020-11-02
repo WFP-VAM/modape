@@ -1,19 +1,33 @@
 
 The [MODIS processing chain](../#overview) can be executed at a high level using CLI scrips with minimal user input. All of the scripts are created using the Python module [click](https://click.palletsprojects.com/en/7.x/).
 
+!!! Warning
+    `modis_collect`, `modis_smooth` and `modis_window` are only implemented for
+    MOD/MYD 11/13 products!
+
 ### `modis_download`
 
-With `modis_download` you can query and download MODIS raw data, where the downloading to local disk requires valid [Earthdata credentials](https://urs.earthdata.nasa.gov/).
+With `modis_download` you can query and download MODIS raw data.
+
+!!! Note
+    Downloading NASA data to local disk requires valid [Earthdata credentials](https://urs.earthdata.nasa.gov/).
 
 The products to be queried for need to be supplied as a list of MODIS product IDs (case insensitive), each item separated by a single space, e.g. `MOD13A2 MYD11A1 ...`.
 
-If you want to query for both MODIS satellites for the same product, the letter indicating which satellite can be replaced by a `?`, e.g. `M?d13A2`.
+!!! Tip
+    If you want to query for both MODIS satellites for the same product, the letter indicating which satellite can be replaced by a `?`, e.g. `M?d13A2`.
 
 The query can be limited by coordinates (as `--roi` point or bounding box), MODIS tile IDs (supplied as comma separated list to `--tile-filter`, e.g `h20v08,h20v09`) and a date bracket (supplied to `--begin-date` and `--end-date`). Due to the nature of composited products, results can be returned slightly outside the specified date bracket. To avoid this and strictly enforce the bracket, pass the `--strict-dates` flag.
 
-The query is sent to the NASA Common Metadata Repository (CMR) using the [`python-cmr`](https://github.com/jddeal/python-cmr) module. To look at the details of the returned results, pass the `--return-results` flag.
+The query is sent to the NASA Common Metadata Repository (CMR) using the [`python-cmr`](https://github.com/jddeal/python-cmr) module.
 
-The download is only performed when both credential flags are passed (`--username` & `--password`) as well as the `--download` flag. By default, the download is performed sequentially using Python's `requests`. To speed up the download, you may use multiple threads (`--multithread`) where the number of used threads can be adjusted with the `--nthreads` flag (default is 4 threads).
+!!! Tip
+    To look at the details of the returned results, pass the `--return-results` flag.
+
+The download is only performed when both credential flags are passed (`--username` & `--password`) as well as the `--download` flag. By default, the download is performed sequentially using Python's `requests`.
+
+!!! Tip
+    To speed up the download, you may use multiple threads (`--multithread`) where the number of used threads can be adjusted with the `--nthreads` flag (default is 4 threads).
 
 A processing chain might require the target directory to not contain any previous HDF files, which can be enforced using `--target-empty`. By default, existing files won't be overwritten. If this is required, pass the `--overwrite` flag.
 
@@ -57,13 +71,15 @@ If no target directory (`--target-dir`) is specified, the output will be stored 
 
 To extract a specific parameter, a [VAM parameter code](../#vam-parameter-codes) can be specified using `--vam-code`. If not specified, the defaults will be extracted, which are NDVI (VIM) and LST Daytime (TDA/TDT).
 
-In the case of 16 day MODIS NDVI products, both satellites can be interleaved to form a combined 8-day product, indicated by a new _MXD_ product code.
+In the case of 16 day MODIS NDVI products, both satellites can be interleaved to form a combined 8-day product, indicated by a new _MXD_ product code. Each combination of MODIS product and tile get collected into the same HDF5 file.
 
-Each combination of MODIS product and tile get collected into the same HDF5 file. Using `--parallel-tiles`, these can be collected in parallel (up to 4 collection processes). If an HDF5 file does not exist, it will be created, otherwise updated with the new data.
+!!! Tip
+    Using `--parallel-tiles`, these can be collected in parallel (up to 4 collection processes). If an HDF5 file does not exist, it will be created, otherwise updated with the new data.
 
 It might be required to perform a check on temporal continuity, which can be done using `--last-collected`. Here a MODIS julian date can be specified that needs to be the last timestep collected before the new collection starts. If that's not the case, the process will fail on exception.
 
-_Note: It's the user's responsibility to ensure temporal continuity when creating and updating files. New timesteps are appended, and there's no internal checks if a timestep might be missing etc. This follows the "garbage in - garbage out" principle._
+!!! Danger
+    It's the user's responsibility to ensure temporal continuity when creating and updating files. New timesteps are appended, and there are no internal checks if a timestep might be missing etc. This follows the "garbage in - garbage out" principle.
 
 #### Usage
 
@@ -153,14 +169,25 @@ For subsets, a region of interest (`--roi`) needs to be specified as comma separ
 
 In case of smooth HDF5 files, the grid containing the V-curve optimized S values for each pixel can be exported by passing the `--sgrid` flag. In this case any input dates won't have an effect (there's only one S-grid).
 
-By default, all outputs are warped to `EPSG:4326`. For warping to a different spatial reference, specify a `GDAL` readable reference to `--target-srs`.
+If outputs in the MODIS Sinusoidal projection are warped by default to `EPSG:4326`. For warping to a different spatial reference, specify a `GDAL` readable reference to `--target-srs`.
 
-By default, all exported GeoTIFFs get compressed using `LZW` with predictor 2 (using the creation options `["COMPRESS=LZW", "PREDICTOR=2"]`). To specify different `GDAL` creation options, a space separated list in form of `KEY=VALUE` can be passed to `--co`. For further customization of the exported GeoTIFFs, additional GDAL options can be supplied to `--gdal-kwarg` in the same format.
+!!! Note
+    Only tiled MODIS products are in Sinusoidal projection. The global 5km products are already in `EPSG:4326` and don't need to be warped.
 
-To further improve the compression, the data can be rounded to a significant integer. E.g. a NDVI value of `3141` can be rounded to `3100` by passing `2` to `--round-int`.
+By default, all exported GeoTIFFs get compressed using `LZW` with predictor 2 (using the creation options `["COMPRESS=LZW", "PREDICTOR=2"]`). To specify different `GDAL` creation options, a space separated list in form of `KEY=VALUE` can be passed to `--co`.
+
+
+!!! Tip
+    To further improve the compression and reduce file size, the data can be rounded to a significant integer. E.g. a NDVI value of `3141` can be rounded to `3100` by passing `2` to `--round-int`.
+
+!!! Tip
+    For further customization of the exported GeoTIFFs, additional GDAL options can be supplied to `--gdal-kwarg` in the same format.
+
 
 The file naming for exported GeoTIFFs is detailed in the [main documentation](../#exported-geotiffs). A custom region code can be specified using `--region`. When exporting dekad / pentad data, `--force-doy` can be used to force a `YYYYjDDD` timestamp instead of the dekad / pentad format.
-<br>_Note: please read the section in the main documentation carefully to avoid confusion with indentical named GeoTIFFs._
+
+!!! Note
+    Note: please read the section in the main documentation carefully to avoid confusion with identical named GeoTIFFs.
 
 By default existing GeoTIFFs won't be overwritten. This can be forced with passwing the `--overwrite` flag.
 
