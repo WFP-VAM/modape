@@ -257,8 +257,15 @@ class ModisSmoothH5(HDF5Base):
 
         arr_raw = np.zeros((raw_chunks[0], len(raw_dates_nsmooth)), dtype="double")
 
-        read_offset = max(0, raw_shape[1] - nsmooth)
-        write_offset = max(0, smt_shape[1] - nupdate)
+        if nsmooth > 0:
+            read_offset = raw_shape[1] - nsmooth
+        else:
+            read_offset = 0
+
+        if nupdate > 0:
+            write_offset = smt_shape[1] - nupdate
+        else:
+            write_offset = 0
 
         # Create weights array
         wts = arr_raw.copy()
@@ -319,6 +326,9 @@ class ModisSmoothH5(HDF5Base):
                             sr = np.arange(0, 3.2, 0.2).round(2)
                         else:
                             sr = np.arange(-1, 1.2, 0.2).round(2)
+
+                    else:
+                        sr = srange
 
                     if p is not None:
                         arr_raw[ix, :], arr_sgrid[ix] = ws2doptvp(y=arr_raw[ix, :],
