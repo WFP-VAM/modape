@@ -1,0 +1,831 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="MODIS Assimilation and Processing Engine">
+      
+      
+        <link rel="canonical" href="https://wfp-vam.github.io/modape/modis_executables/">
+      
+      
+      <link rel="shortcut icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.1.2, mkdocs-material-6.1.2">
+    
+    
+      
+        <title>MODIS processing chain - modape</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.19190aaf.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.24b84193.min.css">
+        
+      
+    
+    
+    
+      
+        
+        <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,400i,700%7CRoboto+Mono&display=fallback">
+        <style>body,input{font-family:"Roboto",-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif}code,kbd,pre{font-family:"Roboto Mono",SFMono-Regular,Consolas,Menlo,monospace}</style>
+      
+    
+    
+    
+    
+      
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="" data-md-color-primary="none" data-md-color-accent="none">
+      
+  
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#modis_download" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header-nav md-grid" aria-label="Header">
+    <a href="https://wfp-vam.github.io/modape" title="modape" class="md-header-nav__button md-logo" aria-label="modape">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 003-3 3 3 0 00-3-3 3 3 0 00-3 3 3 3 0 003 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
+
+    </a>
+    <label class="md-header-nav__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2z"/></svg>
+    </label>
+    <div class="md-header-nav__title" data-md-component="header-title">
+      
+        <div class="md-header-nav__ellipsis">
+          <span class="md-header-nav__topic md-ellipsis">
+            modape
+          </span>
+          <span class="md-header-nav__topic md-ellipsis">
+            
+              MODIS processing chain
+            
+          </span>
+        </div>
+      
+    </div>
+    
+      <label class="md-header-nav__button md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0116 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 019.5 16 6.5 6.5 0 013 9.5 6.5 6.5 0 019.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5z"/></svg>
+      </label>
+      
+<div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" data-md-state="active">
+      <label class="md-search__icon md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0116 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 019.5 16 6.5 6.5 0 013 9.5 6.5 6.5 0 019.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
+      </label>
+      <button type="reset" class="md-search__icon md-icon" aria-label="Clear" data-md-component="search-reset" tabindex="-1">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
+      </button>
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header-nav__source">
+        
+<a href="https://github.com/WFP-VAM/modape/" title="Go to repository" class="md-source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    WFP-VAM/modape
+  </div>
+</a>
+      </div>
+    
+  </nav>
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              <div class="md-sidebar md-sidebar--primary" data-md-component="navigation">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="https://wfp-vam.github.io/modape" title="modape" class="md-nav__button md-logo" aria-label="modape">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 003-3 3 3 0 00-3-3 3 3 0 00-3 3 3 3 0 003 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
+
+    </a>
+    modape
+  </label>
+  
+    <div class="md-nav__source">
+      
+<a href="https://github.com/WFP-VAM/modape/" title="Go to repository" class="md-source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    WFP-VAM/modape
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href=".." class="md-nav__link">
+      Home
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+  
+
+
+  <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    
+      <input class="md-nav__toggle md-toggle" data-md-toggle="nav-2" type="checkbox" id="nav-2" checked>
+    
+    <label class="md-nav__link" for="nav-2">
+      Executables
+      <span class="md-nav__icon md-icon"></span>
+    </label>
+    <nav class="md-nav" aria-label="Executables" data-md-level="1">
+      <label class="md-nav__title" for="nav-2">
+        <span class="md-nav__icon md-icon"></span>
+        Executables
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+  
+
+
+  <li class="md-nav__item md-nav__item--active">
+    
+    <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+    
+    
+      <label class="md-nav__link md-nav__link--active" for="__toc">
+        MODIS processing chain
+        <span class="md-nav__icon md-icon"></span>
+      </label>
+    
+    <a href="./" class="md-nav__link md-nav__link--active">
+      MODIS processing chain
+    </a>
+    
+      
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#modis_download" class="md-nav__link">
+    modis_download
+  </a>
+  
+    <nav class="md-nav" aria-label="modis_download">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    Usage
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#modis_collect" class="md-nav__link">
+    modis_collect
+  </a>
+  
+    <nav class="md-nav" aria-label="modis_collect">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#usage_1" class="md-nav__link">
+    Usage
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#modis_smooth" class="md-nav__link">
+    modis_smooth
+  </a>
+  
+    <nav class="md-nav" aria-label="modis_smooth">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#usage_2" class="md-nav__link">
+    Usage
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#modis_window" class="md-nav__link">
+    modis_window
+  </a>
+  
+    <nav class="md-nav" aria-label="modis_window">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#usage_3" class="md-nav__link">
+    Usage
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+    
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../other_executables/" class="md-nav__link">
+      Additional scripts
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-nav__toggle md-toggle" data-md-toggle="nav-3" type="checkbox" id="nav-3">
+    
+    <label class="md-nav__link" for="nav-3">
+      API Reference
+      <span class="md-nav__icon md-icon"></span>
+    </label>
+    <nav class="md-nav" aria-label="API Reference" data-md-level="1">
+      <label class="md-nav__title" for="nav-3">
+        <span class="md-nav__icon md-icon"></span>
+        API Reference
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../io/" class="md-nav__link">
+      modis.io
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../download/" class="md-nav__link">
+      modis.download
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../collect/" class="md-nav__link">
+      modis.collect
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../smooth/" class="md-nav__link">
+      modis.smooth
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../window/" class="md-nav__link">
+      modis.window
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="toc">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#modis_download" class="md-nav__link">
+    modis_download
+  </a>
+  
+    <nav class="md-nav" aria-label="modis_download">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    Usage
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#modis_collect" class="md-nav__link">
+    modis_collect
+  </a>
+  
+    <nav class="md-nav" aria-label="modis_collect">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#usage_1" class="md-nav__link">
+    Usage
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#modis_smooth" class="md-nav__link">
+    modis_smooth
+  </a>
+  
+    <nav class="md-nav" aria-label="modis_smooth">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#usage_2" class="md-nav__link">
+    Usage
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#modis_window" class="md-nav__link">
+    modis_window
+  </a>
+  
+    <nav class="md-nav" aria-label="modis_window">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#usage_3" class="md-nav__link">
+    Usage
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          <div class="md-content">
+            <article class="md-content__inner md-typeset">
+              
+                
+                  <a href="https://github.com/WFP-VAM/modape/edit/master/docs/modis_executables.md" title="Edit this page" class="md-content__button md-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20.71 7.04c.39-.39.39-1.04 0-1.41l-2.34-2.34c-.37-.39-1.02-.39-1.41 0l-1.84 1.83 3.75 3.75M3 17.25V21h3.75L17.81 9.93l-3.75-3.75L3 17.25z"/></svg>
+                  </a>
+                
+                
+                  <h1>MODIS processing chain</h1>
+                
+                <p>The <a href="../#overview">MODIS processing chain</a> can be executed at a high level using CLI scrips with minimal user input. All of the scripts are created using the Python module <a href="https://click.palletsprojects.com/en/7.x/">click</a>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p><code>modis_collect</code>, <code>modis_smooth</code> and <code>modis_window</code> are only implemented for
+MOD/MYD 11/13 products!</p>
+</div>
+<h3 id="modis_download"><code>modis_download</code></h3>
+<p>With <code>modis_download</code> you can query and download MODIS raw data.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Downloading NASA data to local disk requires valid <a href="https://urs.earthdata.nasa.gov/">Earthdata credentials</a>.</p>
+</div>
+<p>The products to be queried for need to be supplied as a list of MODIS product IDs (case insensitive), each item separated by a single space, e.g. <code>MOD13A2 MYD11A1 ...</code>.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>If you want to query for both MODIS satellites for the same product, the letter indicating which satellite can be replaced by a <code>?</code>, e.g. <code>M?d13A2</code>.</p>
+</div>
+<p>The query can be limited by coordinates (as <code>--roi</code> point or bounding box), MODIS tile IDs (supplied as comma separated list to <code>--tile-filter</code>, e.g <code>h20v08,h20v09</code>) and a date bracket (supplied to <code>--begin-date</code> and <code>--end-date</code>). Due to the nature of composited products, results can be returned slightly outside the specified date bracket. To avoid this and strictly enforce the bracket, pass the <code>--strict-dates</code> flag.</p>
+<p>The query is sent to the NASA Common Metadata Repository (CMR) using the <a href="https://github.com/jddeal/python-cmr"><code>python-cmr</code></a> module.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>To look at the details of the returned results, pass the <code>--return-results</code> flag.</p>
+</div>
+<p>The download is only performed when both credential flags are passed (<code>--username</code> &amp; <code>--password</code>) as well as the <code>--download</code> flag. By default, the download is performed sequentially using Python's <code>requests</code>.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>To speed up the download, you may use multiple threads (<code>--multithread</code>) where the number of used threads can be adjusted with the <code>--nthreads</code> flag (default is 4 threads).</p>
+</div>
+<p>A processing chain might require the target directory to not contain any previous HDF files, which can be enforced using <code>--target-empty</code>. By default, existing files won't be overwritten. If this is required, pass the <code>--overwrite</code> flag.</p>
+<h4 id="usage">Usage</h4>
+<pre><code>Usage: modis_download [OPTIONS] [PRODUCTS]...
+
+Options:
+  --roi TEXT                   Region of interest. Either LAT,LON or
+                               xmin,ymin,xmax,ymax
+
+  -b, --begin-date [%Y-%m-%d]  Start date for query
+  -e, --end-date [%Y-%m-%d]    End date for query
+  -d, --targetdir PATH         Destination directory for downloaded files
+  --target-empty               Fail if there are hdf files in the target
+                               directory
+
+  --tile-filter TEXT           Filter tiles - supplied as csv list
+  --username TEXT              Earthdata username
+  --password TEXT              Earthdata password
+  --strict-dates               Don't allow files with timestamps outside of
+                               provided date(s)
+
+  --return-results             Print results to console
+  --download                   Download data
+  --overwrite                  Overwrite existing files
+  --multithread                Use multiple threads for downloading
+  --nthreads INTEGER           Number of threads to use
+  -c, --collection TEXT        MODIS collection
+  --help                       Show this message and exit.
+</code></pre>
+<h3 id="modis_collect"><code>modis_collect</code></h3>
+<p>Before applying the Whittake smoother to the data, the raw HDF files need to be collected into a 3D spatio-temporal cube inside an HDF5 file, using <code>modis_collect</code>.</p>
+<p>The only required input is <code>src_dir</code>, a directory with the raw MODIS HDF files to be collected. These can be multiple products and tiles.</p>
+<p>If no target directory (<code>--target-dir</code>) is specified, the output will be stored in the <code>src_dir</code>. The HDF5 files themselves get stored in a sub-directory, which is attributed to the extracted parameter (indicated by the VAM parameter code). This needs to be considered carefully, as updating the existing files depends on the executable being able to locate them.</p>
+<p>To extract a specific parameter, a <a href="../#vam-parameter-codes">VAM parameter code</a> can be specified using <code>--vam-code</code>. If not specified, the defaults will be extracted, which are NDVI (VIM) and LST Daytime (TDA/TDT).</p>
+<p>In the case of 16 day MODIS NDVI products, both satellites can be interleaved to form a combined 8-day product, indicated by a new <em>MXD</em> product code. Each combination of MODIS product and tile get collected into the same HDF5 file.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>Using <code>--parallel-tiles</code>, these can be collected in parallel (up to 4 collection processes). If an HDF5 file does not exist, it will be created, otherwise updated with the new data.</p>
+</div>
+<p>It might be required to perform a check on temporal continuity, which can be done using <code>--last-collected</code>. Here a MODIS julian date can be specified that needs to be the last timestep collected before the new collection starts. If that's not the case, the process will fail on exception.</p>
+<div class="admonition danger">
+<p class="admonition-title">Danger</p>
+<p>It's the user's responsibility to ensure temporal continuity when creating and updating files. New timesteps are simply appended, only checking if they don't precede existing ones. There are no further checks if a timestep might be missing etc. This follows the "garbage in - garbage out" principle.</p>
+</div>
+<h4 id="usage_1">Usage</h4>
+<pre><code>Usage: modis_collect [OPTIONS] SRC_DIR
+
+Options:
+  -d, --targetdir PATH      Destination for raw HDF5 files
+  -x, --compression TEXT    Compression for HDF5 files
+  --vam-code TEXT           VAM code for dataset to process
+  --interleave              Interleave MOD13 &amp; MYD13 products to MXD (only
+                            works for VIM!)
+
+  --parallel-tiles INTEGER  Number of tiles processed in parallel (default =
+                            None)
+
+  --cleanup                 Remove collected HDF files
+  --last-collected [%Y%j]   Last collected date in julian format (YYYYDDD -
+                            %Y%j)
+
+  --help                    Show this message and exit.
+
+</code></pre>
+<h3 id="modis_smooth"><code>modis_smooth</code></h3>
+<p>This step applies the Whittaker smoother to the raw data. The input (<code>src</code>) can be either a single raw HDF5 file, or a directory containing multiple.</p>
+<p>There's a one-to-many relationship between raw and smooth HDF5 files. One raw file can have multiple smooth files, depending on the settings used for smoothing. As with the raw HDF5 files, the smooth files get created if they don't exist or updated if they do. So it's again crucial to be aware of where the data gets written to, and adjust accordingly with <code>--targetdir</code>.</p>
+<p>The smoothing can be performed in multiple ways, which is determined by the user's input:</p>
+<ul>
+<li>if the <code>--soptimize</code> flag is passed, the V-curve optimization of the smoothing parameter S is performed. This always takes precedence over other methods, independent of other inputs supplied.</li>
+<li>if <code>--soptimize</code> is passed alongside a P value (<code>--pvalue</code>), then an asymmetric V-curve optimization is performed using the supplied P value.</li>
+<li>if only the S Value (<code>--svalue</code>) is supplied, then the smoothing is performed using a fixed S (as supplied - should be in log10)</li>
+<li>if none of the above is supplied, the smoothing will be performed reading S values from a previously optimized S-grid. <strong>Note:</strong> This requires that <code>--soptimize</code> has been run at least once previously.</li>
+</ul>
+<p>The V-curve optimization will look for an optimized S value for each pixel within a given range. This range can be defined using the <code>--srange</code> flag (expects 3 space separated log10 values). If the range is not supplied, the algorithm will use one of two for each pixel, depending on the lag-1 correlation of the pixel's timeseries:</p>
+<ul>
+<li>lag-1 correlation &gt; 0.5: <code>smin=-2</code>, <code>smax=1</code>, <code>sstep=0.2</code></li>
+<li>lag-1 correlation &lt;= 0.5: <code>smin=0</code>, <code>smax=3</code>, <code>sstep=0.2</code></li>
+</ul>
+<p>The smoother can also perform temporal interpolation, to a desired temporal grid. The desired timestep should be defined with <code>--tempint</code>. Dekad (10-day) and pentad (5-day) interpolation follow a fixed date cycle. For other more custom interpolations, it's required to specify a start date (<code>--tempint-start</code>) from which the timestep will be calculated.</p>
+<p>For subsequent runs after optimization, the number of timesteps used for smoothing (<code>--nsmooth</code>) and the number updated in the target dataset (<code>--nupdate</code>) can be limited to speed up the process.</p>
+<p>Similar to raw HDF5 files, the <code>--last-collected</code> flag can be passed to enforce a check on the last raw date used for smoothing in the previous run.</p>
+<h4 id="usage_2">Usage</h4>
+<pre><code>Usage: modis_smooth [OPTIONS] SRC
+
+Options:
+  -d, --targetdir PATH            Target directory for smoothed output
+  -s, --svalue FLOAT              S value for smoothing (in log10)
+  -S, --srange FLOAT...           S value range for V-curve (float log10(s)
+                                  values as smin smax sstep - default -1 1 0)
+
+  -p, --pvalue FLOAT              P value for asymmetric smoothing
+  -t, --tempint INTEGER           Value for temporal interpolation (integer
+                                  required - default is native temporal
+                                  resolution i.e. no interpolation)
+
+  --tempint-start [%Y-%m-%d|%Y%j]
+                                  Startdate for temporal interpolation
+  -n, --nsmooth INTEGER           Number of raw timesteps used for smoothing
+  -u, --nupdate INTEGER           Number of smoothed timesteps to be updated
+                                  in HDF5 file
+
+  --soptimize                     Use V-curve for s value optimization
+  --parallel-tiles INTEGER        Number of tiles processed in parallel
+  --last-collected [%Y%j]         Last collected date in julian format
+                                  (YYYYDDD - %Y%j)
+
+  --help                          Show this message and exit.
+</code></pre>
+<h3 id="modis_window"><code>modis_window</code></h3>
+<p><code>modis_window</code> enables the export of data from HDF5 files as GeoTIFF. The data can be a mosaic of many tiles, or a subset of a single tile / global file.</p>
+<p>The input (<code>src</code>) can be a single HDF5 file or a directory containing multiple files. In the second case, the input can be filtered by MODIS product (<code>--filter-product</code>) and VAM parameter code (<code>--filter-vampc</code>).</p>
+<p>For subsets, a region of interest (<code>--roi</code>) needs to be specified as comma separated list. The exported dates can be limited by passing a date bracket. (<code>--begin-date</code> &amp; <code>--end-date</code>).</p>
+<p>In case of smooth HDF5 files, the grid containing the V-curve optimized S values for each pixel can be exported by passing the <code>--sgrid</code> flag. In this case any input dates won't have an effect (there's only one S-grid).</p>
+<p>If outputs in the MODIS Sinusoidal projection are warped by default to <code>EPSG:4326</code>. For warping to a different spatial reference, specify a <code>GDAL</code> readable reference to <code>--target-srs</code>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Only tiled MODIS products are in Sinusoidal projection. The global 5km products are already in <code>EPSG:4326</code> and don't need to be warped.</p>
+</div>
+<p>By default, all exported GeoTIFFs get compressed using <code>LZW</code> with predictor 2 (using the creation options <code>["COMPRESS=LZW", "PREDICTOR=2"]</code>). To specify different <code>GDAL</code> creation options, a space separated list in form of <code>KEY=VALUE</code> can be passed to <code>--co</code>.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>To further improve the compression and reduce file size, the data can be rounded to a significant integer. E.g. a NDVI value of <code>3141</code> can be rounded to <code>3100</code> by passing <code>2</code> to <code>--round-int</code>.</p>
+</div>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>For further customization of the exported GeoTIFFs, additional GDAL options can be supplied to <code>--gdal-kwarg</code> in the same format.</p>
+</div>
+<p>The file naming for exported GeoTIFFs is detailed in the <a href="../#exported-geotiffs">main documentation</a>. A custom region code can be specified using <code>--region</code>. When exporting dekad / pentad data, <code>--force-doy</code> can be used to force a <code>YYYYjDDD</code> timestamp instead of the dekad / pentad format.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Note: please read the section in the main documentation carefully to avoid confusion with identical named GeoTIFFs.</p>
+</div>
+<p>By default existing GeoTIFFs won't be overwritten. This can be forced with passwing the <code>--overwrite</code> flag.</p>
+<h4 id="usage_3">Usage</h4>
+<pre><code>Usage: modis_window [OPTIONS] SRC
+
+Options:
+  -d, --targetdir PATH         Target directory for Tiffs
+  -b, --begin-date [%Y-%m-%d]  Begin date for Tiffs
+  -e, --end-date [%Y-%m-%d]    End date for Tiffs
+  --roi TEXT                   AOI for clipping (as ULX,ULY,LRX,LRY)
+  --region TEXT                Region prefix for Tiffs (default is reg)
+  --sgrid                      Extract sgrid instead of data
+  --force-doy                  Force DOY filenaming
+  --filter-product TEXT        Filter by product
+  --filter-vampc TEXT          Filter by VAM parameter code
+  --target-srs TEXT            Target spatial reference for warping
+  --co TEXT                    GDAL creationOptions
+  --clip-valid                 clip values to valid range for product
+  --round-int INTEGER          Round to integer places (either decimals or
+                               exponent of 10)
+
+  --gdal-kwarg TEXT            Addition kwargs for GDAL in form KEY=VALUE
+                               (multiple allowed)
+
+  --overwrite                  Overwrite existsing Tiffs
+  --help                       Show this message and exit.
+</code></pre>
+                
+              
+              
+                
+
+
+              
+            </article>
+          </div>
+        </div>
+      </main>
+      
+        
+<footer class="md-footer">
+  
+    <div class="md-footer-nav">
+      <nav class="md-footer-nav__inner md-grid" aria-label="Footer">
+        
+          <a href=".." class="md-footer-nav__link md-footer-nav__link--prev" rel="prev">
+            <div class="md-footer-nav__button md-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
+            </div>
+            <div class="md-footer-nav__title">
+              <div class="md-ellipsis">
+                <span class="md-footer-nav__direction">
+                  Previous
+                </span>
+                Home
+              </div>
+            </div>
+          </a>
+        
+        
+          <a href="../other_executables/" class="md-footer-nav__link md-footer-nav__link--next" rel="next">
+            <div class="md-footer-nav__title">
+              <div class="md-ellipsis">
+                <span class="md-footer-nav__direction">
+                  Next
+                </span>
+                Additional scripts
+              </div>
+            </div>
+            <div class="md-footer-nav__button md-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    </div>
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-footer-copyright">
+        
+        Made with
+        <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+          Material for MkDocs
+        </a>
+      </div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    
+      <script src="../assets/javascripts/vendor.7e0ee788.min.js"></script>
+      <script src="../assets/javascripts/bundle.c1ccee15.min.js"></script><script id="__lang" type="application/json">{"clipboard.copy": "Copy to clipboard", "clipboard.copied": "Copied to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.placeholder": "Type to start searching", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.term.missing": "Missing"}</script>
+      
+      <script>
+        app = initialize({
+          base: "..",
+          features: [],
+          search: Object.assign({
+            worker: "../assets/javascripts/worker/search.4ac00218.min.js"
+          }, typeof search !== "undefined" && search)
+        })
+      </script>
+      
+    
+  </body>
+</html>
