@@ -1,0 +1,49 @@
+site_name: modape
+site_description: MODIS Assimilation and Processing Engine
+site_url: "https://wfp-vam.github.io/modape"
+repo_url: https://github.com/WFP-VAM/modape
+repo_name: WFP-VAM/modape
+
+
+theme:
+  name: "material"
+  icon:
+    repo: fontawesome/brands/github
+
+nav:
+    - Home: index.md
+    - Executables:
+        - MODIS processing chain: modis_executables.md
+        - Additional scripts: other_executables.md
+    - API Reference:
+      - modis.io: io.md
+      - modis.download: download.md
+      - modis.collect: collect.md
+      - modis.smooth: smooth.md
+      - modis.window: window.md
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+         python:
+           rendering:
+             show_source: false
+           setup_commands:
+             - import sys
+             - from unittest.mock import MagicMock as mock
+             - sys.modules["h5py"] = mock()
+             - sys.modules["osgeo"] = mock()
+             - sys.modules["requests"] = mock()
+             - sys.modules["requests.adapters"] = mock()
+             - sys.modules["requests.exceptions"] = mock()
+             - sys.modules["requests.packages"] = mock()
+             - sys.modules["requests.packages.urllib3"] = mock()
+             - sys.modules["requests.packages.urllib3.util"] = mock()
+             - sys.modules["requests.packages.urllib3.util.retry"] = mock()
+             - sys.modules["cmr"] = mock()
+             - sys.modules["pandas"] = mock()
+             - sys.modules["gdal"] = mock()
+
+markdown_extensions:
+ - admonition

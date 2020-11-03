@@ -2,8 +2,6 @@
 MODIS smooth HDF5 class.
 
 This file contains the class representing a smoothed MODIS HDF5 file.
-
-Author: Valentin Pesendorfer, April 2019
 """
 # pylint: disable=import-error
 from array import array
@@ -22,14 +20,31 @@ import numpy as np
 log = logging.getLogger(__name__)
 
 class ModisSmoothH5(HDF5Base):
-    """Class for smoothed MODIS data collected into HDF5 file."""
+    """Class representing HDF5 file containing smoothed MODIS data.
+
+    A smooth HDF5 file is directly linked to it's raw HDF5 counterpart. When running
+    the Whittaker smoother, data is read from the raw HDF5 file, smoothed and gapfilled
+    (and if requested a temporal interpolation is performed), the resulting data is then written
+    to the smooth HDF5 file.
+    """
 
     def __init__(self,
                  rawfile: str,
                  targetdir: str,
                  startdate: str = None,
                  tempint: int = None) -> None:
-        """Create class instance.
+        """Initialize instance of `ModisSmoothH5` class.
+
+        To create an instance of `ModisSmoothH5`, a full path to
+        a `ModisRawH5` HDF5 file needs to be specified.
+        If the HDF5 file for the `ModisSmoothH5` already exists in the `targetdir`,
+        the file will be updated, otherwise created.
+
+        To perform temporal interpolation, a desired timestep
+        for a temporal grid has to be specified with `tempint`.
+        If `tempint` is 5 or 10, the grid is set to a specific default.
+        Otherwise, `startdate` can be used to define a default grid in
+        conjunction with `tempint`.
 
         Args:
             rawfile (str): Full path to raw HDF5 file.
@@ -37,6 +52,8 @@ class ModisSmoothH5(HDF5Base):
             startdate (str): Start date for temporal interpolation (as julian date YYYYDDD).
             tempint (int): timesteps for temporal interpolation.
 
+        Raises:
+            AssertionError: If specified raw HDF5 file does not exist.
         """
 
         self.rawfile = Path(rawfile)
@@ -71,7 +88,14 @@ class ModisSmoothH5(HDF5Base):
         super().__init__(filename=filename)
 
     def create(self):
-        """Creates smoothed HDF5 file on disk."""
+        """Creates HDF5 file.
+
+        If the corresponding HDF5 is not found in the target directory,
+        it's created.
+
+        Raises:
+            HDF5CreationError: If creation of HDF5 file fails.
+        """
 
         # Try reading info from raw HDF5
         #pylint: disable=R1721
@@ -146,7 +170,27 @@ class ModisSmoothH5(HDF5Base):
                nsmooth: int = 0,
                nupdate: int = 0,
                ) -> None:
-        """Applies smoothing do the data.
+        """Applies Whittaker smoother to the data.
+
+        This method reads raw data from the raw HDF5 and applies the Whittaker
+        filter according to the parameters supplied. The resulting filtered data
+        is then stored in the smooth HDF5 file.
+
+        The parameters relevant for derermining which Whittaker
+        variant is supplied, are `svalue`, `soptimize` and `p`:
+
+        If the `soptimize` flag is `True`, the V-curve optimization is performed.
+        If in addition a `p` value is supplied, the assymmetric V-curve optimization is performed instead.
+        In both cases, the range of S values to optimize in can be supplied with `srange`.
+
+        If `soptimize` is `False` and a `svalue` is passed, smoothing using that fixed value (needs to be `log10` of S)
+        for each pixel is performed. If a `p` value is passed, asymmetric smoothing with the fixed value is performed instead.
+
+        If none of `svalue` and `soptimize` is specified, a previosuly initialized S value for each pixel
+        will be read from grid and used for the smoothing.
+
+        Using `nsmooth` and `nupdate`, the number or raw timesteps used for smoothing, and the number
+        of filtered timesteps updated in the smooth HDF5 target file, can be adjusted.
 
         Args:
             svalue (float): Log10 value of smoothing parameter S (for fixed smoothing).
@@ -156,6 +200,11 @@ class ModisSmoothH5(HDF5Base):
             nsmooth (int): Number of raw timesteps for smoothing.
             nupdate (int): Number of smooth timesteps updated in file.
 
+        Raises:
+            AssertionError: If smooth HDF5 file does not exist (`create` needs to be executed before)
+            ValueError: If `nsmooth` is smaller than `nupdate`.
+            ValueError: If `srange` is not specified as a numpy array with expected dimensions.
+            HDF5WriteError: If write to HDF5 file fails.
         """
 
         assert self.filename.exists(), "File doesn't exist! Can't run smoother."
