@@ -71,7 +71,7 @@ setup(
     install_requires=[
         "click>=7.1",
         "numpy>=1.16.1",
-        "gdal>=2, <3",
+        "gdal>=2",
         "h5py>=2.9",
         "python-cmr>=0.4",
         "requests>=2",
