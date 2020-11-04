@@ -1,8 +1,9 @@
-name: ci
+name: build
 on:
   push:
     branches:
-      - gdal3
+      - master
+      - dev
 jobs:
   deploy:
     runs-on: ubuntu-latest
