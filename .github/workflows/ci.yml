@@ -12,7 +12,7 @@ jobs:
         with:
           python-version: 3.x
       - run: sudo add-apt-repository ppa:ubuntugis/ppa
-      - run: sudo apt-get update && apt-get install -y gdal-bin python3-gdal libpq-dev
+      - run: sudo apt-get update && sudo apt-get install -y gdal-bin python3-gdal libpq-dev
       - run: pip install cython numpy
       - run: pip install $GITHUB_WORKSPACE
       - run: pip $GITHUB_WORKSPACE/setup.py test
