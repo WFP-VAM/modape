@@ -1,25 +1,9 @@
 MODAPE
 =====
 
-|CI| |version| |pyversions| |downloads| |license|
+|CI| |version| |pyversions| |downloads| |license| |documentation|
 
-.. |CI| image:: https://travis-ci.org/WFP-VAM/modape.svg?branch=master
-             :target: https://travis-ci.org/WFP-VAM/modape
-
-.. |version| image:: https://img.shields.io/pypi/v/modape.svg
-                  :target: https://pypi.org/project/modape/
-
-.. |pyversions| image:: https://img.shields.io/pypi/pyversions/modape.svg
-                     :target: https://pypi.org/project/modape/
-
-.. |downloads| image:: https://img.shields.io/pypi/dm/modape.svg
-                    :target: https://pypi.org/project/modape/
-
-.. |license| image:: https://img.shields.io/github/license/WFP-VAM/modape.svg
-                  :target: https://github.com/WFP-VAM/modape/blob/master/LICENSE
-|
-
-The **M**\ ODIS **A**\ ssimilation and **P**\ rocessing **E**\ ngine combines a state-of-the art Whittaker smoother, implemented as fast C-extension through Cython and including a V-curve optimization of the smoothing parameter, with a HDF5 based processing chain optimized for MODIS data.
+The **MOD**\ IS **A**\ ssimilation and **P**\ rocessing **E**\ ngine combines a state-of-the art Whittaker smoother, implemented as fast C-extension through Cython and including a V-curve optimization of the smoothing parameter, with a HDF5 based processing chain optimized for MODIS data.
 
 The sub-module ``modape.whittaker`` includes the following variations of the Whittaker smoother with 2nd order differences:
 
@@ -39,6 +23,8 @@ Additional executables:
 
 - ``csv_smooth``: Smooth timeseries stored within a CSV file
 - ``modis_info``: Retrieve metadata from created HDF5 files
+
+For a more information please check out the `documentation <https://wfp-vam.github.io/modape/>`_!
 
 Installation
 ------------
@@ -91,10 +77,22 @@ Bloemberg, T. G. et al. (2010) "Improved Parametric Time Warping for Proteomics"
 
 Wehrens, R. et al. (2015) "Fast parametric warping of peak lists", Bioinformatics, in press.
 
------
 
-Author & maintainer:
+.. |CI| image:: https://travis-ci.org/WFP-VAM/modape.svg?branch=master
+             :target: https://travis-ci.org/WFP-VAM/modape
 
-Valentin Pesendorfer
+.. |version| image:: https://img.shields.io/pypi/v/modape.svg
+                  :target: https://pypi.org/project/modape/
 
-valentin.pesendorfer@wfp.org
+.. |pyversions| image:: https://img.shields.io/pypi/pyversions/modape.svg
+                     :target: https://pypi.org/project/modape/
+
+.. |downloads| image:: https://img.shields.io/pypi/dm/modape.svg
+                    :target: https://pypi.org/project/modape/
+
+.. |license| image:: https://img.shields.io/github/license/WFP-VAM/modape.svg
+                  :target: https://github.com/WFP-VAM/modape/blob/master/LICENSE
+
+.. |documentation| image:: https://img.shields.io/badge/documentation-passing-brightgreen
+   :target: https://wfp-vam.github.io/modape/
+|
