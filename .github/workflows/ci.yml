@@ -1,0 +1,29 @@
+name: build
+on:
+  push:
+    branches:
+      - master
+      - dev
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.6, 3.7, 3.8]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: install dependencies
+        run: |
+          sudo add-apt-repository ppa:ubuntugis/ppa
+          sudo apt-get update && sudo apt-get install -y libgdal-dev
+          pip install cython numpy
+      - name: build gdal
+        run: pip install gdal==$(gdal-config --version)
+      - name: build
+        run: pip install $GITHUB_WORKSPACE
+      - name: test
+        run: python $GITHUB_WORKSPACE/setup.py test

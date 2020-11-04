@@ -78,8 +78,8 @@ Bloemberg, T. G. et al. (2010) "Improved Parametric Time Warping for Proteomics"
 Wehrens, R. et al. (2015) "Fast parametric warping of peak lists", Bioinformatics, in press.
 
 
-.. |CI| image:: https://travis-ci.org/WFP-VAM/modape.svg?branch=master
-             :target: https://travis-ci.org/WFP-VAM/modape
+.. |CI| image:: https://github.com/WFP-VAM/modape/workflows/build/badge.svg
+             :target: https://github.com/WFP-VAM/modape/actions/
 
 .. |version| image:: https://img.shields.io/pypi/v/modape.svg
                   :target: https://pypi.org/project/modape/
