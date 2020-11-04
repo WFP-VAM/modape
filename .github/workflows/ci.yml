@@ -22,7 +22,7 @@ jobs:
           pip install cython numpy
       - name: build gdal
         run: pip install gdal==$(gdal-config --version)
-      - name: build and test
-        run: |
-          pip install $GITHUB_WORKSPACE
-          pip $GITHUB_WORKSPACE/setup.py test
+      - name: build
+        run: pip install $GITHUB_WORKSPACE
+      - name: test
+        run: python $GITHUB_WORKSPACE/setup.py test
