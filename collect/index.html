@@ -486,8 +486,9 @@ __init__<span class="p">(</span><span class="bp">self</span><span class="p">,</s
 <p>This creates an ModisRawH5 object. If the corresponding HDF5 file
 already exists, it'll be automatically linked to it. If not,
 the file will be created on the first <code>update</code> run.
-All HDF files in the <code>files</code> list will be collected. The user needs to be aware
-that temporal consistency is conserved!</p>
+All HDF files in the <code>files</code> list will be collected.</p>
+<p>The user needs to be make sure that <code>files</code> are of the same product, spatial
+extent and that temporal consistency is conserved!</p>
 <p>To make sure the update workflow is functioning as intended, it's important
 that <code>targetdir</code> is set correctly. This way existing HDF5 files can be updated,
 and new ones created.</p>
