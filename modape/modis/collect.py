@@ -44,8 +44,10 @@ class ModisRawH5(HDF5Base):
         This creates an ModisRawH5 object. If the corresponding HDF5 file
         already exists, it'll be automatically linked to it. If not,
         the file will be created on the first `update` run.
-        All HDF files in the `files` list will be collected. The user needs to be aware
-        that temporal consistency is conserved!
+        All HDF files in the `files` list will be collected.
+
+        The user needs to be make sure that `files` are of the same product, spatial
+        extent and that temporal consistency is conserved!
 
         To make sure the update workflow is functioning as intended, it's important
         that `targetdir` is set correctly. This way existing HDF5 files can be updated,
