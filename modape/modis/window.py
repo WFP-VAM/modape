@@ -24,14 +24,26 @@ import numpy as np
 log = logging.getLogger(__name__)
 
 class ModisMosaic(object):
-    """Class for creating mosaics from multiple HDF5 files"""
+    """Class for subsetting or mosaicing HDF5 files.
+
+    This class can be used to mosaic multiple raw or smooth HDF5 files or
+    to subset a single HDF5 file (both tiled and global products).
+    The generated data will exported as GeoTIFF using the Python GDAL bindings.
+    """
 
     def __init__(self,
                  input_files: List[str]) -> None:
-        """Create instance
+        """Initialize instance of `ModisMosaic` class.
+
+        If multiple HDF5 files are specified as `input_files`, a mosaic of the files
+        will be created (need to be of same product and tile/global). It's required that all of the files share the same temporal axis.
+        If only one file is specified, either the full file is exported or a subset is created.
 
         Args:
             input_files (List[str]): List of paths to HDF5 files for mosaicing.
+
+        Raises:
+            HDF5MosaicError: If temporal axis is not conistent with multiple files (i.e. contained dates don't line up)
 
         """
         # check if files are temporal coherernt
@@ -69,13 +81,28 @@ class ModisMosaic(object):
                          round_int: int = None,
                          **kwargs,
                         ) -> None:
-        """Generate TIFF mosaics.
+        """Generate GeoTIFF mosaics/subsets.
 
-        This method is creating a GeoTiff mosaic from the MDF5 files
+        This method is creating a GeoTiff mosaic/subsets from the HDF5 files
         passed to the class instance.
         Internally, a virtual raster for each timestep is created,
-        warped to the desired SRS and then optionally clipped to the
-        area of interest.
+        warped to the desired SRS (`target_srs`) and then optionally clipped to the
+        area of interest (`aoi` as list of corner coordinates). If the dataset is already in the desired SRS,
+        the warping is skipped. To transform the resolution of meters to degrees in `EPSG:4326`,
+        the original resolution of the dataset in meters is divided by `112000`.
+
+        The exported dates can be limited with `start` and `stop.` By default, existing GeoTIFFs are
+        not overwritten. This can be forced with setting `overwrite` to `True`.
+
+        The data to be exported can be clipped to the valid data range of the MODIS product being
+        processed (if applicable) to the setting `clip_valid` to `True`. The data can also be rounded
+        by passing an integer to `round_int`. This integer will be passed on to `np.round`.
+
+        To modify the output naming, a `prefix` can be specified and if `force_doy` is set to `True`,
+        the timestamp will be forced to the format `YYYYjDDD` independent of temporal interpolation.
+
+        More fine scaled adjustment of the output datasets can be achieved with passing keyword arguments
+        to `gdal.WarpOptions` and `gdal.TranslateOptions`.
 
         Args:
             dataset (type): Dataset to mosaic (data or sgrid).
@@ -90,6 +117,10 @@ class ModisMosaic(object):
             clip_valid (bool): Clip values to valid range for MODIS product.
             round_int (int): Round the output.
             **kwargs (type): **kwags passed on to `gdal.WarpOptions` and `gdal.TranslateOptions`.
+
+        Raises:
+            ValueError: If dataset supplied does not exists in files.
+            AssertionError: If write fails.
 
         """
 

@@ -2,8 +2,6 @@
 MODIS raw HDF5 class.
 
 This file contains the class representing a raw MODIS HDF5 file.
-
-Author: Valentin Pesendorfer, July 2020
 """
 #pylint: disable=E0401
 from datetime import datetime
@@ -29,9 +27,11 @@ from modape.utils import fromjulian
 log = logging.getLogger(__name__)
 
 class ModisRawH5(HDF5Base):
-    """Class for raw MODIS data collected into HDF5 file, ready for smoothing.
+    """Class representing HDF5 file containing raw MODIS data.
 
-    MOD/MYD 13 products can be interleaved into a combined MXD.
+    This class will create an HDF5 file and collect data from MODIS
+    HDF files into it. This file can then be used for smoothing in a
+    subsequent step.
     """
 
     def __init__(self,
@@ -39,13 +39,39 @@ class ModisRawH5(HDF5Base):
                  targetdir: str,
                  vam_product_code: str = None,
                  interleave: bool = False) -> None:
-        """Create a ModisRawH5 class
+        """Initialize instance ModisRawH5 class.
+
+        This creates an ModisRawH5 object. If the corresponding HDF5 file
+        already exists, it'll be automatically linked to it. If not,
+        the file will be created on the first `update` run.
+        All HDF files in the `files` list will be collected.
+
+        The user needs to be make sure that `files` are of the same product, spatial
+        extent and that temporal consistency is conserved!
+
+        To make sure the update workflow is functioning as intended, it's important
+        that `targetdir` is set correctly. This way existing HDF5 files can be updated,
+        and new ones created.
+
+        To select a specific subdataset, `vam_product_code` needs to be provided. If not,
+        the defaults will be extracted (VIM / TDA/ TDT).
+
+        For VIM, 16 day composite products can be interleaved to form a synthetic 8 day product
+        if both satellites (MOD & MYD) are present in `files`. The resulting HDF5 file
+        will be named with `MXD` as product code.
 
         Args:
             files: A list of absolute paths to MODIS raw hdf files to be processed
             vam_product_code: VAM product code to be processed (default VIM/LTD)
             targetdir: Target directory for raw MODIS HDF5 file
             interleave: Boolean flag if MOD/MYD 13  products should be interleaved
+
+        Raises:
+            ValueError: If other product than MOD/MYD 11/13 are provided.
+            AssertionError: If files from multiple products are provided (except interleave).
+            AssertionError: If duplicates are detected that can't be handled.
+            AssertionError: If `vam_product_code` is not supported.
+
         """
 
         self.targetdir = Path(targetdir)
@@ -188,11 +214,21 @@ class ModisRawH5(HDF5Base):
     def create(self,
                compression: str = "gzip",
                chunks: Tuple[int] = None) -> None:
-        """Creates HDF5 file for raw data.
+        """Creates HDF5 file.
+
+        If the corresponding HDF5 is not found in the target directory,
+        it's created.
+        If no chunking scheme is specified using `chunks`,
+        a generic one of (number rows // 25, 1) will be used where the rows represent the spatial dimension
+        and the colums the temporal dimension.
 
         Args:
             compression (str): Compression for data (default = gzip).
             chunks (Tuple[int]): Chunksize for data (tuple of 2 int; default = (rows//25, 1)).
+
+        Raises:
+            AssertionError: If `chunks` is not a Tuple containing 2 `int`.
+            HDF5CreationError: If creation of HDF5 file fails.
         """
 
         sds_indicator = VAM_PRODUCT_CODES[self.vam_product_code]
@@ -267,9 +303,16 @@ class ModisRawH5(HDF5Base):
             raise HDF5CreationError(f"Error creating {str(self.filename)}! Check if file exists, or if compression / chunksize is OK.")
 
     def update(self):
-        """Update MODIS raw HDF5 file with raw data.
+        """Updates MODIS raw HDF5 file with raw data.
 
-        When a new HDF5 file is created, update will also handle the first data ingest.
+        The files specified in `__init__` get collected into the HDF5 file,
+        which is either created before or already existed after a previous initialization.
+        If a HDF file can't be read, the datapoints are filled using the internal nodata value.
+
+        Raises:
+            AssertionError: If dates of files to be collected are not after the ones aleady contained in the file.
+            HDF5WriteError: If writing to the HDF5 file fails.
+
         """
 
         log.info("Updating %s", str(self.filename))
@@ -354,7 +397,6 @@ class ModisRawH5(HDF5Base):
 
     @property
     def last_collected(self):
-        """Last collected date in file"""
         assert self.exists, "File doesn't exist!"
 
         with h5py.File(self.filename, "r") as h5_open:

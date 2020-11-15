@@ -5,7 +5,6 @@ __pycache__/
 
 # C extensions
 *.so
-**.c
 
 # Distribution / packaging
 .Python
@@ -104,3 +103,5 @@ ENV/
 # cred files
 wsmtk.cred.pkl
 wsmtk.key.pkl
+
+docenv/*
