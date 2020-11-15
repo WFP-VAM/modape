@@ -104,4 +104,6 @@ ENV/
 wsmtk.cred.pkl
 wsmtk.key.pkl
 
+docenv/*
+
 .idea/

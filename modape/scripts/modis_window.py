@@ -46,9 +46,8 @@ log = logging.getLogger(__name__)
 @click.option("--target-srs", help="Target spatial reference for warping", default="EPSG:4326")
 @click.option('--co', multiple=True, help="GDAL creationOptions", default=["COMPRESS=LZW", "PREDICTOR=2"])
 @click.option("--clip-valid", is_flag=True, help="clip values to valid range for product")
-@click.option("--round-int", type=click.INT, help="Round to integer palces (either decimals or exponent of 10)")
-@click.option("--gdal-kwarg", type=click.STRING, multiple=True,
-              help="Addition kwargs for GDAL in form KEY=VALUE (multiple allowed)")
+@click.option("--round-int", type=click.INT, help="Round to integer places (either decimals or exponent of 10)")
+@click.option("--gdal-kwarg", type=click.STRING, multiple=True, help="Addition kwargs for GDAL in form KEY=VALUE (multiple allowed)")
 @click.option("--overwrite", is_flag=True, help="Overwrite existsing Tiffs")
 @register
 def cli(src: str,

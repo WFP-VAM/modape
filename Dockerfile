@@ -2,6 +2,10 @@ FROM ubuntu:bionic
 
 LABEL maintainer="valentin.pesendorfer@wfp.org"
 
+ENV CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt \
+  LC_ALL=C.UTF-8 \
+  LANG=C.UTF-8
+
 RUN apt-get update && apt-get install -y \
     gcc \
     build-essential \
@@ -34,8 +38,5 @@ RUN python3 setup.py test
 RUN rm -rf *
 
 USER worker
-
-ENV LC_ALL=C.UTF-8 \
-  LANG=C.UTF-8
 
 CMD ["modape_version"]

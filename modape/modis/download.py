@@ -3,8 +3,6 @@ MODIS query & download class.
 
 This file contains the class used for querying and downloading
 raw MODIS products from NASA's servers.
-
-Author: Valentin Pesendorfer, July 2020
 """
 
 # pylint: disable=E0401, E0611
@@ -30,7 +28,12 @@ from modape.utils import SessionWithHeaderRedirection
 log = logging.getLogger(__name__)
 
 class ModisQuery(object):
-    """Class for querying and downloading MODIS data."""
+    """Class for querying and downloading MODIS data.
+
+    The user can create a query and send it to NASA's CMR servers.
+    The response can be either just printed to console or passed to
+    the `download` method, to fetch the resulting HDF files to local disk.
+    """
 
     def __init__(self,
                  products: List[str],
@@ -39,10 +42,13 @@ class ModisQuery(object):
                  enddate: datetime = None,
                  tile_filter: List[str] = None,
                  version: str = "006") -> None:
-        """Initialize ModisQuery instance.
+        """Initialize instance ModisQuery class.
 
-        This class is used for querying and downloading MODIS data
-        from MODIS CMR.
+        This creates an instance of `ModisQuery` with the basic query parameters.
+        The `aoi` needs to be a list if either 2 or 4 coordinates as `float` or `int`, depending
+        on if a point or bounding box is requested.
+        The tile_filter needs to be specified as list of MODIS tile IDs in format hXXvXX (e.g. `h20v08`).
+
 
         Args:
             products (List[str]): List of product codes to be queried / downloaded.
@@ -51,6 +57,9 @@ class ModisQuery(object):
             enddate (datetime): End date for query.
             tile_filter (List[str]): List of tiles to be queried / downloaded (refines initial results).
             version (str): MODIS collection version.
+
+        Raises:
+            AssertionError: If no product code is supplied or `if len(aoi) not in [2, 4]`.
         """
 
         assert products, "No product IDs supplied!"
@@ -76,9 +85,13 @@ class ModisQuery(object):
                 raise ValueError("Expected point or bounding box as AOI")
 
     def search(self, strict_dates: bool = True) -> None:
-        """Query MODIS data.
+        """Send quert to MODIS CMR servers.
 
-        Performs query based on inut to class instance.
+        Constructs the query from parameters passed to `__init__`
+        and sends the query to the NASA servers. The returned results
+        will be stored in a class variable.
+        To deal with overlapping date ranges of composite products,
+        the specified start and end date can be strictly enforced.
 
         Args:
             strict_dates (bool): Flag for strict date enforcement (no data with timestamp outside
@@ -169,7 +182,7 @@ class ModisQuery(object):
         Args:
             session (SessionWithHeaderRedirection): requests session to fetch file.
             url (str): URL for file.
-            destination (Path): target directory.
+            destination (Path): Target directory.
             overwrite (bool): Overwrite existing.
 
         Returns:
@@ -207,16 +220,23 @@ class ModisQuery(object):
                  multithread: bool = False,
                  nthreads: int = 4,
                 ) -> None:
-        """Download queried MODIS files.
+        """Download MODIS HDF files.
+
+        This method downloads the MODIS HDF files contained in the
+        server response to the `search` call. This requires
+        NASA earthdata credentials. To speed up download, multiple
+        threads can be used.
 
         Args:
-            targetdir (Path): target directory for file being downloaded.
+            targetdir (Path): Target directory for files being downloaded.
             username (str): Earthdata username.
             password (str): Earthdata password.
-            overwrite (bool): Replace existing.
-            multithread (bool): use multiple threads for downloading.
+            overwrite (bool): Replace existing files.
+            multithread (bool): Use multiple threads for downloading.
             nthreads (int): Number of threads.
 
+        Raises:
+            DownloadError: If one or more errors were encountered during downloading.
         """
 
         # make sure target directory is dir and exists
