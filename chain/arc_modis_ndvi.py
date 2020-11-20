@@ -75,10 +75,9 @@ def app_fetch():
     if app_state.fetcherThread.is_alive() or getattr(app_state, 'suspended', False):
         return "Fetcher is already running (or suspended), try again later\n", 404
     else:
-        print('Async fetching process will start in 5 seconds...')
         app_state.fetcherThread = Timer(5, app_do_processing, ())
         app_state.fetcherThread.start()
-        return "[{}] Fetcher started\n".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        return "[{}] Fetching and processing is scheduled to start in 5 seconds...\n".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
 
 def app_suspend():
