@@ -439,5 +439,5 @@ def init(ctx, download_only, smooth_only, export_only) -> None:
 if __name__ == '__main__':
     this_dir, _ = os.path.split(__file__)
     cli(default_map={
-        'config': os.path.join(this_dir, 'production.example.json')
+        'config': os.path.join(this_dir, 'production.json')
     })
