@@ -83,7 +83,7 @@ def app_fetch():
 def app_suspend():
     app_state.suspended = True
     if app_state.fetcherThread.is_alive():
-        return "Fetcher is busy suspending...\n", 404
+        return "Fetcher is busy suspending; please check back later to see the suspended state confirmed...\n", 404
     else:
         return "[{}] Fetcher suspended; restart to resume.\n".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
