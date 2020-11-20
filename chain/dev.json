@@ -13,7 +13,6 @@
   ],
   "init_start_date": "2018-01-01",
   "init_end_date": "2019-12-31",
-  "repository": "/media/data/arc/modis-ndvi/dev-archive/VIM/SMOOTH/EXPORT",
   "file_pattern": "*.tif",
   "mimetype": "application/octet-stream",
   "_comment_export": "[ LL-lon, LL-lat, UR-lon, UR-lat]",

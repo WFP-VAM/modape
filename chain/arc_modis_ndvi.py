@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-  main.py: Flask Service app for collecting, processing and disseminating filtered NDVI.
+  arc_modis_ndvi.py: Flask Service app for collecting, processing and disseminating filtered NDVI.
            Production the time series leverages the WFP VAM MODAPE toolkit: https://github.com/WFP-VAM/modape
 
   Dependencies: arc-modape (1.0), Numpy, ...
@@ -20,7 +20,7 @@ import re
 from datetime import datetime, date
 from dateutil.relativedelta import relativedelta
 from flask import Flask, jsonify, send_file
-from threading import Thread
+from threading import Thread, Timer
 
 from modape_helper import get_first_date_in_raw_modis_tiles, get_last_date_in_raw_modis_tiles, curate_downloads
 from modape.scripts.modis_download import modis_download
@@ -35,7 +35,6 @@ try:
 except ImportError:
     from argparse import Namespace
 
-flask_app = None
 app_state = None
 
 
@@ -52,11 +51,11 @@ def generate_file_md5(filepath, blocksize=2 ** 16):
 
 def app_index():
     global app_state
-    if getattr(app_state, 'fetcherThread', None) is not None:
+    if app_state.fetcherThread.is_alive() and not getattr(app_state, 'suspended', False):
         return "Fetcher is running (or suspended), try again later\n", 404
     else:
         files = {}
-        for f in sorted(glob.glob(os.path.join(app_state.repository, app_state.file_pattern))):
+        for f in sorted(glob.glob(os.path.join(app_state.basedir, 'VIM', 'SMOOTH', 'EXPORT', app_state.file_pattern))):
             if os.path.isfile(f + '.md5'):
                 with open(f + '.md5') as mdf:
                     files[os.path.basename(f)] = re.sub('\\s+', '', mdf.readline())
@@ -65,37 +64,29 @@ def app_index():
 
 def app_download(filename):
     global app_state
-    if getattr(app_state, 'fetcherThread', None) is not None:
+    if app_state.fetcherThread.is_alive() and not getattr(app_state, 'suspended', False):
         return "Fetcher is running (or suspended), try again later\n", 404
     else:
-        return send_file(os.path.join(app_state.repository, filename), as_attachment=True, mimetype=app_state.mimetype)
+        return send_file(os.path.join(app_state.basedir, 'VIM', 'SMOOTH', 'EXPORT', filename), as_attachment=True, mimetype=app_state.mimetype)
 
 
 def app_fetch():
     global app_state
-    if getattr(app_state, 'fetcherThread', None) is not None:
+    if app_state.fetcherThread.is_alive() or getattr(app_state, 'suspended', False):
         return "Fetcher is already running (or suspended), try again later\n", 404
     else:
-        app_state.fetcherThread = Thread(target=app_do_processing())
+        print('Async fetching process will start in 5 seconds...')
+        app_state.fetcherThread = Timer(5, app_do_processing, ())
         app_state.fetcherThread.start()
         return "[{}] Fetcher started\n".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
 
 def app_suspend():
-    if getattr(app_state, 'fetcherThread', None) is not None:
-        if getattr(app_state, 'suspended', False):
-            return "Fetcher is already suspended.\n", 404
-        else:
-            return "Fetcher is running, try again later.\n", 404
+    app_state.suspended = True
+    if app_state.fetcherThread.is_alive():
+        return "Fetcher is busy suspending...\n", 404
     else:
-        app_state.suspended = True
-        app_state.fetcherThread = Thread(target=app_noop)
-        app_state.fetcherThread.start()
         return "[{}] Fetcher suspended; restart to resume.\n".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-
-
-def app_noop():
-    pass
 
 
 def app_do_processing(debug=False):
@@ -184,19 +175,19 @@ def app_do_processing(debug=False):
                         continue
                     exports = \
                         modis_window(src=os.path.join(app_state.basedir, 'VIM', 'SMOOTH'),
-                                 targetdir=os.path.join(app_state.basedir, 'VIM', 'SMOOTH', 'EXPORT'),
-                                 begin_date=export_dekad.getDateTimeMid(),
-                                 end_date=export_dekad.getDateTimeMid(),
-                                 # convert from LLX,LLY,URX,URY to ULX,ULY,LRX,LRY:
-                                 roi=[roi[0], roi[3], roi[2], roi[1]],
-                                 region=region, sgrid=False, force_doy=False,
-                                 filter_product=None, filter_vampc=None, target_srs='EPSG:4326',
-                                 co=["COMPRESS=LZW", "PREDICTOR=2"], clip_valid=True, round_int=2,
-                                 gdal_kwarg={'metadataOptions':
-                                                 ['UPDATE_NUMBER={}'.format(nexports),
-                                                  'FINAL={}'.format('FALSE' if nexports < 6 else 'TRUE')]},
-                                 overwrite=True
-                                 )
+                                     targetdir=os.path.join(app_state.basedir, 'VIM', 'SMOOTH', 'EXPORT'),
+                                     begin_date=export_dekad.getDateTimeMid(),
+                                     end_date=export_dekad.getDateTimeMid(),
+                                     # convert from LLX,LLY,URX,URY to ULX,ULY,LRX,LRY:
+                                     roi=[roi[0], roi[3], roi[2], roi[1]],
+                                     region=region, sgrid=False, force_doy=False,
+                                     filter_product=None, filter_vampc=None, target_srs='EPSG:4326',
+                                     co=["COMPRESS=LZW", "PREDICTOR=2"], clip_valid=True, round_int=2,
+                                     gdal_kwarg={'metadataOptions':
+                                                     ['CONSOLIDATION_STAGE={}'.format(nexports-1),
+                                                      'FINAL={}'.format('FALSE' if nexports < 6 else 'TRUE')]},
+                                     overwrite=True
+                                     )
 
                     for exp in exports:
                         md5 = generate_file_md5(exp)
@@ -216,7 +207,23 @@ def app_do_processing(debug=False):
                 break
 
     finally:
-        app_state.fetcherThread = None
+        # app_state.fetcherThread = None
+        pass
+
+
+def setup(config):
+    global app_state
+    with open(config) as f:
+        app_state = json.load(f)
+        app_state = Namespace(**app_state)
+    flask_app = Flask(app_state.app_name)
+    flask_app.config['JSONIFY_PRETTYPRINT_REGULAR'] = True
+    flask_app.add_url_rule('/fetch', 'fetch', app_fetch)
+    flask_app.add_url_rule('/suspend', 'suspend', app_suspend)
+    flask_app.add_url_rule('/download/<filename>', 'download', app_download)
+    flask_app.add_url_rule('/', 'index', app_index)
+    app_state.fetcherThread = Thread()
+    return flask_app
 
 
 @click.group(invoke_without_command=True)
@@ -236,21 +243,18 @@ def cli(ctx, config, region, debug):
 @cli.command()
 @click.pass_context
 def serve(ctx) -> None:
-    global flask_app, app_state
-    with open(ctx.obj['CONFIG']) as f:
-        app_state = json.load(f)
-        app_state = Namespace(**app_state)
-    if ctx.obj['REGION']:
-        app_state.region_only = ctx.obj['REGION']
+    global app_state
     if ctx.obj['DEBUG']:
+        with open(ctx.obj['CONFIG']) as f:
+            app_state = json.load(f)
+            app_state = Namespace(**app_state)
+        if ctx.obj['REGION']:
+            app_state.region_only = ctx.obj['REGION']
         app_do_processing(debug=True)
     else:
-        flask_app = Flask(app_state.app_name)
-        flask_app.config['JSONIFY_PRETTYPRINT_REGULAR'] = True
-        flask_app.add_url_rule('/fetch', 'fetch', app_fetch)
-        flask_app.add_url_rule('/suspend', 'suspend', app_suspend)
-        flask_app.add_url_rule('/download/<filename>', 'download', app_download)
-        flask_app.add_url_rule('/', 'index', app_index)
+        flask_app = setup(ctx.obj['CONFIG'])
+        assert (ctx.obj['REGION'] is None), "Cannot serve only a specific region! Please run with the debug flag."
+        flask_app.run(port=5001, threaded=False)  # Configure for single threaded request handling
 
 
 @cli.command()
@@ -436,5 +440,5 @@ def init(ctx, download_only, smooth_only, export_only) -> None:
 if __name__ == '__main__':
     this_dir, _ = os.path.split(__file__)
     cli(default_map={
-        'config': os.path.join(this_dir, 'production.json')
+        'config': os.path.join(this_dir, 'production.example.json')
     })
