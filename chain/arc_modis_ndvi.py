@@ -182,7 +182,7 @@ def app_do_processing(debug=False):
                                      region=region, sgrid=False, force_doy=False,
                                      filter_product=None, filter_vampc=None, target_srs='EPSG:4326',
                                      co=["COMPRESS=LZW", "PREDICTOR=2"], clip_valid=True, round_int=2,
-                                     gdal_kwarg={'metadataOptions':
+                                     gdal_kwarg={'xRes': 0.01, 'yRes': 0.01, 'metadataOptions':
                                                      ['CONSOLIDATION_STAGE={}'.format(nexports-1),
                                                       'FINAL={}'.format('FALSE' if nexports < 6 else 'TRUE')]},
                                      overwrite=True
@@ -413,7 +413,7 @@ def init(ctx, download_only, smooth_only, export_only) -> None:
                                  region=region, sgrid=False, force_doy=False,
                                  filter_product=None, filter_vampc=None, target_srs='EPSG:4326',
                                  co=["COMPRESS=LZW", "PREDICTOR=2"], clip_valid=True, round_int=2,
-                                 gdal_kwarg={'metadataOptions': ['FINAL=TRUE']},
+                                 gdal_kwarg={'xRes': 0.01, 'yRes': 0.01, 'metadataOptions': ['FINAL=TRUE']},
                                  overwrite=True
                                  )
                 for exp in exports:
