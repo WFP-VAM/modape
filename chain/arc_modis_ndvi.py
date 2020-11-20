@@ -73,7 +73,8 @@ def app_download(filename):
 def app_fetch():
     global app_state
     if app_state.fetcherThread.is_alive() or getattr(app_state, 'suspended', False):
-        return "Fetcher is already running (or suspended), try again later\n", 404
+        return "[{}] Fetcher is already running (or suspended), try again later\n".format(
+            datetime.now().strftime('%Y-%m-%d %H:%M:%S')), 404
     else:
         app_state.fetcherThread = Timer(5, app_do_processing, ())
         app_state.fetcherThread.start()
