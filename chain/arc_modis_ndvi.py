@@ -344,7 +344,7 @@ def init(ctx, download_only, smooth_only, export_only) -> None:
                                   roi=None, target_empty=False, tile_filter=','.join(args.tile_filter),
                                   username=args.username,
                                   password=args.password, strict_dates=True, return_results=False,
-                                  download=True, overwrite=False, multithread=False, nthreads=1, collection='006')
+                                  download=True, overwrite=False, multithread=True, nthreads=4, collection='006')
             if len(urls) == 0:
                 break
 
