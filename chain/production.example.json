@@ -4,7 +4,7 @@
   "nupdate": 6,
   "username": "africanriskcapacity",
   "password": "Nasa4ARC!",
-  "basedir": "/media/data/arc/modis-ndvi/production",
+  "basedir": "/var/storage/arc_modis_ndvi",
   "tile_filter": [
     "h21v07",
     "h21v08",
