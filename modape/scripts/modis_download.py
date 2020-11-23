@@ -12,19 +12,6 @@ import click
 from modape.exceptions import TargetNotEmptyError
 from modape.modis import ModisQuery
 
-__modis_download = None
-
-
-def register(f):
-    global __modis_download
-    __modis_download = f
-    return f
-
-
-def modis_download(**kwargs):
-    global __modis_download
-    return __modis_download(**kwargs)
-
 
 @click.command()
 @click.argument("products", nargs=-1, type=click.STRING)
@@ -44,7 +31,6 @@ def modis_download(**kwargs):
 @click.option("--multithread", is_flag=True, help="Use multiple threads for downloading")
 @click.option("--nthreads", type=click.INT, help="Number of threads to use", default=4)
 @click.option("-c", "--collection", type=click.STRING, default="006", help="MODIS collection")
-@register
 def cli(products: List[str],
         begin_date: datetime.datetime,
         end_date: datetime.datetime,

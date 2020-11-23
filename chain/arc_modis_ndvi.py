@@ -23,10 +23,10 @@ from flask import Flask, jsonify, send_file
 from threading import Thread, Timer
 
 from modape_helper import get_first_date_in_raw_modis_tiles, get_last_date_in_raw_modis_tiles, curate_downloads
-from modape.scripts.modis_download import modis_download
-from modape.scripts.modis_collect import modis_collect
-from modape.scripts.modis_smooth import modis_smooth
-from modape.scripts.modis_window import modis_window
+from modape.scripts.modis_download import cli as modis_download
+from modape.scripts.modis_collect import cli as modis_collect
+from modape.scripts.modis_smooth import cli as modis_smooth
+from modape.scripts.modis_window import cli as modis_window
 
 from modape_helper.timeslicing import Dekad, ModisInterleavedOctad
 
@@ -109,14 +109,16 @@ def app_do_processing(debug=False):
                     break
 
                 print('Downloading: {}...'.format(next_date))
-                downloaded = modis_download(products=['M?D13A2'],
-                                            begin_date=datetime.combine(next_date, datetime.min.time()),
-                                            end_date=datetime.combine(next_date, datetime.min.time()),
-                                            targetdir=app_state.basedir,
-                                            roi=None, target_empty=False, tile_filter=','.join(app_state.tile_filter),
-                                            username=app_state.username,
-                                            password=app_state.password, strict_dates=True, return_results=False,
-                                            download=True, overwrite=True, multithread=False, nthreads=1, collection='006')
+                downloaded = modis_download.callback(
+                    products=['M?D13A2'],
+                    begin_date=datetime.combine(next_date, datetime.min.time()),
+                    end_date=datetime.combine(next_date, datetime.min.time()),
+                    targetdir=app_state.basedir,
+                    roi=None, target_empty=False, tile_filter=','.join(app_state.tile_filter),
+                    username=app_state.username,
+                    password=app_state.password, strict_dates=True, return_results=False,
+                    download=True, overwrite=True, multithread=False, nthreads=1, collection='006'
+                )
 
                 # anything downloaded? (or redo-smoothing: app_state.redo_smoothing)
                 if len(downloaded) < 1 or getattr(app_state, 'download_only', False):
@@ -131,9 +133,11 @@ def app_do_processing(debug=False):
                     break
 
                 # We're OK; now collect;
-                modis_collect(src_dir=app_state.basedir, targetdir=app_state.basedir,  # modape appends VIM to the targetdir
-                              compression='gzip', vam_code='VIM', interleave=True, parallel_tiles=1,
-                              cleanup=True, last_collected=None)
+                modis_collect.callback(
+                    src_dir=app_state.basedir, targetdir=app_state.basedir,  # modape appends VIM to the targetdir
+                    compression='gzip', vam_code='VIM', interleave=True, parallel_tiles=1,
+                    cleanup=True, last_collected=None
+                )
 
                 if getattr(app_state, 'collect_only', False):
                     break
@@ -142,11 +146,13 @@ def app_do_processing(debug=False):
             if getattr(app_state, 'smooth_only', False) or (
                     not getattr(app_state, 'export_only', False)):
 
-                modis_smooth(src=os.path.join(app_state.basedir, 'VIM'),
-                             targetdir=os.path.join(app_state.basedir, 'VIM', 'SMOOTH'),
-                             svalue=None, srange=[], pvalue=None, tempint=10, tempint_start=None,
-                             nsmooth=app_state.nsmooth, nupdate=app_state.nupdate, soptimize=False,
-                             parallel_tiles=1, last_collected=None)
+                modis_smooth.callback(
+                    src=os.path.join(app_state.basedir, 'VIM'),
+                    targetdir=os.path.join(app_state.basedir, 'VIM', 'SMOOTH'),
+                    svalue=None, srange=[], pvalue=None, tempint=10, tempint_start=None,
+                    nsmooth=app_state.nsmooth, nupdate=app_state.nupdate, soptimize=False,
+                    parallel_tiles=1, last_collected=None
+                )
 
                 if getattr(app_state, 'smooth_only', False):
                     break
@@ -173,21 +179,21 @@ def app_do_processing(debug=False):
                 for region, roi in app_state.export.items():
                     if getattr(app_state, 'region_only', region) != region:
                         continue
-                    exports = \
-                        modis_window(src=os.path.join(app_state.basedir, 'VIM', 'SMOOTH'),
-                                     targetdir=os.path.join(app_state.basedir, 'VIM', 'SMOOTH', 'EXPORT'),
-                                     begin_date=export_dekad.getDateTimeMid(),
-                                     end_date=export_dekad.getDateTimeMid(),
-                                     # convert from LLX,LLY,URX,URY to ULX,ULY,LRX,LRY:
-                                     roi=[roi[0], roi[3], roi[2], roi[1]],
-                                     region=region, sgrid=False, force_doy=False,
-                                     filter_product=None, filter_vampc=None, target_srs='EPSG:4326',
-                                     co=["COMPRESS=LZW", "PREDICTOR=2"], clip_valid=True, round_int=2,
-                                     gdal_kwarg={'xRes': 0.01, 'yRes': 0.01, 'metadataOptions':
-                                                     ['CONSOLIDATION_STAGE={}'.format(nexports-1),
-                                                      'FINAL={}'.format('FALSE' if nexports < 6 else 'TRUE')]},
-                                     overwrite=True
-                                     )
+                    exports = modis_window.callback(
+                        src=os.path.join(app_state.basedir, 'VIM', 'SMOOTH'),
+                        targetdir=os.path.join(app_state.basedir, 'VIM', 'SMOOTH', 'EXPORT'),
+                        begin_date=export_dekad.getDateTimeMid(),
+                        end_date=export_dekad.getDateTimeMid(),
+                        # convert from LLX,LLY,URX,URY to ULX,ULY,LRX,LRY:
+                        roi=[roi[0], roi[3], roi[2], roi[1]],
+                        region=region, sgrid=False, force_doy=False,
+                        filter_product=None, filter_vampc=None, target_srs='EPSG:4326',
+                        co=["COMPRESS=LZW", "PREDICTOR=2"], clip_valid=True, round_int=2,
+                        gdal_kwarg={'xRes': 0.01, 'yRes': 0.01, 'metadataOptions':
+                                     ['CONSOLIDATION_STAGE={}'.format(nexports-1),
+                                      'FINAL={}'.format('FALSE' if nexports < 6 else 'TRUE')]},
+                        overwrite=True
+                    )
 
                     for exp in exports:
                         md5 = generate_file_md5(exp)
@@ -337,14 +343,16 @@ def init(ctx, download_only, smooth_only, export_only) -> None:
 
         while begin_date < end_date:
             print('Downloading: {} - {}...'.format(begin_date, end_date))
-            urls = modis_download(products=['M?D13A2'],
-                                  begin_date=datetime.combine(begin_date, datetime.min.time()),
-                                  end_date=datetime.combine(end_date, datetime.min.time()),
-                                  targetdir=args.basedir,
-                                  roi=None, target_empty=False, tile_filter=','.join(args.tile_filter),
-                                  username=args.username,
-                                  password=args.password, strict_dates=True, return_results=False,
-                                  download=True, overwrite=False, multithread=True, nthreads=4, collection='006')
+            urls = modis_download.callback(
+                products=['M?D13A2'],
+                begin_date=datetime.combine(begin_date, datetime.min.time()),
+                end_date=datetime.combine(end_date, datetime.min.time()),
+                targetdir=args.basedir,
+                roi=None, target_empty=False, tile_filter=','.join(args.tile_filter),
+                username=args.username,
+                password=args.password, strict_dates=True, return_results=False,
+                download=True, overwrite=False, multithread=True, nthreads=4, collection='006'
+            )
             if len(urls) == 0:
                 break
 
@@ -360,9 +368,11 @@ def init(ctx, download_only, smooth_only, export_only) -> None:
                     exit(1)
 
                 # We're OK; now collect;
-                modis_collect(src_dir=args.basedir, targetdir=args.basedir,  # modape appends VIM to the targetdir
-                              compression='gzip', vam_code='VIM', interleave=True, parallel_tiles=1,
-                              cleanup=True, last_collected=None)
+                modis_collect.callback(
+                    src_dir=args.basedir, targetdir=args.basedir,  # modape appends VIM to the targetdir
+                    compression='gzip', vam_code='VIM', interleave=True, parallel_tiles=1,
+                    cleanup=True, last_collected=None
+                )
 
                 # move on:
                 begin_date = get_last_date_in_raw_modis_tiles(
@@ -375,9 +385,11 @@ def init(ctx, download_only, smooth_only, export_only) -> None:
 
     if len(urls) > 0 or smooth_only:
         # smooth downloaded archive: setting the 'init_only' to True, this can be done only once per product tile:
-        modis_smooth(src=os.path.join(args.basedir, 'VIM'), targetdir=os.path.join(args.basedir, 'VIM', 'SMOOTH'),
-                     svalue=None, srange=[], pvalue=None, tempint=10, tempint_start=None,
-                     nsmooth=0, nupdate=0, soptimize=True, parallel_tiles=1, last_collected=None)
+        modis_smooth.callback(
+            src=os.path.join(args.basedir, 'VIM'), targetdir=os.path.join(args.basedir, 'VIM', 'SMOOTH'),
+            svalue=None, srange=[], pvalue=None, tempint=10, tempint_start=None,
+            nsmooth=0, nupdate=0, soptimize=True, parallel_tiles=1, last_collected=None
+        )
 
         if smooth_only:
             exit(0)
@@ -404,19 +416,19 @@ def init(ctx, download_only, smooth_only, export_only) -> None:
                 if (ctx.obj['REGION'] is not None) and ctx.obj['REGION'] != region:
                     continue
                 print('\n{} -- Exporting {} to {} ...'.format(region, str(export_slice), str(to_slice)))
-                exports = \
-                    modis_window(src=os.path.join(args.basedir, 'VIM', 'SMOOTH'),
-                                 targetdir=os.path.join(args.basedir, 'VIM', 'SMOOTH', 'EXPORT'),
-                                 begin_date=export_slice.getDateTimeMid(),
-                                 end_date=to_slice.getDateTimeMid(),
-                                 roi=[roi[0], roi[3], roi[2], roi[1]],
-                                 # convert from LLX,LLY,URX,URY to ULX,ULY,LRX,LRY
-                                 region=region, sgrid=False, force_doy=False,
-                                 filter_product=None, filter_vampc=None, target_srs='EPSG:4326',
-                                 co=["COMPRESS=LZW", "PREDICTOR=2"], clip_valid=True, round_int=2,
-                                 gdal_kwarg={'xRes': 0.01, 'yRes': 0.01, 'metadataOptions': ['FINAL=TRUE']},
-                                 overwrite=True
-                                 )
+                exports = modis_window.callback(
+                    src=os.path.join(args.basedir, 'VIM', 'SMOOTH'),
+                    targetdir=os.path.join(args.basedir, 'VIM', 'SMOOTH', 'EXPORT'),
+                    begin_date=export_slice.getDateTimeMid(),
+                    end_date=to_slice.getDateTimeMid(),
+                    roi=[roi[0], roi[3], roi[2], roi[1]],
+                    # convert from LLX,LLY,URX,URY to ULX,ULY,LRX,LRY
+                    region=region, sgrid=False, force_doy=False,
+                    filter_product=None, filter_vampc=None, target_srs='EPSG:4326',
+                    co=["COMPRESS=LZW", "PREDICTOR=2"], clip_valid=True, round_int=2,
+                    gdal_kwarg={'xRes': 0.01, 'yRes': 0.01, 'metadataOptions': ['FINAL=TRUE']},
+                    overwrite=True
+                )
                 for exp in exports:
                     md5 = generate_file_md5(exp)
                     with contextlib.suppress(FileNotFoundError):

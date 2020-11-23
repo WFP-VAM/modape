@@ -13,19 +13,6 @@ import click
 from modape.constants import REGEX_PATTERNS
 from modape.modis import ModisRawH5
 
-__modis_collect = None
-
-
-def register(f):
-    global __modis_collect
-    __modis_collect = f
-    return f
-
-
-def modis_collect(**kwargs):
-    global __modis_collect
-    return __modis_collect(**kwargs)
-
 
 @click.command()
 @click.argument("src_dir", type=click.Path(dir_okay=True, resolve_path=True))
@@ -37,7 +24,6 @@ def modis_collect(**kwargs):
 @click.option('--parallel-tiles', type=click.INT, default=1, help='Number of tiles processed in parallel (default = 1)')
 @click.option('--cleanup', is_flag=True, help='Remove collected HDF files')
 @click.option('--last-collected', type=click.DateTime(formats=['%Y%j']), help='Last collected date in julian format (YYYYDDD - %Y%j)')
-@register
 def cli(src_dir: str,
         targetdir: str,
         compression: str,

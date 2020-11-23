@@ -14,22 +14,7 @@ import click
 from modape.constants import REGEX_PATTERNS
 from modape.modis import ModisMosaic
 
-__modis_window = None
-
-
-def register(f):
-    global __modis_window
-    __modis_window = f
-    return f
-
-
-def modis_window(**kwargs):
-    global __modis_window
-    return __modis_window(**kwargs)
-
-
 log = logging.getLogger(__name__)
-
 
 @click.command()
 @click.argument("src")
@@ -49,7 +34,6 @@ log = logging.getLogger(__name__)
 @click.option("--round-int", type=click.INT, help="Round to integer places (either decimals or exponent of 10)")
 @click.option("--gdal-kwarg", type=click.STRING, multiple=True, help="Addition kwargs for GDAL in form KEY=VALUE (multiple allowed)")
 @click.option("--overwrite", is_flag=True, help="Overwrite existsing Tiffs")
-@register
 def cli(src: str,
         targetdir: str,
         begin_date: datetime.date,
