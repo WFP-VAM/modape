@@ -191,9 +191,8 @@ def app_do_processing(debug=False):
                         co=["COMPRESS=LZW", "PREDICTOR=2"], clip_valid=True, round_int=2,
                         gdal_kwarg={
                             'xRes': 0.01, 'yRes': 0.01,
-                            'metadataOptions': [ 'CONSOLIDATION_STAGE={}'.format(nexports-1),
-                                                 'FINAL={}'.format('FALSE' if nexports < 6 else 'TRUE')],
-                            'outputBounds': [roi[0], roi[3], roi[2], roi[1]]
+                            'metadataOptions': ['CONSOLIDATION_STAGE={}'.format(nexports-1),
+                                                'FINAL={}'.format('FALSE' if nexports < 6 else 'TRUE')]
                         },
                         overwrite=True
                     )
@@ -430,8 +429,7 @@ def init(ctx, download_only, smooth_only, export_only) -> None:
                     filter_product=None, filter_vampc=None, target_srs='EPSG:4326',
                     co=["COMPRESS=LZW", "PREDICTOR=2"], clip_valid=True, round_int=2,
                     gdal_kwarg={
-                        'xRes': 0.01, 'yRes': 0.01, 'metadataOptions': ['FINAL=TRUE'],
-                        'outputBounds': [roi[0], roi[3], roi[2], roi[1]]
+                        'xRes': 0.01, 'yRes': 0.01, 'metadataOptions': ['FINAL=TRUE']
                     },
                     overwrite=True
                 )
