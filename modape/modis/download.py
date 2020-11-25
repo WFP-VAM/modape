@@ -84,7 +84,7 @@ class ModisQuery(object):
             else:
                 raise ValueError("Expected point or bounding box as AOI")
 
-    def search(self, strict_dates: bool = True) -> None:
+    def search(self, match_native_timestamp_only: bool = False) -> None:
         """Send quert to MODIS CMR servers.
 
         Constructs the query from parameters passed to `__init__`
@@ -94,8 +94,9 @@ class ModisQuery(object):
         the specified start and end date can be strictly enforced.
 
         Args:
-            strict_dates (bool): Flag for strict date enforcement (no data with timestamp outside
-                                 of begindate and enddate are allowed).
+            match_native_timestamp_only (bool): Flag for checking the download's datestamp against the requested begin and end
+                                           (downloads with native timestamp (=time_start attribute in CMR response) outside 
+                                            begindate and enddate are discarded).
         """
 
         # init results list
@@ -103,7 +104,7 @@ class ModisQuery(object):
 
         # if no dates supplied, we can't be strict
         if self.begin is None and self.end is None:
-            strict_dates = False
+            match_native_timestamp_only = False
 
         log.debug("Starting query")
 
@@ -119,15 +120,14 @@ class ModisQuery(object):
                 if result["tile"] not in self.tile_filter:
                     continue
 
-            # enforce dates if required
-
-            if strict_dates:
+            # enforce native MODIS timestamp (= time step start)
+            if match_native_timestamp_only:
                 if self.begin is not None:
                     if result["time_start"] < self.begin.date():
                         continue
 
                 if self.end is not None:
-                    if result["time_end"] > self.end.date():
+                    if result["time_start"] > self.end.date():
                         continue
 
             self.results.append(result)
