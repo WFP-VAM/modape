@@ -20,7 +20,7 @@ from modape.modis import ModisRawH5
 @click.option('-x', '--compression', type=click.STRING, default='gzip', help='Compression for HDF5 files')
 @click.option('--vam-code', type=click.STRING, help='VAM code for dataset to process')
 @click.option('--interleave', is_flag=True, help='Interleave MOD13 & MYD13 products to MXD (only works for VIM!)')
-@click.option('--parallel-tiles', type=click.INT, default=1, help='Number of tiles processed in parallel (default = None)')
+@click.option('--parallel-tiles', type=click.INT, default=1, help='Number of tiles processed in parallel (default = 1)')
 @click.option('--cleanup', is_flag=True, help='Remove collected HDF files')
 @click.option('--last-collected', type=click.DateTime(formats=['%Y%j']), help='Last collected date in julian format (YYYYDDD - %Y%j)')
 def cli(src_dir: str,
@@ -62,7 +62,6 @@ def cli(src_dir: str,
     else:
         targetdir = Path(targetdir)
 
-    assert targetdir.is_dir(), "Target directory (targetdir) not a direcory!"
     targetdir.mkdir(exist_ok=True)
     assert targetdir.exists(), "Target directory (targetdir) doesn't exist!"
 
