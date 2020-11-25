@@ -239,6 +239,11 @@ class ModisMosaic(object):
 
                     log.debug("Writing to disk")
 
+                    if aoi is not None:
+                        warped_mosaic.SetGeoTransform([
+                            aoi[0], (aoi[2]-aoi[0]) / warped_mosaic.RasterXSize, 0,
+                            aoi[1], 0, (aoi[3]-aoi[1]) / warped_mosaic.RasterYSize
+                        ])
                     write_check = self._translate(
                         src=warped_mosaic,
                         dst=filename,
