@@ -80,7 +80,7 @@ class ModisMosaic(object):
                          clip_valid: bool = False,
                          round_int: int = None,
                          **kwargs,
-                        ) -> None:
+                        ) -> list:
         """Generate GeoTIFF mosaics/subsets.
 
         This method is creating a GeoTiff mosaic/subsets from the HDF5 files
@@ -180,6 +180,7 @@ class ModisMosaic(object):
 
             date_index = [x for x, y in enumerate(self.dates) if start <= y <= stop]
 
+        mosaics = []
         for ii in date_index:
 
             if ii is None:
@@ -247,6 +248,7 @@ class ModisMosaic(object):
 
                     try:
                         assert write_check, f"Error writing {filename}"
+                        mosaics.append(filename)
                     except:
                         raise
                     finally:
@@ -268,10 +270,13 @@ class ModisMosaic(object):
 
                 try:
                     assert write_check, f"Error writing {filename}"
+                    mosaics.append(filename)
                 except:
                     raise
                 finally:
                     _ = [gdal.Unlink(x) for x in rasters]
+
+        return mosaics
 
     @staticmethod
     def _get_raster(file: Union[Path, str],
