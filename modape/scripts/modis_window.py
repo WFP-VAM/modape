@@ -48,7 +48,7 @@ def cli(src: str,
         clip_valid: bool,
         round_int: int,
         gdal_kwarg: Tuple[str],
-        overwrite: bool) -> None:
+        overwrite: bool) -> list:
     """Creates GeoTiff Mosaics from HDF5 files.
 
     The input can be either raw or smoothed HDF5 files. With the latter,
@@ -72,7 +72,7 @@ def cli(src: str,
         targetdir (str): Target directory.
         begin_date (datetime.date): Start date for tiffs.
         end_date (datetime.date): End date for tiffs.
-        roi (str): ROI for clipping.
+        roi (str): ROI for clipping. Passing ROI as a list[float] is also supported
         region (str): Region for filename.
         sgrid (bool): Extract sgrid instead of data.
         force_doy (bool): Force DOY in filename.
@@ -82,7 +82,10 @@ def cli(src: str,
         co (Tuple[str]): Creation options passed to gdal.Translate.
         clip_valid (bool): Clip data to valid range.
         round_int (int): Round integer.
-        overwrite (bool): Overwrite existsing Tiffs.
+        gdal_kwarg (Tuple[str]): translateOptions to the internal call to gdal::translate();
+                                 the Tuple of strings (item formatting: "key=value") is parsed into a dict.
+                                 Alternatively, passing a dict instead of a Tuple[str] is also supported.
+        overwrite (bool): Overwrite existing Tiffs.
 
     """
 
@@ -118,7 +121,7 @@ def cli(src: str,
 
     groups = list(set(groups))
 
-    if roi is not None:
+    if roi is not None and not isinstance(roi, list):
         roi = [float(x) for x in roi.split(',')]
         if len(roi) != 4:
             raise ValueError("ROI for clip needs to be bounding box in format ULX,ULY,LRX,LRY")
@@ -155,13 +158,16 @@ def cli(src: str,
         round_int = round_int * -1
 
     gdal_kwargs = {}
-    if gdal_kwarg:
+    if gdal_kwarg and not isinstance(gdal_kwarg, dict):
         gdal_kwargs.update(
             {key:value for x in gdal_kwarg for key, value in [x.split("=")]}
         )
+    else:
+        gdal_kwargs = gdal_kwarg
 
     click.echo("\nSTARTING modis_window.py!")
 
+    mosaics = []
     for group in groups:
         log.debug("Processing group %s", group)
 
@@ -170,7 +176,8 @@ def cli(src: str,
 
         mosaic = ModisMosaic(group_files)
 
-        mosaic.generate_mosaics(
+        mosaics.extend(
+          mosaic.generate_mosaics(
             dataset=dataset,
             targetdir=targetdir,
             target_srs=target_srs,
@@ -184,9 +191,11 @@ def cli(src: str,
             round_int=round_int,
             creationOptions=list(co),
             **gdal_kwargs,
+          )
         )
 
     click.echo("\nCOMPLETED modis_window.py!")
+    return mosaics
 
 def cli_wrap():
     """Wrapper for cli"""
