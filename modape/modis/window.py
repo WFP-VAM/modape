@@ -218,15 +218,18 @@ class ModisMosaic(object):
             translate_options = {
                 "outputType": attrs["dtype"],
                 "noData": attrs["nodata"],
-                "outputSRS": target_srs,
+                "projWin": aoi  # (None is fine too)
             }
-
-            if aoi is not None:
-                translate_options.update(
-                    {"projWin": aoi}
-                )
-
             translate_options.update(kwargs)
+
+            if aoi is not None and 'xRes' in translate_options.keys() and 'yRes' in translate_options.keys():
+                translate_options.update({
+                    "outputBounds": aoi,
+                    "width": abs(int(round((aoi[2] - aoi[0]) / translate_options['xRes']))),
+                    "height": abs(int(round((aoi[3] - aoi[1]) / translate_options['yRes']))),
+                    "xRes": 0.0,
+                    "yRes": 0.0
+                })
 
             if not attrs["globalproduct"] or target_srs != "EPSG:4326":
 
@@ -240,11 +243,6 @@ class ModisMosaic(object):
 
                     log.debug("Writing to disk")
 
-                    if aoi is not None:
-                        warped_mosaic.SetGeoTransform([
-                            aoi[0], (aoi[2]-aoi[0]) / warped_mosaic.RasterXSize, 0,
-                            aoi[1], 0, (aoi[3]-aoi[1]) / warped_mosaic.RasterYSize
-                        ])
                     write_check = self._translate(
                         src=warped_mosaic,
                         dst=filename,
