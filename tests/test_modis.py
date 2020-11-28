@@ -348,9 +348,6 @@ class TestModisCollect(unittest.TestCase):
         self.assertEqual(str(raw_h5.filename), "/tmp/VEM/MYD13A2.h18v06.006.VEM.h5")
 
         with self.assertRaises(AssertionError):
-            raw_h5 = ModisRawH5(files=self.vim_files_aqua, targetdir="/tmp", interleave=True)
-
-        with self.assertRaises(AssertionError):
             raw_h5 = ModisRawH5(files=self.vim_files_aqua + self.vim_files_terra, targetdir="/tmp")
 
         with self.assertRaises(AssertionError):
