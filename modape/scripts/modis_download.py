@@ -72,7 +72,8 @@ def cli(products: List[str],
         multithread (bool): Use multiple threads for downloading.
         nthreads (int): Number of threads for multithread.
         collection (str): MODIS collection version.
-        :rtype: list
+    Returns:
+        List of results returned by CMR API for query
     """
 
     click.echo("\nSTART download_modis.py!")
