@@ -138,8 +138,11 @@ class ModisMosaic(object):
             labels = None
             force_doy = True
 
+        output_res = [None, None]
         if "xRes" in kwargs.keys() and "yRes" in kwargs.keys():
             output_res = [kwargs["xRes"], kwargs["yRes"]]
+            del kwargs["xRes"]
+            del kwargs["yRes"]
 
         elif target_srs == "EPSG:4326":
 
@@ -147,9 +150,6 @@ class ModisMosaic(object):
                 output_res = attrs["resolution"] / 112000
             else:
                 output_res = attrs["resolution"]
-
-        else:
-            output_res = [None, None]
 
         try:
             nodata = kwargs["noData"]
@@ -218,17 +218,15 @@ class ModisMosaic(object):
             translate_options = {
                 "outputType": attrs["dtype"],
                 "noData": attrs["nodata"],
-                "projWin": aoi  # (None is fine too)
+                "projWin": aoi
             }
             translate_options.update(kwargs)
 
-            if aoi is not None and 'xRes' in translate_options.keys() and 'yRes' in translate_options.keys():
+            if aoi is not None and any(output_res):
                 translate_options.update({
                     "outputBounds": aoi,
                     "width": abs(int(round((aoi[2] - aoi[0]) / translate_options['xRes']))),
-                    "height": abs(int(round((aoi[3] - aoi[1]) / translate_options['yRes']))),
-                    "xRes": 0.0,
-                    "yRes": 0.0
+                    "height": abs(int(round((aoi[3] - aoi[1]) / translate_options['yRes'])))
                 })
 
             if not attrs["globalproduct"] or target_srs != "EPSG:4326":
