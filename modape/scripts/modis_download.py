@@ -24,7 +24,7 @@ from modape.modis import ModisQuery
 @click.option("--username", type=click.STRING, help="Earthdata username")
 @click.option("--password", type=click.STRING, help="Earthdata password")
 @click.option("--strict-dates", is_flag=True, help="Don't allow files with timestamps outside of provided date(s)")
-@click.option("--return-results", is_flag=True, help="Print results to console")
+@click.option("--print-results", is_flag=True, help="Print results to console")
 @click.option("--download", is_flag=True, help="Download data")
 @click.option("--overwrite", is_flag=True, help="Overwrite existing files")
 @click.option("--multithread", is_flag=True, help="Use multiple threads for downloading")
@@ -40,13 +40,13 @@ def cli(products: List[str],
         username: str,
         password: str,
         strict_dates: bool,
-        return_results: bool,
+        print_results: bool,
         download: bool,
         overwrite: bool,
         multithread: bool,
         nthreads: int,
         collection: str,
-        ) -> None:
+        ) -> List:
     """Query and download MODIS products.
 
     This function allows for querying and downloading MODIS products in bulk.
@@ -72,6 +72,9 @@ def cli(products: List[str],
         multithread (bool): Use multiple threads for downloading.
         nthreads (int): Number of threads for multithread.
         collection (str): MODIS collection version.
+        
+    Returns:
+        List of results returned by CMR API for query
     """
 
     click.echo("\nSTART download_modis.py!")
@@ -145,11 +148,11 @@ def cli(products: List[str],
 
     if query.nresults == 0:
         click.echo("No results found! Please check query or make sure CMR is available / reachable.")
-        sys.exit(0)
+        return []
 
     click.echo(f'Done! Found {query.nresults} results!')
 
-    if return_results:
+    if print_results:
         click.echo("\n")
         for res in query.results:
             click.echo(res)
@@ -171,6 +174,7 @@ def cli(products: List[str],
             )
 
     click.echo('modis_download.py COMPLETED! Bye! \n')
+    return query.results
 
 def cli_wrap():
     """Wrapper for cli"""
