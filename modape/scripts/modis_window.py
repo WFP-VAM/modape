@@ -121,8 +121,9 @@ def cli(src: str,
 
     groups = list(set(groups))
 
-    if roi is not None and not isinstance(roi, list):
-        roi = [float(x) for x in roi.split(',')]
+    if roi is not None:
+        if not isinstance(roi, list):
+            roi = [float(x) for x in roi.split(',')]
         if len(roi) != 4:
             raise ValueError("ROI for clip needs to be bounding box in format ULX,ULY,LRX,LRY")
 
