@@ -46,7 +46,7 @@ def cli(products: List[str],
         multithread: bool,
         nthreads: int,
         collection: str,
-        ) -> list:
+        ) -> List:
     """Query and download MODIS products.
 
     This function allows for querying and downloading MODIS products in bulk.
