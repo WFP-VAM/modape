@@ -37,7 +37,7 @@ def cli(src: str,
         targetdir: str,
         begin_date: datetime.date,
         end_date: datetime.date,
-        roi: str,
+        roi: Union[str, List[float]],
         region: str,
         sgrid: bool,
         force_doy: bool,
@@ -47,8 +47,8 @@ def cli(src: str,
         co: Tuple[str],
         clip_valid: bool,
         round_int: int,
-        gdal_kwarg: Tuple[str],
-        overwrite: bool) -> list:
+        gdal_kwarg: Union[Tuple[str], Dict[str, Union[str, int, float]]],
+        overwrite: bool) -> List:
     """Creates GeoTiff Mosaics from HDF5 files.
 
     The input can be either raw or smoothed HDF5 files. With the latter,
