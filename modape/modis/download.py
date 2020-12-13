@@ -52,7 +52,7 @@ class ModisQuery(object):
 
         Args:
             products (List[str]): List of product codes to be queried / downloaded.
-            aoi (List[Union[float, int]]): Area of interes (point as lat/lon or bounding box as xmin, ymin, xmax, ymax).
+            aoi (List[Union[float, int]]): Area of interes (point as lon/lat or bounding box as xmin, ymin, xmax, ymax).
             begindate (datetime): Start date for query.
             enddate (datetime): End date for query.
             tile_filter (List[str]): List of tiles to be queried / downloaded (refines initial results).

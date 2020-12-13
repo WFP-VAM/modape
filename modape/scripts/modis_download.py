@@ -14,7 +14,7 @@ from modape.modis import ModisQuery
 
 @click.command()
 @click.argument("products", nargs=-1, type=click.STRING)
-@click.option("--roi", type=click.STRING, help="Region of interest. Either LAT,LON or xmin,ymin,xmax,ymax")
+@click.option("--roi", type=click.STRING, help="Region of interest. Either LON,LAT or xmin,ymin,xmax,ymax")
 @click.option("-b", "--begin-date", type=click.DateTime(formats=["%Y-%m-%d"]), help="Start date for query")
 @click.option("-e", "--end-date", type=click.DateTime(formats=["%Y-%m-%d"]), help="End date for query")
 @click.option("-d", "--targetdir", type=click.Path(dir_okay=True, writable=True, resolve_path=True),
@@ -72,7 +72,7 @@ def cli(products: List[str],
         multithread (bool): Use multiple threads for downloading.
         nthreads (int): Number of threads for multithread.
         collection (str): MODIS collection version.
-        
+
     Returns:
         List of results returned by CMR API for query
     """
