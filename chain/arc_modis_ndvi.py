@@ -168,7 +168,8 @@ def app_do_processing(debug=False):
                 print('Octad-end for last ingested date: {}'.format(str(export_octad.getDateTimeEnd())))
                 print(' > Corresponding dekad: {}'.format(str(export_dekad)))
 
-            while Dekad(export_octad.prev().getDateTimeEnd(), True).Equals(export_dekad) and nexports < 6:
+            while Dekad(export_octad.prev().getDateTimeEnd(), True)\
+                    .Equals(export_dekad) and nexports <= app_state.nupdate:
                 nexports = nexports + 1
                 export_octad = export_octad.prev()
 
@@ -192,7 +193,7 @@ def app_do_processing(debug=False):
                         clip_valid=True, round_int=2, gdal_kwarg={
                             'xRes': 0.01, 'yRes': 0.01,
                             'metadataOptions': ['CONSOLIDATION_STAGE={}'.format(nexports-1),
-                                                'FINAL={}'.format('FALSE' if nexports < 6 else 'TRUE')]
+                                                'FINAL={}'.format('FALSE' if nexports < app_state.nupdate else 'TRUE')]
                         },
                         overwrite=True
                     )
@@ -207,7 +208,8 @@ def app_do_processing(debug=False):
                 nexports = nexports + 1
                 export_octad = export_octad.prev()
                 export_dekad = Dekad(export_octad.getDateTimeEnd(), True)
-                while Dekad(export_octad.prev().getDateTimeEnd(), True).Equals(export_dekad) and nexports < 6:
+                while Dekad(export_octad.prev().getDateTimeEnd(), True)\
+                        .Equals(export_dekad) and nexports <= app_state.nupdate:
                     nexports = nexports + 1
                     export_octad = export_octad.prev()
 
