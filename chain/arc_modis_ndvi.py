@@ -174,7 +174,7 @@ def app_do_processing(debug=False):
                 export_octad = export_octad.prev()
 
             first_date = get_first_date_in_raw_modis_tiles(os.path.join(app_state.basedir, 'VIM'))
-            while (not export_dekad.startsBeforeDate(first_date)) and nexports <= 6:
+            while (not export_dekad.startsBeforeDate(first_date)) and nexports <= app_state.nupdate:
                 if debug:
                     print('>>Export: {} [Update: {}]'.format(str(export_dekad), str(nexports)))
                 for region, roi in app_state.export.items():
