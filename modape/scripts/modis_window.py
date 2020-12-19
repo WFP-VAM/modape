@@ -73,7 +73,7 @@ def cli(src: str,
         targetdir (str): Target directory.
         begin_date (datetime.date): Start date for tiffs.
         end_date (datetime.date): End date for tiffs.
-        roi (str): ROI for clipping. Passing ROI as a list[float] is also supported
+        roi (str): ROI for clipping. Passing ROI as a list[float] is also supported.
         region (str): Region for filename.
         sgrid (bool): Extract sgrid instead of data.
         force_doy (bool): Force DOY in filename.
