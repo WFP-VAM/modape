@@ -8,7 +8,7 @@ import logging
 from pathlib import Path
 import re
 import sys
-from typing import Tuple
+from typing import Dict, List, Tuple, Union
 
 import click
 from modape.constants import REGEX_PATTERNS
