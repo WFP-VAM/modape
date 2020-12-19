@@ -160,12 +160,13 @@ def cli(src: str,
         round_int = round_int * -1
 
     gdal_kwargs = {}
-    if gdal_kwarg and not isinstance(gdal_kwarg, dict):
-        gdal_kwargs.update(
-            {key:value for x in gdal_kwarg for key, value in [x.split("=")]}
-        )
-    else:
-        gdal_kwargs = gdal_kwarg
+    if gdal_kwarg:
+        if gdal_kwarg is not isinstance(gdal_kwarg, dict):
+            gdal_kwargs.update(
+                {key:value for x in gdal_kwarg for key, value in [x.split("=")]}
+            )
+        else:
+            gdal_kwargs = gdal_kwarg
 
     click.echo("\nSTARTING modis_window.py!")
 
