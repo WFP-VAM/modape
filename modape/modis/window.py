@@ -80,7 +80,7 @@ class ModisMosaic(object):
                          clip_valid: bool = False,
                          round_int: int = None,
                          **kwargs,
-                        ) -> list:
+                        ) -> List:
         """Generate GeoTIFF mosaics/subsets.
 
         This method is creating a GeoTiff mosaic/subsets from the HDF5 files
