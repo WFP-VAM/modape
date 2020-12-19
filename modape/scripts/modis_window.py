@@ -31,7 +31,7 @@ log = logging.getLogger(__name__)
 @click.option('--co', multiple=True, help="GDAL creationOptions", default=["COMPRESS=LZW", "PREDICTOR=2"])
 @click.option("--clip-valid", is_flag=True, help="clip values to valid range for product")
 @click.option("--round-int", type=click.INT, help="Round to integer places (either decimals or exponent of 10)")
-@click.option("--gdal-kwarg", type=click.STRING, multiple=True, help="Addition kwargs for GDAL in form KEY=VALUE (multiple allowed)")
+@click.option("--gdal-kwarg", type=click.STRING, multiple=True, help="Addition kwargs for GDAL")
 @click.option("--overwrite", is_flag=True, help="Overwrite existsing Tiffs")
 def cli(src: str,
         targetdir: str,
@@ -63,7 +63,8 @@ def cli(src: str,
     Specific creation options can be passed to gdalwarp and gdaltranslate using the `--co` flag. The flag can be used multiple times,
     each input needs to be in the gdal format for COs, e.g. `KEY=VALUE`.
     Additional options can be passed to gdal.Translate (and with restrictions to warp) using `--gdal-kwarg`,
-    e.g. `--gdal-kwarg xRes=10 --gdal-kwarg yRes=10`. The keywords are sensitive to how gdal expects them,
+    e.g. `--gdal-kwarg xRes=10 --gdal-kwarg yRes=10`. The additional options can either be provided as a tuple with `KEY=VALUE` strings, or with a key-value dictionary.
+    The keywords are sensitive to how gdal expects them,
     as they are directly passed to gdal.TranlsateOptions. For details, please check the documentation of gdal.TranslateOptions.
 
     Args:
