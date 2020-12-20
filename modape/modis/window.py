@@ -223,7 +223,7 @@ class ModisMosaic(object):
 
             translate_options.update(kwargs)
 
-            if aoi is not None and any(output_res):
+            if aoi is not None and all(output_res):
                 translate_options.update({
                     "outputBounds": aoi,
                     "width": abs(int(round((aoi[2] - aoi[0]) / output_res[0]))),
