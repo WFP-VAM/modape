@@ -895,11 +895,9 @@ class TestModisMosaic(unittest.TestCase):
         self.assertEqual(mkwargs["noData"], -1)
         self.assertEqual(mkwargs["outputType"], 0)
         self.assertEqual(mkwargs["creationOptions"], cos)
-        self.assertEqual(mkwargs["xRes"], 10)
-        self.assertEqual(mkwargs["yRes"], 10)
         self.assertEqual(mkwargs["resampleAlg"], "bilinear")
         self.assertEqual(mkwargs["projWin"], aoi)
-
+        self.assertEqual(mkwargs["outputBounds"], aoi)
 
     @patch("modape.modis.window.ModisMosaic._get_raster", return_value="/vsimem/inmem.tif")
     @patch("modape.modis.window.ModisMosaic._mosaic")
