@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# pylint: disable=broad-except,C0103
+# pylint: disable=broad-except,C0103,E0401
 """modis_window.py: Create mosaics from smooth MODIS HDF5 files and
    save them as GeoTIFFs.
 """
@@ -180,21 +180,21 @@ def cli(src: str,
         mosaic = ModisMosaic(group_files)
 
         mosaics.extend(
-          mosaic.generate_mosaics(
-            dataset=dataset,
-            targetdir=targetdir,
-            target_srs=target_srs,
-            aoi=roi,
-            overwrite=overwrite,
-            force_doy=force_doy,
-            prefix=region,
-            start=begin_date,
-            stop=end_date,
-            clip_valid=clip_valid,
-            round_int=round_int,
-            creationOptions=list(co),
-            **gdal_kwargs,
-          )
+            mosaic.generate_mosaics(
+                dataset=dataset,
+                targetdir=targetdir,
+                target_srs=target_srs,
+                aoi=roi,
+                overwrite=overwrite,
+                force_doy=force_doy,
+                prefix=region,
+                start=begin_date,
+                stop=end_date,
+                clip_valid=clip_valid,
+                round_int=round_int,
+                creationOptions=list(co),
+                **gdal_kwargs,
+                )
         )
 
     click.echo("\nCOMPLETED modis_window.py!")
