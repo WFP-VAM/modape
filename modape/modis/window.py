@@ -116,6 +116,7 @@ class ModisMosaic(object):
             stop (datetime.date): Stop date for mosaics.
             clip_valid (bool): Clip values to valid range for MODIS product.
             round_int (int): Round the output.
+            gdal_multithread (bool): Use multiple threads for warping
             **kwargs (type): **kwags passed on to `gdal.WarpOptions` and `gdal.TranslateOptions`.
 
         Raises:
@@ -139,7 +140,7 @@ class ModisMosaic(object):
             force_doy = True
 
         output_res = [None, None]
-        if "xRes" in kwargs.keys() and "yRes" in kwargs.keys():
+        if "xRes" in kwargs and "yRes" in kwargs:
             output_res = [kwargs["xRes"], kwargs["yRes"]]
             del kwargs["xRes"]
             del kwargs["yRes"]
@@ -165,6 +166,12 @@ class ModisMosaic(object):
             resample = kwargs["resampleAlg"]
         except KeyError:
             resample = "near"
+
+        if "multithread" in kwargs:
+            gdal_multithread = bool(kwargs["multithread"])
+            del kwargs["multithread"]
+        else:
+            gdal_multithread = False
 
         filename_root = f"{targetdir}/{prefix}{attrs['vamcode'].lower()}"
 
@@ -239,6 +246,7 @@ class ModisMosaic(object):
                                   dtype=dtype,
                                   nodata=nodata,
                                   resolution=output_res,
+                                  gdal_multithread=gdal_multithread,
                                  ) as warped_mosaic:
 
                     log.debug("Writing to disk")
@@ -362,7 +370,8 @@ class ModisMosaic(object):
                 resample,
                 resolution,
                 dtype,
-                nodata):
+                nodata,
+                gdal_multithread):
 
         vrt_tempname = f"/vsimem/{uuid4()}.vrt"
         vrt = gdal.BuildVRT(vrt_tempname, input_rasters)
@@ -380,7 +389,7 @@ class ModisMosaic(object):
             yRes=resolution[1],
             srcNodata=nodata,
             dstNodata=nodata,
-            multithread=True,
+            multithread=gdal_multithread,
         )
 
         wrp = gdal.Warp(wrp_tempname, vrt_tempname, options=wopt)
