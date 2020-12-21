@@ -230,7 +230,7 @@ class ModisMosaic(object):
                     "width": abs(int(round((aoi[2] - aoi[0]) / output_res[0]))),
                     "height": abs(int(round((aoi[3] - aoi[1]) / output_res[1])))
                 })
-                
+
             if not attrs["globalproduct"] or target_srs != "EPSG:4326":
 
                 with self._mosaic(rasters,
