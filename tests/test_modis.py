@@ -870,6 +870,7 @@ class TestModisMosaic(unittest.TestCase):
                                 outputType=0,
                                 creationOptions=cos,
                                 resampleAlg="bilinear",
+                                multithread=True,
                                 )
 
         mock_raster.assert_called()
@@ -885,6 +886,7 @@ class TestModisMosaic(unittest.TestCase):
         self.assertEqual(mkwargs["dtype"], 0)
         self.assertEqual(mkwargs["nodata"], -1)
         self.assertEqual(mkwargs["resample"], "bilinear")
+        self.assertEqual(mkwargs["gdal_multithread"], True)
         np.testing.assert_almost_equal(mkwargs["resolution"], [10, 10])
 
         mock_translate.assert_called()
@@ -929,6 +931,7 @@ class TestModisMosaic(unittest.TestCase):
         self.assertEqual(margs[0], ["/vsimem/inmem.tif"])
         self.assertEqual(mkwargs["target_srs"], "EPSG:3857")
         self.assertEqual(mkwargs["resolution"], [None, None])
+        self.assertEqual(mkwargs["gdal_multithread"], False)
 
         _, mkwargs = mock_translate.call_args
         self.assertEqual(mock_translate.call_count, len(mosaic.dates))
