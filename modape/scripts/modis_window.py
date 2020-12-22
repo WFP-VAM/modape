@@ -56,7 +56,8 @@ def cli(src: str,
     If no ROI is passed, then the full extent of the input files will be mosaiced, otherwise
     the GeoTiffs will be clipped to the ROI after warping.
     By default, the MODIS data will be warped to WGS1984 (EPSG:4326), but a custom spatial reference
-    can be passed in with `--target-srs`, in wich case the target resolution has to be manually defined too.
+    can be passed in with `--target-srs`, in wich case the target resolution has to be manually defined too. optionally,
+    `--target-srs` can be set to `None`, using the product's native projection.
     If required, the output data can be clipped to the valid data range of the input data using the `--clip-valid` flag.
     Also, the output data can be rounded, if it's float (eg. sgrid) to defined precision, or if its integer to the defined
     exponent of 10 (round_int will be multiplied by -1 and passed to np.round!!!)
@@ -79,7 +80,7 @@ def cli(src: str,
         force_doy (bool): Force DOY in filename.
         filter_product (str): Filter input by product code.
         filter_vampc (str): Filter inpout by vam parameter code.
-        target_srs (str): Target spatial reference (in format GDAL can process).
+        target_srs (str): Target spatial reference (in format GDAL can process) or "None".
         co (Tuple[str]): Creation options passed to gdal.Translate.
         clip_valid (bool): Clip data to valid range.
         round_int (int): Round integer.
@@ -158,6 +159,9 @@ def cli(src: str,
 
     if round_int is not None:
         round_int = round_int * -1
+
+    if target_srs in ["None", "none"]:
+        target_srs = None
 
     gdal_kwargs = {}
     if gdal_kwarg:
