@@ -70,7 +70,7 @@ class ModisMosaic(object):
     def generate_mosaics(self,
                          dataset,
                          targetdir,
-                         target_srs: str,
+                         target_srs: str = None,
                          aoi: List[float] = None,
                          overwrite: bool = False,
                          force_doy: bool = False,
@@ -139,7 +139,6 @@ class ModisMosaic(object):
             labels = None
             force_doy = True
 
-        output_res = [None, None]
         if "xRes" in kwargs and "yRes" in kwargs:
             output_res = [kwargs["xRes"], kwargs["yRes"]]
             del kwargs["xRes"]
@@ -147,10 +146,16 @@ class ModisMosaic(object):
 
         elif target_srs == "EPSG:4326":
 
-            if not attrs["globalproduct"]:
-                output_res = attrs["resolution"] / 112000
-            else:
-                output_res = attrs["resolution"]
+            try:
+                if not attrs["globalproduct"]:
+                    output_res = attrs["resolution"] / 112000
+                else:
+                    output_res = attrs["resolution"]
+            except KeyError:
+                log.warning("Could not determine target resolution from file!")
+                output_res = [None, None]
+        else:
+            output_res = [None, None]
 
         try:
             nodata = kwargs["noData"]
@@ -238,43 +243,19 @@ class ModisMosaic(object):
                     "height": abs(int(round((aoi[3] - aoi[1]) / output_res[1])))
                 })
 
-            if not attrs["globalproduct"] or target_srs != "EPSG:4326":
-
-                with self._mosaic(rasters,
-                                  target_srs=target_srs,
-                                  resample=resample,
-                                  dtype=dtype,
-                                  nodata=nodata,
-                                  resolution=output_res,
-                                  gdal_multithread=gdal_multithread,
-                                 ) as warped_mosaic:
-
-                    log.debug("Writing to disk")
-
-                    write_check = self._translate(
-                        src=warped_mosaic,
-                        dst=filename,
-                        **translate_options
-                    )
-
-                    try:
-                        assert write_check, f"Error writing {filename}"
-                        mosaics.append(filename)
-                    except:
-                        raise
-                    finally:
-                        _ = [gdal.Unlink(x) for x in rasters]
-
-
-            else:
-
-                log.debug("Processing global file with EPSG:4326! Skipping warp")
-                assert len(rasters) == 1, "Expected only one raster!"
+            with self._mosaic(rasters,
+                              target_srs=target_srs,
+                              resample=resample,
+                              dtype=dtype,
+                              nodata=nodata,
+                              resolution=output_res,
+                              gdal_multithread=gdal_multithread,
+                             ) as warped_mosaic:
 
                 log.debug("Writing to disk")
 
                 write_check = self._translate(
-                    src=rasters[0],
+                    src=warped_mosaic,
                     dst=filename,
                     **translate_options
                 )
