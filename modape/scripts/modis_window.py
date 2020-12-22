@@ -160,7 +160,7 @@ def cli(src: str,
     if round_int is not None:
         round_int = round_int * -1
 
-    if target_srs in ["None", "none"]:
+    if target_srs.lower() == "none":
         target_srs = None
 
     gdal_kwargs = {}
