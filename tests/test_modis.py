@@ -908,21 +908,22 @@ class TestModisMosaic(unittest.TestCase):
         """Test mosaic creation"""
 
         mosaic = ModisMosaic(self.testfile_global)
-        mock_mosaic.return_value.__enter__.return_value = "/inmem/warped.tif"
-        mosaic.generate_mosaics("data", "/tmp/data", "EPSG:4326")
+        mock_mosaic.return_value.__enter__.return_value = "/vsimem/warped.tif"
+        mosaic.generate_mosaics("data", "/tmp/data", None)
 
         mock_raster.assert_called()
         self.assertEqual(mock_raster.call_count, len(mosaic.dates))
-        mock_mosaic.assert_not_called()
+        mock_mosaic.assert_called()
 
         mock_translate.assert_called()
         _, mkwargs = mock_translate.call_args
         self.assertEqual(mock_translate.call_count, len(mosaic.dates))
-        self.assertEqual(mkwargs["src"], "/vsimem/inmem.tif")
+        self.assertEqual(mkwargs["src"], "/vsimem/warped.tif")
         self.assertEqual(mkwargs["dst"], "/tmp/data/vim2002j209.tif")
-        self.assertEqual(mkwargs["outputSRS"], "EPSG:4326")
+        self.assertEqual(mkwargs["outputSRS"], None)
 
         mock_translate.reset_mock()
+        mock_mosaic.reset_mock()
 
         mosaic.generate_mosaics("data", "/tmp/data", "EPSG:3857")
         mock_mosaic.assert_called()
@@ -935,7 +936,7 @@ class TestModisMosaic(unittest.TestCase):
 
         _, mkwargs = mock_translate.call_args
         self.assertEqual(mock_translate.call_count, len(mosaic.dates))
-        self.assertEqual(mkwargs["src"], "/inmem/warped.tif")
+        self.assertEqual(mkwargs["src"], "/vsimem/warped.tif")
         self.assertEqual(mkwargs["dst"], "/tmp/data/vim2002j209.tif")
         self.assertEqual(mkwargs["outputSRS"], "EPSG:3857")
 
@@ -946,7 +947,7 @@ class TestModisMosaic(unittest.TestCase):
         """Test mosaic creation"""
         mosaic = ModisMosaic(self.testfile)
 
-        mock_mosaic.return_value.__enter__.return_value = "/inmem/warped.tif"
+        mock_mosaic.return_value.__enter__.return_value = "/vsimem/warped.tif"
 
         mosaic.generate_mosaics("data",
                                 "/tmp/data",
