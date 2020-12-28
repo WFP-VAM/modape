@@ -48,6 +48,19 @@ def get_last_date_in_raw_modis_tiles(folder):
         return None
 
 
+def has_collected_dates(h5_file, dates):
+
+    r = False
+    with h5py.File(h5_file, "r") as h5_open:
+        collected_dates = [d.decode() for d in h5_open.get("dates")]
+        r = dates == collected_dates
+        if not r:
+            for d in dates:
+                if d not in collected_dates:
+                    print("Missing date: {}".format(d))
+    return r
+
+
 def curate_downloads(folder, tiles, begin_date, end_date) -> bool:
     """
     :param folder: download folder with MODUS HDFs

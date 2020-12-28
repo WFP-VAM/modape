@@ -21,8 +21,10 @@ from datetime import datetime, date
 from dateutil.relativedelta import relativedelta
 from flask import Flask, jsonify, send_file
 from threading import Thread, Timer
+from pathlib import Path
 
-from modape_helper import get_first_date_in_raw_modis_tiles, get_last_date_in_raw_modis_tiles, curate_downloads
+from modape_helper import get_first_date_in_raw_modis_tiles, get_last_date_in_raw_modis_tiles,\
+    curate_downloads, has_collected_dates
 from modape.scripts.modis_download import cli as modis_download
 from modape.scripts.modis_collect import cli as modis_collect
 from modape.scripts.modis_smooth import cli as modis_smooth
@@ -47,6 +49,13 @@ def generate_file_md5(filepath, blocksize=2 ** 16):
                 break
             m.update(buf)
     return m.hexdigest()
+
+
+def exists_smooth_h5s(tiles, basedir):
+    # Check all tiles for a corresponding H5 archive in VIM/SMOOTH:
+    return all(
+     [Path(os.path.join(basedir, 'VIM', "SMOOTH", "MXD13A2.{}.006.txd.VIM.h5".format(tile))).exists() for tile in tiles]
+    )
 
 
 def app_index():
@@ -225,7 +234,11 @@ def setup(config):
     global app_state
     with open(config) as f:
         app_state = json.load(f)
-        app_state = Namespace(**app_state)
+    app_state = Namespace(**app_state)
+
+    # Check all tiles for a corresponding H5 archive in VIM/SMOOTH:
+    assert exists_smooth_h5s(app_state.tile_filter, app_state.basedir)
+
     flask_app = Flask(app_state.app_name)
     flask_app.config['JSONIFY_PRETTYPRINT_REGULAR'] = True
     flask_app.add_url_rule('/fetch', 'fetch', app_fetch)
@@ -257,7 +270,7 @@ def serve(ctx) -> None:
     if ctx.obj['DEBUG']:
         with open(ctx.obj['CONFIG']) as f:
             app_state = json.load(f)
-            app_state = Namespace(**app_state)
+        app_state = Namespace(**app_state)
         if ctx.obj['REGION']:
             app_state.region_only = ctx.obj['REGION']
         app_do_processing(debug=True)
@@ -274,6 +287,10 @@ def export(ctx) -> None:
     with open(ctx.obj['CONFIG']) as f:
         app_state = json.load(f)
     app_state = Namespace(**app_state)
+
+    # Check all tiles for a corresponding H5 archive in VIM/SMOOTH:
+    assert exists_smooth_h5s(app_state.tile_filter, app_state.basedir)
+
     if ctx.obj['REGION']:
         app_state.region_only = ctx.obj['REGION']
     app_state.export_only = True
@@ -287,6 +304,10 @@ def smooth(ctx) -> None:
     with open(ctx.obj['CONFIG']) as f:
         app_state = json.load(f)
     app_state = Namespace(**app_state)
+
+    # Check all tiles for a corresponding H5 archive in VIM/SMOOTH:
+    assert exists_smooth_h5s(app_state.tile_filter, app_state.basedir)
+
     assert (ctx.obj['REGION'] is None), "Cannot smooth for only a specific region!"
     app_state.smooth_only = True
     app_do_processing(debug=ctx.obj['DEBUG'])
@@ -329,20 +350,18 @@ def init(ctx, download_only, smooth_only, export_only) -> None:
 
     urls = []
     if not smooth_only and not export_only:
-        end_date = None
-        # download and ingest:
+        # Download and Collect:
+        # ---------------------
+
         begin_date = get_last_date_in_raw_modis_tiles(os.path.join(args.basedir, 'VIM'))
         if begin_date is None:
             begin_date = datetime.strptime(args.init_start_date, '%Y-%m-%d').date()
         else:
-            archive_year = begin_date.year
-            begin_date = begin_date + relativedelta(days=8)
-            if archive_year < begin_date.year:
-                # handle turning of the year:
-                begin_date = datetime(begin_date.year, 1, 1).date()
+            begin_date = ModisInterleavedOctad(begin_date).next().getDateTimeStart().date()
 
         end_date = datetime.strptime(args.init_end_date, '%Y-%m-%d').date()
         if not download_only:
+            # Better handle downloading incrementally:
             end_date = min([end_date, begin_date + relativedelta(years=1) - relativedelta(days=1)])
 
         while begin_date < end_date:
@@ -380,7 +399,8 @@ def init(ctx, download_only, smooth_only, export_only) -> None:
 
                 # move on:
                 begin_date = get_last_date_in_raw_modis_tiles(
-                    os.path.join(args.basedir, 'VIM')) + relativedelta(days=8)
+                    os.path.join(args.basedir, 'VIM'))
+                begin_date = ModisInterleavedOctad(begin_date).next().getDateTimeStart().date()
                 end_date = min([datetime.strptime(args.init_end_date, '%Y-%m-%d').date(),
                                 begin_date + relativedelta(years=1) - relativedelta(days=1)])
 
@@ -388,7 +408,23 @@ def init(ctx, download_only, smooth_only, export_only) -> None:
             sys.exit(int(not curate_downloads(args.basedir, args.tile_filter, begin_date, end_date)))
 
     if len(urls) > 0 or smooth_only:
-        # smooth downloaded archive: setting the 'init_only' to True, this can be done only once per product tile:
+        # Smooth and interpolate the collected archive
+        # --------------------------------------------
+
+        # Check if the raw grid stacks (each tile) contain (and *only* contain) the configured date range
+        # for initialisation: init_start_date -- init_end_date:
+        begin_date = datetime.strptime(args.init_start_date, '%Y-%m-%d').date()
+        end_date = datetime.strptime(args.init_end_date, '%Y-%m-%d').date()
+        dates = []
+        ts = ModisInterleavedOctad(begin_date)
+        while ts.getDateTimeStart().date() < begin_date:
+            ts = ts.next()
+        while ts.getDateTimeStart().date() < end_date:
+            dates.append(str(ts))
+            ts = ts.next()
+        for tile in args.tile_filter:
+            assert has_collected_dates(os.path.join(args.basedir, 'VIM', "MXD13A2.{}.006.VIM.h5".format(tile)), dates)
+
         modis_smooth.callback(
             src=os.path.join(args.basedir, 'VIM'), targetdir=os.path.join(args.basedir, 'VIM', 'SMOOTH'),
             svalue=None, srange=[], pvalue=None, tempint=10, tempint_start=None,
@@ -398,7 +434,12 @@ def init(ctx, download_only, smooth_only, export_only) -> None:
         if smooth_only:
             exit(0)
 
-    # Export dekads:
+    # Export smoothened slices
+    # ------------------------
+
+    # Check all tiles for a corresponding H5 archive in VIM/SMOOTH:
+    assert exists_smooth_h5s(args.tile_filter, args.basedir)
+
     first_date = max([
         get_first_date_in_raw_modis_tiles(os.path.join(args.basedir, 'VIM')),
         datetime.strptime(args.init_start_date, '%Y-%m-%d').date()
