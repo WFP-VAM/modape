@@ -9,7 +9,7 @@ class DownloadError(Exception):
         """Init custom DownloadError Exception.
 
         Args:
-            fails (List[Tuple]): List of failed file IDs.
+            fails (List): List of failed file IDs.
         """
 
 
