@@ -1,6 +1,6 @@
 """Custom exceptions for MODAPE"""
 #pylint: disable=W0107
-from typing import List, Tuple
+from typing import List
 
 class DownloadError(Exception):
     """Exception for failed download of MODIS data"""
