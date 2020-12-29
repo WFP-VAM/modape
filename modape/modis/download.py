@@ -15,9 +15,11 @@ from pathlib import Path
 import re
 import shutil
 from typing import List, Tuple, Union
+from xml.etree import ElementTree
 
 from cmr import GranuleQuery
 import pandas as pd
+from pycksum import cksum
 from requests.adapters import HTTPAdapter
 from requests.exceptions import HTTPError
 from requests.packages.urllib3.util.retry import Retry
@@ -98,8 +100,8 @@ class ModisQuery(object):
                                  of begindate and enddate are allowed).
         """
 
-        # init results list
-        self.results = []
+        # init results dict
+        self.results = {}
 
         # if no dates supplied, we can't be strict
         if self.begin is None and self.end is None:
@@ -130,7 +132,11 @@ class ModisQuery(object):
                     if result["time_end"] > self.end.date():
                         continue
 
-            self.results.append(result)
+            fid = result["file_id"]
+            del result["file_id"]
+
+            #self.results.append(result)
+            self.results.update({fid: result})
 
         # final results
         self.nresults = len(self.results)
@@ -172,11 +178,25 @@ class ModisQuery(object):
             yield entry_parsed
 
     @staticmethod
-    def _fetch_hdf(session: SessionWithHeaderRedirection,
-                   url: str,
-                   destination: Path,
-                   overwrite: bool,
-                   ) -> Tuple[str, Union[None, Exception]]:
+    def _parse_hdfxml(response):
+        result = {}
+        tree = ElementTree.fromstring(response.content)
+        for entry in tree.iter(tag='GranuleURMetaData'):
+            for datafile in entry.iter(tag="DataFiles"):
+                for datafilecont in datafile.iter(tag="DataFileContainer"):
+                    for content in datafilecont:
+                        if content.tag in ["Checksum", "FileSize"]:
+                            result.update({content.tag: int(content.text)})
+        return result
+
+
+    def _fetch(self,
+               session: SessionWithHeaderRedirection,
+               url: str,
+               destination: Path,
+               overwrite: bool,
+               check: bool,
+               ) -> Tuple[str, Union[None, Exception]]:
         """Helper function to fetch HDF files
 
         Args:
@@ -184,33 +204,48 @@ class ModisQuery(object):
             url (str): URL for file.
             destination (Path): Target directory.
             overwrite (bool): Overwrite existing.
+            check (bool): Check file size and checksum.
 
         Returns:
             Tuple[str, Union[None, Exception]]: Returns tuple with
                 either (filename, None) for success and (URL, Exception) for error.
 
         """
-
-        filename = destination.joinpath(url.split("/")[-1])
+        file_id = url.split("/")[-1]
+        filename = destination.joinpath(file_id)
 
         if not exists(filename) or overwrite:
+
+            filename_temp = filename.with_suffix(".modapedl")
 
             try:
 
                 with session.get(url, stream=True, allow_redirects=True) as response:
                     response.raise_for_status()
 
-                    with open(filename, "wb") as openfile:
+                    with open(filename_temp, "wb") as openfile:
                         shutil.copyfileobj(response.raw, openfile, length=16*1024*1024)#
 
-                assert filename.exists(), "File not on disk after download!"
+                if check:
 
-            except (HTTPError, AssertionError) as e:
-                return (url, e)
+                    response = session.get(url + ".xml")
+                    response.raise_for_status()
+                    file_metadata = self._parse_hdfxml(response)
+
+                    with open(filename_temp, "rb") as openfile:
+                        checksum = cksum(openfile)
+
+                    assert filename_temp.stat().st_size == file_metadata["FileSize"]
+                    assert checksum == file_metadata["Checksum"]
+                # QUESTION: should we remove temp file?
+                shutil.move(filename_temp, filename)
+
+            except (HTTPError, AssertionError, FileNotFoundError) as e:
+                return (file_id, e)
         else:
             log.info("%s exists in target. Please set overwrite to True.", filename)
 
-        return (filename, None)
+        return (file_id, None)
 
     def download(self,
                  targetdir: Path,
@@ -219,7 +254,9 @@ class ModisQuery(object):
                  overwrite: bool = False,
                  multithread: bool = False,
                  nthreads: int = 4,
-                ) -> None:
+                 max_retries: int = -1,
+                 robust: bool = False,
+                ) -> List:
         """Download MODIS HDF files.
 
         This method downloads the MODIS HDF files contained in the
@@ -234,55 +271,72 @@ class ModisQuery(object):
             overwrite (bool): Replace existing files.
             multithread (bool): Use multiple threads for downloading.
             nthreads (int): Number of threads.
+            max_retries (int): Maximum number of retries for failed downloads (for no max, set -1).
+            robust (bool): Perform robust downloading (checks file size and checksum).
 
         Raises:
             DownloadError: If one or more errors were encountered during downloading.
+        Returns:
+            List of downloaded MODIS HDF file IDs.
         """
 
         # make sure target directory is dir and exists
         assert targetdir.is_dir()
         assert targetdir.exists()
 
-        with SessionWithHeaderRedirection(username, password) as session:
+        retry_count = 0
+        to_download = self.results.copy()
+        downloaded = []
 
-            retries = Retry(total=5, backoff_factor=1, status_forcelist=[502, 503, 504])
-            session.mount(
-                "https://",
-                HTTPAdapter(pool_connections=nthreads, pool_maxsize=nthreads*2, max_retries=retries)
-            )
+        while True:
 
-            if multithread:
-                log.debug("Multithreaded download using %s threads. Warming up connection pool.", nthreads)
-                # warm up pool
-                _ = session.get(self.results[0]["link"], stream=True, allow_redirects=True)
+            with SessionWithHeaderRedirection(username, password) as session:
 
-                with ThreadPoolExecutor(nthreads) as executor:
+                retries = Retry(total=5, backoff_factor=1, status_forcelist=[502, 503, 504])
+                session.mount(
+                    "https://",
+                    HTTPAdapter(pool_connections=nthreads, pool_maxsize=nthreads*2, max_retries=retries)
+                )
 
-                    futures = [executor.submit(self._fetch_hdf, session, x["link"], targetdir, overwrite)
-                               for x in self.results]
+                if multithread:
+                    log.debug("Multithreaded download using %s threads. Warming up connection pool.", nthreads)
+                    # warm up pool
+                    _ = session.get(list(to_download.values())[0]["link"], stream=True, allow_redirects=True)
 
-                downloaded_files = [x.result() for x in futures]
+                    with ThreadPoolExecutor(nthreads) as executor:
 
-            else:
-                log.debug("Serial download")
-                downloaded_files = []
+                        futures = [executor.submit(self._fetch, session, values["link"], targetdir, overwrite, robust)
+                                   for key, values in to_download.items()]
 
-                for result in self.results:
+                    downloaded_temp = [x.result() for x in futures]
 
-                    downloaded_files.append(
-                        self._fetch_hdf(session, result["link"], targetdir, overwrite)
-                    )
+                else:
+                    log.debug("Serial download")
+                    downloaded_temp = []
 
-        errors = []
+                    for _, values in to_download.items():
 
-        # check if downloads are OK
-        for file, err in downloaded_files:
+                        downloaded_temp.append(
+                            self._fetch(session, values["link"], targetdir, overwrite, robust)
+                        )
 
-            if err is not None:
-                errors.append((file, err)) # append to error list
-            else:
-                # if no error, make sure file is on disk
-                assert file.exists(), "Downloaded file is missing! No download error was reported"
+            # check if downloads are OK
+            for fid, err in downloaded_temp:
+                if err is None:
+                    del to_download[fid]
+                    downloaded.append(fid)
 
-        if errors:
-            raise DownloadError(errors)
+            if to_download:
+                n_todo = len(to_download)
+                if retry_count < max_retries or max_retries == -1:
+                    retry_count += 1
+                    log.debug("Retrying downloads! Files left: %s", n_todo)
+                    if max_retries > 0:
+                        log.debug("Try %s of %s", retry_count, max_retries)
+                    continue
+
+                raise DownloadError(list(to_download.keys()))
+
+            break
+
+        return downloaded
