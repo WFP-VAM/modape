@@ -135,7 +135,6 @@ class ModisQuery(object):
             fid = result["file_id"]
             del result["file_id"]
 
-            #self.results.append(result)
             self.results.update({fid: result})
 
         # final results
