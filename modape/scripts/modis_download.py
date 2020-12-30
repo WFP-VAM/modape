@@ -165,6 +165,8 @@ def cli(products: List[str],
             click.echo(values)
             click.echo("\n")
 
+    downloaded = []
+
     if download:
 
         click.echo('Downloading!')
