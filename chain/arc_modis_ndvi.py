@@ -12,7 +12,6 @@ import contextlib
 import hashlib
 import json
 import os
-import sys
 import glob
 import click
 import re
@@ -61,7 +60,7 @@ def exists_smooth_h5s(tiles, basedir):
 def app_index():
     global app_state
     if app_state.fetcherThread.is_alive() and not getattr(app_state, 'suspended', False):
-        return "Fetcher is running (or suspended), try again later\n", 404
+        return "Fetcher is running (or suspended), try again later\n", 503
     else:
         files = {}
         for f in sorted(glob.glob(os.path.join(app_state.basedir, 'VIM', 'SMOOTH', 'EXPORT', app_state.file_pattern))):
@@ -74,7 +73,7 @@ def app_index():
 def app_download(filename):
     global app_state
     if app_state.fetcherThread.is_alive() and not getattr(app_state, 'suspended', False):
-        return "Fetcher is running (or suspended), try again later\n", 404
+        return "Fetcher is running (or suspended), try again later\n", 503
     else:
         return send_file(os.path.join(app_state.basedir, 'VIM', 'SMOOTH', 'EXPORT', filename), as_attachment=True, mimetype=app_state.mimetype)
 
@@ -83,161 +82,167 @@ def app_fetch():
     global app_state
     if app_state.fetcherThread.is_alive() or getattr(app_state, 'suspended', False):
         return "[{}] Fetcher is already running (or suspended), try again later\n".format(
-            datetime.now().strftime('%Y-%m-%d %H:%M:%S')), 404
+            datetime.now().strftime('%Y-%m-%d %H:%M:%S')), 503
     else:
-        app_state.fetcherThread = Timer(5, app_do_processing, ())
-        app_state.fetcherThread.start()
-        return "[{}] Fetching and processing is scheduled to start in 5 seconds...\n".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        # Check all tiles for a corresponding H5 archive in VIM/SMOOTH:
+        if not exists_smooth_h5s(app_state.tile_filter, app_state.basedir):
+            app_state.fetcherThread = Timer(5, app_do_init, ())
+            app_state.fetcherThread.start()
+            return "[{}] Initialisation is scheduled to start (or resume) in 5 seconds...\n".format(
+                datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        else:
+            app_state.fetcherThread = Timer(5, app_do_processing, ())
+            app_state.fetcherThread.start()
+            return "[{}] Fetching and processing is scheduled to start in 5 seconds...\n".format(
+                datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
 
 def app_suspend():
+    global app_state
     app_state.suspended = True
     if app_state.fetcherThread.is_alive():
-        return "Fetcher is busy suspending; please check back later to see the suspended state confirmed...\n", 404
+        return "Fetcher is busy suspending; please check back later to see the suspended state confirmed...\n", 503
     else:
-        return "[{}] Fetcher suspended; restart to resume.\n".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        return "[{}] Fetcher suspended; restart service to resume production.\n".format(
+            datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
 
-def app_do_processing(debug=False):
+def app_do_init():
     global app_state
-    try:
-        # download and ingest:
-        while True:
-            last_date = get_last_date_in_raw_modis_tiles(os.path.join(app_state.basedir, 'VIM'))
-            next_date = last_date + relativedelta(days=8)
-            if last_date.year < next_date.year:
-                # handle turning of the year:
-                next_date = datetime(next_date.year, 1, 1).date()
+    do_init(app_state)
 
-            if getattr(app_state, 'download_only', False) or (
-                    not getattr(app_state, 'collect_only', False) and
-                    not getattr(app_state, 'smooth_only', False) and
-                    not getattr(app_state, 'export_only', False)):
 
-                if next_date > date.today():  # stop after today:
-                    break
+def app_do_processing():
+    global app_state
+    do_processing(app_state)
 
-                print('Downloading: {}...'.format(next_date))
-                downloaded = modis_download.callback(
-                    products=['M?D13A2'],
-                    begin_date=datetime.combine(next_date, datetime.min.time()),
-                    end_date=datetime.combine(next_date, datetime.min.time()),
-                    targetdir=app_state.basedir,
-                    roi=None, target_empty=False, tile_filter=','.join(app_state.tile_filter),
-                    username=app_state.username,
-                    password=app_state.password, strict_dates=True, return_results=False,
-                    download=True, overwrite=True, multithread=False, nthreads=1, collection='006'
-                )
 
-                # anything downloaded? (or redo-smoothing: app_state.redo_smoothing)
-                if len(downloaded) < 1 or getattr(app_state, 'download_only', False):
-                    break
+def do_processing(args, only_one_inc=False):
+    # download and ingest:
+    while True:
+        last_date = get_last_date_in_raw_modis_tiles(os.path.join(args.basedir, 'VIM'))
+        next_date = last_date + relativedelta(days=8)
+        if last_date.year < next_date.year:
+            # handle turning of the year:
+            next_date = datetime(next_date.year, 1, 1).date()
 
-            if getattr(app_state, 'collect_only', False) or (
-                    not getattr(app_state, 'smooth_only', False) and
-                    not getattr(app_state, 'export_only', False)):
+        if getattr(args, 'download_only', False) or (
+                not getattr(args, 'collect_only', False) and
+                not getattr(args, 'smooth_only', False) and
+                not getattr(args, 'export_only', False)):
 
-                # check download completeness:
-                if not curate_downloads(app_state.basedir, app_state.tile_filter, next_date, next_date):
-                    break
-
-                # We're OK; now collect;
-                modis_collect.callback(
-                    src_dir=app_state.basedir, targetdir=app_state.basedir,  # modape appends VIM to the targetdir
-                    compression='gzip', vam_code='VIM', interleave=True, parallel_tiles=1,
-                    cleanup=True, last_collected=None
-                )
-
-                if getattr(app_state, 'collect_only', False):
-                    break
-
-            # smooth by N/n
-            if getattr(app_state, 'smooth_only', False) or (
-                    not getattr(app_state, 'export_only', False)):
-
-                modis_smooth.callback(
-                    src=os.path.join(app_state.basedir, 'VIM'),
-                    targetdir=os.path.join(app_state.basedir, 'VIM', 'SMOOTH'),
-                    svalue=None, srange=[], pvalue=None, tempint=10, tempint_start=None,
-                    nsmooth=app_state.nsmooth, nupdate=app_state.nupdate, soptimize=False,
-                    parallel_tiles=1, last_collected=None
-                )
-
-                if getattr(app_state, 'smooth_only', False):
-                    break
-
-            # export dekads, from back to front (n = 6):
-            nexports = 1
-            export_octad = \
-                ModisInterleavedOctad(get_last_date_in_raw_modis_tiles(os.path.join(app_state.basedir, 'VIM')))
-            export_dekad = \
-                Dekad(export_octad.getDateTimeEnd(), True)
-            if debug:
-                print('')
-                print('Octad-end for last ingested date: {}'.format(str(export_octad.getDateTimeEnd())))
-                print(' > Corresponding dekad: {}'.format(str(export_dekad)))
-
-            while Dekad(export_octad.prev().getDateTimeEnd(), True)\
-                    .Equals(export_dekad) and nexports <= app_state.nupdate:
-                nexports = nexports + 1
-                export_octad = export_octad.prev()
-
-            first_date = get_first_date_in_raw_modis_tiles(os.path.join(app_state.basedir, 'VIM'))
-            while (not export_dekad.startsBeforeDate(first_date)) and nexports <= app_state.nupdate:
-                if debug:
-                    print('>>Export: {} [Update: {}]'.format(str(export_dekad), str(nexports)))
-                for region, roi in app_state.export.items():
-                    if getattr(app_state, 'region_only', region) != region:
-                        continue
-                    exports = modis_window.callback(
-                        src=os.path.join(app_state.basedir, 'VIM', 'SMOOTH'),
-                        targetdir=os.path.join(app_state.basedir, 'VIM', 'SMOOTH', 'EXPORT'),
-                        begin_date=export_dekad.getDateTimeMid(),
-                        end_date=export_dekad.getDateTimeMid(),
-                        # convert from LLX,LLY,URX,URY to ULX,ULY,LRX,LRY:
-                        roi=[roi[0], roi[3], roi[2], roi[1]],
-                        region=region, sgrid=False, force_doy=False,
-                        filter_product=None, filter_vampc=None, target_srs='EPSG:4326',
-                        co=["COMPRESS=LZW", "PREDICTOR=2", "TILED=YES", "BLOCKXSIZE=256", "BLOCKYSIZE=256"],
-                        clip_valid=True, round_int=2, gdal_kwarg={
-                            'xRes': 0.01, 'yRes': 0.01,
-                            'metadataOptions': ['CONSOLIDATION_STAGE={}'.format(nexports-1),
-                                                'FINAL={}'.format('FALSE' if nexports < app_state.nupdate else 'TRUE')]
-                        },
-                        overwrite=True
-                    )
-
-                    for exp in exports:
-                        md5 = generate_file_md5(exp)
-                        with contextlib.suppress(FileNotFoundError):
-                            os.remove(exp + '.md5')
-                        with open(exp + '.md5', 'w') as f:
-                            f.write(md5)
-
-                nexports = nexports + 1
-                export_octad = export_octad.prev()
-                export_dekad = Dekad(export_octad.getDateTimeEnd(), True)
-                while Dekad(export_octad.prev().getDateTimeEnd(), True)\
-                        .Equals(export_dekad) and nexports <= app_state.nupdate:
-                    nexports = nexports + 1
-                    export_octad = export_octad.prev()
-
-            if debug or getattr(app_state, 'export_only', False):
+            if next_date > date.today():  # stop after today:
                 break
 
-    finally:
-        # app_state.fetcherThread = None
-        pass
+            print('Downloading: {}...'.format(next_date))
+            downloaded = modis_download.callback(
+                products=['M?D13A2'],
+                begin_date=datetime.combine(next_date, datetime.min.time()),
+                end_date=datetime.combine(next_date, datetime.min.time()),
+                targetdir=args.basedir,
+                roi=None, target_empty=False, tile_filter=','.join(args.tile_filter),
+                username=args.username,
+                password=args.password, strict_dates=True, return_results=False,
+                download=True, overwrite=True, multithread=False, nthreads=1, collection='006'
+            )
+
+            # anything downloaded? (or redo-smoothing: app_state.redo_smoothing)
+            if len(downloaded) < 1 or getattr(args, 'download_only', False):
+                break  # while True
+
+        if getattr(args, 'collect_only', False) or (
+                not getattr(args, 'smooth_only', False) and
+                not getattr(args, 'export_only', False)):
+
+            # check download completeness:
+            if not curate_downloads(args.basedir, args.tile_filter, next_date, next_date):
+                break
+
+            # We're OK; now collect;
+            modis_collect.callback(
+                src_dir=args.basedir, targetdir=args.basedir,  # modape appends VIM to the targetdir
+                compression='gzip', vam_code='VIM', interleave=True, parallel_tiles=1,
+                cleanup=True, last_collected=None
+            )
+
+            if getattr(args, 'collect_only', False):
+                break
+
+        # smooth by N/n
+        if getattr(args, 'smooth_only', False) or (
+                not getattr(args, 'export_only', False)):
+
+            modis_smooth.callback(
+                src=os.path.join(args.basedir, 'VIM'),
+                targetdir=os.path.join(args.basedir, 'VIM', 'SMOOTH'),
+                svalue=None, srange=[], pvalue=None, tempint=10, tempint_start=None,
+                nsmooth=args.nsmooth, nupdate=args.nupdate, soptimize=False,
+                parallel_tiles=1, last_collected=None
+            )
+
+            if getattr(args, 'smooth_only', False):
+                break
+
+        # export dekads, from back to front (n = 6):
+        nexports = 1
+        export_octad = \
+            ModisInterleavedOctad(get_last_date_in_raw_modis_tiles(os.path.join(args.basedir, 'VIM')))
+        export_dekad = \
+            Dekad(export_octad.getDateTimeEnd(), True)
+
+        while Dekad(export_octad.prev().getDateTimeEnd(), True)\
+                .Equals(export_dekad) and nexports <= args.nupdate:
+            nexports = nexports + 1
+            export_octad = export_octad.prev()
+
+        first_date = get_first_date_in_raw_modis_tiles(os.path.join(args.basedir, 'VIM'))
+        while (not export_dekad.startsBeforeDate(first_date)) and nexports <= args.nupdate:
+
+            for region, roi in args.export.items():
+                if getattr(args, 'region_only', region) != region:
+                    continue
+                exports = modis_window.callback(
+                    src=os.path.join(args.basedir, 'VIM', 'SMOOTH'),
+                    targetdir=os.path.join(args.basedir, 'VIM', 'SMOOTH', 'EXPORT'),
+                    begin_date=export_dekad.getDateTimeMid(),
+                    end_date=export_dekad.getDateTimeMid(),
+                    # convert from LLX,LLY,URX,URY to ULX,ULY,LRX,LRY:
+                    roi=[roi[0], roi[3], roi[2], roi[1]],
+                    region=region, sgrid=False, force_doy=False,
+                    filter_product=None, filter_vampc=None, target_srs='EPSG:4326',
+                    co=["COMPRESS=LZW", "PREDICTOR=2", "TILED=YES", "BLOCKXSIZE=256", "BLOCKYSIZE=256"],
+                    clip_valid=True, round_int=2, gdal_kwarg={
+                        'xRes': 0.01, 'yRes': 0.01,
+                        'metadataOptions': ['CONSOLIDATION_STAGE={}'.format(nexports-1),
+                                            'FINAL={}'.format('FALSE' if nexports < args.nupdate else 'TRUE')]
+                    },
+                    overwrite=True
+                )
+
+                for exp in exports:
+                    md5 = generate_file_md5(exp)
+                    with contextlib.suppress(FileNotFoundError):
+                        os.remove(exp + '.md5')
+                    with open(exp + '.md5', 'w') as f:
+                        f.write(md5)
+
+            nexports = nexports + 1
+            export_octad = export_octad.prev()
+            export_dekad = Dekad(export_octad.getDateTimeEnd(), True)
+            while Dekad(export_octad.prev().getDateTimeEnd(), True)\
+                    .Equals(export_dekad) and nexports <= args.nupdate:
+                nexports = nexports + 1
+                export_octad = export_octad.prev()
+
+        if only_one_inc or getattr(args, 'export_only', False):
+            break  # while True
 
 
-def setup(config):
+def app_setup(config):
     global app_state
     with open(config) as f:
         app_state = json.load(f)
     app_state = Namespace(**app_state)
-
-    # Check all tiles for a corresponding H5 archive in VIM/SMOOTH:
-    assert exists_smooth_h5s(app_state.tile_filter, app_state.basedir)
 
     flask_app = Flask(app_state.app_name)
     flask_app.config['JSONIFY_PRETTYPRINT_REGULAR'] = True
@@ -266,16 +271,21 @@ def cli(ctx, config, region, debug):
 @cli.command()
 @click.pass_context
 def serve(ctx) -> None:
-    global app_state
     if ctx.obj['DEBUG']:
         with open(ctx.obj['CONFIG']) as f:
-            app_state = json.load(f)
-        app_state = Namespace(**app_state)
-        if ctx.obj['REGION']:
-            app_state.region_only = ctx.obj['REGION']
-        app_do_processing(debug=True)
+            args = json.load(f)
+        args = Namespace(**args)
+        if not exists_smooth_h5s(args.tile_filter, args.basedir):
+            raise SystemExit(
+                "Cannot run a full time step increment on an uninitialised archive! Run the init command first or run "
+                "as a service. "
+            )
+        else:
+            if ctx.obj['REGION']:
+                args.region_only = ctx.obj['REGION']
+            do_processing(args, only_one_inc=True)
     else:
-        flask_app = setup(ctx.obj['CONFIG'])
+        flask_app = app_setup(ctx.obj['CONFIG'])
         assert (ctx.obj['REGION'] is None), "Cannot serve only a specific region! Please run with the debug flag."
         flask_app.run(port=5001, threaded=False)  # Configure for single threaded request handling
 
@@ -283,58 +293,51 @@ def serve(ctx) -> None:
 @cli.command()
 @click.pass_context
 def export(ctx) -> None:
-    global app_state
     with open(ctx.obj['CONFIG']) as f:
-        app_state = json.load(f)
-    app_state = Namespace(**app_state)
+        args = json.load(f)
+    args = Namespace(**args)
 
     # Check all tiles for a corresponding H5 archive in VIM/SMOOTH:
-    assert exists_smooth_h5s(app_state.tile_filter, app_state.basedir)
+    assert exists_smooth_h5s(args.tile_filter, args.basedir)
 
     if ctx.obj['REGION']:
-        app_state.region_only = ctx.obj['REGION']
-    app_state.export_only = True
-    app_do_processing(debug=ctx.obj['DEBUG'])
+        args.region_only = ctx.obj['REGION']
+    args.export_only = True
+    do_processing(args)
 
 
 @cli.command()
 @click.pass_context
 def smooth(ctx) -> None:
-    global app_state
     with open(ctx.obj['CONFIG']) as f:
-        app_state = json.load(f)
-    app_state = Namespace(**app_state)
-
-    # Check all tiles for a corresponding H5 archive in VIM/SMOOTH:
-    assert exists_smooth_h5s(app_state.tile_filter, app_state.basedir)
+        args = json.load(f)
+    args = Namespace(**args)
 
     assert (ctx.obj['REGION'] is None), "Cannot smooth for only a specific region!"
-    app_state.smooth_only = True
-    app_do_processing(debug=ctx.obj['DEBUG'])
+    args.smooth_only = True
+    do_processing(args)
 
 
 @cli.command()
 @click.pass_context
 def collect(ctx) -> None:
-    global app_state
     with open(ctx.obj['CONFIG']) as f:
-        app_state = json.load(f)
-    app_state = Namespace(**app_state)
+        args = json.load(f)
+    args = Namespace(**args)
     assert (ctx.obj['REGION'] is None), "Cannot collect for only a specific region!"
-    app_state.collect_only = True
-    app_do_processing(debug=ctx.obj['DEBUG'])
+    args.collect_only = True
+    do_processing(args)
 
 
 @cli.command()
 @click.pass_context
 def download(ctx) -> None:
-    global app_state
     with open(ctx.obj['CONFIG']) as f:
-        app_state = json.load(f)
-    app_state = Namespace(**app_state)
+        args = json.load(f)
+    args = Namespace(**args)
     assert (ctx.obj['REGION'] is None), "Cannot download for only a specific region!"
-    app_state.download_only = True
-    app_do_processing(debug=ctx.obj['DEBUG'])
+    args.download_only = True
+    do_processing(args)
 
 
 @cli.command()
@@ -345,11 +348,22 @@ def download(ctx) -> None:
 def init(ctx, download_only, smooth_only, export_only) -> None:
     with open(ctx.obj['CONFIG']) as f:
         args = json.load(f)
-        args = Namespace(**args)
-    assert (ctx.obj['REGION'] is None), "Cannot initialize for only a specific region!"
+    args = Namespace(**args)
 
+    if ctx.obj['REGION'] is not None:
+        assert (export_only and exists_smooth_h5s(args.tile_filter, args.basedir)),\
+            "Can only do export for a specific region on a initialised archive!"
+        args.region_only = ctx.obj['REGION']
+
+    args.download_only = download_only
+    args.smooth_only = smooth_only
+    args.export_only = export_only
+    do_init(args)
+
+
+def do_init(args, download_only=False, smooth_only=False, export_only=False, this_region_only=None):
     urls = []
-    if not smooth_only and not export_only:
+    if not getattr(args, 'smooth_only', False) and not getattr(args, 'export_only', False):
         # Download and Collect:
         # ---------------------
 
@@ -360,11 +374,14 @@ def init(ctx, download_only, smooth_only, export_only) -> None:
             begin_date = ModisInterleavedOctad(begin_date).next().getDateTimeStart().date()
 
         end_date = datetime.strptime(args.init_end_date, '%Y-%m-%d').date()
-        if not download_only:
+        if not getattr(args, 'download_only', False):
             # Better handle downloading incrementally:
             end_date = min([end_date, begin_date + relativedelta(years=1) - relativedelta(days=1)])
 
         while begin_date < end_date:
+            if getattr(args, 'suspended', False):
+                return
+
             print('Downloading: {} - {}...'.format(begin_date, end_date))
             urls = modis_download.callback(
                 products=['M?D13A2'],
@@ -374,21 +391,25 @@ def init(ctx, download_only, smooth_only, export_only) -> None:
                 roi=None, target_empty=False, tile_filter=','.join(args.tile_filter),
                 username=args.username,
                 password=args.password, strict_dates=True, return_results=False,
-                download=True, overwrite=False, multithread=True, nthreads=4, collection='006'
+                download=True, overwrite=False, multithread=False, nthreads=1, collection='006'
             )
             if len(urls) == 0:
                 break
 
             # Check download: all urls are found on disk?
+            any_download_missing = False
             for url in urls:
                 fname = url['file_id'][url['file_id'].rfind('/') + 1:]
                 if not os.path.exists(os.path.join(args.basedir, fname)):
-                    raise SystemExit('Download missing on disk: {}'.format(fname))
+                    print('Download missing on disk: {}'.format(fname))
+                    any_download_missing = True
+            if any_download_missing:
+                return
 
-            if not download_only:
+            if not getattr(args, 'download_only', False):
                 # Check download: for all distinct dates: is there a download for EACH selected tile?
                 if not curate_downloads(args.basedir, args.tile_filter, begin_date, end_date):
-                    exit(1)
+                    return
 
                 # We're OK; now collect;
                 modis_collect.callback(
@@ -404,10 +425,10 @@ def init(ctx, download_only, smooth_only, export_only) -> None:
                 end_date = min([datetime.strptime(args.init_end_date, '%Y-%m-%d').date(),
                                 begin_date + relativedelta(years=1) - relativedelta(days=1)])
 
-        if download_only:
-            sys.exit(int(not curate_downloads(args.basedir, args.tile_filter, begin_date, end_date)))
+        if getattr(args, 'download_only', False):
+            return
 
-    if len(urls) > 0 or smooth_only:
+    if not exists_smooth_h5s(args.tile_filter, args.basedir):
         # Smooth and interpolate the collected archive
         # --------------------------------------------
 
@@ -431,8 +452,8 @@ def init(ctx, download_only, smooth_only, export_only) -> None:
             nsmooth=0, nupdate=0, soptimize=True, parallel_tiles=1, last_collected=None
         )
 
-        if smooth_only:
-            exit(0)
+        if getattr(args, 'smooth_only', False):
+            return
 
     # Export smoothened slices
     # ------------------------
@@ -457,8 +478,9 @@ def init(ctx, download_only, smooth_only, export_only) -> None:
     cnt = 1
     while True:
         if cnt == 9 or to_slice.next().getDateTimeMid() > last_date:
+            # Batch-wise export: 9 dekads at a time
             for region, roi in args.export.items():
-                if (ctx.obj['REGION'] is not None) and ctx.obj['REGION'] != region:
+                if hasattr(args, 'this_region_only') and args.this_region_only != region:
                     continue
                 print('\n{} -- Exporting {} to {} ...'.format(region, str(export_slice), str(to_slice)))
                 exports = modis_window.callback(
