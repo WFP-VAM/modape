@@ -242,6 +242,10 @@ class ModisQuery(object):
                 shutil.move(filename_temp, filename)
 
             except (HTTPError, AssertionError, FileNotFoundError) as e:
+                try:
+                    filename_temp.unlink()
+                except FileNotFoundError:
+                    pass
                 return (file_id, e)
         else:
             log.info("%s exists in target. Please set overwrite to True.", filename)
