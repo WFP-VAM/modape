@@ -132,10 +132,10 @@ class ModisQuery(object):
                     if result["time_end"] > self.end.date():
                         continue
 
-            fid = result["file_id"]
-            del result["file_id"]
+            filename = result["filename"]
+            del result["filename"]
 
-            self.results.update({fid: result})
+            self.results.update({filename: result})
 
         # final results
         self.nresults = len(self.results)
@@ -160,7 +160,7 @@ class ModisQuery(object):
         for entry in query:
 
             entry_parsed = dict(
-                file_id=entry["producer_granule_id"],
+                filename=entry["producer_granule_id"],
                 time_start=pd.Timestamp(entry["time_start"]).date(),
                 time_end=pd.Timestamp(entry["time_end"]).date(),
                 updated=entry["updated"],
@@ -168,7 +168,7 @@ class ModisQuery(object):
             )
 
             try:
-                tile = tile_regxp.search(entry_parsed["file_id"]).group(1)
+                tile = tile_regxp.search(entry_parsed["filename"]).group(1)
             except AttributeError:
                 tile = None
 
@@ -210,10 +210,10 @@ class ModisQuery(object):
                 either (filename, None) for success and (URL, Exception) for error.
 
         """
-        file_id = url.split("/")[-1]
-        filename = destination.joinpath(file_id)
+        filename = url.split("/")[-1]
+        filename_full = destination.joinpath(filename)
 
-        if not exists(filename) or overwrite:
+        if not exists(filename_full) or overwrite:
 
             filename_temp = filename.with_suffix(".modapedl")
 
@@ -223,7 +223,7 @@ class ModisQuery(object):
                     response.raise_for_status()
 
                     with open(filename_temp, "wb") as openfile:
-                        shutil.copyfileobj(response.raw, openfile, length=16*1024*1024)#
+                        shutil.copyfileobj(response.raw, openfile, length=16*1024*1024)
 
                 if check:
 
@@ -238,19 +238,18 @@ class ModisQuery(object):
                     # check checksum
                     assert checksum == file_metadata["Checksum"]
 
-                # QUESTION: should we remove temp file?
-                shutil.move(filename_temp, filename)
+                shutil.move(filename_temp, filename_full)
 
             except (HTTPError, AssertionError, FileNotFoundError) as e:
                 try:
                     filename_temp.unlink()
                 except FileNotFoundError:
                     pass
-                return (file_id, e)
+                return (filename, e)
         else:
-            log.info("%s exists in target. Please set overwrite to True.", filename)
+            log.info("%s exists in target. Please set overwrite to True.", filename_full)
 
-        return (file_id, None)
+        return (filename, None)
 
     def download(self,
                  targetdir: Path,
@@ -282,7 +281,7 @@ class ModisQuery(object):
         Raises:
             DownloadError: If one or more errors were encountered during downloading.
         Returns:
-            List of downloaded MODIS HDF file IDs.
+            List of downloaded MODIS HDF filenames.
         """
 
         # make sure target directory is dir and exists
