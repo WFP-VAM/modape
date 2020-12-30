@@ -231,11 +231,13 @@ class ModisQuery(object):
                     response.raise_for_status()
                     file_metadata = self._parse_hdfxml(response)
 
+                    # check filesize
+                    assert filename_temp.stat().st_size == file_metadata["FileSize"]
                     with open(filename_temp, "rb") as openfile:
                         checksum = cksum(openfile)
-
-                    assert filename_temp.stat().st_size == file_metadata["FileSize"]
+                    # check checksum
                     assert checksum == file_metadata["Checksum"]
+
                 # QUESTION: should we remove temp file?
                 shutil.move(filename_temp, filename)
 
@@ -326,10 +328,9 @@ class ModisQuery(object):
                     downloaded.append(fid)
 
             if to_download:
-                n_todo = len(to_download)
                 if retry_count < max_retries or max_retries == -1:
                     retry_count += 1
-                    log.debug("Retrying downloads! Files left: %s", n_todo)
+                    log.debug("Retrying downloads! Files left: %s", len(to_download))
                     if max_retries > 0:
                         log.debug("Try %s of %s", retry_count, max_retries)
                     continue
