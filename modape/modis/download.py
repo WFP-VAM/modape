@@ -296,7 +296,9 @@ class ModisQuery(object):
 
             with SessionWithHeaderRedirection(username, password) as session:
 
-                retries = Retry(total=5, backoff_factor=1, status_forcelist=[502, 503, 504])
+                backoff = min(450, 2**retry_count)
+
+                retries = Retry(total=5, backoff_factor=backoff, status_forcelist=[502, 503, 504])
                 session.mount(
                     "https://",
                     HTTPAdapter(pool_connections=nthreads, pool_maxsize=nthreads*2, max_retries=retries)
