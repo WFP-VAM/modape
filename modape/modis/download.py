@@ -221,15 +221,14 @@ class ModisQuery(object):
 
                 with session.get(url, stream=True, allow_redirects=True) as response:
                     response.raise_for_status()
-
                     with open(filename_temp, "wb") as openfile:
                         shutil.copyfileobj(response.raw, openfile, length=16*1024*1024)
 
                 if check:
 
-                    response = session.get(url + ".xml")
-                    response.raise_for_status()
-                    file_metadata = self._parse_hdfxml(response)
+                    with session.get(url + ".xml") as response:
+                        response.raise_for_status()
+                        file_metadata = self._parse_hdfxml(response)
 
                     # check filesize
                     assert filename_temp.stat().st_size == file_metadata["FileSize"]
