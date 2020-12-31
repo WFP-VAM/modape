@@ -397,7 +397,7 @@ class TestConsoleScripts(unittest.TestCase):
         self.assertEqual(mkwargs["target_srs"], "EPSG:3857")
         self.assertEqual(mkwargs["start"], date(2020, 1, 1))
         self.assertEqual(mkwargs["stop"], date(2020, 5, 1))
-        self.assertEqual(mkwargs["aoi"], [0, 0, 10, 10])
+        self.assertEqual(mkwargs["aoi"], [0, 10, 10, 0])
         self.assertEqual(mkwargs["creationOptions"], ["COMPRESS=DEFLATE", "PREDICTOR=1", "TILED=YES"])
         self.assertEqual(mkwargs["clip_valid"], False)
         self.assertEqual(mkwargs["round_int"], -2)
