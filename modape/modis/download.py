@@ -215,7 +215,7 @@ class ModisQuery(object):
 
         if not exists(filename_full) or overwrite:
 
-            filename_temp = filename.with_suffix(".modapedl")
+            filename_temp = filename_full.with_suffix(".modapedl")
 
             try:
 
