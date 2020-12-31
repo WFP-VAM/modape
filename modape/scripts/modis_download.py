@@ -80,7 +80,7 @@ def cli(products: List[str],
         collection (str): MODIS collection version.
 
     Returns:
-        List of results returned by CMR API for query
+        List of downloaded HDF filenames (if overwrite is False, also already existing filenames are included)
     """
 
     click.echo("\nSTART download_modis.py!")
