@@ -80,7 +80,7 @@ def cli(products: List[str],
         collection (str): MODIS collection version.
 
     Returns:
-        List of downloaded HDF filenames (if overwrite is False, also already existing filenames are included)
+        List of downloaded HDF filenames (if overwrite is False, also skipped downloads are included if already existing in targetdir)
     """
 
     click.echo("\nSTART download_modis.py!")
