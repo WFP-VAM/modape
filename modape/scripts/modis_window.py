@@ -21,7 +21,7 @@ log = logging.getLogger(__name__)
 @click.option("-d", "--targetdir", type=click.Path(dir_okay=True, resolve_path=True, writable=True), help="Target directory for Tiffs")
 @click.option("-b", "--begin-date", type=click.DateTime(formats=["%Y-%m-%d"]), help="Begin date for Tiffs")
 @click.option("-e", "--end-date", type=click.DateTime(formats=["%Y-%m-%d"]), help="End date for Tiffs")
-@click.option("--roi", type=click.STRING, help="AOI for clipping (as ULX,ULY,LRX,LRY)")
+@click.option("--roi", type=click.STRING, help="AOI for clipping (as xmin,ymin,xmax,ymax)")
 @click.option("--region", type=click.STRING, help="Region prefix for Tiffs (default is reg)", default="reg")
 @click.option("--sgrid", is_flag=True, help="Extract sgrid instead of data")
 @click.option("--force-doy", is_flag=True, help="Force DOY filenaming")
@@ -127,7 +127,10 @@ def cli(src: str,
         if not isinstance(roi, list):
             roi = [float(x) for x in roi.split(',')]
         if len(roi) != 4:
-            raise ValueError("ROI for clip needs to be bounding box in format ULX,ULY,LRX,LRY")
+            raise ValueError("ROI for clip needs to be bounding box in format xmin,ymin,xmax,ymax")
+
+        roi[1], roi[3] = roi[3], roi[1]
+
 
     if targetdir is None:
         if src_input.is_dir():
