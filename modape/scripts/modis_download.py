@@ -27,6 +27,8 @@ from modape.modis import ModisQuery
 @click.option("--print-results", is_flag=True, help="Print results to console")
 @click.option("--download", is_flag=True, help="Download data")
 @click.option("--overwrite", is_flag=True, help="Overwrite existing files")
+@click.option("--robust", is_flag=True, help="Perform robust download")
+@click.option("--max-retries", type=click.INT, help="Max number of retries for downloading", default=-1)
 @click.option("--multithread", is_flag=True, help="Use multiple threads for downloading")
 @click.option("--nthreads", type=click.INT, help="Number of threads to use", default=4)
 @click.option("-c", "--collection", type=click.STRING, default="006", help="MODIS collection")
@@ -43,6 +45,8 @@ def cli(products: List[str],
         print_results: bool,
         download: bool,
         overwrite: bool,
+        robust: bool,
+        max_retries: int,
         multithread: bool,
         nthreads: int,
         collection: str,
@@ -69,12 +73,14 @@ def cli(products: List[str],
         strict_dates (bool): Strict date handling.
         download (bool): Download data.
         overwrite (bool): Replace existing.
+        robust (bool): Perform robust downloading (checks file size and checksum).
+        max_retries (int): Maximum number of retries for failed downloads (default is -1, infinite).
         multithread (bool): Use multiple threads for downloading.
         nthreads (int): Number of threads for multithread.
         collection (str): MODIS collection version.
 
     Returns:
-        List of results returned by CMR API for query
+        List of downloaded HDF filenames (if overwrite is False, also skipped downloads are included if already existing in targetdir)
     """
 
     click.echo("\nSTART download_modis.py!")
@@ -154,9 +160,12 @@ def cli(products: List[str],
 
     if print_results:
         click.echo("\n")
-        for res in query.results:
-            click.echo(res)
-        click.echo("\n")
+        for key, values in query.results.items():
+            click.secho(key, bold=True)
+            click.echo(values)
+            click.echo("\n")
+
+    downloaded = []
 
     if download:
 
@@ -164,17 +173,19 @@ def cli(products: List[str],
 
         if query.nresults > 0:
 
-            query.download(
+            downloaded = query.download(
                 targetdir=targetdir,
                 username=username,
                 password=password,
                 overwrite=overwrite,
                 multithread=multithread,
                 nthreads=nthreads,
+                robust=robust,
+                max_retries=max_retries,
             )
 
     click.echo('modis_download.py COMPLETED! Bye! \n')
-    return query.results
+    return downloaded
 
 def cli_wrap():
     """Wrapper for cli"""

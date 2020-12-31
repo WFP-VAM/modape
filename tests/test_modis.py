@@ -1,11 +1,12 @@
 """test_modis.py: Test MODIS classes and functions."""
 # pylint: disable=E0401,E0611,W0702,W0613,C0103
 from datetime import datetime
-from pathlib import Path
+from pathlib import Path, PosixPath
 import pickle
 import shutil
+from types import SimpleNamespace
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from uuid import uuid4
 
 import numpy as np
@@ -15,6 +16,44 @@ from osgeo import gdal
 from modape.exceptions import DownloadError, HDF5WriteError
 from modape.modis import ModisQuery, ModisRawH5, ModisSmoothH5, ModisMosaic
 from modape.utils import SessionWithHeaderRedirection
+
+class MockResponse:
+    '''Mock response for testing'''
+    def __init__(self, content, status_code):
+        '''Create instance, setting content and status_code'''
+        self._content = content
+        self.status_code = status_code
+
+    @property
+    def content(self):
+        '''Return content'''
+        return self._content
+
+    def raise_for_status(self):
+        '''don't raise for status'''
+        pass #pylint: disable=W0107
+
+class MockedPath(PosixPath):
+    '''Mocked version of PosixPath'''
+
+    # file size for testing
+    _filesize = 7526571
+    def __init__(self, filename):
+        super().__init__()
+
+    @property
+    def filesize(self):
+        '''Get file size'''
+        return self._filesize
+
+    def is_dir(self):
+        return True
+
+    def exists(self):
+        return True
+
+    def stat(self):
+        return SimpleNamespace(st_size=self.filesize, st_mode=33188)
 
 def create_gdal(x, y):
     """Create in-memory gdal dataset for testing.
@@ -140,6 +179,9 @@ class TestModisQuery(unittest.TestCase):
         with open(f"{data_dir}/data/cmr_api_response.pkl", "rb") as pkl:
             cls.api_response = pickle.load(pkl)
 
+        with open(f"{data_dir}/data/hdf.xml", "rb") as fl:
+            cls.hdfxml = fl.read()
+
         cls.testpath = Path(__name__).parent
         cls.query = ModisQuery(
             products=["MOD13A2", "MYD13A2"],
@@ -173,7 +215,7 @@ class TestModisQuery(unittest.TestCase):
             self.assertTrue(self.query.results)
             self.assertEqual(len(self.query.results), len(self.api_response))
 
-            tiles = list({x["tile"] for x in self.query.results})
+            tiles = list({values["tile"] for key, values in self.query.results.items()})
             tiles_select = tiles[:2]
             self.assertEqual(len(tiles), 6)
 
@@ -181,51 +223,33 @@ class TestModisQuery(unittest.TestCase):
             self.query.tile_filter = tiles_select
             self.query.search(strict_dates=True)
 
-            self.assertEqual(len({x["tile"] for x in self.query.results}), 2)
-            self.assertTrue(all([x["time_start"] >= self.query.begin.date() for x in self.query.results]))
-            self.assertTrue(all([x["time_end"] <= self.query.end.date() for x in self.query.results]))
+            self.assertEqual(len({values["tile"] for key, values in self.query.results.items()}), 2)
+            self.assertTrue(all([values["time_start"] >= self.query.begin.date() for key, values in self.query.results.items()]))
+            self.assertTrue(all([values["time_end"] <= self.query.end.date() for key, values in self.query.results.items()]))
 
+    @patch("modape.modis.download.cksum", return_value=1534015008)
+    @patch("modape.modis.download.shutil")
+    @patch("modape.modis.download.open")
     @patch("modape.modis.download.ThreadPoolExecutor")
     @patch("modape.modis.download.GranuleQuery.get_all")
-    def test_download(self, mock_response, mock_submit):
+    def test_download(self, mock_response, mock_submit, mock_open, mock_shutil, mock_cksum):
         """Test download"""
 
         mock_response.return_value = self.api_response
         self.query.search()
 
-        self.query.results = [self.query.results[0]]
+        for key, values in self.query.results.items():
+            test_results = {key: values}
+            break
+        self.query.results = test_results
 
         # Successful downloads
+        fid = next(iter(test_results))
 
-        future_result = (self.testpath.joinpath(self.query.results[0]["file_id"]), None)
+        future_result = (fid, None)
         mock_submit.return_value.__enter__.return_value.submit.return_value.result.return_value = future_result
 
-        try:
-            future_result[0].unlink()
-        except FileNotFoundError:
-            pass
-
-        with patch("modape.modis.download.SessionWithHeaderRedirection"):
-
-            # Raise AssertionError when file is missing
-            with self.assertRaises(AssertionError):
-                self.query.download(
-                    targetdir=self.testpath,
-                    username="test",
-                    password="test",
-                    multithread=True,
-                )
-
-            future_result[0].touch()
-
-            self.query.download(
-                targetdir=self.testpath,
-                username="test",
-                password="test",
-                multithread=True,
-            )
-
-        with patch("modape.modis.download.ModisQuery._fetch_hdf", return_value=future_result) as mocked_fetch:
+        with patch("modape.modis.download.ModisQuery._fetch", return_value=future_result) as mocked_fetch:
             self.query.download(
                 targetdir=(self.testpath),
                 username="test",
@@ -237,14 +261,13 @@ class TestModisQuery(unittest.TestCase):
             fetch_args = mocked_fetch.call_args[0]
 
             self.assertEqual(type(fetch_args[0]), SessionWithHeaderRedirection)
-            self.assertEqual(fetch_args[1], self.query.results[0]["link"])
+            self.assertEqual(fetch_args[1], self.query.results[fid]["link"])
             self.assertEqual(fetch_args[2], self.testpath)
 
-        future_result[0].unlink()
-
+        # test retry and error
+        mock_submit.reset_mock()
         with patch("modape.modis.download.SessionWithHeaderRedirection"):
-            # Download Error
-            future_result = (f"http://datalocation.com/{self.query.results[0]['file_id']}", "Error")
+            future_result = (f"http://datalocation.com/{fid}", "Error")
             mock_submit.return_value.__enter__.return_value.submit.return_value.result.return_value = future_result
 
             with self.assertRaises(DownloadError):
@@ -252,8 +275,34 @@ class TestModisQuery(unittest.TestCase):
                     targetdir=self.testpath,
                     username="test",
                     password="test",
-                    multithread=True
+                    multithread=True,
+                    max_retries=5
                 )
+
+        # 1 + 5 retriess
+        self.assertEqual(mock_submit.call_count, 6)
+
+        # check robust download
+        with patch("modape.modis.download.SessionWithHeaderRedirection") as session_mock:
+
+            xml_mock = MockResponse(self.hdfxml, 200)
+            session_mock.return_value.__enter__.return_value.get.return_value.__enter__.side_effect = [
+                MagicMock(),
+                xml_mock,
+            ]
+
+            mocked_path = MockedPath(self.testpath)
+
+            dl = self.query.download(
+                targetdir=mocked_path,
+                username="test",
+                password="test",
+                multithread=False,
+                max_retries=5,
+                robust=True,
+            )
+
+            self.assertEqual(dl, ["MOD13A2.A2020001.h18v07.006.2020018001022.hdf"])
 
 class TestModisCollect(unittest.TestCase):
     """Test class for ModisQuery tests."""

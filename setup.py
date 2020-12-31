@@ -76,6 +76,7 @@ setup(
         "python-cmr>=0.4",
         "requests>=2",
         "pandas>=0.24",
+        "pycksum>=0.4.3",
     ],
     python_requires=">=3, <4",
 )
