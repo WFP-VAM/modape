@@ -168,7 +168,7 @@ def cli(src: str,
 
     gdal_kwargs = {}
     if gdal_kwarg:
-        if gdal_kwarg is not isinstance(gdal_kwarg, dict):
+        if gdal_kwarg and not isinstance(gdal_kwarg, dict):
             gdal_kwargs.update(
                 {key:value for x in gdal_kwarg for key, value in [x.split("=")]}
             )
