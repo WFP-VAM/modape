@@ -23,7 +23,7 @@ from modape.modis import ModisQuery
 @click.option("--tile-filter", type=click.STRING, help="Filter tiles - supplied as csv list")
 @click.option("--username", type=click.STRING, help="Earthdata username")
 @click.option("--password", type=click.STRING, help="Earthdata password")
-@click.option("--strict-dates", is_flag=True, help="Don't allow files with timestamps outside of provided date(s)")
+@click.option("--match-begin", is_flag=True, help="Don't allow files with timestamps outside of provided date(s)")
 @click.option("--print-results", is_flag=True, help="Print results to console")
 @click.option("--download", is_flag=True, help="Download data")
 @click.option("--overwrite", is_flag=True, help="Overwrite existing files")
@@ -41,7 +41,7 @@ def cli(products: List[str],
         tile_filter: str,
         username: str,
         password: str,
-        strict_dates: bool,
+        match_begin: bool,
         print_results: bool,
         download: bool,
         overwrite: bool,
@@ -70,7 +70,7 @@ def cli(products: List[str],
         tile_filter (str): MODIS tile filter (as csv string of tile IDs).
         username (str): Earthdata username.
         password (str): Earthdata password.
-        strict_dates (bool): Strict date handling.
+        match_begin (bool): Match native MODIS timestamp.
         download (bool): Download data.
         overwrite (bool): Replace existing.
         robust (bool): Perform robust downloading (checks file size and checksum).
@@ -150,7 +150,7 @@ def cli(products: List[str],
         version=collection,
     )
 
-    query.search(strict_dates=strict_dates)
+    query.search(match_begin=match_begin)
 
     if query.nresults == 0:
         click.echo("No results found! Please check query or make sure CMR is available / reachable.")

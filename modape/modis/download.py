@@ -86,26 +86,25 @@ class ModisQuery(object):
             else:
                 raise ValueError("Expected point or bounding box as AOI")
 
-    def search(self, strict_dates: bool = True) -> None:
+    def search(self, match_begin: bool = True) -> None:
         """Send quert to MODIS CMR servers.
 
         Constructs the query from parameters passed to `__init__`
         and sends the query to the NASA servers. The returned results
         will be stored in a class variable.
         To deal with overlapping date ranges of composite products,
-        the specified start and end date can be strictly enforced.
+        the specified start date can be matched to the MODIS native timestamp.
 
         Args:
-            strict_dates (bool): Flag for strict date enforcement (no data with timestamp outside
-                                 of begindate and enddate are allowed).
+            match_begin (bool): Flag to match begin date with native MODIS timestamp (no data with timestamp earlier than begindate is allowed).
         """
 
         # init results dict
         self.results = {}
 
-        # if no dates supplied, we can't be strict
+        # if no dates supplied, we can't be match
         if self.begin is None and self.end is None:
-            strict_dates = False
+            match_begin = False
 
         log.debug("Starting query")
 
@@ -123,13 +122,13 @@ class ModisQuery(object):
 
             # enforce dates if required
 
-            if strict_dates:
+            if match_begin:
                 if self.begin is not None:
                     if result["time_start"] < self.begin.date():
                         continue
 
                 if self.end is not None:
-                    if result["time_end"] > self.end.date():
+                    if result["time_start"] > self.end.date():
                         continue
 
             filename = result["filename"]
