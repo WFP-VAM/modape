@@ -154,8 +154,6 @@ class ModisRawH5(HDF5Base):
 
         if interleave:
 
-            # assert we have both satellites
-            # assert len(satset) == 2, "Interleaving needs MOD & MYD products!"
             self.satellite = "MXD"
             self.product = f"MXD{products[0][3:]}"
 
