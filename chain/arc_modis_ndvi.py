@@ -142,8 +142,9 @@ def do_processing(args, only_one_inc=False):
                 targetdir=args.basedir,
                 roi=None, target_empty=False, tile_filter=','.join(args.tile_filter),
                 username=args.username,
-                password=args.password, strict_dates=True, return_results=False,
-                download=True, overwrite=True, multithread=False, nthreads=1, collection='006'
+                password=args.password, match_begin=True, print_results=False,
+                download=True, overwrite=True, robust=True, max_retries=-1,
+                multithread=True, nthreads=4, collection='006'
             )
 
             # anything downloaded? (or redo-smoothing: app_state.redo_smoothing)
@@ -207,7 +208,8 @@ def do_processing(args, only_one_inc=False):
                     begin_date=export_dekad.getDateTimeMid(),
                     end_date=export_dekad.getDateTimeMid(),
                     # convert from LLX,LLY,URX,URY to ULX,ULY,LRX,LRY:
-                    roi=[roi[0], roi[3], roi[2], roi[1]],
+                    # roi=[roi[0], roi[3], roi[2], roi[1]],
+                    roi=[roi[0], roi[1], roi[2], roi[3]],
                     region=region, sgrid=False, force_doy=False,
                     filter_product=None, filter_vampc=None, target_srs='EPSG:4326',
                     co=["COMPRESS=LZW", "PREDICTOR=2", "TILED=YES", "BLOCKXSIZE=256", "BLOCKYSIZE=256"],
@@ -361,8 +363,7 @@ def init(ctx, download_only, smooth_only, export_only) -> None:
     do_init(args)
 
 
-def do_init(args, download_only=False, smooth_only=False, export_only=False, this_region_only=None):
-    urls = []
+def do_init(args):
     if not getattr(args, 'smooth_only', False) and not getattr(args, 'export_only', False):
         # Download and Collect:
         # ---------------------
@@ -383,25 +384,25 @@ def do_init(args, download_only=False, smooth_only=False, export_only=False, thi
                 return
 
             print('Downloading: {} - {}...'.format(begin_date, end_date))
-            urls = modis_download.callback(
+            downloads = modis_download.callback(
                 products=['M?D13A2'],
                 begin_date=datetime.combine(begin_date, datetime.min.time()),
                 end_date=datetime.combine(end_date, datetime.min.time()),
                 targetdir=args.basedir,
                 roi=None, target_empty=False, tile_filter=','.join(args.tile_filter),
                 username=args.username,
-                password=args.password, strict_dates=True, return_results=False,
-                download=True, overwrite=False, multithread=False, nthreads=1, collection='006'
+                password=args.password, match_begin=True, print_results=False,
+                download=True, overwrite=False, robust=True, max_retries=-1,
+                multithread=True, nthreads=4, collection='006'
             )
-            if len(urls) == 0:
+            if len(downloads) == 0:
                 break
 
-            # Check download: all urls are found on disk?
+            # Check: all downloads are found on disk?
             any_download_missing = False
-            for url in urls:
-                fname = url['file_id'][url['file_id'].rfind('/') + 1:]
-                if not os.path.exists(os.path.join(args.basedir, fname)):
-                    print('Download missing on disk: {}'.format(fname))
+            for filename in downloads:
+                if not os.path.exists(os.path.join(args.basedir, filename)):
+                    print('Download missing on disk: {}'.format(filename))
                     any_download_missing = True
             if any_download_missing:
                 return
@@ -488,8 +489,7 @@ def do_init(args, download_only=False, smooth_only=False, export_only=False, thi
                     targetdir=os.path.join(args.basedir, 'VIM', 'SMOOTH', 'EXPORT'),
                     begin_date=export_slice.getDateTimeMid(),
                     end_date=to_slice.getDateTimeMid(),
-                    roi=[roi[0], roi[3], roi[2], roi[1]],
-                    # convert from LLX,LLY,URX,URY to ULX,ULY,LRX,LRY
+                    roi=[roi[0], roi[1], roi[2], roi[3]],
                     region=region, sgrid=False, force_doy=False,
                     filter_product=None, filter_vampc=None, target_srs='EPSG:4326',
                     co=["COMPRESS=LZW", "PREDICTOR=2", "TILED=YES", "BLOCKXSIZE=256", "BLOCKYSIZE=256"],
