@@ -210,7 +210,7 @@ class TestModisQuery(unittest.TestCase):
         with patch("modape.modis.download.GranuleQuery.get_all",
                    return_value=self.api_response):
 
-            self.query.search(strict_dates=False)
+            self.query.search(match_begin=False)
 
             self.assertTrue(self.query.results)
             self.assertEqual(len(self.query.results), len(self.api_response))
@@ -221,7 +221,7 @@ class TestModisQuery(unittest.TestCase):
 
             self.setUp()
             self.query.tile_filter = tiles_select
-            self.query.search(strict_dates=True)
+            self.query.search(match_begin=True)
 
             self.assertEqual(len({values["tile"] for key, values in self.query.results.items()}), 2)
             self.assertTrue(all([values["time_start"] >= self.query.begin.date() for key, values in self.query.results.items()]))
