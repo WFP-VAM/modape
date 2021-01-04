@@ -53,7 +53,7 @@
   "init_end_date": "2019-12-31",
   "file_pattern": "*.tif",
   "mimetype": "application/octet-stream",
-  "_comment_export": "[ LL-lon, LL-lat, UR-lon, UR-lat]",
+  "_comment_export": "[ minx, miny, maxx, maxy ]",
   "export": {
     "AFRICA": [-26.0, -35.0, 58.0, 38.0]
   }
