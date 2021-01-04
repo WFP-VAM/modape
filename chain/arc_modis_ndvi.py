@@ -163,7 +163,7 @@ def do_processing(args, only_one_inc=False):
             modis_collect.callback(
                 src_dir=args.basedir, targetdir=args.basedir,  # modape appends VIM to the targetdir
                 compression='gzip', vam_code='VIM', interleave=True, parallel_tiles=1,
-                cleanup=True, last_collected=None
+                cleanup=True, force=False, last_collected=None
             )
 
             if getattr(args, 'collect_only', False):
@@ -416,7 +416,7 @@ def do_init(args):
                 modis_collect.callback(
                     src_dir=args.basedir, targetdir=args.basedir,  # modape appends VIM to the targetdir
                     compression='gzip', vam_code='VIM', interleave=True, parallel_tiles=1,
-                    cleanup=True, last_collected=None
+                    cleanup=True, force=False, last_collected=None
                 )
 
                 # move on:
