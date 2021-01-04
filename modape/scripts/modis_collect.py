@@ -163,7 +163,8 @@ def cli(src_dir: str,
 
         for future in futures:
             assert future.done()
-            assert future.exception() is None, f"Received exception {future.exception()}"
+            if future.exception() is not None:
+                raise future.exception()
             collected.extend(future.result())
 
     else:
