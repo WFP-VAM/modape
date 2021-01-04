@@ -381,15 +381,16 @@ def reset(ctx) -> None:
         args = json.load(f)
     args = Namespace(**args)
     assert (ctx.obj['REGION'] is None), "Cannot reset for only a specific region!"
-    while True:
+    while os.path.isdir(args.basedir):
         sure = input("Flushing the entire production environment. Are you sure? [y/n]: ").lower().strip()
         if sure == "y" or sure == "yes":
             shutil.rmtree(args.basedir)
-            log.info("Done.")
             return
         elif sure == "n" or sure == "no":
             log.info("Aborted.")
             return
+    os.makedirs(os.path.join(args.basedir, 'log'))
+    log.info("Done.")
 
 
 @cli.command()
