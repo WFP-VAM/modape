@@ -104,8 +104,15 @@ def app_suspend():
     if app_state.fetcherThread.is_alive():
         return "Fetcher is busy suspending; please check back later to see the suspended state confirmed...\n", 503
     else:
-        return "[{}] Fetcher suspended; restart service to resume production.\n".format(
+        s = "[{}] Fetcher suspended; restart service to resume production.\n".format(
             datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        print(s)
+        return s
+
+
+def app_log(filename):
+    global app_state
+    return send_file(os.path.join(app_state.basedir, 'log', filename), as_attachment=False, mimetype='text/plain')
 
 
 def app_do_init():
@@ -252,6 +259,7 @@ def app_setup(config):
     flask_app.add_url_rule('/fetch', 'fetch', app_fetch)
     flask_app.add_url_rule('/suspend', 'suspend', app_suspend)
     flask_app.add_url_rule('/download/<filename>', 'download', app_download)
+    flask_app.add_url_rule('/log/<filename>', 'log', app_log)
     flask_app.add_url_rule('/', 'index', app_index)
     app_state.fetcherThread = Thread()
     return flask_app
