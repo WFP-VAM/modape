@@ -170,15 +170,16 @@ class TestConsoleScripts(unittest.TestCase):
             product_files = [str(x) for x in data_dir.glob("*hdf") if product in x.name]
             product_files.sort()
             calls.append(
-                call(product_files, data_dir, None, False, "gzip", None),
+                call(product_files, data_dir, None, False, "gzip", None, False),
             )
 
         with patch("modape.scripts.modis_collect._worker") as mocked_worker:
-            mocked_worker.return_value = True
+            mocked_worker.return_value = self.lst_files
             result = self.runner.invoke(modis_collect_cli, ["/tmp/data"])
             mocked_worker.assert_called()
             self.assertEqual(mocked_worker.call_count, 2)
             mocked_worker.assert_has_calls(calls, any_order=False)
+            self.assertEqual(result.exit_code, 0)
 
         _ = [x.unlink() for x in data_dir.glob("*hdf")]
 
@@ -187,19 +188,19 @@ class TestConsoleScripts(unittest.TestCase):
             file_path.touch()
 
         with patch("modape.scripts.modis_collect._worker") as mocked_worker:
-            mocked_worker.return_value = True
             product_files = [str(x) for x in data_dir.glob("*hdf")]
+            mocked_worker.return_value = product_files
             result = self.runner.invoke(modis_collect_cli, ["/tmp/data", "--interleave", "--cleanup"])
             mocked_worker.assert_called_once()
             product_files.sort()
-            mocked_worker.assert_called_with(product_files, data_dir, None, True, "gzip", None)
+            mocked_worker.assert_called_with(product_files, data_dir, None, True, "gzip", None, False)
+            self.assertEqual(result.exit_code, 0)
 
         tracefile = data_dir.joinpath(".collected")
-        self.assertTrue(tracefile.exists())
         self.assertTrue(not any([Path(x).exists() for x in product_files]))
         with open(str(tracefile), "r") as thefile:
             collected = [x.strip() for x in thefile.readlines()]
-        self.assertEqual(collected, [x.split("/")[-1] for x in product_files])
+        self.assertTrue(all([x in self.vim_files for x in collected]))
 
         for file in self.vim_files:
             file_path = data_dir.joinpath(file)
