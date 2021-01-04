@@ -23,7 +23,7 @@ from modape.modis import ModisRawH5
 @click.option('--interleave', is_flag=True, help='Interleave MOD13 & MYD13 products to MXD (only works for VIM!)')
 @click.option('--parallel-tiles', type=click.INT, default=1, help='Number of tiles processed in parallel (default = 1)')
 @click.option('--cleanup', is_flag=True, help='Remove collected HDF files')
-@click.option('--force', is_flag=True, help='Force collect process not failing on corrupt inputs.')
+@click.option('--force', is_flag=True, help='Force collect process not failing on corrupt inputs')
 @click.option('--last-collected', type=click.DateTime(formats=['%Y%j']), help='Last collected date in julian format (YYYYDDD - %Y%j)')
 def cli(src_dir: str,
         targetdir: str,
@@ -37,9 +37,12 @@ def cli(src_dir: str,
         ) -> None:
     """Collect raw MODIS hdf files into a raw MODIS HDF5 file.
 
-    All MODIS hdf files within srcdir will be collected into a raw MODIS HDF5 file, corresponding to product type and tile (if not global).
+    All MODIS HDF files within srcdir will be collected into a raw MODIS HDF5 file, corresponding to product type and tile (if not global).
     If the respective HDF5 file does not exists in the target directory, it will be created. Otherwhise, the file will be
     updated and the data will be appended.
+
+    If an HDF file cannot be opened / read, an IOException will be raised and the collection process fails. If the `--force` flag is used,
+    no exception is raised and a NoData fill value is used, keeping the collection process running.
 
     16-day MOD13* and MYD13* products can be interleaved into an 8-day product with the new product ID MXD* by adding the `--interleave` flag.
 
