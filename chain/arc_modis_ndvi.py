@@ -8,6 +8,8 @@
   Author: Rob Marjot, (c) ARC 2020
 
 """
+
+import re
 import contextlib
 import hashlib
 import json
@@ -15,7 +17,28 @@ import os
 import glob
 import shutil
 import click
-import re
+import logging
+
+logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"),
+                    format='[%(asctime)s %(levelname)s] (%(name)s:%(lineno)d) - %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S')
+
+_log = logging.getLogger(__name__ + '_echo_through_log')
+_log.propagate = False
+h = logging.StreamHandler()
+h.setLevel(os.environ.get("LOGLEVEL", "INFO"))
+h.setFormatter(logging.Formatter('[%(asctime)s ECHO] - %(message)s', '%Y-%m-%d %H:%M:%S'))
+_log.addHandler(h)
+def echo_through_log(message=None, file=None, nl=True, err=False, color=None):
+    _log.info(re.sub('\s+',' ', message).strip())
+click.echo = echo_through_log
+
+log = logging.getLogger(__name__)
+log.propagate = False
+h = logging.StreamHandler()
+h.setLevel(os.environ.get("LOGLEVEL", "INFO"))
+h.setFormatter(logging.Formatter('[%(asctime)s %(levelname)s] - %(message)s', '%Y-%m-%d %H:%M:%S'))
+log.addHandler(h)
 
 from datetime import datetime, date
 from dateutil.relativedelta import relativedelta
@@ -106,7 +129,7 @@ def app_suspend():
     else:
         s = "[{}] Fetcher suspended; restart service to resume production.\n".format(
             datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-        print(s)
+        log.info(s)
         return s
 
 
@@ -142,7 +165,7 @@ def do_processing(args, only_one_inc=False):
             if next_date > date.today():  # stop after today:
                 break
 
-            print('Downloading: {}...'.format(next_date))
+            log.info('Downloading: {}...'.format(next_date))
             downloaded = modis_download.callback(
                 products=['M?D13A2'],
                 begin_date=datetime.combine(next_date, datetime.min.time()),
@@ -362,10 +385,10 @@ def reset(ctx) -> None:
         sure = input("Flushing the entire production environment. Are you sure? [y/n]: ").lower().strip()
         if sure == "y" or sure == "yes":
             shutil.rmtree(args.basedir)
-            print("Done.")
+            log.info("Done.")
             return
         elif sure == "n" or sure == "no":
-            print("Aborted.")
+            log.info("Aborted.")
             return
 
 
@@ -410,7 +433,7 @@ def do_init(args):
             if getattr(args, 'suspended', False):
                 return
 
-            print('Downloading: {} - {}...'.format(begin_date, end_date))
+            log.info('Downloading: {} - {}...'.format(begin_date, end_date))
             downloads = modis_download.callback(
                 products=['M?D13A2'],
                 begin_date=datetime.combine(begin_date, datetime.min.time()),
@@ -429,7 +452,7 @@ def do_init(args):
             any_download_missing = False
             for filename in downloads:
                 if not os.path.exists(os.path.join(args.basedir, filename)):
-                    print('Download missing on disk: {}'.format(filename))
+                    log.error('Download missing on disk: {}'.format(filename))
                     any_download_missing = True
             if any_download_missing:
                 return
@@ -510,7 +533,7 @@ def do_init(args):
             for region, roi in args.export.items():
                 if hasattr(args, 'this_region_only') and args.this_region_only != region:
                     continue
-                print('\n{} -- Exporting {} to {} ...'.format(region, str(export_slice), str(to_slice)))
+                log.info('{} -- Exporting {} to {} ...'.format(region, str(export_slice), str(to_slice)))
                 exports = modis_window.callback(
                     src=os.path.join(args.basedir, 'VIM', 'SMOOTH'),
                     targetdir=os.path.join(args.basedir, 'VIM', 'SMOOTH', 'EXPORT'),
