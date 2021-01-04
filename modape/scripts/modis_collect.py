@@ -20,8 +20,9 @@ from modape.modis import ModisRawH5
 @click.option('-x', '--compression', type=click.STRING, default='gzip', help='Compression for HDF5 files')
 @click.option('--vam-code', type=click.STRING, help='VAM code for dataset to process')
 @click.option('--interleave', is_flag=True, help='Interleave MOD13 & MYD13 products to MXD (only works for VIM!)')
-@click.option('--parallel-tiles', type=click.INT, default=1, help='Number of tiles processed in parallel (default = None)')
+@click.option('--parallel-tiles', type=click.INT, default=1, help='Number of tiles processed in parallel (default = 1)')
 @click.option('--cleanup', is_flag=True, help='Remove collected HDF files')
+@click.option('--force', is_flag=True, help='Force collect process not failing on corrupt inputs')
 @click.option('--last-collected', type=click.DateTime(formats=['%Y%j']), help='Last collected date in julian format (YYYYDDD - %Y%j)')
 def cli(src_dir: str,
         targetdir: str,
@@ -30,13 +31,17 @@ def cli(src_dir: str,
         interleave: bool,
         parallel_tiles: int,
         cleanup: bool,
+        force: bool,
         last_collected: datetime,
         ) -> None:
     """Collect raw MODIS hdf files into a raw MODIS HDF5 file.
 
-    All MODIS hdf files within srcdir will be collected into a raw MODIS HDF5 file, corresponding to product type and tile (if not global).
+    All MODIS HDF files within srcdir will be collected into a raw MODIS HDF5 file, corresponding to product type and tile (if not global).
     If the respective HDF5 file does not exists in the target directory, it will be created. Otherwhise, the file will be
     updated and the data will be appended.
+
+    If an HDF file cannot be opened / read, an IOException will be raised and the collection process fails. If the `--force` flag is used,
+    no exception is raised and a NoData fill value is used, keeping the collection process running.
 
     16-day MOD13* and MYD13* products can be interleaved into an 8-day product with the new product ID MXD* by adding the `--interleave` flag.
 
@@ -48,6 +53,7 @@ def cli(src_dir: str,
         interleave (bool): Interleave 16-day NDVI/EVI products to 8-day.
         parallel_tiles (int): Process tiles in parallel (number can't exceed ncores - 1).
         cleanup (bool): Remove collected HDF files.
+        force (bool): When corrupt HDF input is encountered, use nodata instead of raising exception.
         last_collected (datetime.datetime): Julian day of last collected raw timestep.
     """
 
@@ -62,7 +68,6 @@ def cli(src_dir: str,
     else:
         targetdir = Path(targetdir)
 
-    assert targetdir.is_dir(), "Target directory (targetdir) not a direcory!"
     targetdir.mkdir(exist_ok=True)
     assert targetdir.exists(), "Target directory (targetdir) doesn't exist!"
 
@@ -107,6 +112,8 @@ def cli(src_dir: str,
 
     processing_dict = {}
 
+    collected = []
+
     for group in groups:
         group_pattern = re.compile(group + '.*hdf')
         group_files = [str(x) for x in hdf_files if group_pattern.match(x.name)]
@@ -120,6 +127,7 @@ def cli(src_dir: str,
             compression=compression,
             vam_product_code=vam_code,
             last_collected=last_collected,
+            force=force,
         )
 
         processing_dict.update({group: parameters})
@@ -150,6 +158,7 @@ def cli(src_dir: str,
                         parameters["interleave"],
                         parameters["compression"],
                         parameters["last_collected"],
+                        parameters["force"],
                     )
                 )
 
@@ -157,18 +166,9 @@ def cli(src_dir: str,
 
         for future in futures:
             assert future.done()
-            assert future.exception() is None, f"Received exception {future.exception()}"
-            assert future.result()
-
-        if cleanup:
-            tracefile = targetdir.joinpath(".collected")
-            with open(str(tracefile), "a") as tf_open:
-                for group, parameters in processing_dict.items():
-                    log.debug("Cleaning up files for group %s", group)
-                    for to_remove in parameters["files"]:
-                        to_remove_obj = Path(to_remove)
-                        tf_open.write(to_remove_obj.name + "\n")
-                        to_remove_obj.unlink()
+            if future.exception() is not None:
+                raise future.exception()
+            collected.extend(future.result())
 
     else:
 
@@ -178,29 +178,29 @@ def cli(src_dir: str,
 
             log.debug("Processing %s", group)
 
-            result = _worker(
+            collected.extend(_worker(
                 parameters["files"],
                 parameters["targetdir"],
                 parameters["vam_product_code"],
                 parameters["interleave"],
                 parameters["compression"],
                 parameters["last_collected"],
-            )
+                parameters["force"],
+            ))
 
-            assert result
-
-            if cleanup:
-                tracefile = targetdir.joinpath(".collected")
-                with open(str(tracefile), "a") as tf_open:
-                    log.debug("Cleaning up files for group %s", group)
-                    for to_remove in parameters["files"]:
-                        to_remove_obj = Path(to_remove)
-                        tf_open.write(to_remove_obj.name + "\n")
-                        to_remove_obj.unlink()
+    if cleanup and collected:
+        tracefile = targetdir.joinpath(".collected")
+        with open(str(tracefile), "a") as tf_open:
+            log.debug("Cleaning up collected files")
+            for to_remove in collected:
+                to_remove_obj = Path(to_remove)
+                tf_open.write(to_remove_obj.name + "\n")
+                log.debug("Removing %s", to_remove)
+                to_remove_obj.unlink()
 
     click.echo("MODIS COLLECT completed!")
 
-def _worker(files, targetdir, vam_code, interleave, compression, last_collected):
+def _worker(files, targetdir, vam_code, interleave, compression, last_collected, force):
 
     raw_h5 = ModisRawH5(
         files=files,
@@ -222,9 +222,9 @@ def _worker(files, targetdir, vam_code, interleave, compression, last_collected)
         assert last_collected == last_collected_infile, \
          f"Last collected date in file is {last_collected_infile} not {last_collected}"
 
-    raw_h5.update()
+    collected = raw_h5.update(force=force)
 
-    return True
+    return collected
 
 def cli_wrap():
     """Wrapper for cli"""

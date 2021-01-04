@@ -70,7 +70,7 @@ class ModisMosaic(object):
     def generate_mosaics(self,
                          dataset,
                          targetdir,
-                         target_srs: str,
+                         target_srs: str = None,
                          aoi: List[float] = None,
                          overwrite: bool = False,
                          force_doy: bool = False,
@@ -80,7 +80,7 @@ class ModisMosaic(object):
                          clip_valid: bool = False,
                          round_int: int = None,
                          **kwargs,
-                        ) -> None:
+                        ) -> List:
         """Generate GeoTIFF mosaics/subsets.
 
         This method is creating a GeoTiff mosaic/subsets from the HDF5 files
@@ -116,6 +116,7 @@ class ModisMosaic(object):
             stop (datetime.date): Stop date for mosaics.
             clip_valid (bool): Clip values to valid range for MODIS product.
             round_int (int): Round the output.
+            gdal_multithread (bool): Use multiple threads for warping
             **kwargs (type): **kwags passed on to `gdal.WarpOptions` and `gdal.TranslateOptions`.
 
         Raises:
@@ -138,16 +139,21 @@ class ModisMosaic(object):
             labels = None
             force_doy = True
 
-        if "xRes" in kwargs.keys() and "yRes" in kwargs.keys():
+        if "xRes" in kwargs and "yRes" in kwargs:
             output_res = [kwargs["xRes"], kwargs["yRes"]]
+            del kwargs["xRes"]
+            del kwargs["yRes"]
 
         elif target_srs == "EPSG:4326":
 
-            if not attrs["globalproduct"]:
-                output_res = attrs["resolution"] / 112000
-            else:
-                output_res = attrs["resolution"]
-
+            try:
+                if not attrs["globalproduct"]:
+                    output_res = attrs["resolution"] / 112000
+                else:
+                    output_res = attrs["resolution"]
+            except KeyError:
+                log.warning("Could not determine target resolution from file!")
+                output_res = [None, None]
         else:
             output_res = [None, None]
 
@@ -166,6 +172,12 @@ class ModisMosaic(object):
         except KeyError:
             resample = "near"
 
+        if "multithread" in kwargs:
+            gdal_multithread = bool(kwargs["multithread"])
+            del kwargs["multithread"]
+        else:
+            gdal_multithread = False
+
         filename_root = f"{targetdir}/{prefix}{attrs['vamcode'].lower()}"
 
         if len(attrs["dataset_shape"]) == 1:
@@ -180,6 +192,7 @@ class ModisMosaic(object):
 
             date_index = [x for x, y in enumerate(self.dates) if start <= y <= stop]
 
+        mosaics = []
         for ii in date_index:
 
             if ii is None:
@@ -218,60 +231,44 @@ class ModisMosaic(object):
                 "outputType": attrs["dtype"],
                 "noData": attrs["nodata"],
                 "outputSRS": target_srs,
+                "projWin": aoi
             }
-
-            if aoi is not None:
-                translate_options.update(
-                    {"projWin": aoi}
-                )
 
             translate_options.update(kwargs)
 
-            if not attrs["globalproduct"] or target_srs != "EPSG:4326":
+            if aoi is not None and all(output_res):
+                translate_options.update({
+                    "outputBounds": aoi,
+                    "width": abs(int(round((aoi[2] - aoi[0]) / output_res[0]))),
+                    "height": abs(int(round((aoi[3] - aoi[1]) / output_res[1])))
+                })
 
-                with self._mosaic(rasters,
-                                  target_srs=target_srs,
-                                  resample=resample,
-                                  dtype=dtype,
-                                  nodata=nodata,
-                                  resolution=output_res,
-                                 ) as warped_mosaic:
-
-                    log.debug("Writing to disk")
-
-                    write_check = self._translate(
-                        src=warped_mosaic,
-                        dst=filename,
-                        **translate_options
-                    )
-
-                    try:
-                        assert write_check, f"Error writing {filename}"
-                    except:
-                        raise
-                    finally:
-                        _ = [gdal.Unlink(x) for x in rasters]
-
-
-            else:
-
-                log.debug("Processing global file with EPSG:4326! Skipping warp")
-                assert len(rasters) == 1, "Expected only one raster!"
+            with self._mosaic(rasters,
+                              target_srs=target_srs,
+                              resample=resample,
+                              dtype=dtype,
+                              nodata=nodata,
+                              resolution=output_res,
+                              gdal_multithread=gdal_multithread,
+                             ) as warped_mosaic:
 
                 log.debug("Writing to disk")
 
                 write_check = self._translate(
-                    src=rasters[0],
+                    src=warped_mosaic,
                     dst=filename,
                     **translate_options
                 )
 
                 try:
                     assert write_check, f"Error writing {filename}"
+                    mosaics.append(filename)
                 except:
                     raise
                 finally:
                     _ = [gdal.Unlink(x) for x in rasters]
+
+        return mosaics
 
     @staticmethod
     def _get_raster(file: Union[Path, str],
@@ -354,7 +351,8 @@ class ModisMosaic(object):
                 resample,
                 resolution,
                 dtype,
-                nodata):
+                nodata,
+                gdal_multithread):
 
         vrt_tempname = f"/vsimem/{uuid4()}.vrt"
         vrt = gdal.BuildVRT(vrt_tempname, input_rasters)
@@ -372,7 +370,7 @@ class ModisMosaic(object):
             yRes=resolution[1],
             srcNodata=nodata,
             dstNodata=nodata,
-            multithread=True,
+            multithread=gdal_multithread,
         )
 
         wrp = gdal.Warp(wrp_tempname, vrt_tempname, options=wopt)

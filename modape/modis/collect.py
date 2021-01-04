@@ -154,8 +154,6 @@ class ModisRawH5(HDF5Base):
 
         if interleave:
 
-            # assert we have both satellites
-            assert len(satset) == 2, "Interleaving needs MOD & MYD products!"
             self.satellite = "MXD"
             self.product = f"MXD{products[0][3:]}"
 
@@ -302,17 +300,23 @@ class ModisRawH5(HDF5Base):
             log.error("Error creating %s", str(self.filename))
             raise HDF5CreationError(f"Error creating {str(self.filename)}! Check if file exists, or if compression / chunksize is OK.")
 
-    def update(self):
+    def update(self, force: bool = False) -> List:
         """Updates MODIS raw HDF5 file with raw data.
 
         The files specified in `__init__` get collected into the HDF5 file,
         which is either created before or already existed after a previous initialization.
         If a HDF file can't be read, the datapoints are filled using the internal nodata value.
 
+        Args:
+            force (bool): Force collect, using nodata for non-readable input files.
+
         Raises:
             AssertionError: If dates of files to be collected are not after the ones aleady contained in the file.
             HDF5WriteError: If writing to the HDF5 file fails.
+            IOError: If process fails to read HDF input file and force = False.
 
+        Retruns:
+            collected (List): List of collected HDF files.
         """
 
         log.info("Updating %s", str(self.filename))
@@ -361,6 +365,8 @@ class ModisRawH5(HDF5Base):
 
         hdf_datasets = HDFHandler(files=self.files, sds=sds_indicator)
 
+        collected = []
+
         block_gen = ((x, x//attrs["RasterXSize"]) for x in range(0, dataset_shape[0], chunks[0]))
 
         log.debug("Opening HDF files ... ")
@@ -372,9 +378,14 @@ class ModisRawH5(HDF5Base):
                 for ii, hdf in hdf_datasets.iter_handles():
                     try:
                         arr[:, ii] = hdf_datasets.read_chunk(hdf, yoff=int(yoff_rst), ysize=int(ysize)).flatten()
+                        collected.append(hdf_datasets.files[ii])
                     except AttributeError:
-                        log.warning("Error reading from %s, using nodata.", hdf_datasets.files[ii])
-                        arr[:, ii] = attrs["nodata"]
+                        if force:
+                            log.warning("Error reading from %s, using nodata.", hdf_datasets.files[ii])
+                            arr[:, ii] = attrs["nodata"]
+                            continue
+                        log.error("Error reading from %s", hdf_datasets.files[ii])
+                        raise IOError(f"Error reading {hdf_datasets.files[ii]}")
 
                 # write to HDF5
                 write_check = self.write_chunk(
@@ -394,6 +405,8 @@ class ModisRawH5(HDF5Base):
         with h5py.File(self.filename, "r+", libver="latest") as h5f:
             dates = h5f.get("dates")
             dates[...] = np.array(dates_combined, dtype="S8")
+
+        return list(set(collected))
 
     @property
     def last_collected(self):
