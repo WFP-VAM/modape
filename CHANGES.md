@@ -6,15 +6,17 @@
     - Improved downloading based on python requests #93
       - Better catching of failed downloads #29
       - new executable script
-      - add option for strict date handling #87
+      - add option for matching start time stamp #123
       - allows downloading all available data from NASA CMR #86
       - adds option to fail if target directory is not empty #90
+      - robust downloading checking file size and checksum #138
     - Reworked collection into MODIS raw HDF5 (#98)
      - new executable script
      - new `io` module with HDF5Base class
      - reworked `ModisRawH5` class with inheritance from HDF5Base
      - enable cleanup of collected HDF files with tracefile (#91)
      - enable check on last_collected
+     - fail on collection of corrupt HDF files with possible override #151
     - Reworked smoothing of raw HDF5 files (#100)
       - new executable script
       - reworked `ModisSmoothH5` class with inheritance from HDF5Base and single smoothing method which covers all Whittaker options
