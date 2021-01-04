@@ -13,6 +13,7 @@ import hashlib
 import json
 import os
 import glob
+import shutil
 import click
 import re
 
@@ -340,6 +341,24 @@ def download(ctx) -> None:
     assert (ctx.obj['REGION'] is None), "Cannot download for only a specific region!"
     args.download_only = True
     do_processing(args)
+
+
+@cli.command()
+@click.pass_context
+def reset(ctx) -> None:
+    with open(ctx.obj['CONFIG']) as f:
+        args = json.load(f)
+    args = Namespace(**args)
+    assert (ctx.obj['REGION'] is None), "Cannot reset for only a specific region!"
+    while True:
+        sure = input("Flushing the entire production environment. Are you sure? [y/n]: ").lower().strip()
+        if sure == "y" or sure == "yes":
+            shutil.rmtree(args.basedir)
+            print("Done.")
+            return
+        elif sure == "n" or sure == "no":
+            print("Aborted.")
+            return
 
 
 @cli.command()
