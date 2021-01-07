@@ -21,7 +21,7 @@ from cmr import GranuleQuery
 import pandas as pd
 from pycksum import cksum
 from requests.adapters import HTTPAdapter
-from requests.exceptions import HTTPError
+from requests.exceptions import HTTPError, ConnectionError #pylint: disable=W0622
 from requests.packages.urllib3.util.retry import Retry
 
 from modape.exceptions import DownloadError
@@ -225,7 +225,7 @@ class ModisQuery(object):
 
                 if check:
 
-                    with session.get(url + ".xml") as response:
+                    with session.get(url + ".xml", allow_redirects=True) as response:
                         response.raise_for_status()
                         file_metadata = self._parse_hdfxml(response)
 
@@ -238,7 +238,7 @@ class ModisQuery(object):
 
                 shutil.move(filename_temp, filename_full)
 
-            except (HTTPError, AssertionError, FileNotFoundError) as e:
+            except (HTTPError, ConnectionError, AssertionError, FileNotFoundError) as e:
                 try:
                     filename_temp.unlink()
                 except FileNotFoundError:
