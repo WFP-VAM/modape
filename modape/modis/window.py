@@ -116,7 +116,6 @@ class ModisMosaic(object):
             stop (datetime.date): Stop date for mosaics.
             clip_valid (bool): Clip values to valid range for MODIS product.
             round_int (int): Round the output.
-            gdal_multithread (bool): Use multiple threads for warping
             **kwargs (type): **kwags passed on to `gdal.WarpOptions` and `gdal.TranslateOptions`.
 
         Raises:
