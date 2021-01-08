@@ -123,6 +123,9 @@ class ModisMosaic(object):
             ValueError: If dataset supplied does not exists in files.
             AssertionError: If write fails.
 
+        Returns:
+            mosaics: List of mosaiced raster datasets
+
         """
 
         try:
