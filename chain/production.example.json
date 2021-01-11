@@ -50,7 +50,7 @@
     "h18v09"
   ],
   "init_start_date": "2002-07-03",
-  "init_end_date": "2019-12-31",
+  "init_end_date": "2020-12-31",
   "file_pattern": "*.tif",
   "mimetype": "application/octet-stream",
   "_comment_export": "[ minx, miny, maxx, maxy ]",
