@@ -15,7 +15,7 @@ class TimeSlice(ABC):
     @property
     @abstractmethod
     def Seqno(self):
-        return self.__seqno
+        pass
 
     @property
     @abstractmethod
@@ -49,6 +49,14 @@ class TimeSlice(ABC):
 
     @abstractmethod
     def prev(self):
+        pass
+
+    @abstractmethod
+    def nextYear(self):
+        pass
+
+    @abstractmethod
+    def prevYear(self):
         pass
 
     @abstractmethod
@@ -134,6 +142,12 @@ class ModisInterleavedOctad(TimeSlice):
     def prev(self):
         return self.add(-1)
 
+    def nextYear(self):
+        return self.add(46)
+
+    def prevYear(self):
+        return self.add(-46)
+
     def getDateTimeStart(self):
         return datetime.datetime.strptime('{}{}'.format(self.__year, ((self.__seqno-1) * 8) + 1), '%Y%j')
 
@@ -212,6 +226,12 @@ class Dekad(TimeSlice):
 
     def prev(self):
         return self.add(-1)
+
+    def nextYear(self):
+        return self.add(36)
+
+    def prevYear(self):
+        return self.add(-36)
 
     def greaterThan(self, otherSlice):
         return ((self.Year * 36) + self.Seqno) > ((otherSlice.Year * 36) + otherSlice.Seqno)

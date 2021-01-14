@@ -427,8 +427,8 @@ def do_init(args):
 
         end_date = datetime.strptime(args.init_end_date, '%Y-%m-%d').date()
         if not getattr(args, 'download_only', False):
-            # Better handle downloading incrementally:
-            end_date = min([end_date, begin_date + relativedelta(years=1) - relativedelta(days=1)])
+            # We can do incremental processing if we're not restricted to downloading only:
+            end_date = min([end_date, begin_date.nextYear().prev().getDateTimeStart().date()])
 
         while begin_date < end_date:
             if getattr(args, 'suspended', False):
@@ -475,7 +475,7 @@ def do_init(args):
                     os.path.join(args.basedir, 'VIM'))
                 begin_date = ModisInterleavedOctad(begin_date).next().getDateTimeStart().date()
                 end_date = min([datetime.strptime(args.init_end_date, '%Y-%m-%d').date(),
-                                begin_date + relativedelta(years=1) - relativedelta(days=1)])
+                                begin_date.nextYear().prev().getDateTimeStart().date()])
 
         if getattr(args, 'download_only', False):
             return
