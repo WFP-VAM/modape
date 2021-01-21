@@ -102,7 +102,7 @@ def app_download(filename):
       try:
         return send_file(os.path.join(app_state.basedir, 'VIM', 'SMOOTH', 'EXPORT', filename), as_attachment=True, mimetype=app_state.mimetype)
       except FileNotFoundError:
-        return ('', 204)
+        return ('', 404)
 
 
 def app_fetch():
