@@ -388,10 +388,10 @@ def reset(ctx) -> None:
         sure = input("Flushing the entire production environment. Are you sure? [y/n]: ").lower().strip()
         if sure == "y" or sure == "yes":
             shutil.rmtree(args.basedir)
-            return
+            break
         elif sure == "n" or sure == "no":
             log.info("Aborted.")
-            return
+            break
     os.makedirs(os.path.join(args.basedir, 'log'))
     log.info("Done.")
 
@@ -424,15 +424,16 @@ def do_init(args):
 
         begin_date = get_last_date_in_raw_modis_tiles(os.path.join(args.basedir, 'VIM'))
         if begin_date is None:
-            begin_date = datetime.strptime(args.init_start_date, '%Y-%m-%d').date()
+            begin_date = ModisInterleavedOctad(datetime.strptime(args.init_start_date, '%Y-%m-%d').date())
         else:
-            begin_date = ModisInterleavedOctad(begin_date).next().getDateTimeStart().date()
+            begin_date = ModisInterleavedOctad(begin_date).next()
 
         end_date = datetime.strptime(args.init_end_date, '%Y-%m-%d').date()
         if not getattr(args, 'download_only', False):
             # We can do incremental processing if we're not restricted to downloading only:
             end_date = min([end_date, begin_date.nextYear().prev().getDateTimeStart().date()])
 
+        begin_date = begin_date.getDateTimeStart().date()
         while begin_date < end_date:
             if getattr(args, 'suspended', False):
                 return
@@ -476,9 +477,10 @@ def do_init(args):
                 # move on:
                 begin_date = get_last_date_in_raw_modis_tiles(
                     os.path.join(args.basedir, 'VIM'))
-                begin_date = ModisInterleavedOctad(begin_date).next().getDateTimeStart().date()
+                begin_date = ModisInterleavedOctad(begin_date).next()
                 end_date = min([datetime.strptime(args.init_end_date, '%Y-%m-%d').date(),
                                 begin_date.nextYear().prev().getDateTimeStart().date()])
+                begin_date = begin_date.getDateTimeStart().date()
 
         if getattr(args, 'download_only', False):
             return
