@@ -99,7 +99,10 @@ def app_download(filename):
     if app_state.fetcherThread.is_alive() and not getattr(app_state, 'suspended', False):
         return "Fetcher is running (or suspended), try again later\n", 503
     else:
+      try:
         return send_file(os.path.join(app_state.basedir, 'VIM', 'SMOOTH', 'EXPORT', filename), as_attachment=True, mimetype=app_state.mimetype)
+      except FileNotFoundError:
+        return ('', 204)
 
 
 def app_fetch():
