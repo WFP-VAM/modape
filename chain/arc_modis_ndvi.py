@@ -241,8 +241,6 @@ def do_processing(args, only_one_inc=False):
                     targetdir=os.path.join(args.basedir, 'VIM', 'SMOOTH', 'EXPORT'),
                     begin_date=export_dekad.getDateTimeMid(),
                     end_date=export_dekad.getDateTimeMid(),
-                    # convert from LLX,LLY,URX,URY to ULX,ULY,LRX,LRY:
-                    # roi=[roi[0], roi[3], roi[2], roi[1]],
                     roi=[roi[0], roi[1], roi[2], roi[3]],
                     region=region, sgrid=False, force_doy=False,
                     filter_product=None, filter_vampc=None, target_srs='EPSG:4326',
