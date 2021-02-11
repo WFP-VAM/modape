@@ -99,7 +99,10 @@ def app_download(filename):
     if app_state.fetcherThread.is_alive() and not getattr(app_state, 'suspended', False):
         return "Fetcher is running (or suspended), try again later\n", 503
     else:
+      try:
         return send_file(os.path.join(app_state.basedir, 'VIM', 'SMOOTH', 'EXPORT', filename), as_attachment=True, mimetype=app_state.mimetype)
+      except FileNotFoundError:
+        return ('', 404)
 
 
 def app_fetch():
@@ -381,15 +384,16 @@ def reset(ctx) -> None:
         args = json.load(f)
     args = Namespace(**args)
     assert (ctx.obj['REGION'] is None), "Cannot reset for only a specific region!"
-    while True:
+    while os.path.isdir(args.basedir):
         sure = input("Flushing the entire production environment. Are you sure? [y/n]: ").lower().strip()
         if sure == "y" or sure == "yes":
             shutil.rmtree(args.basedir)
-            log.info("Done.")
-            return
+            break
         elif sure == "n" or sure == "no":
             log.info("Aborted.")
-            return
+            break
+    os.makedirs(os.path.join(args.basedir, 'log'))
+    log.info("Done.")
 
 
 @cli.command()
@@ -420,15 +424,16 @@ def do_init(args):
 
         begin_date = get_last_date_in_raw_modis_tiles(os.path.join(args.basedir, 'VIM'))
         if begin_date is None:
-            begin_date = datetime.strptime(args.init_start_date, '%Y-%m-%d').date()
+            begin_date = ModisInterleavedOctad(datetime.strptime(args.init_start_date, '%Y-%m-%d').date())
         else:
-            begin_date = ModisInterleavedOctad(begin_date).next().getDateTimeStart().date()
+            begin_date = ModisInterleavedOctad(begin_date).next()
 
         end_date = datetime.strptime(args.init_end_date, '%Y-%m-%d').date()
         if not getattr(args, 'download_only', False):
-            # Better handle downloading incrementally:
-            end_date = min([end_date, begin_date + relativedelta(years=1) - relativedelta(days=1)])
+            # We can do incremental processing if we're not restricted to downloading only:
+            end_date = min([end_date, begin_date.nextYear().prev().getDateTimeStart().date()])
 
+        begin_date = begin_date.getDateTimeStart().date()
         while begin_date < end_date:
             if getattr(args, 'suspended', False):
                 return
@@ -472,9 +477,10 @@ def do_init(args):
                 # move on:
                 begin_date = get_last_date_in_raw_modis_tiles(
                     os.path.join(args.basedir, 'VIM'))
-                begin_date = ModisInterleavedOctad(begin_date).next().getDateTimeStart().date()
+                begin_date = ModisInterleavedOctad(begin_date).next()
                 end_date = min([datetime.strptime(args.init_end_date, '%Y-%m-%d').date(),
-                                begin_date + relativedelta(years=1) - relativedelta(days=1)])
+                                begin_date.nextYear().prev().getDateTimeStart().date()])
+                begin_date = begin_date.getDateTimeStart().date()
 
         if getattr(args, 'download_only', False):
             return

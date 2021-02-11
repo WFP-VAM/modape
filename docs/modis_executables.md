@@ -17,17 +17,24 @@ The products to be queried for need to be supplied as a list of MODIS product ID
 !!! Tip
     If you want to query for both MODIS satellites for the same product, the letter indicating which satellite can be replaced by a `?`, e.g. `M?d13A2`.
 
-The query can be limited by coordinates (as `--roi` point or bounding box), MODIS tile IDs (supplied as comma separated list to `--tile-filter`, e.g `h20v08,h20v09`) and a date bracket (supplied to `--begin-date` and `--end-date`). Due to the nature of composited products, results can be returned slightly outside the specified date bracket. To avoid this and strictly enforce the bracket, pass the `--strict-dates` flag.
+The query can be limited by coordinates (as `--roi` point or bounding box), MODIS tile IDs (supplied as comma separated list to `--tile-filter`, e.g `h20v08,h20v09`) and a date bracket (supplied to `--begin-date` and `--end-date`). Due to the nature of composited products, results can be returned slightly outside the specified date bracket. To avoid this and match the start date to the MODIS timestamp, pass the `--match-begin` flag.
 
 The query is sent to the NASA Common Metadata Repository (CMR) using the [`python-cmr`](https://github.com/jddeal/python-cmr) module.
 
 !!! Tip
-    To look at the details of the returned results, pass the `--return-results` flag.
+    To look at the details of the returned results, pass the `--print-results` flag.
 
 The download is only performed when both credential flags are passed (`--username` & `--password`) as well as the `--download` flag. By default, the download is performed sequentially using Python's `requests`.
 
 !!! Tip
     To speed up the download, you may use multiple threads (`--multithread`) where the number of used threads can be adjusted with the `--nthreads` flag (default is 4 threads).
+
+When the `--robust` flag is passed, each downloaded HDF file will undergo a check for file size and checksum and is then compared to NASA's specifications.
+
+MODAPE will try to download each HDF file with 5 tries separated by an increasing backoff factor inside of a re-try loop. The number of re-tries can be specified with `--max-retries`. By default, there's no limit to the number of retries.
+
+!!! Warning
+    If no limit to `--max-retries` is set, MODAPE will remain in an infinite re-try loop until all scheduled downloads were successful. Due to the increasing backoff factor, the tries will happen with increasing time in between, avoiding flooding the data server.
 
 A processing chain might require the target directory to not contain any previous HDF files, which can be enforced using `--target-empty`. By default, existing files won't be overwritten. If this is required, pass the `--overwrite` flag.
 
@@ -37,7 +44,7 @@ A processing chain might require the target directory to not contain any previou
 Usage: modis_download [OPTIONS] [PRODUCTS]...
 
 Options:
-  --roi TEXT                   Region of interest. Either LAT,LON or
+  --roi TEXT                   Region of interest. Either LON,LAT or
                                xmin,ymin,xmax,ymax
 
   -b, --begin-date [%Y-%m-%d]  Start date for query
@@ -49,12 +56,14 @@ Options:
   --tile-filter TEXT           Filter tiles - supplied as csv list
   --username TEXT              Earthdata username
   --password TEXT              Earthdata password
-  --strict-dates               Don't allow files with timestamps outside of
+  --match-begin                Don't allow files with timestamps outside of
                                provided date(s)
 
-  --return-results             Print results to console
+  --print-results              Print results to console
   --download                   Download data
   --overwrite                  Overwrite existing files
+  --robust                     Perform robust download
+  --max-retries INTEGER        Max number of retries for downloading
   --multithread                Use multiple threads for downloading
   --nthreads INTEGER           Number of threads to use
   -c, --collection TEXT        MODIS collection
