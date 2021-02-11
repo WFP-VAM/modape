@@ -24,6 +24,7 @@ from modape.modis import ModisRawH5
 @click.option('--cleanup', is_flag=True, help='Remove collected HDF files')
 @click.option('--force', is_flag=True, help='Force collect process not failing on corrupt inputs')
 @click.option('--last-collected', type=click.DateTime(formats=['%Y%j']), help='Last collected date in julian format (YYYYDDD - %Y%j)')
+@click.option('--date-tile-consistency', is_flag=True, help='For all dates, all tiles should be present in souce dir and vice versa; if HDF5 files are in target dir, these tiles should be consistent with the downloads in source dir too')
 def cli(src_dir: str,
         targetdir: str,
         compression: str,
@@ -33,6 +34,7 @@ def cli(src_dir: str,
         cleanup: bool,
         force: bool,
         last_collected: datetime,
+        date_tile_consistency: bool
         ) -> None:
     """Collect raw MODIS hdf files into a raw MODIS HDF5 file.
 
@@ -86,6 +88,7 @@ def cli(src_dir: str,
     products = []
     tiles = []
     versions = []
+    timesteps = []
 
     # Seperate input files into group
     for file in hdf_files:
@@ -105,10 +108,43 @@ def cli(src_dir: str,
             tile = ['']
         tiles.append(*tile)
 
+        timestep = REGEX_PATTERNS["date"].findall(file.name)
+        if not timestep:
+            raise ValueError("Could not extract date from Filename!")
+        timesteps.append(*timestep)
+
     groups = [".*".join(x) for x in zip(products, tiles, versions)]
     groups = list({re.sub('(M.{1})(D.+)', 'M.'+'\\2', x) if REGEX_PATTERNS["VIM"].match(x) else x for x in groups}) # Join MOD13/MYD13
     groups.sort()
     log.debug("Parsed groups: %s", groups)
+
+    if date_tile_consistency:
+        # Identify tiles we have previously collected the product for:
+        product_version = list(set(
+            zip((re.sub('(M.{1})(D.+)', 'M.' + '\\2', x) if REGEX_PATTERNS["VIM"].match(x) else x for x in products),
+                versions)))
+        assert len(product_version) == 1, 'Can only check for consistency in available .hdfs when only one combination of product and version has been downloaded in the source dir '
+        required_tiles = []
+        for h5 in ModisRawH5.existing(targetdir, vam_code, product_version[0][0], product_version[0][1]):
+            tile = REGEX_PATTERNS["tile"].findall(h5.name)
+            if not tile:
+                tile = ['']
+            required_tiles.append(*tile)
+        required_tiles = set(required_tiles)
+        # If there are tile we have previously collected products for, these must match the .hdfs that will be collected:
+        if len(required_tiles) > 0:
+            assert required_tiles == set(tiles)
+        else:
+            required_tiles = set(tiles)
+
+        # Identify distinct timesteps we have .hdfs for:
+        timesteps = list(set(timesteps))
+
+        # Now see if there is a .hdfs file for every combination of required_tiles and timesteps:
+        for tile in required_tiles:
+            for timestep in timesteps:
+                _ = re.compile(f"^{product_version[0][0]}\\.A{timestep}\\.{tile}\\.{product_version[0][1]}\\.\\d{{13}}")
+                assert len([x for x in hdf_files if _.match(x.name)]) != 0, f"Missing .hdf for tile {tile}, doy {timestep}"
 
     processing_dict = {}
 

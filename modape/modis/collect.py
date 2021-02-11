@@ -209,6 +209,13 @@ class ModisRawH5(HDF5Base):
 
         super().__init__(filename=filename)
 
+    @staticmethod
+    def existing(targetdir, vam_product_code, re_product, re_version):
+        patt = re.compile(f"^{re_product}\\.h[0-9]{{2}}v[0-9]{{2}}\\.{re_version}\\.{vam_product_code}\\.h5")
+        for h5 in Path(f"{targetdir}/{vam_product_code}").glob('*.h5'):
+            if patt.match(h5.name):
+                yield h5
+
     def create(self,
                compression: str = "gzip",
                chunks: Tuple[int] = None) -> None:
