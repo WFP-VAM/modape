@@ -90,7 +90,7 @@ def create_h5temp(rows: int,
 
         dset = h5f.create_dataset("data",
                                   shape=(rows*cols, 4),
-                                  dtype="Int16",
+                                  dtype="int16",
                                   maxshape=(rows*cols, None),
                                   chunks=((rows*cols)//25, 10),
                                   compression="gzip",
@@ -137,7 +137,7 @@ def create_h5temp_global() -> Path:
 
         dset = h5f.create_dataset("data",
                                   shape=(rows*cols, 4),
-                                  dtype="Int16",
+                                  dtype="int16",
                                   maxshape=(rows*cols, None),
                                   chunks=((rows*cols)//25, 10),
                                   compression="gzip",
