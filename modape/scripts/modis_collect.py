@@ -24,6 +24,7 @@ from modape.modis import ModisRawH5
 @click.option('--cleanup', is_flag=True, help='Remove collected HDF files')
 @click.option('--force', is_flag=True, help='Force collect process not failing on corrupt inputs')
 @click.option('--last-collected', type=click.DateTime(formats=['%Y%j']), help='Last collected date in julian format (YYYYDDD - %Y%j)')
+@click.option("--tiles-required", type=click.STRING, help="Required tiles - supplied as csv list")
 def cli(src_dir: str,
         targetdir: str,
         compression: str,
@@ -33,6 +34,7 @@ def cli(src_dir: str,
         cleanup: bool,
         force: bool,
         last_collected: datetime,
+        tiles_required: str,
         ) -> None:
     """Collect raw MODIS hdf files into a raw MODIS HDF5 file.
 
@@ -55,6 +57,7 @@ def cli(src_dir: str,
         cleanup (bool): Remove collected HDF files.
         force (bool): When corrupt HDF input is encountered, use nodata instead of raising exception.
         last_collected (datetime.datetime): Julian day of last collected raw timestep.
+        tiles_required (str): MODIS tiles required to be in input (as csv string of tile IDs).
     """
 
     log = logging.getLogger(__name__)
@@ -73,6 +76,17 @@ def cli(src_dir: str,
 
     if last_collected is not None:
         last_collected = last_collected.strftime("%Y%j")
+
+    # parse tiles required and check if OK
+    if tiles_required is not None:
+        tile_regxp = re.compile(r'^h\d{2}v\d{2}$')
+        _tiles = []
+
+        for tile_sel in tile_filter.split(','):
+            assert re.match(tile_regxp, tile_sel.lower())
+            _tiles.append(tile_sel.lower())
+
+        tiles_required = _tiles
 
     click.echo("Starting MODIS COLLECT!")
 
@@ -104,6 +118,28 @@ def cli(src_dir: str,
         if not tile:
             tile = ['']
         tiles.append(*tile)
+
+    if tiles_required is not None:
+        log.debug("Checking for required tiles ...")
+
+        for product in set(products):
+            log.debug("Product: %s", product)
+            datetiles = [".".join(x.name.split(".")[1:3]) for x in hdf_files if re.match("^" + product, x.name)]
+            product_tiles = {x.split(".")[1] for x in datetiles}
+
+            timestamps = []
+            for reqtile in tiles_required:
+                if reqtile not in product_tiles:
+                    raise ValueError("Required tile %s not found in input files for product %s" % (reqtile, product))
+                log.debug("Tile %s OK!", reqtile)
+
+                timestamps.append([x.split(".")[0] for x in datetiles if reqtile in x])
+
+            iterator = iter(timestamps)
+            reference_len = len(next(iterator))
+            if not all(len(x) == reference_len for x in iterator):
+                raise ValueError("Not all tiles have same number of timesteps for product %s!" % product)
+            log.debug("Timestamps OK for %s", product)
 
     groups = [".*".join(x) for x in zip(products, tiles, versions)]
     groups = list({re.sub('(M.{1})(D.+)', 'M.'+'\\2', x) if REGEX_PATTERNS["VIM"].match(x) else x for x in groups}) # Join MOD13/MYD13
