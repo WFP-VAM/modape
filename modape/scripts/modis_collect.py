@@ -86,7 +86,7 @@ def cli(src_dir: str,
             assert re.match(tile_regxp, tile_sel.lower())
             _tiles.append(tile_sel.lower())
 
-        tiles_required = _tiles
+        tiles_required = frozenset(_tiles)
 
     click.echo("Starting MODIS COLLECT!")
 
@@ -128,11 +128,9 @@ def cli(src_dir: str,
             product_tiles = {x.split(".")[1] for x in datetiles}
 
             timestamps = []
+            if product_tiles != tiles_required:
+                raise ValueError("Tiles for product %s don't match tiles-required!" % product)
             for reqtile in tiles_required:
-                if reqtile not in product_tiles:
-                    raise ValueError("Required tile %s not found in input files for product %s" % (reqtile, product))
-                log.debug("Tile %s OK!", reqtile)
-
                 timestamps.append({x.split(".")[0] for x in datetiles if reqtile in x})
 
             iterator = iter(timestamps)
