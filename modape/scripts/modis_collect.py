@@ -133,12 +133,12 @@ def cli(src_dir: str,
                     raise ValueError("Required tile %s not found in input files for product %s" % (reqtile, product))
                 log.debug("Tile %s OK!", reqtile)
 
-                timestamps.append([x.split(".")[0] for x in datetiles if reqtile in x])
+                timestamps.append({x.split(".")[0] for x in datetiles if reqtile in x})
 
             iterator = iter(timestamps)
-            reference_len = len(next(iterator))
-            if not all(len(x) == reference_len for x in iterator):
-                raise ValueError("Not all tiles have same number of timesteps for product %s!" % product)
+            reference = next(iterator)
+            if not all(x == reference for x in iterator):
+                raise ValueError("Not all tiles have same timesteps for product %s!" % product)
             log.debug("Timestamps OK for %s", product)
 
     groups = [".*".join(x) for x in zip(products, tiles, versions)]
