@@ -144,7 +144,7 @@ def cli(src_dir: str,
     groups.sort()
     log.debug("Parsed groups: %s", groups)
 
-    processing_dict = {}
+    to_process = {}
 
     collected = []
 
@@ -153,18 +153,31 @@ def cli(src_dir: str,
         group_files = [str(x) for x in hdf_files if group_pattern.match(x.name)]
         group_files.sort()
 
-        parameters = dict(
-            targetdir=targetdir,
-            files=group_files,
-            interleave=interleave,
-            group_id=group.replace('M.', 'MX'),
-            compression=compression,
-            vam_product_code=vam_code,
-            last_collected=last_collected,
-            force=force,
-        )
+        _raw_h5 = ModisRawH5(files=group_files,
+                            targetdir=targetdir,
+                            vam_product_code=vam_code,
+                            interleave=interleave)
 
-        processing_dict.update({group: parameters})
+        if last_collected is not None:
+
+            if not _raw_h5.exists:
+                raise ValueError("Output H5 %s does not exist! Can't check last-collected!" % _raw_h5.filename)
+
+            last_collected_infile = _raw_h5.last_collected
+
+            if not last_collected_infile:
+                raise ValueError(f"No last_collected recorded in {_raw_h5.filename}")
+
+            if not last_collected == last_collected_infile:
+                raise ValueError(f"Last collected date in file is {last_collected_infile} not {last_collected}")
+
+        to_process.update({
+            group: {
+                "raw_h5": _raw_h5,
+                "compression": compression,
+                "force": force,
+            }
+        })
 
     log.debug("Start processing!")
 
@@ -179,21 +192,12 @@ def cli(src_dir: str,
 
         with ProcessPoolExecutor(parallel_tiles) as executor:
 
-            for group, parameters in processing_dict.items():
+            for group, parameters in to_process.items():
 
                 log.debug("Submitting %s", group)
 
                 futures.append(
-                    executor.submit(
-                        _worker,
-                        parameters["files"],
-                        parameters["targetdir"],
-                        parameters["vam_product_code"],
-                        parameters["interleave"],
-                        parameters["compression"],
-                        parameters["last_collected"],
-                        parameters["force"],
-                    )
+                    executor.submit(_worker, **parameters)
                 )
 
             _ = wait(futures)
@@ -208,19 +212,13 @@ def cli(src_dir: str,
 
         log.debug("Processing groups sequentially")
 
-        for group, parameters in processing_dict.items():
+        for group, parameters in to_process.items():
 
             log.debug("Processing %s", group)
 
-            collected.extend(_worker(
-                parameters["files"],
-                parameters["targetdir"],
-                parameters["vam_product_code"],
-                parameters["interleave"],
-                parameters["compression"],
-                parameters["last_collected"],
-                parameters["force"],
-            ))
+            collected.extend(
+                _worker(**parameters)
+            )
 
     if cleanup and collected:
         tracefile = targetdir.joinpath(".collected")
@@ -234,27 +232,10 @@ def cli(src_dir: str,
 
     click.echo("MODIS COLLECT completed!")
 
-def _worker(files, targetdir, vam_code, interleave, compression, last_collected, force):
-
-    raw_h5 = ModisRawH5(
-        files=files,
-        targetdir=targetdir,
-        vam_product_code=vam_code,
-        interleave=interleave,
-    )
+def _worker(raw_h5, compression, force):
 
     if not raw_h5.exists:
         raw_h5.create(compression=compression)
-
-    if last_collected is not None:
-
-        last_collected_infile = raw_h5.last_collected
-
-        if not last_collected_infile:
-            raise ValueError(f"No last_collected recorded in {raw_h5.filename}")
-
-        assert last_collected == last_collected_infile, \
-         f"Last collected date in file is {last_collected_infile} not {last_collected}"
 
     collected = raw_h5.update(force=force)
 
