@@ -1,35 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url>
      <loc>https://wfp-vam.github.io/modape/</loc>
-     <lastmod>2021-01-08</lastmod>
+     <lastmod>2021-02-17</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://wfp-vam.github.io/modape/modis_executables/</loc>
-     <lastmod>2021-01-08</lastmod>
+     <lastmod>2021-02-17</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://wfp-vam.github.io/modape/other_executables/</loc>
-     <lastmod>2021-01-08</lastmod>
+     <lastmod>2021-02-17</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://wfp-vam.github.io/modape/io/</loc>
-     <lastmod>2021-01-08</lastmod>
+     <lastmod>2021-02-17</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://wfp-vam.github.io/modape/download/</loc>
-     <lastmod>2021-01-08</lastmod>
+     <lastmod>2021-02-17</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://wfp-vam.github.io/modape/collect/</loc>
-     <lastmod>2021-01-08</lastmod>
+     <lastmod>2021-02-17</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://wfp-vam.github.io/modape/smooth/</loc>
-     <lastmod>2021-01-08</lastmod>
+     <lastmod>2021-02-17</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://wfp-vam.github.io/modape/window/</loc>
-     <lastmod>2021-01-08</lastmod>
+     <lastmod>2021-02-17</lastmod>
      <changefreq>daily</changefreq>
     </url>
 </urlset>
