@@ -82,9 +82,9 @@ def cli(src_dir: str,
         tile_regxp = re.compile(r'^h\d{2}v\d{2}$')
         _tiles = []
 
-        for tile_sel in tile_filter.split(','):
-            assert re.match(tile_regxp, tile_sel.lower())
-            _tiles.append(tile_sel.lower())
+        for tile_req in tiles_required.split(','):
+            assert re.match(tile_regxp, tile_req.lower())
+            _tiles.append(tile_req.lower())
 
         tiles_required = frozenset(_tiles)
 
