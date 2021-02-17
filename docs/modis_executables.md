@@ -87,6 +87,8 @@ In the case of 16 day MODIS NDVI products, both satellites can be interleaved to
 
 It might be required to perform a check on temporal continuity, which can be done using `--last-collected`. Here a MODIS julian date can be specified that needs to be the last timestep collected before the new collection starts. If that's not the case, the process will fail on exception.
 
+With the `--tiles-required` option, a comma separated list of tiles (e.g `h20v08,h20v09,...`) can be specified which are the required set of tiles to be collected. `modis_collect` will check if all tiles are present in the input files, and if they contain the same timeps. If either more or less tiles are present, or if the timesteps between the tiles differes, the script will raise an exception.
+
 !!! Danger
     It's the user's responsibility to ensure temporal continuity when creating and updating files. New timesteps are simply appended, only checking if they don't precede existing ones. There are no further checks if a timestep might be missing etc. This follows the "garbage in - garbage out" principle.
 
@@ -109,6 +111,7 @@ Options:
   --last-collected [%Y%j]   Last collected date in julian format (YYYYDDD -
                             %Y%j)
 
+  --tiles-required TEXT     Required tiles - supplied as csv list
   --help                    Show this message and exit.
 
 ```

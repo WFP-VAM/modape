@@ -6,9 +6,10 @@ from os.path import exists
 from pathlib import Path
 import shutil
 import unittest
-from unittest.mock import patch, Mock, MagicMock, call
+from unittest.mock import patch, Mock, MagicMock
 from click.testing import CliRunner
 
+from modape.modis.collect import ModisRawH5
 from modape.scripts.modis_download import cli as modis_download_cli
 from modape.scripts.modis_collect import cli as modis_collect_cli
 from modape.scripts.modis_smooth import cli as modis_smooth_cli
@@ -165,20 +166,23 @@ class TestConsoleScripts(unittest.TestCase):
             file_path = data_dir.joinpath(file)
             file_path.touch()
 
-        calls = []
         for product in ["MOD11", "MYD11"]:
             product_files = [str(x) for x in data_dir.glob("*hdf") if product in x.name]
             product_files.sort()
-            calls.append(
-                call(product_files, data_dir, None, False, "gzip", None, False),
-            )
 
         with patch("modape.scripts.modis_collect._worker") as mocked_worker:
             mocked_worker.return_value = self.lst_files
             result = self.runner.invoke(modis_collect_cli, ["/tmp/data"])
             mocked_worker.assert_called()
             self.assertEqual(mocked_worker.call_count, 2)
-            mocked_worker.assert_has_calls(calls, any_order=False)
+            for call in mocked_worker.call_args_list:
+                args, kwargs = call
+                self.assertEqual(len(args), 0)
+                self.assertEqual(len(kwargs), 3)
+                self.assertEqual(type(kwargs["raw_h5"]), ModisRawH5)
+                self.assertEqual(kwargs["compression"], 'gzip')
+                self.assertEqual(kwargs["force"], False)
+
             self.assertEqual(result.exit_code, 0)
 
         _ = [x.unlink() for x in data_dir.glob("*hdf")]
@@ -193,7 +197,6 @@ class TestConsoleScripts(unittest.TestCase):
             result = self.runner.invoke(modis_collect_cli, ["/tmp/data", "--interleave", "--cleanup"])
             mocked_worker.assert_called_once()
             product_files.sort()
-            mocked_worker.assert_called_with(product_files, data_dir, None, True, "gzip", None, False)
             self.assertEqual(result.exit_code, 0)
 
         tracefile = data_dir.joinpath(".collected")
@@ -205,25 +208,64 @@ class TestConsoleScripts(unittest.TestCase):
         for file in self.vim_files:
             file_path = data_dir.joinpath(file)
             file_path.touch()
+            file_path = data_dir.joinpath(file.replace("h18v06", "h19v06"))
+            file_path.touch()
+
 
         with patch("modape.scripts.modis_collect._worker") as mocked_worker:
-            mocked_worker.return_value = True
             product_files = [str(x) for x in data_dir.glob("*hdf")]
             product_files.sort()
+            mocked_worker.return_value = product_files
+
+            # wrong last-collected input
             result = self.runner.invoke(modis_collect_cli, ["/tmp/data", "--interleave", "--cleanup", "--last-collected", "2002-01-01"])
             mocked_worker.assert_not_called()
             self.assertEqual(result.exit_code, 2)
 
-        with patch("modape.scripts.modis_collect.ModisRawH5") as mocked_rawfile:
-            mocked_rawfile.return_value = MagicMock(exists=True, last_collected="2020001")
-            result = self.runner.invoke(modis_collect_cli, ["/tmp/data", "--interleave", "--cleanup", "--last-collected", "2020365"])
-            mocked_rawfile.assert_called_once()
-            self.assertEqual(result.exit_code, 1)
+            # test last-collected checks
+            with patch("modape.scripts.modis_collect.ModisRawH5") as mocked_rawfile:
+                mocked_rawfile.return_value = MagicMock(exists=True, last_collected="2020001")
+                result = self.runner.invoke(modis_collect_cli, ["/tmp/data", "--interleave", "--last-collected", "2020365"])
+                mocked_rawfile.assert_called_once()
+                mocked_worker.assert_not_called()
+                self.assertEqual(result.exit_code, 1)
+                self.assertEqual(result.exc_info[0], ValueError)
 
-            mocked_rawfile.reset_mock()
-            result = self.runner.invoke(modis_collect_cli, ["/tmp/data", "--interleave", "--cleanup", "--last-collected", "2020001"])
-            mocked_rawfile.assert_called_once()
+                mocked_rawfile.reset_mock()
+
+                result = self.runner.invoke(modis_collect_cli, ["/tmp/data", "--interleave", "--last-collected", "2020001"])
+                self.assertEqual(mocked_rawfile.call_count, 2)
+                self.assertEqual(mocked_worker.call_count, 2)
+                self.assertEqual(result.exit_code, 0)
+
+            mocked_worker.reset_mock()
+
+            result = self.runner.invoke(modis_collect_cli, ["/tmp/data", "--interleave"])
+
             self.assertEqual(result.exit_code, 0)
+            self.assertEqual(mocked_worker.call_count, 2)
+
+            mocked_worker.reset_mock()
+
+            # check if tile-required works
+            result = self.runner.invoke(modis_collect_cli, ["/tmp/data", "--interleave", "--tiles-required", "h18v06,h19v06"])
+            self.assertEqual(result.exit_code, 0)
+            self.assertEqual(mocked_worker.call_count, 2)
+
+            mocked_worker.reset_mock()
+
+            result = self.runner.invoke(modis_collect_cli, ["/tmp/data", "--interleave", "--tiles-required", "h18v06,h19v06,h20v06"])
+            self.assertEqual(mocked_worker.call_count, 0)
+            self.assertEqual(result.exit_code, 1)
+            self.assertEqual(result.exc_info[0], ValueError)
+
+            mocked_worker.reset_mock()
+
+            Path(product_files[-1]).unlink()
+            result = self.runner.invoke(modis_collect_cli, ["/tmp/data", "--interleave", "--tiles-required", "h18v06,h19v06"])
+            mocked_worker.assert_not_called()
+            self.assertEqual(result.exit_code, 1)
+            self.assertEqual(result.exc_info[0], ValueError)
 
     def test_modis_smooth(self):
         """Test modis_smooth.py"""

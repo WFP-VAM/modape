@@ -267,9 +267,6 @@ class ModisSmoothH5(HDF5Base):
         else:
             write_offset = 0
 
-        # Create weights array
-        wts = arr_raw.copy()
-
         if self.tinterpolate:
             log.debug("Temporal interpolation triggered!")
             arr_smt = np.full((smt_chunks[0], len(dix)), fill_value=nodata, dtype="double")
@@ -307,7 +304,9 @@ class ModisSmoothH5(HDF5Base):
         for arr_raw_chunk in chunk_generator:
             log.debug("Chunk %s", chunk_counter)
 
-            wts[...] = (arr_raw_chunk != nodata)*1
+            # create weights
+            wts = (arr_raw_chunk != nodata)
+            wts = wts.astype("uint8")
 
             ndix = np.sum(wts, 1) >= (arr_raw.shape[1] * 0.2) # 20%+ data
             map_index = np.where(ndix)[0]
@@ -317,6 +316,7 @@ class ModisSmoothH5(HDF5Base):
 
             for ix in map_index:
 
+                w = wts[ix, :].astype("double")
                 if soptimize:
                     if srange is None:
                         lag_correlation = lag1corr(arr_raw[ix, :-1], arr_raw[ix, 1:], nodata)
@@ -332,12 +332,12 @@ class ModisSmoothH5(HDF5Base):
 
                     if p is not None:
                         arr_raw[ix, :], arr_sgrid[ix] = ws2doptvp(y=arr_raw[ix, :],
-                                                                  w=wts[ix, :],
+                                                                  w=w,
                                                                   llas=array("d", sr),
                                                                   p=p)
                     else:
                         arr_raw[ix, :], arr_sgrid[ix] = ws2doptv(y=arr_raw[ix, :],
-                                                                 w=wts[ix, :],
+                                                                 w=w,
                                                                  llas=array("d", sr))
 
                 else:
@@ -347,9 +347,9 @@ class ModisSmoothH5(HDF5Base):
                         s = 10 ** svalue
 
                     if p is None:
-                        arr_raw[ix, :] = ws2d(y=arr_raw[ix, :], lmda=s, w=wts[ix, :])
+                        arr_raw[ix, :] = ws2d(y=arr_raw[ix, :], lmda=s, w=w)
                     else:
-                        arr_raw[ix, :] = ws2dp(y=arr_raw[ix, :], lmda=s, w=wts[ix, :], p=p)
+                        arr_raw[ix, :] = ws2dp(y=arr_raw[ix, :], lmda=s, w=w, p=p)
 
 
                 if self.tinterpolate:
