@@ -24,6 +24,7 @@ from modape.modis import ModisRawH5
 @click.option('--cleanup', is_flag=True, help='Remove collected HDF files')
 @click.option('--force', is_flag=True, help='Force collect process not failing on corrupt inputs')
 @click.option('--last-collected', type=click.DateTime(formats=['%Y%j']), help='Last collected date in julian format (YYYYDDD - %Y%j)')
+@click.option("--tiles-required", type=click.STRING, help="Required tiles - supplied as csv list")
 def cli(src_dir: str,
         targetdir: str,
         compression: str,
@@ -33,6 +34,7 @@ def cli(src_dir: str,
         cleanup: bool,
         force: bool,
         last_collected: datetime,
+        tiles_required: str,
         ) -> None:
     """Collect raw MODIS hdf files into a raw MODIS HDF5 file.
 
@@ -55,6 +57,7 @@ def cli(src_dir: str,
         cleanup (bool): Remove collected HDF files.
         force (bool): When corrupt HDF input is encountered, use nodata instead of raising exception.
         last_collected (datetime.datetime): Julian day of last collected raw timestep.
+        tiles_required (str): MODIS tiles required to be in input (as csv string of tile IDs).
     """
 
     log = logging.getLogger(__name__)
@@ -73,6 +76,17 @@ def cli(src_dir: str,
 
     if last_collected is not None:
         last_collected = last_collected.strftime("%Y%j")
+
+    # parse tiles required and check if OK
+    if tiles_required is not None:
+        tile_regxp = re.compile(r'^h\d{2}v\d{2}$')
+        _tiles = []
+
+        for tile_req in tiles_required.split(','):
+            assert re.match(tile_regxp, tile_req.lower())
+            _tiles.append(tile_req.lower())
+
+        tiles_required = frozenset(_tiles)
 
     click.echo("Starting MODIS COLLECT!")
 
@@ -105,12 +119,32 @@ def cli(src_dir: str,
             tile = ['']
         tiles.append(*tile)
 
+    if tiles_required is not None:
+        log.debug("Checking for required tiles ...")
+
+        for product in set(products):
+            log.debug("Product: %s", product)
+            datetiles = [".".join(x.name.split(".")[1:3]) for x in hdf_files if re.match("^" + product, x.name)]
+            product_tiles = {x.split(".")[1] for x in datetiles}
+
+            timestamps = []
+            if product_tiles != tiles_required:
+                raise ValueError("Tiles for product %s don't match tiles-required!" % product)
+            for reqtile in tiles_required:
+                timestamps.append({x.split(".")[0] for x in datetiles if reqtile in x})
+
+            iterator = iter(timestamps)
+            reference = next(iterator)
+            if not all(x == reference for x in iterator):
+                raise ValueError("Not all tiles have same timesteps for product %s!" % product)
+            log.debug("Timestamps OK for %s", product)
+
     groups = [".*".join(x) for x in zip(products, tiles, versions)]
     groups = list({re.sub('(M.{1})(D.+)', 'M.'+'\\2', x) if REGEX_PATTERNS["VIM"].match(x) else x for x in groups}) # Join MOD13/MYD13
     groups.sort()
     log.debug("Parsed groups: %s", groups)
 
-    processing_dict = {}
+    to_process = {}
 
     collected = []
 
@@ -119,18 +153,31 @@ def cli(src_dir: str,
         group_files = [str(x) for x in hdf_files if group_pattern.match(x.name)]
         group_files.sort()
 
-        parameters = dict(
-            targetdir=targetdir,
-            files=group_files,
-            interleave=interleave,
-            group_id=group.replace('M.', 'MX'),
-            compression=compression,
-            vam_product_code=vam_code,
-            last_collected=last_collected,
-            force=force,
-        )
+        _raw_h5 = ModisRawH5(files=group_files,
+                            targetdir=targetdir,
+                            vam_product_code=vam_code,
+                            interleave=interleave)
 
-        processing_dict.update({group: parameters})
+        if last_collected is not None:
+
+            if not _raw_h5.exists:
+                raise ValueError("Output H5 %s does not exist! Can't check last-collected!" % _raw_h5.filename)
+
+            last_collected_infile = _raw_h5.last_collected
+
+            if not last_collected_infile:
+                raise ValueError(f"No last_collected recorded in {_raw_h5.filename}")
+
+            if not last_collected == last_collected_infile:
+                raise ValueError(f"Last collected date in file is {last_collected_infile} not {last_collected}")
+
+        to_process.update({
+            group: {
+                "raw_h5": _raw_h5,
+                "compression": compression,
+                "force": force,
+            }
+        })
 
     log.debug("Start processing!")
 
@@ -145,21 +192,12 @@ def cli(src_dir: str,
 
         with ProcessPoolExecutor(parallel_tiles) as executor:
 
-            for group, parameters in processing_dict.items():
+            for group, parameters in to_process.items():
 
                 log.debug("Submitting %s", group)
 
                 futures.append(
-                    executor.submit(
-                        _worker,
-                        parameters["files"],
-                        parameters["targetdir"],
-                        parameters["vam_product_code"],
-                        parameters["interleave"],
-                        parameters["compression"],
-                        parameters["last_collected"],
-                        parameters["force"],
-                    )
+                    executor.submit(_worker, **parameters)
                 )
 
             _ = wait(futures)
@@ -174,19 +212,13 @@ def cli(src_dir: str,
 
         log.debug("Processing groups sequentially")
 
-        for group, parameters in processing_dict.items():
+        for group, parameters in to_process.items():
 
             log.debug("Processing %s", group)
 
-            collected.extend(_worker(
-                parameters["files"],
-                parameters["targetdir"],
-                parameters["vam_product_code"],
-                parameters["interleave"],
-                parameters["compression"],
-                parameters["last_collected"],
-                parameters["force"],
-            ))
+            collected.extend(
+                _worker(**parameters)
+            )
 
     if cleanup and collected:
         tracefile = targetdir.joinpath(".collected")
@@ -200,27 +232,10 @@ def cli(src_dir: str,
 
     click.echo("MODIS COLLECT completed!")
 
-def _worker(files, targetdir, vam_code, interleave, compression, last_collected, force):
-
-    raw_h5 = ModisRawH5(
-        files=files,
-        targetdir=targetdir,
-        vam_product_code=vam_code,
-        interleave=interleave,
-    )
+def _worker(raw_h5, compression, force):
 
     if not raw_h5.exists:
         raw_h5.create(compression=compression)
-
-    if last_collected is not None:
-
-        last_collected_infile = raw_h5.last_collected
-
-        if not last_collected_infile:
-            raise ValueError(f"No last_collected recorded in {raw_h5.filename}")
-
-        assert last_collected == last_collected_infile, \
-         f"Last collected date in file is {last_collected_infile} not {last_collected}"
 
     collected = raw_h5.update(force=force)
 
