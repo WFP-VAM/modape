@@ -148,7 +148,7 @@ class ModisRawH5(HDF5Base):
 
         satset = {x[:3] for x in products}
 
-        if not self.vam_product_code == "VIM":
+        if interleave and not self.vam_product_code == "VIM":
             log.debug("Interleaving only possible for M{O|Y}D13 (VIM) products! Proceeding without interleave.")
             interleave = False
 
