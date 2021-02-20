@@ -32,20 +32,13 @@
 		"ms-python.python"
 	],
 
-	"postStartCommand": "cd .devcontainer && ./setup_storage.sh",
-
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	// "forwardPorts": [],
-
-	// Use 'postCreateCommand' to run commands after the container is created.
-	// "postCreateCommand": "pip3 install --user -r requirements.txt",
-
-	// Comment out connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
-	//"remoteUser": "vscode"
+	"forwardPorts": [ 5001 ],
 
 	"mounts": [
 		"source=${localWorkspaceFolder}/storage,target=/var/storage,type=bind,consistency=cached"
 	],
+	//"runArgs": ["-v", "${localWorkspaceFolder}/storage:/var/storage:Z"],
 
 	"remoteUser": "vscode",
 	"postCreateCommand": "cd .devcontainer && ./setup_modape.sh"

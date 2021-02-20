@@ -1,5 +1,8 @@
-#!/bin/sh
-if [! -d "../storage" ]
+#!/bin/bash 
+SCRIPT=$(readlink -f "$0")
+SCRIPTPATH=$(dirname "$SCRIPT")
+
+if [ ! -d "$SCRIPTPATH/../storage" ]
 then
-    mkdir ../storage
+    mkdir $SCRIPTPATH/../storage
 fi
