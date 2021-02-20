@@ -107,3 +107,5 @@ wsmtk.key.pkl
 docenv/*
 
 .idea/
+
+chain/storage/
