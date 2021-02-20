@@ -3,7 +3,7 @@ ENV TZ=UTC
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 RUN apt-get update \
-  && apt-get install -y build-essential pkg-config \
+  && apt-get install -y build-essential pkg-config git \
   && apt-get install -y libssl-dev libcurl4-openssl-dev nginx \
   && apt-get install -y swig sqlite3 \
   && apt-get install -y python3-dev libsqlite3-dev python3-setuptools \
@@ -41,8 +41,6 @@ RUN cd /usr/src && tar -xzf gdal-3.2.0.tar.gz && cd gdal-3.2.0 \
 
 RUN pip install numpy h5py>=2.9 pandas>=0.24
 RUN pip install cython gunicorn flask gdal==3.2.0
-
-RUN rm -vf /var/lib/apt/lists/* && apt-get update && apt-get install -y git
 
 ARG USERNAME=worker
 ARG USER_UID=1000
