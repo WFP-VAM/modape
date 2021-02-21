@@ -1,0 +1,14 @@
+version: '3.5'
+
+services:
+  arc_modape_chain:
+    build:
+      context: .
+      dockerfile: ./.devcontainer/Dockerfile
+    volumes:
+      - .:/app/chain
+      - ./storage:/var/storage    
+    command: bash -c "cd /app && git clone https://github.com/WFP-VAM/modape.git && cd modape && git checkout -b v1.0rc origin/v1.0rc && pip install . && cd /app/chain && gunicorn --workers=1 --threads=1 --bind 0.0.0.0:5001 wsgi:arc_modis_ndvi_server" 
+    container_name: arc_modape_chain_container
+    ports:
+      - 5001:5001
