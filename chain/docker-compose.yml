@@ -1,3 +1,4 @@
+# Suggested to run with --force-recreate (recreating the container): docker-compose up --force-recreate
 version: '3.5'
 
 services:
