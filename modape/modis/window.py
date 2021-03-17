@@ -141,7 +141,7 @@ class ModisMosaic(object):
             force_doy = True
 
         if "xRes" in kwargs and "yRes" in kwargs:
-            output_res = [kwargs["xRes"], kwargs["yRes"]]
+            output_res = [float(kwargs["xRes"]), float(kwargs["yRes"])]
             del kwargs["xRes"]
             del kwargs["yRes"]
 
