@@ -657,8 +657,8 @@ class TestModisSmooth(unittest.TestCase):
             dates = hdf5_file.get("dates")
             self.assertTrue(dates)
 
-        self.assertNotEqual(smtH5.last_collected, "2002201")
-        self.assertEqual(smtH5.last_collected, "2002209")
+        self.assertNotEqual(smtH5.last_smoothed, "2002201")
+        self.assertEqual(smtH5.last_smoothed, "2002209")
 
         smtH5.filename.unlink()
 
