@@ -441,7 +441,7 @@ class ModisSmoothH5(HDF5Base):
     def last_collected_in_raw(self):
         """Last collected date in raw file"""
         with h5py.File(self.rawfile, "r") as h5f_raw:
-            dates = h5f_raw.get("rawdates")
+            dates = h5f_raw.get("dates")
             last_date = dates[-1].decode()
 
         return last_date
