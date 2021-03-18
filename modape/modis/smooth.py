@@ -446,7 +446,7 @@ class ModisSmoothH5(HDF5Base):
 
         return last_date
 
-
+    @property
     def last_smoothed(self):
         """Last smoothed date in file"""
         assert self.exists, "File doesn't exist!"
