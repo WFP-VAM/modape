@@ -217,7 +217,7 @@ def _worker(rawfile: str,
         smt_h5.create()
 
     if last_collected is not None:
-        last_collected_in_rawfile = smt_h5.last_collected_in_raw
+        last_collected_in_rawfile = smt_h5.last_collected
 
         if not last_collected_in_rawfile:
             raise ValueError(f"No last_collected recorded in {smt_h5.rawfile}")
