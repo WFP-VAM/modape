@@ -439,7 +439,16 @@ class ModisSmoothH5(HDF5Base):
 
     @property
     def last_collected(self):
-        """Last collected date in file"""
+        """Last collected date in raw file"""
+        with h5py.File(self.rawfile, "r") as h5f_raw:
+            dates = h5f_raw.get("dates")
+            last_date = dates[-1].decode()
+
+        return last_date
+
+    @property
+    def last_smoothed(self):
+        """Last smoothed date in file"""
         assert self.exists, "File doesn't exist!"
 
         with h5py.File(self.filename, "r") as h5_open:

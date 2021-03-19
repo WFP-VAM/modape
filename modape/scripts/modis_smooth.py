@@ -217,13 +217,13 @@ def _worker(rawfile: str,
         smt_h5.create()
 
     if last_collected is not None:
-        last_collected_infile = smt_h5.last_collected
+        last_collected_in_rawfile = smt_h5.last_collected
 
-        if not last_collected_infile:
-            raise ValueError(f"No last_collected recorded in {smt_h5.filename}")
+        if not last_collected_in_rawfile:
+            raise ValueError(f"No last_collected recorded in {smt_h5.rawfile}")
 
-        assert last_collected == last_collected_infile, \
-         f"Last collected date in file is {last_collected_infile} not {last_collected}"
+        assert last_collected == last_collected_in_rawfile, \
+         f"Last collected date in {smt_h5.rawfile} is {last_collected_in_rawfile} not {last_collected}"
 
     smt_h5.smooth(**kwargs)
 

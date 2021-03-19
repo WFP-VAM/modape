@@ -33,6 +33,7 @@ log = logging.getLogger(__name__)
 @click.option("--round-int", type=click.INT, help="Round to integer places (either decimals or exponent of 10)")
 @click.option("--gdal-kwarg", type=click.STRING, multiple=True, help="Addition kwargs for GDAL")
 @click.option("--overwrite", is_flag=True, help="Overwrite existsing Tiffs")
+@click.option('--last-smoothed', type=click.DateTime(formats=['%Y%j']), help='Last smoothed date in julian format (YYYYDDD - %Y%j)')
 def cli(src: str,
         targetdir: str,
         begin_date: datetime.date,
@@ -48,7 +49,8 @@ def cli(src: str,
         clip_valid: bool,
         round_int: int,
         gdal_kwarg: Union[Tuple[str], Dict[str, Union[str, int, float]]],
-        overwrite: bool) -> List:
+        overwrite: bool,
+        last_smoothed: str) -> List:
     """Creates GeoTiff Mosaics from HDF5 files.
 
     The input can be either raw or smoothed HDF5 files. With the latter,
@@ -88,6 +90,7 @@ def cli(src: str,
                                  the Tuple of strings (item formatting: "key=value") is parsed into a dict.
                                  Alternatively, passing a dict instead of a Tuple[str] is also supported.
         overwrite (bool): Overwrite existing Tiffs.
+        last_smoothed (str): Rawdate (MODIS time step) that is checked to be the last in series at time of smoothing.
 
     """
 
@@ -174,7 +177,10 @@ def cli(src: str,
             )
         else:
             gdal_kwargs = gdal_kwarg
-
+    
+    if last_smoothed is not None:
+        last_smoothed = last_smoothed.strftime("%Y%j")
+    
     click.echo("\nSTARTING modis_window.py!")
 
     mosaics = []
@@ -199,6 +205,7 @@ def cli(src: str,
                 stop=end_date,
                 clip_valid=clip_valid,
                 round_int=round_int,
+                last_smoothed=last_smoothed,
                 creationOptions=list(co),
                 **gdal_kwargs,
                 )
