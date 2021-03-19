@@ -6,7 +6,7 @@ on:
       - dev
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     strategy:
       matrix:
         python-version: [3.6, 3.7, 3.8]
