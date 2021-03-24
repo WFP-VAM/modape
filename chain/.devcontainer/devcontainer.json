@@ -35,10 +35,13 @@
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	"forwardPorts": [ 5001 ],
 
+	//See: https://code.visualstudio.com/docs/remote/containers-advanced#_changing-the-default-source-code-mount
+	// >> regarding workspaceFolder: if git is present on the host's PATH and the folder containing
+	//                               .devcontainer/devcontainer.json is within a git repository, the
+	//                               current workspace mounted will be the root of the repository.
 	"mounts": [
 		"source=${localWorkspaceFolder}/storage,target=/var/storage,type=bind,consistency=cached"
 	],
-	//"runArgs": ["-v", "${localWorkspaceFolder}/storage:/var/storage:Z"],
 
 	"remoteUser": "vscode",
 	"postCreateCommand": "cd .devcontainer && ./setup_modape.sh"
