@@ -1,7 +1,7 @@
 {
   "app_name": "Africa MODIS NDVI @1km -- PRODUCTION",
   "nsmooth": 64,
-  "nupdate": 6,
+  "nupdate": 3,
   "username": "africanriskcapacity",
   "password": "Nasa4ARC!",
   "basedir": "/var/storage/arc_modis_ndvi",
@@ -52,6 +52,7 @@
   "init_start_date": "2002-07-03",
   "init_end_date": "2020-12-31",
   "expected_latency": 259200,
+  "log_endpoint": "https://api.africariskview.org/log",
   "log_secret": "TTY665DE9U",
   "log_source": "MODAPE Chain",
   "log_channel": "DATASETS",

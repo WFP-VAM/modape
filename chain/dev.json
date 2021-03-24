@@ -1,7 +1,7 @@
 {
   "app_name": "Africa MODIS NDVI @1km -- DEVELOPMENT",
   "nsmooth": 64,
-  "nupdate": 6,
+  "nupdate": 3,
   "username": "africanriskcapacity",
   "password": "Nasa4ARC!",
   "basedir": "/var/storage/arc_modis_ndvi",
