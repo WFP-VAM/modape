@@ -188,7 +188,8 @@ def do_processing(args, only_one_inc=False):
                 if len(downloaded) < 1 and getattr(args, 'expected_latency', 0) > 0:
                     latency = datetime.now() - datetime.combine(next_date, datetime.min.time())
                     if latency.total_seconds() > getattr(args, 'expected_latency'):
-                        post('https://api.africariskview.org/log?{}'.format(
+                        post('{}?{}'.format(
+                            getattr(args, "log_endpoint", 'https://api.africariskview.org/log'),
                             urlencode({
                                 'secret': getattr(args, 'log_secret', 'TTY665DE9U'),
                                 'source': getattr(args, 'log_source', 'MODAPE Chain'),
@@ -209,7 +210,8 @@ def do_processing(args, only_one_inc=False):
             if not curate_downloads(args.basedir, args.tile_filter, next_date, next_date):
                 latency = datetime.now() - datetime.combine(next_date, datetime.min.time())
                 if latency.total_seconds() > getattr(args, 'expected_latency'):
-                    post('https://api.africariskview.org/log?{}'.format(
+                    post('{}?{}'.format(
+                        getattr(args, "log_endpoint", 'https://api.africariskview.org/log'),
                         urlencode({
                             'secret': getattr(args, 'log_secret', 'TTY665DE9U'),
                             'source': getattr(args, 'log_source', 'MODAPE Chain'),
