@@ -45,6 +45,8 @@ from dateutil.relativedelta import relativedelta
 from flask import Flask, jsonify, send_file
 from threading import Thread, Timer
 from pathlib import Path
+from requests import post
+from urllib.parse import urlencode
 
 from modape_helper import get_first_date_in_raw_modis_tiles, get_last_date_in_raw_modis_tiles,\
     curate_downloads, has_collected_dates
@@ -181,8 +183,22 @@ def do_processing(args, only_one_inc=False):
                 multithread=True, nthreads=4, collection='006'
             )
 
-            # anything downloaded? (or redo-smoothing: app_state.redo_smoothing)
+            # anything downloaded?
             if len(downloaded) < 1 or getattr(args, 'download_only', False):
+                if len(downloaded) < 1 and getattr(args, 'expected_latency', 0) > 0:
+                    latency = datetime.now() - datetime.combine(next_date, datetime.min.time())
+                    if latency.total_seconds() > getattr(args, 'expected_latency'):
+                        post('https://api.africariskview.org/log?{}'.format(
+                            urlencode({
+                                'secret': getattr(args, 'log_secret', 'TTY665DE9U'),
+                                'source': getattr(args, 'log_source', 'MODAPE Chain'),
+                                'channel': getattr(args, 'log_channel', 'DATASETS'),
+                                'topic': 'Latency',
+                                'level': 4,
+                                'msg': 'Unexpected latency',
+                            })
+                        ), data='All tiles for the following MODIS time step have unexpected delay: {}'.format(next_date))
+                        log.info('An error was send for this time step having excessive delay: {}'.format(next_date))
                 break  # while True
 
         if getattr(args, 'collect_only', False) or (
@@ -191,6 +207,19 @@ def do_processing(args, only_one_inc=False):
 
             # check download completeness:
             if not curate_downloads(args.basedir, args.tile_filter, next_date, next_date):
+                latency = datetime.now() - datetime.combine(next_date, datetime.min.time())
+                if latency.total_seconds() > getattr(args, 'expected_latency'):
+                    post('https://api.africariskview.org/log?{}'.format(
+                        urlencode({
+                            'secret': getattr(args, 'log_secret', 'TTY665DE9U'),
+                            'source': getattr(args, 'log_source', 'MODAPE Chain'),
+                            'channel': getattr(args, 'log_channel', 'DATASETS'),
+                            'topic': 'Latency',
+                            'level': 4,
+                            'msg': 'Unexpected latency',
+                        })
+                    ), data='Some tiles for the following MODIS time step have unexpected delay: {}'.format(next_date))
+                    log.info('An error was send for some required tiles for this timestep having excessive delay: {}'.format(next_date))
                 break
 
             # We're OK; now collect;
@@ -550,7 +579,8 @@ def do_init(args):
                     clip_valid=True, round_int=2, gdal_kwarg={
                         'xRes': 0.01, 'yRes': 0.01, 'metadataOptions': ['FINAL=TRUE']
                     },
-                    overwrite=True
+                    overwrite=True,
+                    last_smoothed=None
                 )
                 for exp in exports:
                     md5 = generate_file_md5(exp)
