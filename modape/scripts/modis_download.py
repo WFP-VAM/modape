@@ -1,224 +1,199 @@
 #!/usr/bin/env python
 """modis_download.py: Query and download MODIS HDF files."""
-
-from __future__ import absolute_import, division, print_function
-
-import argparse
+# pylint: disable=E0401
 import datetime
 import os
-try:
-    from pathlib2 import Path
-except ImportError:
-    from pathlib import Path
-import pickle
+import pathlib
 import re
-from subprocess import check_output
 import sys
-import warnings
+from typing import List
 
-import ogr
+import click
+from modape.exceptions import TargetNotEmptyError
 from modape.modis import ModisQuery
-from modape.utils import Credentials
 
-warnings.filterwarnings("default", category=DeprecationWarning)
-
-def main():
-    '''Query and download MODIS products.
+@click.command()
+@click.argument("products", nargs=-1, type=click.STRING)
+@click.option("--roi", type=click.STRING, help="Region of interest. Either LON,LAT or xmin,ymin,xmax,ymax")
+@click.option("-b", "--begin-date", type=click.DateTime(formats=["%Y-%m-%d"]), help="Start date for query")
+@click.option("-e", "--end-date", type=click.DateTime(formats=["%Y-%m-%d"]), help="End date for query")
+@click.option("-d", "--targetdir", type=click.Path(dir_okay=True, writable=True, resolve_path=True),
+              help="Destination directory for downloaded files")
+@click.option("--target-empty", is_flag=True, help="Fail if there are hdf files in the target directory")
+@click.option("--tile-filter", type=click.STRING, help="Filter tiles - supplied as csv list")
+@click.option("--username", type=click.STRING, help="Earthdata username")
+@click.option("--password", type=click.STRING, help="Earthdata password")
+@click.option("--match-begin", is_flag=True, help="Don't allow files with timestamps outside of provided date(s)")
+@click.option("--print-results", is_flag=True, help="Print results to console")
+@click.option("--download", is_flag=True, help="Download data")
+@click.option("--overwrite", is_flag=True, help="Overwrite existing files")
+@click.option("--robust", is_flag=True, help="Perform robust download")
+@click.option("--max-retries", type=click.INT, help="Max number of retries for downloading", default=-1)
+@click.option("--multithread", is_flag=True, help="Use multiple threads for downloading")
+@click.option("--nthreads", type=click.INT, help="Number of threads to use", default=4)
+@click.option("-c", "--collection", type=click.STRING, default="006", help="MODIS collection")
+def cli(products: List[str],
+        begin_date: datetime.datetime,
+        end_date: datetime.datetime,
+        targetdir: str,
+        roi: str,
+        target_empty: bool,
+        tile_filter: str,
+        username: str,
+        password: str,
+        match_begin: bool,
+        print_results: bool,
+        download: bool,
+        overwrite: bool,
+        robust: bool,
+        max_retries: int,
+        multithread: bool,
+        nthreads: int,
+        collection: str,
+        ) -> List:
+    """Query and download MODIS products.
 
     This function allows for querying and downloading MODIS products in bulk.
     Multiple products can be queried and downloaded with one
     function call. For downloading data, valid earthdata credentials are required
     (to register, visit https://urs.earthdata.nasa.gov/users/new).
-    Data download can be performed with python's request module
-    or with external ARIA2 (needs to be available in PATH) if --aria2 flag is added.
 
     To query for both MODIS AQUA and TERRA, replace MOD/MYD with M?D.
     Product IDs also accepted in lowercase.
-    '''
 
-    parser = argparse.ArgumentParser(description='Query and download MODIS products (Earthdata account required for download)')
-    parser.add_argument('product', help='MODIS product ID(s)', nargs='+')
-    parser.add_argument('--roi', help='Region of interest. Can be LAT/LON point, bounding box in format llx,lly,urx,ury or OGR file (expects epsg:4326! - shp, geojson - convex hull will be used)', nargs='+', required=False)
-    parser.add_argument('--tile-filter', help='MODIS tile filter (download only specified tiles)', nargs='+', required=False, metavar='')
-    parser.add_argument('-c', '--collection', help='MODIS collection', default=6, metavar='')
-    parser.add_argument('-b', '--begin-date', help='Start date (YYYY-MM-DD)', default='2000-01-01', metavar='')
-    parser.add_argument('-e', '--end-date', help='End date (YYYY-MM-DD)', default=datetime.date.today().strftime("%Y-%m-%d"), metavar='')
-    parser.add_argument('--username', help='Earthdata username (required for download)', metavar='')
-    parser.add_argument('--password', help='Earthdata password (required for download)', metavar='')
-    parser.add_argument('-d', '--targetdir', help='Destination directory', default=os.getcwd(), metavar='')
-    parser.add_argument('--store-credentials', help='Store Earthdata credentials on disk to be used for future downloads (unsecure!)', action='store_true')
-    parser.add_argument('--download', help='Download data', action='store_true')
-    parser.add_argument('--aria2', help='DEPRACATED! Use ARIA2 for downloading', action='store_true')
+    Args:
+        products (List[str]): List of MODIS product codes to download.
+        begin_date (datetime.date): Start date for query / download.
+        end_date (datetime.date): End date for query / download.
+        targetdir (pathlib.Path): Target directory.
+        roi (str): Region of interest (point or bbox as csv string).
+        tile_filter (str): MODIS tile filter (as csv string of tile IDs).
+        username (str): Earthdata username.
+        password (str): Earthdata password.
+        match_begin (bool): Match native MODIS timestamp.
+        download (bool): Download data.
+        overwrite (bool): Replace existing.
+        robust (bool): Perform robust downloading (checks file size and checksum).
+        max_retries (int): Maximum number of retries for failed downloads (default is -1, infinite).
+        multithread (bool): Use multiple threads for downloading.
+        nthreads (int): Number of threads for multithread.
+        collection (str): MODIS collection version.
 
-    # fail and print help if no arguments supplied
-    if len(sys.argv) == 1:
-        parser.print_help(sys.stderr)
-        sys.exit(0)
+    Returns:
+        List of downloaded HDF filenames (if overwrite is False, also skipped downloads are included if already existing in targetdir)
+    """
 
-    args = parser.parse_args()
+    click.echo("\nSTART download_modis.py!")
 
-    credentials = Credentials(args.username, args.password)
+    if download:
 
-    if args.aria2:
-        warnings.warn("\nARIA2 is now standard download tool. The flag is therefore depracated and will raise an error in a future release!\n Please consider removing it,", DeprecationWarning)
+        if username is None or password is None:
+            raise ValueError("Download was requested, but credentials are missing.")
 
-    if args.download:
-
-        #fail if ARIA2 not installed
-        try:
-            _ = check_output(['aria2c', '--version'])
-        except:
-            raise SystemExit('For downloading, ARIA2 to be available in PATH! Please make sure it\'s installed and available in PATH!')
-
-
-    # Check for credentials if download is True
-    if args.download & (not credentials.complete):
-        try:
-            credentials.retrieve()
-        except:
-            raise SystemExit('\nError: Earthdata credentials not found!\n')
-    elif args.store_credentials:
-        credentials.store()
+    if targetdir is None:
+        targetdir = pathlib.Path(os.getcwd())
     else:
-        pass
+        targetdir = pathlib.Path(targetdir)
 
-    args.product = [x.upper() for x in args.product]
+    # handle targetdir
+    targetdir.mkdir(exist_ok=True)
 
-    # Load product table
-    this_dir = Path(__file__).parent
-    with open(this_dir.parent.joinpath('data', 'MODIS_V6_PT.pkl').as_posix(), 'rb') as table_raw:
-        product_table = pickle.load(table_raw)
+    assert targetdir.exists()
+    assert targetdir.is_dir()
 
-    for product in args.product:
-
-        # Handle ? wildcard
-        if '?' in product:
-            pattern = re.compile(product.replace('?', '.{1,2}') + '$')
-            product = [x for x in product_table if re.match(pattern, x)]
-        else:
-            product = [product] # enable iteration
-
-        for product_subset in product:
-
-            # Load product info from table
+    if target_empty:
+        for _ in targetdir.glob("M*hdf"):
             try:
-                product_table_subset = product_table[product_subset]
-            except KeyError:
-                if len(args.product) > 1:
-                    print('Product {} not recognized. Skipping ...'.format(product_subset))
-                    continue
-                else:
-                    raise SystemExit('Product {} not recognized!'.format(product_subset))
+                raise TargetNotEmptyError("Found HDF files in target directory with flag --target-empty set!")
+            except StopIteration:
+                pass
 
-            # If resolution is bigger than 1km, the product is global
-            global_flag = int(product_table_subset['pixel_size']) > 1000
+    products_parsed = []
 
-            # If global, select corresponding base URL
-            if global_flag:
-                if 'MOD' in product_subset:
-                    query_url = 'https://e4ftl01.cr.usgs.gov/MOLT/{}.006/'.format(product_subset)
-                elif 'MYD' in product_subset:
-                    query_url = 'https://e4ftl01.cr.usgs.gov/MOLA/{}.006/'.format(product_subset)
-                elif 'MCD' in product_subset:
-                    query_url = 'https://e4ftl01.cr.usgs.gov/MOTA/{}.006/'.format(product_subset)
-                else:
-                    raise SystemExit('Product {} not recognized.'
-                                     ' Available: MOD*, MYD*, MCD*')
-            else:
-                query = []
-                # if tile_filter and no ROI, limit spatial query
-                if args.tile_filter and not args.roi:
-                    # cast to lowercase
-                    tiles = [x.lower() for x in args.tile_filter]
+    for product_code in products:
+        if "M?D" in product_code.upper():
+            products_parsed.append(product_code.replace("?", "O").upper())
+            products_parsed.append(product_code.replace("?", "Y").upper())
+        else:
+            products_parsed.append(product_code.upper())
 
-                    with open(this_dir.parent.joinpath('data', 'ModlandTiles_bbx.pkl').as_posix(), 'rb') as bbox_raw:
-                        bbox = pickle.load(bbox_raw)
+    if roi is not None:
 
-                    if len(tiles) == 1:
-                        h_indicator, v_indicator = re.findall(r'\d+', tiles[0])
-                        bbox_selection = bbox[(bbox.ih == int(h_indicator)) &
-                                              (bbox.iv == int(v_indicator))]
+        try:
+            coords = list(map(float, roi.split(',')))
+        except ValueError:
+            click.echo("Error parsing ROI coordinates. Expected numeric!")
 
-                        if bbox_selection.empty:
-                            raise SystemExit('No tile with ID {} found. Please check!'.format(tiles[0]))
+        assert len(coords) == 2 or len(coords) == 4, "Only point or bbox as roi allowed!"
 
-                        # roi is approx. center point of tile
-                        args.roi = [bbox_selection.lat_max.values[0] - 5,
-                                    bbox_selection.lon_max.values[0] - (bbox_selection.lon_max.values[0] - bbox_selection.lon_min.values[0])/2]
+        roi = tuple(coords)
 
-                    elif len(tiles) > 1:
-                        h_indicator = list({re.findall(r'\d+', x.split('v')[0])[0] for x in tiles})
-                        v_indicator = list({re.findall(r'\d+', x.split('v')[1])[0] for x in tiles})
+    # parse tile filter and check if OK
+    if tile_filter is not None:
+        tile_regxp = re.compile(r'^h\d{2}v\d{2}$')
+        tiles = []
 
-                        # aoi is bbox including all tiles from tile_filter, plus 1 degree buffer
-                        bbox_selection = bbox.query('|'.join(['ih == {}'.format(int(x)) for x in h_indicator])).query('|'.join(['iv == {}'.format(int(x)) for x in v_indicator]))
+        for tile_sel in tile_filter.split(','):
+            assert re.match(tile_regxp, tile_sel.lower())
+            tiles.append(tile_sel.lower())
 
-                        if bbox_selection.empty:
-                            raise SystemExit('No tiles with IDs {} found. Please check!'.format(' '.join(tiles)))
+        tile_filter = tiles
 
-                        args.roi = [min(bbox_selection.lon_min.values)-1,
-                                    min(bbox_selection.lat_min.values)-1,
-                                    max(bbox_selection.lon_max.values)+1,
-                                    max(bbox_selection.lat_max.values)+1]
-                    else:
-                        pass # not happening
+    click.echo('Querying NASA CMR ...')
 
-                # Construct query URL
-                try:
-                    if len(args.roi) == 1 and os.path.isfile(args.roi[0]):
-                        try:
-                            ds = ogr.Open(args.roi[0])
-                            lyr = ds.GetLayer()
-                            geometry_collection = ogr.Geometry(ogr.wkbGeometryCollection)
+    query = ModisQuery(
+        products=products_parsed,
+        aoi=roi,
+        begindate=begin_date,
+        enddate=end_date,
+        tile_filter=tile_filter,
+        version=collection,
+    )
 
-                            for feature in lyr:
-                                geometry_collection.AddGeometry(feature.GetGeometryRef())
+    query.search(match_begin=match_begin)
 
-                            hull = geometry_collection.ConvexHull()
-                            geometry = hull.GetGeometryRef(0)
-                            point_count = geometry.GetPointCount()
-                            coordinates = []
+    if query.nresults == 0:
+        click.echo("No results found! Please check query or make sure CMR is available / reachable.")
+        return []
 
-                            for point in range(point_count):
-                                lat, lon, _ = geometry.GetPoint(point)
-                                coordinates.append('{},{}'.format(lat, lon))
+    click.echo(f'Done! Found {query.nresults} results!')
 
-                            query.append('polygon=' + ','.join(coordinates))
-                            ds = None
-                            lyr = None
-                        except:
-                            print('\nError reading polygon file. Traceback:\n\n')
-                            raise
+    if print_results:
+        click.echo("\n")
+        for key, values in query.results.items():
+            click.secho(key, bold=True)
+            click.echo(values)
+            click.echo("\n")
 
-                    elif len(args.roi) == 2:
-                        query.append('latitude={}&longitude={}'.format(*args.roi))
-                    elif len(args.roi) == 4:
-                        query.append('bbox={},{},{},{}'.format(*args.roi))
-                    else:
-                        raise ValueError('ROI is expected to be point or bounding box coordinates!')
+    downloaded = []
 
-                except TypeError:
-                    raise ValueError('\nDownload of tiled MODIS products requires ROI or tile-filter!\n')
+    if download:
 
-                query.append('version={}'.format(args.collection))
-                query.append('date={}/{}'.format(args.begin_date, args.end_date))
+        click.echo('Downloading!')
 
-                query_url = 'https://lpdaacsvc.cr.usgs.gov/services/inventory?product={}&{}'.format(product_subset,
-                                                                                                    '&'.join(query))
+        if query.nresults > 0:
 
-            # Run query
-            print('\nPRODUCT: {}\n'.format(product_subset))
-            query_result = ModisQuery(query_url,
-                                      targetdir=args.targetdir,
-                                      begindate=args.begin_date,
-                                      enddate=args.end_date,
-                                      global_flag=global_flag,
-                                      tile_filter=args.tile_filter)
+            downloaded = query.download(
+                targetdir=targetdir,
+                username=username,
+                password=password,
+                overwrite=overwrite,
+                multithread=multithread,
+                nthreads=nthreads,
+                robust=robust,
+                max_retries=max_retries,
+            )
 
-            # If download is True and at least one result, download data
-            if args.download and query_result.results > 0:
-                query_result.set_credentials(credentials.username, credentials.password)
-                query_result.download()
+    click.echo('modis_download.py COMPLETED! Bye! \n')
+    return downloaded
+
+def cli_wrap():
+    """Wrapper for cli"""
+
+    if len(sys.argv) == 1:
+        cli.main(['--help'])
+    else:
+        cli() #pylint: disable=E1120
 
 if __name__ == '__main__':
-    main()
+    cli_wrap()
