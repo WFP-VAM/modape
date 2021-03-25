@@ -1,0 +1,32 @@
+name: publish
+
+on: push
+  branches:
+    - workflows
+
+jobs:
+  build_wheels:
+    name: Build wheels on ubuntu-18.04
+    runs-on: ubuntu-18.04
+
+    steps:
+      - uses: actions/checkout@v2
+
+      # Used to host cibuildwheel
+      - uses: actions/setup-python@v2
+
+      - name: install dependencies
+        run: |
+          sudo add-apt-repository ppa:ubuntugis/ppa
+          sudo apt-get update && sudo apt-get install -y libgdal-dev
+          pip install cython numpy
+
+      - name: build gdal
+        run: pip install gdal==$(gdal-config --version)
+
+      - name: Build wheels
+        uses: joerick/cibuildwheel@v1.10.0
+
+      - uses: actions/upload-artifact@v2
+        with:
+          path: ./wheelhouse/*.whl
