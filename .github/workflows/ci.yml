@@ -1,11 +1,16 @@
-name: build
+name: Build and test
 on:
   push:
     branches:
       - master
       - dev
+  pull_request:
+    branches:
+      - master
+      - dev
+
 jobs:
-  deploy:
+  build_and_test:
     runs-on: ubuntu-18.04
     strategy:
       matrix:
