@@ -79,6 +79,7 @@ class ModisMosaic(object):
                          stop: datetime.date = None,
                          clip_valid: bool = False,
                          round_int: int = None,
+                         last_smoothed: str = None,
                          **kwargs,
                         ) -> List:
         """Generate GeoTIFF mosaics/subsets.
@@ -116,6 +117,7 @@ class ModisMosaic(object):
             stop (datetime.date): Stop date for mosaics.
             clip_valid (bool): Clip values to valid range for MODIS product.
             round_int (int): Round the output.
+            last_smoothed (str): Rawdate (MODIS time step) that is checked to be the last in series at time of smoothing.
             **kwargs (type): **kwags passed on to `gdal.WarpOptions` and `gdal.TranslateOptions`.
 
         Raises:
@@ -142,7 +144,7 @@ class ModisMosaic(object):
             force_doy = True
 
         if "xRes" in kwargs and "yRes" in kwargs:
-            output_res = [kwargs["xRes"], kwargs["yRes"]]
+            output_res = [float(kwargs["xRes"]), float(kwargs["yRes"])]
             del kwargs["xRes"]
             del kwargs["yRes"]
 
@@ -226,6 +228,7 @@ class ModisMosaic(object):
                         clip_valid,
                         round_int=round_int,
                         ix=ii,
+                        last_smoothed=last_smoothed
                     )
                 )
 
@@ -277,12 +280,20 @@ class ModisMosaic(object):
                     dataset: str,
                     clip_valid: bool,
                     round_int: int,
-                    ix: int = None) -> str:
+                    ix: int = None,
+                    last_smoothed: str = None) -> str:
 
         if dataset not in ["data", "sgrid"]:
             raise NotImplementedError("_get_raster only implemented for datasetds 'data' and 'sgrid'")
 
         with h5py.File(file, "r") as h5f_open:
+
+            if last_smoothed is not None:
+                dates = h5f_open.get("rawdates")
+                last_date = dates[-1].decode()
+                assert last_smoothed == last_date, \
+                    f"Last smoothed date in {file} is {last_date} not {last_smoothed}"
+                
             ds = h5f_open.get(dataset)
             assert ds, "Dataset doesn't exist!"
             dataset_shape = ds.shape
