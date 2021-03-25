@@ -1,11 +1,7 @@
 name: Publish Docker image
 on:
-  push:
-    branches:
-      - workflows
-# on:
-#   release:
-#     types: [published]
+  release:
+    types: [published]
 
 jobs:
   push_to_registry:
@@ -20,5 +16,5 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
           registry: docker.pkg.github.com
-          repository: wfp-vam/modape/modape-latest
+          repository: wfp-vam/modape/modape
           tag_with_ref: true
