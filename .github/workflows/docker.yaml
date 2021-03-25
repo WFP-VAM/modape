@@ -20,5 +20,5 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
           registry: docker.pkg.github.com
-          repository: WFP-VAM/modape/modape-latest
+          repository: wfp-vam/modape/modape-latest
           tag_with_ref: true
