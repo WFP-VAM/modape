@@ -1,8 +1,9 @@
 name: publish
 
-on: push
-  branches:
-    - workflows
+on:
+  push:
+    branches:
+      - workflows
 
 jobs:
   build_wheels:
