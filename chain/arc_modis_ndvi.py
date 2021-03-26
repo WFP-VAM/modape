@@ -281,7 +281,8 @@ def do_processing(args, only_one_inc=False):
                         'metadataOptions': ['CONSOLIDATION_STAGE={}'.format(nexports-1),
                                             'FINAL={}'.format('FALSE' if nexports < args.nupdate else 'TRUE')]
                     },
-                    overwrite=True
+                    overwrite=True,
+                    last_smoothed=None
                 )
 
                 for exp in exports:
