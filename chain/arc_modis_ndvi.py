@@ -186,7 +186,7 @@ def do_processing(args, only_one_inc=False):
             # anything downloaded?
             if len(downloaded) < 1 or getattr(args, 'download_only', False):
                 if len(downloaded) < 1 and getattr(args, 'expected_latency', 0) > 0:
-                    latency = datetime.now() - datetime.combine(next_date, datetime.min.time())
+                    latency = datetime.now() - datetime.combine(next_date + relativedelta(days=16), datetime.min.time())
                     if latency.total_seconds() > getattr(args, 'expected_latency'):
                         post('{}?{}'.format(
                             getattr(args, "log_endpoint", 'https://api.africariskview.org/log'),
@@ -196,7 +196,7 @@ def do_processing(args, only_one_inc=False):
                                 'channel': getattr(args, 'log_channel', 'DATASETS'),
                                 'topic': 'Latency',
                                 'level': 4,
-                                'msg': 'Unexpected latency',
+                                'msg': 'Unexpected delay',
                             })
                         ), data='All tiles for the following MODIS time step have unexpected delay: {}'.format(next_date))
                         log.info('An error was send for this time step having excessive delay: {}'.format(next_date))
@@ -208,7 +208,7 @@ def do_processing(args, only_one_inc=False):
 
             # check download completeness:
             if not curate_downloads(args.basedir, args.tile_filter, next_date, next_date):
-                latency = datetime.now() - datetime.combine(next_date, datetime.min.time())
+                latency = datetime.now() - datetime.combine(next_date + relativedelta(days=16), datetime.min.time())
                 if latency.total_seconds() > getattr(args, 'expected_latency'):
                     post('{}?{}'.format(
                         getattr(args, "log_endpoint", 'https://api.africariskview.org/log'),
@@ -218,7 +218,7 @@ def do_processing(args, only_one_inc=False):
                             'channel': getattr(args, 'log_channel', 'DATASETS'),
                             'topic': 'Latency',
                             'level': 4,
-                            'msg': 'Unexpected latency',
+                            'msg': 'Unexpected delay',
                         })
                     ), data='Some tiles for the following MODIS time step have unexpected delay: {}'.format(next_date))
                     log.info('An error was send for some required tiles for this timestep having excessive delay: {}'.format(next_date))
