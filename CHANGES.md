@@ -33,6 +33,8 @@
     - Reworked `csv_smooth.py`
       - New executable script
       - fix #83
+  - #### v 1.0.1
+    - pin `click` to version < 8
 
 - ## v 0.3
   - #### v 0.3.0:
