@@ -47,11 +47,16 @@
     "h18v05",
     "h19v05",
     "h20v05",
-    "h18v09"
+    "h21v05",
+    "h18v09",
+    "h23v09",
+    "h23v10",
+    "h23v11"
   ],
-  "init_start_date": "2002-07-03",
-  "init_end_date": "2020-12-31",
-  "expected_latency": 259200,
+  "collection": "061",
+  "init_start_date": "2002-07-04",
+  "init_end_date": "2021-12-31",
+  "expected_latency": 604800,
   "log_endpoint": "https://api.africariskview.org/log",
   "log_secret": "TTY665DE9U",
   "log_source": "MODAPE Chain",
@@ -60,7 +65,7 @@
   "mimetype": "application/octet-stream",
   "_comment_export": "[ minx, miny, maxx, maxy ]",
   "export": {
-    "AFRICA": [-26.0, -35.0, 58.0, 38.0]
+    "AFRICA": [-26.0, -35.0, 60.0, 38.0]
   }
 }
 

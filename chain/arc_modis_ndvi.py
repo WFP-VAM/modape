@@ -9,6 +9,7 @@
 
 """
 
+import itertools
 import re
 import contextlib
 import hashlib
@@ -55,6 +56,8 @@ from modape.scripts.modis_collect import cli as modis_collect
 from modape.scripts.modis_smooth import cli as modis_smooth
 from modape.scripts.modis_window import cli as modis_window
 
+from modape.modis import ModisQuery
+
 from modape_helper.timeslicing import Dekad, ModisInterleavedOctad
 
 try:
@@ -76,10 +79,10 @@ def generate_file_md5(filepath, blocksize=2 ** 16):
     return m.hexdigest()
 
 
-def exists_smooth_h5s(tiles, basedir):
+def exists_smooth_h5s(tiles, basedir, collection):
     # Check all tiles for a corresponding H5 archive in VIM/SMOOTH:
     return all(
-     [Path(os.path.join(basedir, 'VIM', "SMOOTH", "MXD13A2.{}.006.txd.VIM.h5".format(tile))).exists() for tile in tiles]
+     [Path(os.path.join(basedir, 'VIM', "SMOOTH", "MXD13A2.{}.{}.txd.VIM.h5".format(tile, collection))).exists() for tile in tiles]
     )
 
 
@@ -114,7 +117,7 @@ def app_fetch():
             datetime.now().strftime('%Y-%m-%d %H:%M:%S')), 503
     else:
         # Check all tiles for a corresponding H5 archive in VIM/SMOOTH:
-        if not exists_smooth_h5s(app_state.tile_filter, app_state.basedir):
+        if not exists_smooth_h5s(app_state.tile_filter, app_state.basedir, getattr(app_state, 'collection', '006')):
             app_state.fetcherThread = Timer(5, app_do_init, ())
             app_state.fetcherThread.start()
             return "[{}] Initialisation is scheduled to start (or resume) in 5 seconds...\n".format(
@@ -180,7 +183,7 @@ def do_processing(args, only_one_inc=False):
                 username=args.username,
                 password=args.password, match_begin=True, print_results=False,
                 download=True, overwrite=True, robust=True, max_retries=-1,
-                multithread=True, nthreads=4, collection='006'
+                multithread=True, nthreads=4, collection=getattr(args, 'collection', '006')
             )
 
             # anything downloaded?
@@ -342,7 +345,7 @@ def serve(ctx) -> None:
         with open(ctx.obj['CONFIG']) as f:
             args = json.load(f)
         args = Namespace(**args)
-        if not exists_smooth_h5s(args.tile_filter, args.basedir):
+        if not exists_smooth_h5s(args.tile_filter, args.basedir, getattr(args, 'collection', '006')):
             raise SystemExit(
                 "Cannot run a full time step increment on an uninitialised archive! Run the init command first or run "
                 "as a service. "
@@ -365,7 +368,7 @@ def export(ctx) -> None:
     args = Namespace(**args)
 
     # Check all tiles for a corresponding H5 archive in VIM/SMOOTH:
-    assert exists_smooth_h5s(args.tile_filter, args.basedir)
+    assert exists_smooth_h5s(args.tile_filter, args.basedir, getattr(args, 'collection', '006'))
 
     if ctx.obj['REGION']:
         args.region_only = ctx.obj['REGION']
@@ -425,6 +428,58 @@ def reset(ctx) -> None:
     os.makedirs(os.path.join(args.basedir, 'log'))
     log.info("Done.")
 
+@cli.command()
+@click.pass_context
+def check(ctx) -> None:
+    with open(ctx.obj['CONFIG']) as f:
+        args = json.load(f)
+    args = Namespace(**args)
+    assert (ctx.obj['REGION'] is None), "Cannot reset for only a specific region!"
+
+    products=['M?D13A2']
+    products_parsed = []
+    for product_code in products:
+        if "M?D" in product_code.upper():
+            products_parsed.append(product_code.replace("?", "O").upper())
+            products_parsed.append(product_code.replace("?", "Y").upper())
+        else:
+            products_parsed.append(product_code.upper())
+
+    begin_date = ModisInterleavedOctad(datetime.strptime(args.init_start_date, '%Y-%m-%d').date())
+    end_date = min([date.today(), begin_date.nextYear().prev().getDateTimeStart().date()])
+    begin_date = begin_date.getDateTimeStart().date()
+    while begin_date < end_date:
+        log.info('Querying: {} - {}...'.format(begin_date, end_date))
+        q = ModisQuery(products=products_parsed, aoi=None,
+                       begindate=datetime.combine(begin_date, datetime.min.time()),
+                       enddate=datetime.combine(end_date, datetime.min.time()),
+                       tile_filter=','.join(args.tile_filter),
+                       version=args.collection
+        )
+        q.search(match_begin=True)
+        if q.nresults == 0:
+            log.info("No results found! Please check query or make sure CMR is available / reachable.")
+        else:
+            log.info(f'Found {q.nresults} results!')
+
+        all_dates = set()
+        tile_dates = {}
+        for values in q.results.values():
+            dte = '{}'.format(values['time_start'])
+            all_dates.add(dte)
+            if values['tile'] not in tile_dates:
+                tile_dates[values['tile']] = []
+            tile_dates[values['tile']].append(dte)
+
+        for tile, dte in itertools.product(args.tile_filter, all_dates):
+            if dte not in tile_dates[tile]:
+                log.error('Missing {} for tile {}'.format(dte, tile))
+
+        # move on:
+        begin_date = ModisInterleavedOctad(end_date).next()
+        end_date = min([date.today(), begin_date.nextYear().prev().getDateTimeStart().date()])
+        begin_date = begin_date.getDateTimeStart().date()
+
 
 @cli.command()
 @click.option('--download-only', is_flag=True, default=False)
@@ -437,7 +492,7 @@ def init(ctx, download_only, smooth_only, export_only) -> None:
     args = Namespace(**args)
 
     if ctx.obj['REGION'] is not None:
-        assert (export_only and exists_smooth_h5s(args.tile_filter, args.basedir)),\
+        assert (export_only and exists_smooth_h5s(args.tile_filter, args.basedir, getattr(args, 'collection', '006'))),\
             "Can only do export for a specific region on a initialised archive!"
         args.region_only = ctx.obj['REGION']
 
@@ -478,7 +533,7 @@ def do_init(args):
                 username=args.username,
                 password=args.password, match_begin=True, print_results=False,
                 download=True, overwrite=False, robust=True, max_retries=-1,
-                multithread=True, nthreads=4, collection='006'
+                multithread=True, nthreads=4, collection=getattr(args, 'collection', '006')
             )
             if len(downloads) == 0:
                 break
@@ -493,8 +548,8 @@ def do_init(args):
                 return
 
             if not getattr(args, 'download_only', False):
-                # Check download: for all distinct dates: is there a download for EACH selected tile?
-                if not curate_downloads(args.basedir, args.tile_filter, begin_date, end_date):
+                # Check download: for ALL distinct dates: is there a download for EACH selected tile? 2022-03-11: we allow 1 missing
+                if not curate_downloads(args.basedir, args.tile_filter, begin_date, end_date, 0):
                     return
 
                 # We're OK; now collect;
@@ -515,7 +570,7 @@ def do_init(args):
         if getattr(args, 'download_only', False):
             return
 
-    if not exists_smooth_h5s(args.tile_filter, args.basedir):
+    if not exists_smooth_h5s(args.tile_filter, args.basedir, getattr(args, 'collection', '006')):
         # Smooth and interpolate the collected archive
         # --------------------------------------------
 
@@ -531,7 +586,8 @@ def do_init(args):
             dates.append(str(ts))
             ts = ts.next()
         for tile in args.tile_filter:
-            assert has_collected_dates(os.path.join(args.basedir, 'VIM', "MXD13A2.{}.006.VIM.h5".format(tile)), dates)
+            assert has_collected_dates(os.path.join(args.basedir, 'VIM',
+                "MXD13A2.{}.{}.VIM.h5".format(tile, getattr(args, 'collection', '006'))), dates)
 
         modis_smooth.callback(
             src=os.path.join(args.basedir, 'VIM'), targetdir=os.path.join(args.basedir, 'VIM', 'SMOOTH'),
@@ -546,7 +602,7 @@ def do_init(args):
     # ------------------------
 
     # Check all tiles for a corresponding H5 archive in VIM/SMOOTH:
-    assert exists_smooth_h5s(args.tile_filter, args.basedir)
+    assert exists_smooth_h5s(args.tile_filter, args.basedir, getattr(args, 'collection', '006'))
 
     first_date = max([
         get_first_date_in_raw_modis_tiles(os.path.join(args.basedir, 'VIM')),

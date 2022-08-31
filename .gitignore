@@ -109,3 +109,4 @@ docenv/*
 .idea/
 
 chain/storage/
+chain/legend/

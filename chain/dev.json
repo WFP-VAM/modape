@@ -11,6 +11,7 @@
     "h19v07",
     "h18v07"
   ],
+  "collection": "061",
   "init_start_date": "2018-01-01",
   "init_end_date": "2019-12-31",
   "expected_latency": 259200,

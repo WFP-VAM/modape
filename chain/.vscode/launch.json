@@ -5,11 +5,27 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "ARC MODIS NDVI download next",
+            "name": "init download only",
             "type": "python",
             "request": "launch",
             "program": "arc_modis_ndvi.py",
-            "args": ["download"],
+            "args": ["--config", "dev.json", "init", "--download-only"],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "download next",
+            "type": "python",
+            "request": "launch",
+            "program": "arc_modis_ndvi.py",
+            "args": ["--config", "dev.json", "download"],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "check production archive",
+            "type": "python",
+            "request": "launch",
+            "program": "arc_modis_ndvi.py",
+            "args": ["--config", "production.example.json", "check"],
             "console": "integratedTerminal"
         }
     ]

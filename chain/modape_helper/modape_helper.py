@@ -57,11 +57,11 @@ def has_collected_dates(h5_file, dates):
         if not r:
             for d in dates:
                 if d not in collected_dates:
-                    print("Missing date: {}".format(d))
+                    print("Missing date in {}: {}".format(h5_file, d))
     return r
 
 
-def curate_downloads(folder, tiles, begin_date, end_date) -> bool:
+def curate_downloads(folder, tiles, begin_date, end_date, allow_missing=0) -> bool:
     """
     :param folder: download folder with MODUS HDFs
     :param tiles: list of tile-IDs, like: [r"h21v08", r"h22v08", r"h21v09", r"h22v09"]
@@ -119,6 +119,6 @@ def curate_downloads(folder, tiles, begin_date, end_date) -> bool:
             missing = [tile for tile, file in tile2file.items() if len(file) == 0]
             if len(missing):
                 print('Missing tile(s) for {}: {}'.format(sDte, ', '.join(missing)))
-                return False
+                return len(missing) <= allow_missing
 
     return True
