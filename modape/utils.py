@@ -10,6 +10,7 @@ from typing import List
 
 import numpy as np
 import requests
+from base64 import b64encode
 
 
 __all__ = [
@@ -39,19 +40,25 @@ class SessionWithHeaderRedirection(requests.Session):
         """
 
         super(SessionWithHeaderRedirection, self).__init__()
-        self.auth = (username, password)
-
-   # Overrides from the library to keep headers when redirected to or from
-   # the NASA auth host.
+        self.__username = username
+        self.__password = password
 
     def rebuild_auth(self, prepared_request, response):
+        """Overrides from the library to keep headers when redirected
+           to or from the NASA auth host.
+        """
         headers = prepared_request.headers
-        url = prepared_request.url
-        if "Authorization" in headers:
-            original_parsed = requests.utils.urlparse(response.request.url)
-            redirect_parsed = requests.utils.urlparse(url)
-            if (original_parsed.hostname != redirect_parsed.hostname) and redirect_parsed.hostname != self.AUTH_HOST and original_parsed.hostname != self.AUTH_HOST:
-                del headers["Authorization"]
+        original_parsed = requests.utils.urlparse(response.request.url)
+        redirect_parsed = requests.utils.urlparse(prepared_request.url)
+        if (original_parsed.hostname != redirect_parsed.hostname) and \
+            redirect_parsed.hostname != self.AUTH_HOST and \
+            original_parsed.hostname != self.AUTH_HOST:
+            if 'Authorization' in headers:
+                del headers['Authorization']
+        elif redirect_parsed.hostname == self.AUTH_HOST and 'Authorization' not in headers:
+            headers['Authorization'] = 'Basic %s' %  \
+                b64encode(bytes(f"{self.__username}:{self.__password}", 'utf-8')).decode("ascii")
+        return
 
 
 class DateHelper(object):

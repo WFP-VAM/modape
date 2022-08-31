@@ -22,7 +22,7 @@ import pandas as pd
 from pycksum import cksum
 from requests.adapters import HTTPAdapter
 from requests.exceptions import HTTPError, ConnectionError #pylint: disable=W0622
-from requests.packages.urllib3.util.retry import Retry
+from urllib3.util import Retry
 
 from modape.exceptions import DownloadError
 from modape.utils import SessionWithHeaderRedirection
