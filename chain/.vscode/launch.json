@@ -27,6 +27,35 @@
             "program": "arc_modis_ndvi.py",
             "args": ["--config", "production.example.json", "check"],
             "console": "integratedTerminal"
+        },
+        {
+            "name": "test download",
+            "type": "python",
+            "request": "launch",
+            "program": "test_download.py",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "test download per cookiejar",
+            "type": "python",
+            "request": "launch",
+            "program": "test_per_cookiejar.py",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "test modis_download",
+            "type": "python",
+            "request": "launch",
+            "program": "/workspaces/modape/modape/scripts/modis_download.py",
+            "args": [
+                "--download", "--multithread", "--nthreads", "4",
+                "--username=africanriskcapacity", "--password=Nasa4ARC!",
+                "--robust", "--target-empty", "--match-begin", "--collection", "061",
+                "--tile-filter", "h16v07,h17v07,h16v06,h17v06",
+                "-b", "2021-07-04", "-e", "2021-12-31", "M?D13A2"
+            ],
+            "cwd": "/var/storage",
+            "console": "integratedTerminal"
         }
     ]
 }

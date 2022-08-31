@@ -40,7 +40,7 @@ RUN cd /usr/src && tar -xzf gdal-3.2.0.tar.gz && cd gdal-3.2.0 \
   && ldconfig
 
 RUN python -m pip install numpy>=1.16.1 h5py>=2.9 pandas>=0.24 click==7.1.2
-RUN python -m pip install cython gunicorn flask gdal==3.2.0
+RUN python -m pip install cython gunicorn flask==2.1.3 gdal==3.2.0
 RUN python -m pip install python-cmr>=0.4 requests>=2 pycksum>=0.4.3
 
 ARG USERNAME=worker
