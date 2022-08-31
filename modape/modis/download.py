@@ -14,6 +14,7 @@ from os.path import exists
 from pathlib import Path
 import re
 import shutil
+import hashlib
 from typing import List, Tuple, Union
 from xml.etree import ElementTree
 
@@ -183,8 +184,8 @@ class ModisQuery(object):
             for datafile in entry.iter(tag="DataFiles"):
                 for datafilecont in datafile.iter(tag="DataFileContainer"):
                     for content in datafilecont:
-                        if content.tag in ["Checksum", "FileSize"]:
-                            result.update({content.tag: int(content.text)})
+                        if content.tag in ["FileSize", "ChecksumType", "Checksum"]:
+                            result.update({content.tag: content.text.strip()})
         return result
 
 
@@ -230,11 +231,22 @@ class ModisQuery(object):
                         file_metadata = self._parse_hdfxml(response)
 
                     # check filesize
-                    assert filename_temp.stat().st_size == file_metadata["FileSize"]
+                    assert str(filename_temp.stat().st_size).strip() == file_metadata["FileSize"], \
+                        f'Size: {filename_temp.stat().st_size} != {file_metadata["FileSize"]}'
                     with open(filename_temp, "rb") as openfile:
-                        checksum = cksum(openfile)
+                        if file_metadata["ChecksumType"] == "CKSUM":
+                            checksum = str(cksum(openfile))
+                        elif file_metadata["ChecksumType"] == "MD5":
+                            md5_hash = hashlib.md5()
+                            chunk = openfile.read(65536)
+                            while chunk:
+                                md5_hash.update(chunk)
+                                chunk = openfile.read(65536)
+                            checksum = md5_hash.hexdigest().lower()
+                        else:
+                            raise ValueError(f'Unknown Checksum Type: {file_metadata["ChecksumType"]}')
                     # check checksum
-                    assert checksum == file_metadata["Checksum"]
+                    assert checksum == file_metadata["Checksum"], f'Hash: {checksum} != {file_metadata["Checksum"]}'
 
                 shutil.move(filename_temp, filename_full)
 
