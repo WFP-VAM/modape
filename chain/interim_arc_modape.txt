@@ -1,0 +1,19 @@
+
+Ad interim, an MODAPE fork has been deployed to yellow to fix the following problems:
+ 1. Changes @NASA in authentication flow
+ 2. Changes @NASA in file hashing (changed to MD5)
+
+#Stopped chain:
+wget --content-on-error -O- http://127.0.0.1:5001/suspend
+sudo systemctl stop arc_modis_ndvi.service
+#clone from Github
+sudo su ndvi-worker
+cd /var/storage
+mkdir modape-interim && cd modape-interim
+git clone -b arc-modis-ndvi-interim-2203 https://github.com/interob/modape.git
+cd modape
+workon arc-modis-ndvi
+pip install .
+exit
+sudo systemctl start arc_modis_ndvi.service
+wget --content-on-error -O- http://127.0.0.1:5001/fetch
