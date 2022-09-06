@@ -35,6 +35,9 @@
       - fix #83
   - #### v 1.0.1
     - pin `click` to version < 8
+  - #### v 1.0.2
+    - added support for MD5 checksum (used for download validation when using the -robust option)
+    - fixed authentication flow (#174)
 
 - ## v 0.3
   - #### v 0.3.0:
