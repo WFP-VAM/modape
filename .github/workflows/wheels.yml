@@ -22,7 +22,7 @@ jobs:
         env:
           CIBW_BEFORE_BUILD: "pip install cython numpy"
           CIBW_BUILD: "{cp,pp}3*-*"
-          CIBW_SKIP: "cp35-* *-manylinux_i686"
+          CIBW_SKIP: "cp35-* pp37-* *-manylinux_i686" 
 
       - uses: actions/upload-artifact@v2
         with:

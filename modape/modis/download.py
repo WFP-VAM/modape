@@ -184,7 +184,7 @@ class ModisQuery(object):
             for datafile in entry.iter(tag="DataFiles"):
                 for datafilecont in datafile.iter(tag="DataFileContainer"):
                     for content in datafilecont:
-                        if content.tag in ["FileSize", "ChecksumType", "Checksum"]:
+                        if content.tag in ("FileSize", "ChecksumType", "Checksum"):
                             result.update({content.tag: content.text.strip()})
         return result
 
