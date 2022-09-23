@@ -7,10 +7,16 @@ you intend to work in; then, as outlined in the deployment SOP, issue the follow
   pip install numpy
   pip install cython gunicorn flask gdal==3.2.0
   
+Then, outside ARC's "dev" repositoty directory tree, clone the WFP-VAM's modape repo (e.g. in /var/data/arc):
+
   git clone https://github.com/WFP-VAM/modape.git
   cd modape
-  git checkout -b v1.0rc origin/v1.0rc
+  git checkout tags/v1.0.2 -b modape-v1.0.2
   pip install .
+
+Now, make a bind mount to link the "chain" folder into the modape clone:
+
+  mount --bind ../dev/ServerSide/processing/arc_modis_ndvi ./chain
 
 Python FILES
 ------------
