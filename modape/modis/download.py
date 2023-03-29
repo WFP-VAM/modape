@@ -361,7 +361,10 @@ class ModisQuery(object):
             # check if downloads are OK
             for fid, err in downloaded_temp:
                 if err is None:
-                    del to_download[fid]
+                    try:
+                        del to_download[fid]
+                    except KeyError:
+                        del to_download[fid[:-4]]
                     downloaded.append(fid)
 
             if to_download:
