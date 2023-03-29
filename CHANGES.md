@@ -40,6 +40,7 @@
     - fixed authentication flow (#174)
   - #### v 1.0.3
     - added support for new metadata structure and SHA256 checksum (used for download validation when using the -robust option)
+    - added support for CMR advertising granules by name (without .hdf) rather than filename (with .hdf)
 
 - ## v 0.3
   - #### v 0.3.0:
