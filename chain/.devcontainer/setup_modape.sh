@@ -6,6 +6,6 @@ then
 else
     # When developing/deploying with WFP-VAM MODAPE installed as dependecy:
     echo "Cloning MODAPE from WFP-VAM repository..."
-    cd /var/tmp && git clone https://github.com/WFP-VAM/modape.git && cd modape && git checkout tags/v1.0.2 -b modape-v1.0.2
+    cd /var/tmp && git clone https://github.com/WFP-VAM/modape.git && cd modape && git checkout tags/v1.0.3 -b modape-v1.0.3
 fi
 pip install -e .
