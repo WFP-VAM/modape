@@ -566,6 +566,8 @@ def do_init(args):
                 end_date = min([datetime.strptime(args.init_end_date, '%Y-%m-%d').date(),
                                 begin_date.nextYear().prev().getDateTimeStart().date()])
                 begin_date = begin_date.getDateTimeStart().date()
+            else:
+                begin_date = ModisInterleavedOctad(begin_date).next().getDateTimeStart().date()
 
         if getattr(args, 'download_only', False):
             return

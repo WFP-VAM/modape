@@ -12,8 +12,8 @@
     "h18v07"
   ],
   "collection": "061",
-  "init_start_date": "2018-01-01",
-  "init_end_date": "2019-12-31",
+  "init_start_date": "2023-02-21",
+  "init_end_date": "2023-02-21",
   "expected_latency": 259200,
   "log_endpoint": "https://api.africariskview.org/log",
   "log_secret": "TTY665DE9U",
