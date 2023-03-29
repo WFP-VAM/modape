@@ -187,6 +187,16 @@ class ModisQuery(object):
                         if content.tag in ("FileSize", "ChecksumType", "Checksum"):
                             result.update({content.tag: content.text.strip()})
         return result
+    
+    @staticmethod
+    def _parse_cmrxml(response, hdf_filename):
+        result = {}
+        tree = ElementTree.fromstring(response.content)
+        entry = tree.find(f"DataGranule/AdditionalFile[Name = '{hdf_filename}']")
+        result.update({"FileSize": entry.find("SizeInBytes").text})
+        result.update({"ChecksumType": entry.find("Checksum/Algorithm").text})
+        result.update({"Checksum": entry.find("Checksum/Value").text})
+        return result
 
 
     def _fetch(self,
@@ -226,9 +236,14 @@ class ModisQuery(object):
 
                 if check:
 
-                    with session.get(url + ".xml", allow_redirects=True) as response:
-                        response.raise_for_status()
-                        file_metadata = self._parse_hdfxml(response)
+                    with session.get(url + ".xml", allow_redirects=True) as hdfxml:
+                        if hdfxml.status_code == 404:
+                            with session.get(url[:-4] + ".cmr.xml", allow_redirects=True) as cmrxml:
+                                cmrxml.raise_for_status()
+                                file_metadata = self._parse_cmrxml(cmrxml, url.split("/")[-1])
+                        else:
+                            hdfxml.raise_for_status()
+                            file_metadata = self._parse_hdfxml(hdfxml)
 
                     # check filesize
                     assert str(filename_temp.stat().st_size).strip() == file_metadata["FileSize"], \
@@ -243,6 +258,13 @@ class ModisQuery(object):
                                 md5_hash.update(chunk)
                                 chunk = openfile.read(65536)
                             checksum = md5_hash.hexdigest().lower()
+                        elif file_metadata["ChecksumType"] == "SHA256":
+                            sha256_hash = hashlib.sha256()
+                            chunk = openfile.read(65536)
+                            while chunk:
+                                sha256_hash.update(chunk)
+                                chunk = openfile.read(65536)
+                            checksum = sha256_hash.hexdigest().lower()
                         else:
                             raise ValueError(f'Unknown Checksum Type: {file_metadata["ChecksumType"]}')
                     # check checksum
