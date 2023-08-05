@@ -88,7 +88,7 @@ class ModisQuery(object):
                 raise ValueError("Expected point or bounding box as AOI")
 
     def search(self, match_begin: bool = True) -> None:
-        """Send quert to MODIS CMR servers.
+        """Send query to MODIS CMR servers.
 
         Constructs the query from parameters passed to `__init__`
         and sends the query to the NASA servers. The returned results
@@ -139,6 +139,11 @@ class ModisQuery(object):
 
         # final results
         self.nresults = len(self.results)
+        if self.nresults > 0:
+            print("Tiles found")
+            print("-----------")
+            for value in self.results:
+                print(f"tile {value}: {self.results[value]}") 
 
         log.debug("Search complete. Total results: %s, filtered: %s", len(results_all), self.nresults)
 
