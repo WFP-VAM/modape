@@ -143,10 +143,11 @@ class ModisQuery(object):
             print("Tiles found")
             print("-----------")
             for value in self.results:
+                res = self.results[value]
                 print(
-                    f"tile: {self.results[value]["tile"]} - "
-                    f"updated: {self.results[value]["updated"]} - "
-                    f"link: {self.results[value]["link"]}"
+                    f"tile: {res['tile']} - "
+                    f"updated: {res['updated']} - "
+                    f"link: {res['link']}"
                 ) 
 
         log.debug("Search complete. Total results: %s, filtered: %s", len(results_all), self.nresults)
