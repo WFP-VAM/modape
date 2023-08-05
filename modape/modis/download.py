@@ -144,7 +144,7 @@ class ModisQuery(object):
             print("-----------")
             for value in self.results:
                 print(
-                    f"tile: {self.resultas[value]["tile"]} - "
+                    f"tile: {self.results[value]["tile"]} - "
                     f"updated: {self.results[value]["updated"]} - "
                     f"link: {self.results[value]["link"]}"
                 ) 
