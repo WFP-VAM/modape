@@ -69,7 +69,7 @@ setup(
     setup_requires=["pytest-runner"],
     tests_require=["pytest", "click"],
     install_requires=[
-        "click<8",
+        "click>=8",
         "numpy>=1.16.1",
         "gdal>=2",
         "h5py>=2.9",
