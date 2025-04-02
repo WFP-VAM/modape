@@ -1,21 +1,24 @@
 """IO module for modape"""
-# pylint: disable=E0401, C0103
-from contextlib import contextmanager
-import logging
-from pathlib import Path
-from typing import List, Tuple
 
-from osgeo import gdal
+# pylint: disable=E0401, C0103
+import logging
+from contextlib import contextmanager
+from pathlib import Path
+from typing import Generator, List, Tuple
+
 import h5py
 import numpy as np
+from osgeo import gdal
 
 log = logging.getLogger(__name__)
+
 
 class HDF5Base(object):
     """Parent class for interaction with HDF5 files
 
     This class serves as a parent class for ModisRawH5 and ModisSmoothH5,
     enabling uniform chunked read and write of datasets and attributes to and from HDF5 files."""
+
     def __init__(self, filename: str) -> None:
         """Initialize HDF5Base instance.
 
@@ -29,11 +32,9 @@ class HDF5Base(object):
         self.filename = Path(filename)
         self.exists = self.filename.exists()
 
-    def read_chunked(self,
-                     dataset: str,
-                     xoffset: int = 0,
-                     xchunk: int = None,
-                     arr_out: np.ndarray = None) -> np.ndarray:
+    def read_chunked(
+        self, dataset: str, xoffset: int = 0, xchunk: int = None, arr_out: np.ndarray = None
+    ) -> Generator[np.ndarray, None, None]:
         """Read data from dataset in a chunked manner.
 
         The chunks are iterated in a row by column pattern, where
@@ -74,7 +75,11 @@ class HDF5Base(object):
                 if len(ds_shape) == 1:
                     arr_out = np.full((ychunk,), fill_value=ds.fillvalue, dtype=ds.dtype.name)
                 else:
-                    arr_out = np.full((ychunk, ds_shape[1]-xoffset), fill_value=ds.fillvalue, dtype=ds.dtype.name)
+                    arr_out = np.full(
+                        (ychunk, ds_shape[1] - xoffset),
+                        fill_value=ds.fillvalue,
+                        dtype=ds.dtype.name,
+                    )
 
             else:
                 assert isinstance(arr_out, np.ndarray)
@@ -94,24 +99,36 @@ class HDF5Base(object):
 
             with h5py.File(self.filename, "r") as h5f_open:
                 ds = h5f_open.get(dataset)
-                log.debug("Reading chunk %s - %s", yb, yb+ychunk)
+                log.debug("Reading chunk %s - %s", yb, yb + ychunk)
                 if xsize is not None:
                     for xb in range(0, xsize, xchunk):
                         xb_data = xb + xoffset
 
-                        log.debug("Reading arr_out[%s : %s, %s : %s] from dataset[:, %s : %s]", yb, yb+ychunk, xb, xb+xchunk, xb_data, xb_data+xchunk)
-                        arr_out[:, xb:(xb+xchunk)] = ds[yb:(yb+ychunk), xb_data:(xb_data+xchunk)]
+                        log.debug(
+                            "Reading arr_out[%s : %s, %s : %s] from dataset[:, %s : %s]",
+                            yb,
+                            yb + ychunk,
+                            xb,
+                            xb + xchunk,
+                            xb_data,
+                            xb_data + xchunk,
+                        )
+                        arr_out[:, xb : (xb + xchunk)] = ds[
+                            yb : (yb + ychunk), xb_data : (xb_data + xchunk)
+                        ]
                 else:
-                    arr_out[...] = ds[yb:(yb+ychunk)]
+                    arr_out[...] = ds[yb : (yb + ychunk)]
 
             yield arr_out
 
-    def write_chunk(self,
-                    dataset: str,
-                    arr_in: np.ndarray,
-                    xoffset: int = 0,
-                    xchunk: int = None,
-                    yoffset: int = 0) -> bool:
+    def write_chunk(
+        self,
+        dataset: str,
+        arr_in: np.ndarray,
+        xoffset: int = 0,
+        xchunk: int = None,
+        yoffset: int = 0,
+    ) -> bool:
         """Write chunk back to HDF5 file.
 
         Writes complete chunk back to HDF5 file, iterating
@@ -155,7 +172,7 @@ class HDF5Base(object):
                 if xchunk is None:
                     xchunk = xsize
             except ValueError:
-                ysize, = arr_in.shape
+                (ysize,) = arr_in.shape
                 xsize = None
 
             ysize = max(ysize, ychunk)
@@ -167,17 +184,26 @@ class HDF5Base(object):
 
                 for xb in range(0, xsize, xchunk):
                     xb_data = xb + xoffset
-                    log.debug("Writing dataset[%s : %s, %s : %s] from arr_in[:, %s : %s]", yoffset, yoffset+ysize, xb_data, xb_data+xchunk, xb, xb+xchunk)
-                    ds[yoffset:(yoffset+ysize), xb_data:(xb_data+xchunk)] = arr_in[:, xb:(xb+xchunk)]
+                    log.debug(
+                        "Writing dataset[%s : %s, %s : %s] from arr_in[:, %s : %s]",
+                        yoffset,
+                        yoffset + ysize,
+                        xb_data,
+                        xb_data + xchunk,
+                        xb,
+                        xb + xchunk,
+                    )
+                    ds[yoffset : (yoffset + ysize), xb_data : (xb_data + xchunk)] = arr_in[
+                        :, xb : (xb + xchunk)
+                    ]
             else:
-                log.debug("Writing dataset[%s : %s] from arr_in", yoffset, yoffset+ysize)
-                ds[yoffset:(yoffset+ysize)] = arr_in[...]
+                log.debug("Writing dataset[%s : %s] from arr_in", yoffset, yoffset + ysize)
+                ds[yoffset : (yoffset + ysize)] = arr_in[...]
 
         return True
 
     @staticmethod
-    def _get_reference_metadata(reference_file: str,
-                                sds_filter: str = None)-> dict:
+    def _get_reference_metadata(reference_file: str, sds_filter: str = None) -> dict:
         """Helper function to get metadata from reference file.
 
         Extracts metadata from subdataset, eitjer filtered
@@ -226,14 +252,14 @@ class HDF5Base(object):
 
         return metadata
 
+
 class HDFHandler(object):
     """Class to handle reading from MODIS HDF files.
 
     This class enables reading specific subdatasets and attributes
     from the raw MODIS HDF files."""
-    def __init__(self,
-                 files: List[str],
-                 sds: str) -> None:
+
+    def __init__(self, files: List[str], sds: str) -> None:
         """Initialize HDFHandler instance.
 
         Reads the datasets, extracts the subdatasets and keeps
@@ -250,7 +276,7 @@ class HDFHandler(object):
         self.handles = []
 
     @contextmanager
-    def open_datasets(self) -> None:
+    def open_datasets(self) -> Generator[None, None, None]:
         """Opens the selected subdataset from all files
         within a context manager and stores them in a class variable.
         When the context manager closes, the refereces are removed, closing
@@ -266,7 +292,7 @@ class HDFHandler(object):
             self.handles[ii] = None
         self.handles = []
 
-    def iter_handles(self) -> Tuple[int, "gdal.Dataset"]:
+    def iter_handles(self) -> Generator[Tuple[int, "gdal.Dataset"], None, None]:
         """Iterates over all open dataset handles
         coming from `open_datasets` and returns a Tuple with index and a
         `gdal.Dataset` for each.

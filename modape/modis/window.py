@@ -5,23 +5,27 @@ This file contains the classes and functions for extracting GeoTIFFs from HDF5 f
 
 Author: Valentin Pesendorfer, April 2019
 """
-# pylint: disable=import-error,R0903,W0706
-from contextlib import contextmanager
+
 import datetime
 import logging
+
+# pylint: disable=import-error,R0903,W0706
+from contextlib import contextmanager
 from os.path import exists
 from pathlib import Path
-from typing import Union, List
+from typing import List, Union
 from uuid import uuid4
 
-from osgeo import gdal
 import h5py
+import numpy as np
+from osgeo import gdal
+
 from modape.constants import DATE_LABELS
 from modape.exceptions import HDF5MosaicError
 from modape.utils import fromjulian
-import numpy as np
 
 log = logging.getLogger(__name__)
+
 
 class ModisMosaic(object):
     """Class for subsetting or mosaicing HDF5 files.
@@ -31,8 +35,7 @@ class ModisMosaic(object):
     The generated data will exported as GeoTIFF using the Python GDAL bindings.
     """
 
-    def __init__(self,
-                 input_files: List[str]) -> None:
+    def __init__(self, input_files: List[str]) -> None:
         """Initialize instance of `ModisMosaic` class.
 
         If multiple HDF5 files are specified as `input_files`, a mosaic of the files
@@ -58,7 +61,9 @@ class ModisMosaic(object):
                     try:
                         np.testing.assert_array_equal(dates, reference)
                     except AssertionError:
-                        raise HDF5MosaicError("Teporal axis of HDF5 input files incompatible for Mosaic")
+                        raise HDF5MosaicError(
+                            "Teporal axis of HDF5 input files incompatible for Mosaic"
+                        )
 
             self.files = input_files
         else:
@@ -67,21 +72,22 @@ class ModisMosaic(object):
                 dates = h5f_open.get("dates")[...]
         self.dates = [fromjulian(x.decode()) for x in dates]
 
-    def generate_mosaics(self,
-                         dataset,
-                         targetdir,
-                         target_srs: str = None,
-                         aoi: List[float] = None,
-                         overwrite: bool = False,
-                         force_doy: bool = False,
-                         prefix: str = None,
-                         start: datetime.date = None,
-                         stop: datetime.date = None,
-                         clip_valid: bool = False,
-                         round_int: int = None,
-                         last_smoothed: str = None,
-                         **kwargs,
-                        ) -> List:
+    def generate_mosaics(
+        self,
+        dataset,
+        targetdir,
+        target_srs: str = None,
+        aoi: List[float] = None,
+        overwrite: bool = False,
+        force_doy: bool = False,
+        prefix: str = None,
+        start: datetime.date = None,
+        stop: datetime.date = None,
+        clip_valid: bool = False,
+        round_int: int = None,
+        last_smoothed: str = None,
+        **kwargs,
+    ) -> List:
         """Generate GeoTIFF mosaics/subsets.
 
         This method is creating a GeoTiff mosaic/subsets from the HDF5 files
@@ -220,80 +226,88 @@ class ModisMosaic(object):
             log.info("Processing %s", filename)
 
             rasters = []
-            for file in self.files:
-                rasters.append(
-                    self._get_raster(
-                        file,
-                        dataset,
-                        clip_valid,
-                        round_int=round_int,
-                        ix=ii,
-                        last_smoothed=last_smoothed
+            try:
+                for file in self.files:
+                    rasters.append(
+                        self._get_raster(
+                            file,
+                            dataset,
+                            clip_valid,
+                            round_int=round_int,
+                            ix=ii,
+                            last_smoothed=last_smoothed,
+                        )
                     )
-                )
 
-            translate_options = {
-                "outputType": attrs["dtype"],
-                "noData": attrs["nodata"],
-                "outputSRS": target_srs,
-                "projWin": aoi
-            }
+                translate_options = {"outputType": attrs["dtype"], "noData": attrs["nodata"]}
+                if target_srs is not None:
+                    translate_options["outputSRS"] = target_srs
+                if aoi is not None:
+                    translate_options["projWin"] = aoi
 
-            translate_options.update(kwargs)
+                translate_options.update(kwargs)
 
-            if aoi is not None and all(output_res):
-                translate_options.update({
-                    "outputBounds": aoi,
-                    "width": abs(int(round((aoi[2] - aoi[0]) / output_res[0]))),
-                    "height": abs(int(round((aoi[3] - aoi[1]) / output_res[1])))
-                })
+                if aoi is not None and all(output_res):
+                    translate_options.update(
+                        {
+                            "outputBounds": aoi,
+                            "width": abs(int(round((aoi[2] - aoi[0]) / output_res[0]))),
+                            "height": abs(int(round((aoi[3] - aoi[1]) / output_res[1]))),
+                        }
+                    )
 
-            with self._mosaic(rasters,
-                              target_srs=target_srs,
-                              resample=resample,
-                              dtype=dtype,
-                              nodata=nodata,
-                              resolution=output_res,
-                              gdal_multithread=gdal_multithread,
-                             ) as warped_mosaic:
+                with self._mosaic(
+                    rasters,
+                    target_srs=target_srs,
+                    resample=resample,
+                    dtype=dtype,
+                    nodata=nodata,
+                    resolution=output_res,
+                    gdal_multithread=gdal_multithread,
+                ) as warped_mosaic:
 
-                log.debug("Writing to disk")
+                    log.debug("Writing to disk")
 
-                write_check = self._translate(
-                    src=warped_mosaic,
-                    dst=filename,
-                    **translate_options
-                )
+                    write_check = self._translate(
+                        src=warped_mosaic, dst=filename, **translate_options
+                    )
 
-                try:
-                    assert write_check, f"Error writing {filename}"
-                    mosaics.append(filename)
-                except:
-                    raise
-                finally:
-                    _ = [gdal.Unlink(x) for x in rasters]
+                    try:
+                        assert write_check, f"Error writing {filename}"
+                        mosaics.append(filename)
+                    except:
+                        raise
+
+            finally:
+                for x in rasters:
+                    gdal.Unlink(x)
 
         return mosaics
 
     @staticmethod
-    def _get_raster(file: Union[Path, str],
-                    dataset: str,
-                    clip_valid: bool,
-                    round_int: int,
-                    ix: int = None,
-                    last_smoothed: str = None) -> str:
+    def _get_raster(
+        file: Union[Path, str],
+        dataset: str,
+        clip_valid: bool,
+        round_int: int,
+        ix: int = None,
+        last_smoothed: str = None,
+    ) -> str:
 
         if dataset not in ["data", "sgrid"]:
-            raise NotImplementedError("_get_raster only implemented for datasetds 'data' and 'sgrid'")
+            raise NotImplementedError(
+                "_get_raster only implemented for datasetds 'data' and 'sgrid'"
+            )
 
         with h5py.File(file, "r") as h5f_open:
 
             if last_smoothed is not None:
                 dates = h5f_open.get("rawdates")
                 last_date = dates[-1].decode()
-                assert last_smoothed == last_date, \
-                    f"Last smoothed date in {file} is {last_date} not {last_smoothed}"
-                
+                assert (
+                    last_smoothed == last_date
+                ), f"Last smoothed date in {file} is {last_date} not {last_smoothed}"
+
             ds = h5f_open.get(dataset)
             assert ds, "Dataset doesn't exist!"
             dataset_shape = ds.shape
@@ -329,14 +343,16 @@ class ModisMosaic(object):
             if not sgrid:
                 raster_band.SetNoDataValue(int(attrs["nodata"]))
 
-            block_gen = ((x, x//attrs["RasterXSize"]) for x in range(0, dataset_shape[0], chunks[0]))
+            block_gen = (
+                (x, x // attrs["RasterXSize"]) for x in range(0, dataset_shape[0], chunks[0])
+            )
 
             for yblock_ds, yblock in block_gen:
 
                 if sgrid:
-                    arr = ds[yblock_ds:(yblock_ds+chunks[0])]
+                    arr = ds[yblock_ds : (yblock_ds + chunks[0])]
                 else:
-                    arr = ds[yblock_ds:(yblock_ds+chunks[0]), ix]
+                    arr = ds[yblock_ds : (yblock_ds + chunks[0]), ix]
 
                 if clip_valid:
                     vmin, vmax = attrs["valid_range"]
@@ -346,9 +362,7 @@ class ModisMosaic(object):
                     arr = np.round(arr, round_int)
 
                 raster_band.WriteArray(
-                    arr.reshape(-1, int(attrs["RasterXSize"])),
-                    xoff=0,
-                    yoff=int(yblock)
+                    arr.reshape(-1, int(attrs["RasterXSize"])), xoff=0, yoff=int(yblock)
                 )
 
             raster_band.FlushCache()
@@ -359,49 +373,47 @@ class ModisMosaic(object):
 
     @staticmethod
     @contextmanager
-    def _mosaic(input_rasters,
-                target_srs,
-                resample,
-                resolution,
-                dtype,
-                nodata,
-                gdal_multithread):
+    def _mosaic(input_rasters, target_srs, resample, resolution, dtype, nodata, gdal_multithread):
 
         vrt_tempname = f"/vsimem/{uuid4()}.vrt"
-        vrt = gdal.BuildVRT(vrt_tempname, input_rasters)
-        assert vrt
-        vrt.FlushCache()
-        vrt = None
-        log.debug("Created VRT")
+        try:
+            vrt = gdal.BuildVRT(vrt_tempname, input_rasters)
+            assert vrt
+            vrt.FlushCache()
+            log.debug("Created VRT")
 
-        wrp_tempname = f"/vsimem/{uuid4()}.tif"
-        wopt = gdal.WarpOptions(
-            dstSRS=target_srs,
-            outputType=dtype,
-            resampleAlg=resample,
-            xRes=resolution[0],
-            yRes=resolution[1],
-            srcNodata=nodata,
-            dstNodata=nodata,
-            multithread=gdal_multithread,
-        )
+            if target_srs is None:
+                yield vrt
+            else:
+                wrp_tempname = f"/vsimem/{uuid4()}.tif"
+                try:
+                    wopt = gdal.WarpOptions(
+                        dstSRS=target_srs,
+                        outputType=dtype,
+                        resampleAlg=resample,
+                        xRes=resolution[0],
+                        yRes=resolution[1],
+                        srcNodata=nodata,
+                        dstNodata=nodata,
+                        multithread=gdal_multithread,
+                    )
 
-        wrp = gdal.Warp(wrp_tempname, vrt_tempname, options=wopt)
-        assert wrp
+                    wrp = gdal.Warp(wrp_tempname, vrt_tempname, options=wopt)
+                    assert wrp
+                    log.debug("Created WRP")
+                    yield wrp
+                finally:
+                    log.debug("Performing Cleanup")
 
-        log.debug("Created WRP")
-
-        yield wrp
-
-        log.debug("Performing Cleanup")
-
-        wrp = None
-        vrt = None
-
-        rc1 = gdal.Unlink(vrt_tempname)
-        rc2 = gdal.Unlink(wrp_tempname)
-        if rc1 != 0 or rc2 != 0:
-            log.warning("Received return codes [%s, %s] while removing MemRasters", rc1, rc2)
+                    wrp = None
+                    if (rc := gdal.Unlink(wrp_tempname)) != 0:
+                        log.warning(
+                            "Received return codes %s while removing in-memory warped raster", rc
+                        )
+        finally:
+            vrt = None
+            if (rc := gdal.Unlink(vrt_tempname)) != 0:
+                log.warning("Received return codes %s while removing in-memory warped raster", rc)
 
     @staticmethod
     def _translate(src, dst, **kwargs):
@@ -414,7 +426,19 @@ class ModisMosaic(object):
         return True
 
     @staticmethod
-    def _get_metadata(reference, dataset):
+    def _get_metadata(reference: Union[Path, str], dataset: str):
+        """Get metadata
+
+        Args:
+            reference (str): Path to .H5 file
+            dataset (type): Dataset to mosaic (data or sgrid).
+        """
+
+        if dataset not in ["data", "sgrid"]:
+            raise NotImplementedError(
+                "_get_raster only implemented for datasetds 'data' and 'sgrid'"
+            )
+
         with h5py.File(reference, "r") as h5f_open:
             ds = h5f_open.get(dataset)
             assert ds

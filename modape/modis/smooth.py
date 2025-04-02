@@ -3,21 +3,32 @@ MODIS smooth HDF5 class.
 
 This file contains the class representing a smoothed MODIS HDF5 file.
 """
+
+import logging
+
 # pylint: disable=import-error
 from array import array
 from datetime import datetime, timedelta
-import logging
 from pathlib import Path
 
 import h5py
+import numpy as np
+from osgeo import gdal, osr
+
 from modape.constants import TEMPINT_LABELS
 from modape.exceptions import HDF5CreationError, HDF5WriteError
 from modape.modis.io import HDF5Base
 from modape.utils import DateHelper, fromjulian
-from modape.whittaker import lag1corr, ws2d, ws2dp, ws2doptv, ws2doptvp # pylint: disable=no-name-in-module
-import numpy as np
+from modape.whittaker import (  # pylint: disable=no-name-in-module
+    lag1corr,
+    ws2d,
+    ws2doptv,
+    ws2doptvp,
+    ws2dp,
+)
 
 log = logging.getLogger(__name__)
+
 
 class ModisSmoothH5(HDF5Base):
     """Class representing HDF5 file containing smoothed MODIS data.
@@ -28,11 +39,9 @@ class ModisSmoothH5(HDF5Base):
     to the smooth HDF5 file.
     """
 
-    def __init__(self,
-                 rawfile: str,
-                 targetdir: str,
-                 startdate: str = None,
-                 tempint: int = None) -> None:
+    def __init__(
+        self, rawfile: str, targetdir: str, startdate: str = None, tempint: int = None
+    ) -> None:
         """Initialize instance of `ModisSmoothH5` class.
 
         To create an instance of `ModisSmoothH5`, a full path to
@@ -77,28 +86,32 @@ class ModisSmoothH5(HDF5Base):
 
         # Filename for smoothed HDF5
         rawfile_trunk = self.rawfile.name.split(".")
-        smoothfile_trunk = ".".join(
-            rawfile_trunk[:-2] + \
-            ["tx"+txflag] + \
-            rawfile_trunk[-2:-1]
-        )
+        smoothfile_trunk = ".".join(rawfile_trunk[:-2] + ["tx" + txflag] + rawfile_trunk[-2:-1])
 
         filename = f"{targetdir}/{smoothfile_trunk}.h5"
 
         super().__init__(filename=filename)
 
-    def create(self):
+    def write_sgrid(self, sgrid: str):
+        if self.exists:
+            raise NotImplementedError("Updating S-grid not implemented")
+        return self.create(sgrid)
+
+    def create(self, sgrid: str = None):
         """Creates HDF5 file.
 
         If the corresponding HDF5 is not found in the target directory,
         it's created.
+
+        Args:
+           sgrid: import sgrid dataset from provided file
 
         Raises:
             HDF5CreationError: If creation of HDF5 file fails.
         """
 
         # Try reading info from raw HDF5
-        #pylint: disable=R1721
+        # pylint: disable=R1721
         with h5py.File(self.rawfile, "r") as h5f_raw:
             dset = h5f_raw.get("data")
             rawshape = dset.shape
@@ -106,53 +119,99 @@ class ModisSmoothH5(HDF5Base):
             datatype = dset.dtype
             compression = dset.compression
             raw_dates_all = [x.decode() for x in h5f_raw.get("dates")[...]]
-            raw_attrs = {key:value for key, value in dset.attrs.items()}
+            raw_attrs = {key: value for key, value in dset.attrs.items()}
 
         if self.temporalresolution is None:
             tempres = raw_attrs["temporalresolution"]
         else:
             tempres = self.temporalresolution
 
-        dates = DateHelper(rawdates=raw_dates_all,
-                           rtres=int(raw_attrs["temporalresolution"]),
-                           stres=int(tempres),
-                           start=self.startdate)
+        dates = DateHelper(
+            rawdates=raw_dates_all,
+            rtres=int(raw_attrs["temporalresolution"]),
+            stres=int(tempres),
+            start=self.startdate,
+        )
 
         dates_length = len(dates.target)
 
-        nrows = raw_attrs["RasterYSize"]
-        ncols = raw_attrs["RasterXSize"]
+        nrows = int(raw_attrs["RasterYSize"])
+        ncols = int(raw_attrs["RasterXSize"])
 
         try:
             with h5py.File(self.filename, "x", libver="latest") as h5f:
 
-                dset = h5f.create_dataset("data",
-                                          shape=(rawshape[0], dates_length),
-                                          dtype=datatype, maxshape=(rawshape[0], None),
-                                          chunks=rawchunks,
-                                          compression=compression,
-                                          fillvalue=raw_attrs["nodata"])
+                dset = h5f.create_dataset(
+                    "data",
+                    shape=(rawshape[0], dates_length),
+                    dtype=datatype,
+                    maxshape=(rawshape[0], None),
+                    chunks=rawchunks,
+                    compression=compression,
+                    fillvalue=raw_attrs["nodata"],
+                )
 
-                h5f.create_dataset("sgrid",
-                                   shape=(nrows*ncols,),
-                                   dtype="float32",
-                                   maxshape=(nrows*ncols,),
-                                   chunks=(rawchunks[0],),
-                                   compression=compression)
+                if sgrid is None:
+                    h5f.create_dataset(
+                        "sgrid",
+                        shape=(nrows * ncols,),
+                        dtype="float32",
+                        maxshape=(nrows * ncols,),
+                        chunks=(rawchunks[0],),
+                        compression=compression,
+                    )
+                else:
+                    ds: gdal.Dataset = gdal.Open(sgrid)
+                    try:
+                        # Check projection:
+                        assert (
+                            osr.SpatialReference(raw_attrs["projection"]).IsSame(ds.GetSpatialRef())
+                            == 1
+                        )
+                        h5gt = tuple(raw_attrs["geotransform"])
+                        sgt = ds.GetGeoTransform()
+                        # Check pixel size:
+                        assert np.isclose(h5gt[1], sgt[1])
+                        assert np.isclose(h5gt[5], sgt[5])
+                        xoff = round((h5gt[0] - sgt[0]) / h5gt[1])
+                        yoff = round((h5gt[3] - sgt[3]) / h5gt[5])
+                        # Check slicing window
+                        assert xoff >= 0
+                        assert yoff >= 0
+                        assert (xoff + ncols) <= ds.RasterXSize
+                        assert (yoff + nrows) <= ds.RasterYSize
+                        band: gdal.Band = ds.GetRasterBand(1)
+                        data: np.ndarray = band.ReadAsArray(
+                            xoff=xoff, yoff=yoff, win_xsize=ncols, win_ysize=nrows
+                        ).flatten()
+                        assert data.shape == (nrows * ncols,)
+                        h5f.create_dataset(
+                            "sgrid",
+                            data=data,
+                            maxshape=(nrows * ncols,),
+                            chunks=(rawchunks[0],),
+                            compression=compression,
+                        )
+                    finally:
+                        ds = None
 
-                h5f.create_dataset("dates",
-                                   shape=(dates_length,),
-                                   maxshape=(None,),
-                                   dtype="S8",
-                                   compression=compression,
-                                   data=np.array(dates.target, dtype="S8"))
+                h5f.create_dataset(
+                    "dates",
+                    shape=(dates_length,),
+                    maxshape=(None,),
+                    dtype="S8",
+                    compression=compression,
+                    data=np.array(dates.target, dtype="S8"),
+                )
 
-                h5f.create_dataset("rawdates",
-                                   shape=(len(raw_dates_all),),
-                                   maxshape=(None,),
-                                   dtype="S8",
-                                   compression=compression,
-                                   data=np.array(raw_dates_all, dtype="S8"))
+                h5f.create_dataset(
+                    "rawdates",
+                    shape=(len(raw_dates_all),),
+                    maxshape=(None,),
+                    dtype="S8",
+                    compression=compression,
+                    data=np.array(raw_dates_all, dtype="S8"),
+                )
 
                 raw_attrs["temporalresolution"] = tempres
                 dset.attrs.update(raw_attrs)
@@ -162,14 +221,15 @@ class ModisSmoothH5(HDF5Base):
             log.error("Error creating %s", str(self.filename))
             raise HDF5CreationError(f"Error creating {str(self.filename)}!")
 
-    def smooth(self,
-               svalue: float = None,
-               p: float = None,
-               soptimize: bool = None,
-               srange: np.ndarray = None,
-               nsmooth: int = 0,
-               nupdate: int = 0,
-               ) -> None:
+    def smooth(
+        self,
+        svalue: float = None,
+        p: float = None,
+        soptimize: bool = None,
+        srange: np.ndarray = None,
+        nsmooth: int = 0,
+        nupdate: int = 0,
+    ) -> None:
         """Applies Whittaker smoother to the data.
 
         This method reads raw data from the raw HDF5 and applies the Whittaker
@@ -238,14 +298,18 @@ class ModisSmoothH5(HDF5Base):
             temporalresolution = smt_attrs["temporalresolution"]
             tshift = int(smt_attrs["tshift"])
 
-            dates = DateHelper(rawdates=raw_dates_all,
-                               rtres=int(raw_attrs["temporalresolution"]),
-                               stres=int(temporalresolution),
-                               start=self.startdate)
+            dates = DateHelper(
+                rawdates=raw_dates_all,
+                rtres=int(raw_attrs["temporalresolution"]),
+                stres=int(temporalresolution),
+                start=self.startdate,
+            )
 
             # Resize if date list is bigger than shape of smoothed data
             if dates.target_length > smt_shape[1]:
-                log.debug("Resizing dataset! Current %s, required %s", smt_shape[1], dates.target_length)
+                log.debug(
+                    "Resizing dataset! Current %s, required %s", smt_shape[1], dates.target_length
+                )
                 smt_dates = h5f_open.get("dates")
                 smt_dates.resize((dates.target_length,))
                 smt_ds.resize((smt_shape[0], dates.target_length))
@@ -288,7 +352,7 @@ class ModisSmoothH5(HDF5Base):
             xoffset=read_offset,
             xchunk=10,
             arr_out=arr_raw,
-            )
+        )
 
         if soptimize or svalue is None:
             sgrid_generator = self.read_chunked(dataset="sgrid")
@@ -305,10 +369,10 @@ class ModisSmoothH5(HDF5Base):
             log.debug("Chunk %s", chunk_counter)
 
             # create weights
-            wts = (arr_raw_chunk != nodata)
+            wts = arr_raw_chunk != nodata
             wts = wts.astype("uint8")
 
-            ndix = np.sum(wts, 1) >= (arr_raw.shape[1] * 0.2) # 20%+ data
+            ndix = np.sum(wts, 1) >= (arr_raw.shape[1] * 0.2)  # 20%+ data
             map_index = np.where(ndix)[0]
 
             if sgrid_generator:
@@ -331,26 +395,24 @@ class ModisSmoothH5(HDF5Base):
                         sr = srange
 
                     if p is not None:
-                        arr_raw[ix, :], arr_sgrid[ix] = ws2doptvp(y=arr_raw[ix, :],
-                                                                  w=w,
-                                                                  llas=array("d", sr),
-                                                                  p=p)
+                        arr_raw[ix, :], arr_sgrid[ix] = ws2doptvp(
+                            y=arr_raw[ix, :], w=w, llas=array("d", sr), p=p
+                        )
                     else:
-                        arr_raw[ix, :], arr_sgrid[ix] = ws2doptv(y=arr_raw[ix, :],
-                                                                 w=w,
-                                                                 llas=array("d", sr))
+                        arr_raw[ix, :], arr_sgrid[ix] = ws2doptv(
+                            y=arr_raw[ix, :], w=w, llas=array("d", sr)
+                        )
 
                 else:
                     if svalue is None:
                         s = 10 ** arr_sgrid[ix]
                     else:
-                        s = 10 ** svalue
+                        s = 10**svalue
 
                     if p is None:
                         arr_raw[ix, :] = ws2d(y=arr_raw[ix, :], lmda=s, w=w)
                     else:
                         arr_raw[ix, :] = ws2dp(y=arr_raw[ix, :], lmda=s, w=w, p=p)
-
 
                 if self.tinterpolate:
 
@@ -368,7 +430,7 @@ class ModisSmoothH5(HDF5Base):
                 arr_in=arr_smt,
                 xoffset=write_offset,
                 xchunk=10,
-                yoffset=chunk_counter*raw_chunks[0],
+                yoffset=chunk_counter * raw_chunks[0],
             )
 
             if not write_check:
@@ -383,7 +445,7 @@ class ModisSmoothH5(HDF5Base):
                 write_check = self.write_chunk(
                     dataset="sgrid",
                     arr_in=arr_sgrid,
-                    yoffset=chunk_counter*raw_chunks[0],
+                    yoffset=chunk_counter * raw_chunks[0],
                 )
 
                 if not write_check:
@@ -423,9 +485,7 @@ class ModisSmoothH5(HDF5Base):
                 except KeyError:
                     pass
 
-            processing_info.update({
-                "processingtimestamp": processing_starttime
-                })
+            processing_info.update({"processingtimestamp": processing_starttime})
 
             smt_ds.attrs.update(processing_info)
 
@@ -435,7 +495,6 @@ class ModisSmoothH5(HDF5Base):
                 dates_ds.resize((len(raw_dates_all),))
 
             dates_ds[...] = np.array(raw_dates_all, dtype="S8")
-
 
     @property
     def last_collected(self):
@@ -457,15 +516,11 @@ class ModisSmoothH5(HDF5Base):
 
         return last_date
 
-    #pylint: disable=C0103
+    # pylint: disable=C0103
     @staticmethod
     def _apply_tinterpolate(z1, nodata, vector_daily, dix):
         z2 = vector_daily.copy()
         z2[z2 != nodata] = z1
-        z2[...] = ws2d(
-            y=z2,
-            lmda=0.0001,
-            w=np.array((z2 != nodata) * 1, dtype="double")
-        )
+        z2[...] = ws2d(y=z2, lmda=0.0001, w=np.array((z2 != nodata) * 1, dtype="double"))
 
         return z2[dix]
