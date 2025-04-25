@@ -110,7 +110,13 @@ def cli(
         clip_valid (bool): Clip data to valid range.
         round_int (int): Round integer.
         gdal_kwarg (Tuple[str]): translateOptions to the internal call to gdal::translate();
-                                 the Tuple of strings (item formatting: "key=value") is parsed into a dict.
+                                 the Tuple of strings (item formatting: "key=value") is parsed into a dict;
+                                 for the metadataOptions key, an ampersand (&) separated syntax is supported
+                                 on the command line, for example:
+                                   --gdal-kwarg metadataOptions=CONSOLIDATION_STAGE=2&FINAL=TRUE
+                                 which would add 2 metadata tags:
+                                   CONSOLIDATION_STAGE = 2
+                                   FINAL = TRUE
                                  Alternatively, passing a dict instead of a Tuple[str] is also supported.
         overwrite (bool): Overwrite existing Tiffs.
         last_smoothed (str): Rawdate (MODIS time step) that is checked to be the last in series at time of smoothing.
@@ -196,7 +202,13 @@ def cli(
     gdal_kwargs = {}
     if gdal_kwarg:
         if not isinstance(gdal_kwarg, dict):
-            gdal_kwargs.update({key: value for x in gdal_kwarg for key, value in [x.split("=")]})
+            for pair in gdal_kwarg:
+                if str(pair).lower().startswith("metadataoptions"):
+                    gdal_kwargs["metadataOptions"] = [
+                        metaPair.strip() for metaPair in pair[len("metadataOptions=") :].split("&")
+                    ]
+                else:
+                    gdal_kwargs.update({key: value for key, value in [pair.split("=")]})
         else:
             gdal_kwargs = gdal_kwarg
 
