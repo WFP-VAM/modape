@@ -8,6 +8,7 @@ import logging
 
 # pylint: disable=import-error
 from array import array
+from collections import namedtuple
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -126,12 +127,19 @@ class ModisSmoothH5(HDF5Base):
         else:
             tempres = self.temporalresolution
 
-        dates = DateHelper(
-            rawdates=raw_dates_all,
-            rtres=int(raw_attrs["temporalresolution"]),
-            stres=int(tempres),
-            start=self.startdate,
-        )
+        if len("".join(raw_dates_all)) > 0:
+            dates = DateHelper(
+                rawdates=raw_dates_all,
+                rtres=int(raw_attrs["temporalresolution"]),
+                stres=int(tempres),
+                start=self.startdate,
+            )
+        else:
+
+            class _EmptyDateHelper:
+                target = []
+
+            dates = _EmptyDateHelper()
 
         dates_length = len(dates.target)
 
