@@ -211,7 +211,11 @@ def cli(
                     "raw_h5": _raw_h5,
                     "compression": compression,
                     "force": force,
-                    "create_only": group.split(".")[2].strip("*") not in tiles_required,
+                    "create_only": (
+                        False
+                        if tiles_required is None
+                        else group.split(".")[2].strip("*") not in tiles_required
+                    ),
                 }
             }
         )
