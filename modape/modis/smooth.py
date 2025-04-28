@@ -285,21 +285,21 @@ class ModisSmoothH5(HDF5Base):
             if not isinstance(srange, np.ndarray):
                 raise ValueError("srange needs to be supplied as numpy array")
 
-        if len("".join(raw_dates_all)) == 0:
-            log.info("File %s is empty; nothing to smooth", str(self.filename))
-            return
-        else:
-            log.info("Runnig smoother on %s", str(self.filename))
-
         processing_starttime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         log.debug("Reading metadata from HDF5s")
         with h5py.File(self.rawfile, "r") as h5f_open:
+            raw_dates_all = [x.decode() for x in h5f_open.get("dates")]
+            if len("".join(raw_dates_all)) == 0:
+                log.info("File %s is empty; nothing to smooth", str(self.filename))
+                return
+            else:
+                log.info("Runnig smoother on %s", str(self.filename))
             raw_ds = h5f_open.get("data")
             raw_shape = raw_ds.shape
             raw_chunks = raw_ds.chunks
             raw_attrs = dict(raw_ds.attrs.items())
-            raw_dates_all = [x.decode() for x in h5f_open.get("dates")[...]]
+
             raw_dates_nsmooth = raw_dates_all[-nsmooth:]
 
         with h5py.File(self.filename, "r+") as h5f_open:
