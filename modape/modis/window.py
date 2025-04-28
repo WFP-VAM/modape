@@ -338,6 +338,16 @@ class ModisMosaic(object):
             fn = f"/vsimem/{uuid4()}.tif"
             ds = h5f_open.get(dataset)
             assert ds, "Dataset doesn't exist!"
+            dataset_shape = ds.shape
+            if len(dataset_shape) < 2:
+                sgrid = True
+                attrs = dict(h5f_open.get("data").attrs)
+
+            else:
+                if ix is None:
+                    raise ValueError("Need index for 2-d dataset!")
+                sgrid = False
+                attrs = dict(ds.attrs)
 
             dates = [x.decode() for x in h5f_open.get("rawdates")]
             if len("".join(dates)) > 0:
@@ -352,17 +362,6 @@ class ModisMosaic(object):
                 ) as raster_band:
                     pass
                 return fn
-
-            dataset_shape = ds.shape
-            if len(dataset_shape) < 2:
-                sgrid = True
-                attrs = dict(h5f_open.get("data").attrs)
-
-            else:
-                if ix is None:
-                    raise ValueError("Need index for 2-d dataset!")
-                sgrid = False
-                attrs = dict(ds.attrs)
 
             chunks = ds.chunks
             with create_raster(

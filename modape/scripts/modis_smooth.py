@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Tuple
 
 import click
+import h5py
 import numpy as np
 
 from modape.exceptions import SgridNotInitializedError
@@ -269,6 +270,10 @@ def _worker(
     last_collected: str,
     **kwargs: dict,
 ):
+
+    with h5py.File(str(rawfile), "r") as h5f_open:
+        if len("".join(x.decode() for x in h5f_open.get("dates"))) == 0:
+            return True
 
     smt_h5 = ModisSmoothH5(
         rawfile=str(rawfile), targetdir=str(targetdir), tempint=tempint, startdate=tempint_start
