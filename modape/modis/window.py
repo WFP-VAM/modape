@@ -13,7 +13,7 @@ import logging
 from contextlib import contextmanager
 from os.path import exists
 from pathlib import Path
-from typing import List, Union
+from typing import Generator, List, Union
 from uuid import uuid4
 
 import h5py
@@ -56,8 +56,11 @@ class ModisMosaic(object):
             for file in input_files:
                 with h5py.File(file, "r") as h5f_open:
                     dates = h5f_open.get("dates")[...]
+                    if len("".join(x.decode() for x in dates)) == 0:
+                        continue
                     if reference is None:
                         reference = dates
+                        continue
                     try:
                         np.testing.assert_array_equal(dates, reference)
                     except AssertionError:
@@ -66,6 +69,7 @@ class ModisMosaic(object):
                         )
 
             self.files = input_files
+            dates = reference
         else:
             self.files = [input_files]
             with h5py.File(input_files, "r") as h5f_open:
@@ -294,6 +298,36 @@ class ModisMosaic(object):
         last_smoothed: str = None,
     ) -> str:
 
+        @contextmanager
+        def create_raster(
+            fn: str, attrs, dtype, nodata_attr=None, fill_nodata=False
+        ) -> Generator[gdal.Band, None, None]:
+            driver: gdal.Driver = gdal.GetDriverByName("GTiff")
+
+            raster: gdal.Dataset = driver.Create(
+                fn,
+                int(attrs["RasterXSize"]),
+                int(attrs["RasterYSize"]),
+                1,
+                int(dtype),
+            )
+            raster.SetGeoTransform(attrs["geotransform"])
+            raster.SetProjection(attrs["projection"])
+
+            raster_band: gdal.Band = raster.GetRasterBand(1)
+
+            if nodata_attr is not None:
+                raster_band.SetNoDataValue(int(attrs[nodata_attr]))
+                if fill_nodata:
+                    raster_band.Fill(int(attrs[nodata_attr]))
+
+            try:
+                yield raster_band
+            finally:
+                raster_band.FlushCache()
+                raster.FlushCache()
+                raster_band, raster, driver = (None, None, None)
+
         if dataset not in ["data", "sgrid"]:
             raise NotImplementedError(
                 "_get_raster only implemented for datasetds 'data' and 'sgrid'"
@@ -301,17 +335,25 @@ class ModisMosaic(object):
 
         with h5py.File(file, "r") as h5f_open:
 
-            if last_smoothed is not None:
-                dates = h5f_open.get("rawdates")
-                last_date = dates[-1].decode()
-                assert (
-                    last_smoothed == last_date
-                ), f"Last smoothed date in {file} is {last_date} not {last_smoothed}"
-
+            fn = f"/vsimem/{uuid4()}.tif"
             ds = h5f_open.get(dataset)
             assert ds, "Dataset doesn't exist!"
-            dataset_shape = ds.shape
 
+            dates = [x.decode() for x in h5f_open.get("rawdates")]
+            if len("".join(dates)) > 0:
+                if last_smoothed is not None:
+                    last_date = dates[-1].decode()
+                    assert (
+                        last_smoothed == last_date
+                    ), f"Last smoothed date in {file} is {last_date} not {last_smoothed}"
+            else:
+                with create_raster(
+                    fn, attrs, ds.dtype.num, "nodata" if not sgrid else None, True
+                ) as raster_band:
+                    pass
+                return fn
+
+            dataset_shape = ds.shape
             if len(dataset_shape) < 2:
                 sgrid = True
                 attrs = dict(h5f_open.get("data").attrs)
@@ -323,51 +365,31 @@ class ModisMosaic(object):
                 attrs = dict(ds.attrs)
 
             chunks = ds.chunks
-            dtype = ds.dtype.num
+            with create_raster(
+                fn, attrs, ds.dtype.num, "nodata" if not sgrid else None
+            ) as raster_band:
 
-            driver = gdal.GetDriverByName("GTiff")
-            fn = f"/vsimem/{uuid4()}.tif"
-
-            raster = driver.Create(
-                fn,
-                int(attrs["RasterXSize"]),
-                int(attrs["RasterYSize"]),
-                1,
-                int(dtype),
-            )
-            raster.SetGeoTransform(attrs["geotransform"])
-            raster.SetProjection(attrs["projection"])
-
-            raster_band = raster.GetRasterBand(1)
-
-            if not sgrid:
-                raster_band.SetNoDataValue(int(attrs["nodata"]))
-
-            block_gen = (
-                (x, x // attrs["RasterXSize"]) for x in range(0, dataset_shape[0], chunks[0])
-            )
-
-            for yblock_ds, yblock in block_gen:
-
-                if sgrid:
-                    arr = ds[yblock_ds : (yblock_ds + chunks[0])]
-                else:
-                    arr = ds[yblock_ds : (yblock_ds + chunks[0]), ix]
-
-                if clip_valid:
-                    vmin, vmax = attrs["valid_range"]
-                    arr = np.clip(arr, vmin, vmax, out=arr, where=arr != attrs["nodata"])
-
-                if round_int is not None:
-                    arr = np.round(arr, round_int)
-
-                raster_band.WriteArray(
-                    arr.reshape(-1, int(attrs["RasterXSize"])), xoff=0, yoff=int(yblock)
+                block_gen = (
+                    (x, x // attrs["RasterXSize"]) for x in range(0, dataset_shape[0], chunks[0])
                 )
 
-            raster_band.FlushCache()
-            raster.FlushCache()
-            raster_band, raster, driver = (None, None, None)
+                for yblock_ds, yblock in block_gen:
+
+                    if sgrid:
+                        arr = ds[yblock_ds : (yblock_ds + chunks[0])]
+                    else:
+                        arr = ds[yblock_ds : (yblock_ds + chunks[0]), ix]
+
+                    if clip_valid:
+                        vmin, vmax = attrs["valid_range"]
+                        arr = np.clip(arr, vmin, vmax, out=arr, where=arr != attrs["nodata"])
+
+                    if round_int is not None:
+                        arr = np.round(arr, round_int)
+
+                    raster_band.WriteArray(
+                        arr.reshape(-1, int(attrs["RasterXSize"])), xoff=0, yoff=int(yblock)
+                    )
 
             return fn
 

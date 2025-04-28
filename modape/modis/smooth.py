@@ -285,7 +285,11 @@ class ModisSmoothH5(HDF5Base):
             if not isinstance(srange, np.ndarray):
                 raise ValueError("srange needs to be supplied as numpy array")
 
-        log.info("Runnig smoother on %s", str(self.filename))
+        if len("".join(raw_dates_all)) == 0:
+            log.info("File %s is empty; nothing to smooth", str(self.filename))
+            return
+        else:
+            log.info("Runnig smoother on %s", str(self.filename))
 
         processing_starttime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
