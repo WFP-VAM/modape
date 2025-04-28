@@ -273,6 +273,7 @@ def _worker(
 
     with h5py.File(str(rawfile), "r") as h5f_open:
         if len("".join(x.decode() for x in h5f_open.get("dates"))) == 0:
+            log.info("File %s is empty; nothing to smooth", str(rawfile))
             return True
 
     smt_h5 = ModisSmoothH5(

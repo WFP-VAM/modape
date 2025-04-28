@@ -294,7 +294,7 @@ class ModisSmoothH5(HDF5Base):
                 log.info("File %s is empty; nothing to smooth", str(self.filename))
                 return
             else:
-                log.info("Runnig smoother on %s", str(self.filename))
+                log.info("Running smoother on %s", str(self.filename))
             raw_ds = h5f_open.get("data")
             raw_shape = raw_ds.shape
             raw_chunks = raw_ds.chunks

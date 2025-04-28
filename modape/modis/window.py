@@ -352,7 +352,7 @@ class ModisMosaic(object):
             dates = [x.decode() for x in h5f_open.get("rawdates")]
             if len("".join(dates)) > 0:
                 if last_smoothed is not None:
-                    last_date = dates[-1].decode()
+                    last_date = dates[-1]
                     assert (
                         last_smoothed == last_date
                     ), f"Last smoothed date in {file} is {last_date} not {last_smoothed}"
