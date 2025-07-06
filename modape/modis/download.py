@@ -238,7 +238,10 @@ class ModisQuery(object):
 
                     with session.get(url + ".xml", allow_redirects=True) as hdfxml:
                         if hdfxml.status_code == 404:
-                            with session.get(url[:-4] + ".cmr.xml", allow_redirects=True) as cmrxml:
+                            with session.get(
+                                (url[:-3] if url.endswith(".h5") else url[:-4]) + ".cmr.xml",
+                                allow_redirects=True,
+                            ) as cmrxml:
                                 cmrxml.raise_for_status()
                                 file_metadata = self._parse_cmrxml(cmrxml, url.split("/")[-1])
                         else:
