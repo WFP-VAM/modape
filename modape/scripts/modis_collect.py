@@ -7,6 +7,7 @@ import re
 import sys
 from concurrent.futures import ProcessPoolExecutor, wait
 from datetime import datetime
+from itertools import chain
 from pathlib import Path
 
 import click
@@ -46,6 +47,11 @@ from modape.modis import ModisRawH5
     help="Last collected date in julian format (YYYYDDD - %Y%j)",
 )
 @click.option("--tiles-required", type=click.STRING, help="Required tiles - supplied as csv list")
+@click.option(
+    "--report-collected",
+    is_flag=True,
+    help="Report collected files to stdout",
+)
 def cli(
     src_dir: str,
     targetdir: str,
@@ -57,6 +63,7 @@ def cli(
     force: bool,
     last_collected: datetime,
     tiles_required: str,
+    report_collected: bool,
 ) -> None:
     """Collect raw MODIS hdf files into a raw MODIS HDF5 file.
 
@@ -112,7 +119,7 @@ def cli(
 
     click.echo("Starting MODIS COLLECT!")
 
-    hdf_files = list(input_dir.glob("*hdf"))
+    hdf_files = list(chain(input_dir.glob("*.hdf"), input_dir.glob("*.h5")))
 
     if not hdf_files:
         raise ValueError(f"NO HDF files found in src_dir {src_dir}!")
@@ -168,7 +175,7 @@ def cli(
     groups = [".*".join(x) for x in zip(products, tiles, versions)]
     groups = list(
         {
-            re.sub("(M.{1})(D.+)", "M." + "\\2", x) if REGEX_PATTERNS["VIM"].match(x) else x
+            re.sub(r"(M.{1})(D.+)", "M." + "\\2", x) if REGEX_PATTERNS["VIM"].match(x) else x
             for x in groups
         }
     )  # Join MOD13/MYD13
@@ -182,6 +189,11 @@ def cli(
     for group in groups:
         group_pattern = re.compile(group + ".*hdf")
         group_files = [str(x) for x in hdf_files if group_pattern.match(x.name)]
+        if len(group_files) == 0:
+            # Fallback on processing .h5 files:
+            group_pattern = re.compile(group + ".*h5")
+            group_files = [str(x) for x in hdf_files if group_pattern.match(x.name)]
+            assert len(group_files) > 0
         group_files.sort()
 
         _raw_h5 = ModisRawH5(
@@ -266,6 +278,10 @@ def cli(
                 tf_open.write(to_remove_obj.name + "\n")
                 log.debug("Removing %s", to_remove)
                 to_remove_obj.unlink()
+
+    if report_collected and collected:
+        for to_report in collected:
+            click.echo(f"Collected: {to_report}")
 
     click.echo("MODIS COLLECT completed!")
 

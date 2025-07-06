@@ -2,13 +2,17 @@
 
 # pylint: disable=E0401, C0103
 import logging
+import re
+import uuid
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Generator, List, Tuple
+from typing import Any, Generator, List, Tuple
 
 import h5py
 import numpy as np
 from osgeo import gdal
+
+from modape.constants import PRODUCT_SDS_DICT, PRODUCT_SRS_DICT, REGEX_PATTERNS
 
 log = logging.getLogger(__name__)
 
@@ -227,6 +231,23 @@ class HDF5Base(object):
 
         """
 
+        if reference_file.endswith(".h5"):
+            with HDFHandler._open_h5_source(reference_file, sds_filter) as h5_source:
+                band: gdal.Band | None = h5_source.GetRasterBand(1)
+                try:
+                    assert band is not None
+                    c, a, b, f, d, e = h5_source.GetGeoTransform()
+                    return dict(
+                        RasterXSize=h5_source.RasterXSize,
+                        RasterYSize=h5_source.RasterYSize,
+                        geotransform=(c, a, b, f, d, e),
+                        projection=h5_source.GetProjection(),
+                        resolution=(a, e),
+                        nodata=band.GetNoDataValue(),
+                    )
+                finally:
+                    band = None
+
         ds = gdal.Open(reference_file)
         sds_all = ds.GetSubDatasets()
 
@@ -259,6 +280,47 @@ class HDFHandler(object):
     This class enables reading specific subdatasets and attributes
     from the raw MODIS HDF files."""
 
+    class HandleCollection:
+        def __init__(self, files, sds) -> None:
+            self.handles: list[gdal.Dataset | None] = []
+            self.files: list[str] = []
+
+            for ds_handle, filename in self._gen_sds_handle(files, sds):
+                self.handles.append(ds_handle)
+                self.files.append(filename)
+
+        def release(self):
+            for ii in range(len(self.handles)):
+                self.handles[ii] = None
+            self.handles = []
+
+        def __iter__(self) -> Generator[tuple[int, gdal.Dataset | None, str], None, None]:
+            """Iterates over all open dataset handles
+            coming from `open_datasets` and returns a Tuple with index and a
+            `gdal.Dataset` + filename for each.
+
+            Returns:
+                Tuple with index, corresponding `gdal.Dataset` and filename
+
+            """
+            assert len(self.handles) == len(self.files)
+            for ix, handle in enumerate(self.handles):
+                yield (ix, handle, self.files[ix])
+
+        @staticmethod
+        def _gen_sds_handle(
+            x: list[str], sds: str
+        ) -> Generator[tuple[gdal.Dataset | None, str], None, None]:
+            for xx in x:
+                try:
+                    ds = gdal.Open(xx)
+                    ds_sds = [x[0] for x in ds.GetSubDatasets() if sds in x[0]][0]
+                    yield gdal.Open(ds_sds), xx
+                    ds = None
+
+                except AttributeError:
+                    yield None, xx
+
     def __init__(self, files: List[str], sds: str) -> None:
         """Initialize HDFHandler instance.
 
@@ -273,41 +335,23 @@ class HDFHandler(object):
 
         self.files = files
         self.sds = sds
-        self.handles = []
 
     @contextmanager
-    def open_datasets(self) -> Generator[None, None, None]:
+    def open(self) -> Generator[HandleCollection, None, None]:
         """Opens the selected subdataset from all files
         within a context manager and stores them in a class variable.
         When the context manager closes, the refereces are removed, closing
         all datasets.
 
         """
-        for ds_handle in self._gen_sds_handle(self.files, self.sds):
-            self.handles.append(ds_handle)
 
-        yield
-
-        for ii in range(len(self.handles)):
-            self.handles[ii] = None
-        self.handles = []
-
-    def iter_handles(self) -> Generator[Tuple[int, "gdal.Dataset"], None, None]:
-        """Iterates over all open dataset handles
-        coming from `open_datasets` and returns a Tuple with index and a
-        `gdal.Dataset` for each.
-
-        Returns:
-            Tuple with index and corresponding `gdal.Dataset`
-
-        """
-        ix = 0
-        for handle in self.handles:
-            yield (ix, handle)
-            ix += 1
+        try:
+            yield (handles := HDFHandler.HandleCollection(self.files, self.sds))
+        finally:
+            handles.release()
 
     @staticmethod
-    def read_chunk(x: "gdal.Dataset", **kwargs: dict) -> np.ndarray:
+    def read_chunk(x: gdal.Dataset, **kwargs: dict[str, int | Any]) -> np.ndarray | None:
         """Reads a chunk of an opened subdataset.
 
         The size of the chunk being read is defined by the
@@ -325,13 +369,116 @@ class HDFHandler(object):
         return x.ReadAsArray(**kwargs)
 
     @staticmethod
-    def _gen_sds_handle(x: str, sds: str):
-        for xx in x:
-            try:
-                ds = gdal.Open(xx)
-                ds_sds = [x[0] for x in ds.GetSubDatasets() if sds in x[0]][0]
-                yield gdal.Open(ds_sds)
-                ds = None
+    @contextmanager
+    def _open_h5_source(path: str, sds_filter: str) -> Generator[gdal.Dataset, None, None]:
+        """Helper function to open .h5 sources for which GDAL has trouble
+        parsing metadata correctly. Also, products may have multiple NoData
+        values, i.e.: VNP13A2 defines -15000 as well as -13000
+        """
 
-            except AttributeError:
-                yield None
+        def write_memfile(memfile, buffer: bytes | str):
+            vsiFile = gdal.VSIFOpenL(memfile, "wb")
+            try:
+                if isinstance(buffer, str):
+                    buffer = str.encode(buffer)
+                gdal.VSIFWriteL(buffer, 1, len(buffer), vsiFile)
+            finally:
+                gdal.VSIFCloseL(vsiFile)
+
+        datatypes = {
+            gdal.GDT_Byte: ("Byte", 0, 255),
+            gdal.GDT_UInt16: ("UInt16", 0, 65535),
+            gdal.GDT_Int16: ("Int16", -32768, 32768),
+            gdal.GDT_UInt32: ("UInt32", 0, 4294967295),
+            gdal.GDT_Int32: ("Int32", -2147483648, 2147483647),
+        }
+
+        product = REGEX_PATTERNS["product"].findall(Path(path).name)[0]
+        tile = REGEX_PATTERNS["tile"].findall(Path(path).name)[0]
+        sds = PRODUCT_SDS_DICT[f"{product}_{sds_filter}"]
+        srs = PRODUCT_SRS_DICT[product]
+
+        # Example geotransformation for h16v07
+        #   tuple:
+        #     GT = (-2223901.0393329998, 926.62543305499980, 0.0, 2223901.0393329998, 0.0, -926.62543305499980):
+        #   explained:
+        #     GT[0] = UL x-coordinate for UL pixel: -2223901.0393329998
+        #     GT[1] = W-E pixel resolution / pixel width: 926.62543305499980
+        #     GT[2] = row rotation: 0
+        #     GT[3] = UL y-coordinate for UL pixel: 2223901.0393329998
+        #     GT[4] = column rotation: 0
+        #     GT[5] = N-S pixel resolution / pixel height: -926.62543305499980
+        #       (negative value for a north-up image).
+        #   computed:
+        #     GT[0] = (16 - 18) * 1200 * 926.6254330558334 = -2223901.03933
+        #     GT[3] = (7 - 9) * 1200 * -926.6254330558334 = 2223901.03933
+        h, v = tuple([int(hv) for hv in re.split(r"[^\d]+", tile) if len(hv) > 0])
+        srs_origin = srs["Origin"]
+        gdal_gt = ",".join(
+            str(factor)
+            for factor in [
+                ((h - srs_origin["h"]["index"]) * sds["Size"][0] * srs["PixelSize"][0])
+                + srs_origin["h"]["offset"],
+                srs["PixelSize"][0],
+                0.0,
+                ((v - srs_origin["v"]["index"]) * sds["Size"][1] * srs["PixelSize"][1])
+                + srs_origin["v"]["offset"],
+                0.0,
+                srs["PixelSize"][1],
+            ]
+        )
+        gdal_dt = datatypes[sds["DataType"]]
+        assert all(
+            (val < min(sds["ValueRange"]) or val > max(sds["ValueRange"]))
+            for val in sds["NoDataValue"]
+        ), f"Invalid Data / NoData configuration for product: {product}_{sds_filter}"
+
+        # Setup a LUT to reclass multiple NoData values into a single (lowest):
+        lut = []
+        for entry in sorted(
+            set([gdal_dt[1], gdal_dt[2], sds["ValueRange"][0], sds["ValueRange"][1]])
+        ):
+            if entry == min(sds["ValueRange"]):
+                if len(lut) > 0:
+                    lut.append(f"{entry-1}:{min(sds['NoDataValue'])}")
+                lut.append(f"{entry}:{entry}")
+            elif entry == max(sds["ValueRange"]):
+                lut.append(f"{entry}:{entry}")
+                if entry < gdal_dt[2]:
+                    lut.append(f"{entry+1}:{min(sds['NoDataValue'])}")
+            elif entry == gdal_dt[1] or (
+                entry == gdal_dt[2] and entry > (max(sds["ValueRange"]) + 1)
+            ):
+                lut.append(f"{entry}:{min(sds['NoDataValue'])}")
+
+        vrt = f"""\
+<VRTDataset rasterXSize="{sds['Size'][0]}" rasterYSize="{sds['Size'][1]}">
+  <SRS dataAxisToSRSAxisMapping="{srs['AxisMapping']}">{srs['ProjectionWKT']}</SRS>
+  <GeoTransform>{gdal_gt}</GeoTransform>
+  <VRTRasterBand
+    dataType="{gdal_dt[0]}" band="1"
+    BlockXSize="{sds["BlockSize"][0]}" BlockYSize="{sds["BlockSize"][1]}">
+    <NoDataValue>{min(sds['NoDataValue'])}</NoDataValue>
+    <ComplexSource>
+      <SourceFilename relativeToVRT="0">HDF5:{path}:{sds['Name']}</SourceFilename>
+      <SourceBand>1</SourceBand>
+      <SourceProperties
+        RasterXSize="{sds["Size"][0]}" RasterYSize="{sds["Size"][1]}"
+        DataType="{gdal_dt[0]}"
+        BlockXSize="{sds["BlockSize"][0]}" BlockYSize="{sds["BlockSize"][1]}" />
+      <SrcRect xOff="0" yOff="0" xSize="{sds["Size"][0]}" ySize="{sds["Size"][1]}" />
+      <DstRect xOff="0" yOff="0" xSize="{sds["Size"][0]}" ySize="{sds["Size"][1]}" />
+      <LUT>{lut}</LUT>
+    </ComplexSource>
+  </VRTRasterBand>
+</VRTDataset>
+        """
+        fn_vsi = f"/vsimem/{str(uuid.uuid4())}.vrt"
+        write_memfile(fn_vsi, vrt)
+        ds: gdal.Dataset | None = gdal.Open(fn_vsi)
+        try:
+            assert ds is not None
+            yield ds
+        finally:
+            ds = None
+            gdal.Unlink(fn_vsi)
