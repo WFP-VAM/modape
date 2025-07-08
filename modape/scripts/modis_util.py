@@ -17,13 +17,16 @@ def cli():
 @click.argument("min", type=click.INT)
 @click.argument("max", type=click.INT)
 def edit_range(pathglob: str, min: int, max: int):
+    assert min <= max
+
+    path = Path("./")
+    glob = pathglob
     try:
         split_at = pathglob.rindex("/")
         path = Path(pathglob[:split_at])
         glob = pathglob[split_at + 1 :]
     except ValueError:
-        path = Path("./")
-        glob = pathglob
+        pass
 
     for filepath in path.glob(glob):
         click.echo(f"Updating: {filepath.as_posix()}")
