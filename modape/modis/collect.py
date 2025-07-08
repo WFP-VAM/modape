@@ -19,6 +19,7 @@ import numpy as np
 
 from modape.constants import (
     LST_NAME_LUD,
+    PRODUCT_SDS_DICT,
     REGEX_PATTERNS,
     TEMPORAL_DICT,
     VAM_PRODUCT_CODES,
@@ -292,7 +293,12 @@ class ModisRawH5(HDF5Base):
                 dset.attrs.update(ref_metadata)
 
                 if self.vam_product_code == "VIM":
+                    product = REGEX_PATTERNS["product"].findall(Path(self.filename).name)[0]
                     valid_range = (-2000, 10000)
+                    try:
+                        valid_range = PRODUCT_SDS_DICT[f"{product}_NDVI"]["ValueRange"]
+                    except KeyError:
+                        pass
                 elif self.vam_product_code in ["LTD", "LTN"]:
                     valid_range = (7500, 65535)
                 else:
