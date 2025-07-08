@@ -73,13 +73,20 @@ def check_dates(pathglob: str, start: int, end: int):
     except ValueError:
         pass
 
+    checked = 0
+    steps = 0
     for filepath in path.glob(glob):
         with h5py.File(filepath, "r", libver="latest") as h5f:
             dates = h5f.get("dates")
             date_values = set([int(x.decode()) for x in dates[...]])
+            steps = 0
             for year_doy in Oct46Generator.for_start_end(start, end):
                 if year_doy not in date_values:
                     click.echo(f"Missing date {year_doy} in file {filepath.name}!")
+                steps += 1
+        checked += 1
+
+    click.echo(f"Done. Checked: {checked} files for {steps} dates (each).")
 
 
 def cli_wrap():
