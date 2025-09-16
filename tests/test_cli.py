@@ -27,7 +27,10 @@ import numpy as np
 import h5py
 import pandas as pd
 
-from test_modis import create_h5temp
+try:
+    from test_modis import create_h5temp
+except ImportError:
+    from .test_modis import create_h5temp
 
 
 class TestConsoleScripts(unittest.TestCase):
@@ -240,7 +243,7 @@ class TestConsoleScripts(unittest.TestCase):
         tracefile = data_dir.joinpath(".collected")
         self.assertTrue(not any([Path(x).exists() for x in product_files]))
         with open(str(tracefile), "r") as thefile:
-            collected = [x.strip() for x in thefile.readlines()]
+            collected = [x.strip().split(";")[0] for x in thefile.readlines()]
         self.assertTrue(all([x in self.vim_files for x in collected]))
 
         for file in self.vim_files:

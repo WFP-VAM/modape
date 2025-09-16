@@ -76,7 +76,9 @@ class ModisQuery(object):
         self.api = GranuleQuery()
 
         # construct query
-        self.api.parameters(short_name=products, version=version, temporal=(begindate, enddate))
+        self.api.parameters(
+            short_name=products, version=version, temporal=(begindate, enddate)
+        )
 
         if aoi is not None:
             if len(aoi) == 2:
@@ -114,7 +116,6 @@ class ModisQuery(object):
         log.debug("Query complete, filtering results")
 
         for result in self._parse_response(results_all):
-
             # skip tiles outside of filter
             if self.tile_filter and result["tile"]:
                 if result["tile"] not in self.tile_filter:
@@ -140,7 +141,9 @@ class ModisQuery(object):
         self.nresults = len(self.results)
 
         log.debug(
-            "Search complete. Total results: %s, filtered: %s", len(results_all), self.nresults
+            "Search complete. Total results: %s, filtered: %s",
+            len(results_all),
+            self.nresults,
         )
 
     @staticmethod
@@ -158,7 +161,6 @@ class ModisQuery(object):
         tile_regxp = re.compile(r".+(h\d+v\d+).+")
 
         for entry in query:
-
             entry_parsed = dict(
                 filename=entry["producer_granule_id"],
                 time_start=pd.Timestamp(entry["time_start"]).date(),
@@ -226,9 +228,15 @@ class ModisQuery(object):
             try:
                 with session.get(url + ".xml", allow_redirects=True) as hdfxml:
                     if hdfxml.status_code == 404:
-                        with session.get(url[:-4] + ".cmr.xml", allow_redirects=True) as cmrxml:
+                        with session.get(
+                            (url[:-3] if url.endswith(".h5") else url[:-4])
+                            + ".cmr.xml",
+                            allow_redirects=True,
+                        ) as cmrxml:
                             cmrxml.raise_for_status()
-                            file_metadata = self._parse_cmrxml(cmrxml, url.split("/")[-1])
+                            file_metadata = self._parse_cmrxml(
+                                cmrxml, url.split("/")[-1]
+                            )
                     else:
                         hdfxml.raise_for_status()
                         file_metadata = self._parse_hdfxml(hdfxml)
@@ -236,7 +244,7 @@ class ModisQuery(object):
                 # check filesize
                 assert (
                     str(_downloaded.stat().st_size).strip() == file_metadata["FileSize"]
-                ), f'Size: {_downloaded.stat().st_size} != {file_metadata["FileSize"]}'
+                ), f"Size: {_downloaded.stat().st_size} != {file_metadata['FileSize']}"
                 with open(_downloaded, "rb") as openfile:
                     if file_metadata["ChecksumType"] == "CKSUM":
                         checksum = str(cksum(openfile))
@@ -255,11 +263,13 @@ class ModisQuery(object):
                             chunk = openfile.read(65536)
                         checksum = sha256_hash.hexdigest().lower()
                     else:
-                        raise ValueError(f'Unknown Checksum Type: {file_metadata["ChecksumType"]}')
+                        raise ValueError(
+                            f"Unknown Checksum Type: {file_metadata['ChecksumType']}"
+                        )
                 # check checksum
-                assert (
-                    checksum == file_metadata["Checksum"]
-                ), f'Hash: {checksum} != {file_metadata["Checksum"]}'
+                assert checksum == file_metadata["Checksum"], (
+                    f"Hash: {checksum} != {file_metadata['Checksum']}"
+                )
             except Exception:
                 if raise_on_error:
                     raise
@@ -270,12 +280,10 @@ class ModisQuery(object):
         filename_full = destination.joinpath(filename)
 
         if not exists(filename_full) or overwrite:
-
             fp_download = filename_full if mirror is None else mirror.joinpath(filename)
             fp_modapedl = fp_download.with_suffix(".modapedl")
 
             try:
-
                 if exists(fp_download):
                     if _check(fp_download, not overwrite):
                         # File is fine...
@@ -296,7 +304,9 @@ class ModisQuery(object):
                 with session.get(url, stream=True, allow_redirects=True) as response:
                     response.raise_for_status()
                     with open(fp_modapedl, "wb") as openfile:
-                        shutil.copyfileobj(response.raw, openfile, length=16 * 1024 * 1024)
+                        shutil.copyfileobj(
+                            response.raw, openfile, length=16 * 1024 * 1024
+                        )
 
                 if check:
                     _check(fp_modapedl)
@@ -314,7 +324,9 @@ class ModisQuery(object):
                     pass
                 return (filename, e)
         else:
-            log.info("%s exists in target. Please set overwrite to True.", filename_full)
+            log.info(
+                "%s exists in target. Please set overwrite to True.", filename_full
+            )
 
         return (filename, None)
 
@@ -367,16 +379,18 @@ class ModisQuery(object):
         downloaded = []
 
         while True:
-
             with SessionWithHeaderRedirection(username, password) as session:
-
                 backoff = min(450, 2**retry_count)
 
-                retries = Retry(total=5, backoff_factor=backoff, status_forcelist=[502, 503, 504])
+                retries = Retry(
+                    total=5, backoff_factor=backoff, status_forcelist=[502, 503, 504]
+                )
                 session.mount(
                     "https://",
                     HTTPAdapter(
-                        pool_connections=nthreads, pool_maxsize=nthreads * 2, max_retries=retries
+                        pool_connections=nthreads,
+                        pool_maxsize=nthreads * 2,
+                        max_retries=retries,
                     ),
                 )
 
@@ -387,11 +401,12 @@ class ModisQuery(object):
                     )
                     # warm up pool
                     _ = session.get(
-                        list(to_download.values())[0]["link"], stream=True, allow_redirects=True
+                        list(to_download.values())[0]["link"],
+                        stream=True,
+                        allow_redirects=True,
                     )
 
                     with ThreadPoolExecutor(nthreads) as executor:
-
                         futures = [
                             executor.submit(
                                 self._fetch,
@@ -412,10 +427,14 @@ class ModisQuery(object):
                     downloaded_temp = []
 
                     for _, values in to_download.items():
-
                         downloaded_temp.append(
                             self._fetch(
-                                session, values["link"], targetdir, overwrite, robust, mirror
+                                session,
+                                values["link"],
+                                targetdir,
+                                overwrite,
+                                robust,
+                                mirror,
                             )
                         )
 
