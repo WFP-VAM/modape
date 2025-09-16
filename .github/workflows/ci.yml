@@ -25,7 +25,7 @@ jobs:
       - name: install dependencies
         run: |
           sudo apt-get update && sudo apt-get install -y libgdal-dev
-          pip install "pycksum>=0.4.7" cython "numpy<2"
+          pip install pytest pytest-cov "pycksum>=0.4.7" cython "numpy<2"
       - name: build gdal
         run: pip install gdal==$(gdal-config --version)
       - name: build
