@@ -7,28 +7,29 @@ raw MODIS products from NASA's servers.
 
 # pylint: disable=E0401, E0611
 
-from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
+import hashlib
 import logging
-from os.path import exists
-from pathlib import Path
 import re
 import shutil
-import hashlib
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
+from os.path import exists
+from pathlib import Path
 from typing import List, Tuple, Union
 from xml.etree import ElementTree
 
-from cmr import GranuleQuery
 import pandas as pd
+from cmr import GranuleQuery
 from pycksum import cksum
 from requests.adapters import HTTPAdapter
-from requests.exceptions import HTTPError, ConnectionError #pylint: disable=W0622
+from requests.exceptions import ConnectionError, HTTPError  # pylint: disable=W0622
 from urllib3.util import Retry
 
 from modape.exceptions import DownloadError
 from modape.utils import SessionWithHeaderRedirection
 
 log = logging.getLogger(__name__)
+
 
 class ModisQuery(object):
     """Class for querying and downloading MODIS data.
@@ -38,13 +39,15 @@ class ModisQuery(object):
     the `download` method, to fetch the resulting HDF files to local disk.
     """
 
-    def __init__(self,
-                 products: List[str],
-                 aoi: List[Union[float, int]] = None,
-                 begindate: datetime = None,
-                 enddate: datetime = None,
-                 tile_filter: List[str] = None,
-                 version: str = "006") -> None:
+    def __init__(
+        self,
+        products: List[str],
+        aoi: List[Union[float, int]] = None,
+        begindate: datetime = None,
+        enddate: datetime = None,
+        tile_filter: List[str] = None,
+        version: str = "006",
+    ) -> None:
         """Initialize instance ModisQuery class.
 
         This creates an instance of `ModisQuery` with the basic query parameters.
@@ -73,11 +76,7 @@ class ModisQuery(object):
         self.api = GranuleQuery()
 
         # construct query
-        self.api.parameters(
-            short_name=products,
-            version=version,
-            temporal=(begindate, enddate)
-        )
+        self.api.parameters(short_name=products, version=version, temporal=(begindate, enddate))
 
         if aoi is not None:
             if len(aoi) == 2:
@@ -140,8 +139,9 @@ class ModisQuery(object):
         # final results
         self.nresults = len(self.results)
 
-        log.debug("Search complete. Total results: %s, filtered: %s", len(results_all), self.nresults)
-
+        log.debug(
+            "Search complete. Total results: %s, filtered: %s", len(results_all), self.nresults
+        )
 
     @staticmethod
     def _parse_response(query: List[dict]) -> dict:
@@ -180,14 +180,14 @@ class ModisQuery(object):
     def _parse_hdfxml(response):
         result = {}
         tree = ElementTree.fromstring(response.content)
-        for entry in tree.iter(tag='GranuleURMetaData'):
+        for entry in tree.iter(tag="GranuleURMetaData"):
             for datafile in entry.iter(tag="DataFiles"):
                 for datafilecont in datafile.iter(tag="DataFileContainer"):
                     for content in datafilecont:
                         if content.tag in ("FileSize", "ChecksumType", "Checksum"):
                             result.update({content.tag: content.text.strip()})
         return result
-    
+
     @staticmethod
     def _parse_cmrxml(response, hdf_filename):
         result = {}
@@ -198,14 +198,14 @@ class ModisQuery(object):
         result.update({"Checksum": entry.find("Checksum/Value").text})
         return result
 
-
-    def _fetch(self,
-               session: SessionWithHeaderRedirection,
-               url: str,
-               destination: Path,
-               overwrite: bool,
-               check: bool,
-               ) -> Tuple[str, Union[None, Exception]]:
+    def _fetch(
+        self,
+        session: SessionWithHeaderRedirection,
+        url: str,
+        destination: Path,
+        overwrite: bool,
+        check: bool,
+    ) -> Tuple[str, Union[None, Exception]]:
         """Helper function to fetch HDF files
 
         Args:
@@ -232,13 +232,16 @@ class ModisQuery(object):
                 with session.get(url, stream=True, allow_redirects=True) as response:
                     response.raise_for_status()
                     with open(filename_temp, "wb") as openfile:
-                        shutil.copyfileobj(response.raw, openfile, length=16*1024*1024)
+                        shutil.copyfileobj(response.raw, openfile, length=16 * 1024 * 1024)
 
                 if check:
 
                     with session.get(url + ".xml", allow_redirects=True) as hdfxml:
                         if hdfxml.status_code == 404:
-                            with session.get(url[:-4] + ".cmr.xml", allow_redirects=True) as cmrxml:
+                            with session.get(
+                                (url[:-3] if url.endswith(".h5") else url[:-4]) + ".cmr.xml",
+                                allow_redirects=True,
+                            ) as cmrxml:
                                 cmrxml.raise_for_status()
                                 file_metadata = self._parse_cmrxml(cmrxml, url.split("/")[-1])
                         else:
@@ -246,8 +249,9 @@ class ModisQuery(object):
                             file_metadata = self._parse_hdfxml(hdfxml)
 
                     # check filesize
-                    assert str(filename_temp.stat().st_size).strip() == file_metadata["FileSize"], \
-                        f'Size: {filename_temp.stat().st_size} != {file_metadata["FileSize"]}'
+                    assert (
+                        str(filename_temp.stat().st_size).strip() == file_metadata["FileSize"]
+                    ), f'Size: {filename_temp.stat().st_size} != {file_metadata["FileSize"]}'
                     with open(filename_temp, "rb") as openfile:
                         if file_metadata["ChecksumType"] == "CKSUM":
                             checksum = str(cksum(openfile))
@@ -266,9 +270,13 @@ class ModisQuery(object):
                                 chunk = openfile.read(65536)
                             checksum = sha256_hash.hexdigest().lower()
                         else:
-                            raise ValueError(f'Unknown Checksum Type: {file_metadata["ChecksumType"]}')
+                            raise ValueError(
+                                f'Unknown Checksum Type: {file_metadata["ChecksumType"]}'
+                            )
                     # check checksum
-                    assert checksum == file_metadata["Checksum"], f'Hash: {checksum} != {file_metadata["Checksum"]}'
+                    assert (
+                        checksum == file_metadata["Checksum"]
+                    ), f'Hash: {checksum} != {file_metadata["Checksum"]}'
 
                 shutil.move(filename_temp, filename_full)
 
@@ -283,16 +291,17 @@ class ModisQuery(object):
 
         return (filename, None)
 
-    def download(self,
-                 targetdir: Path,
-                 username: str,
-                 password: str,
-                 overwrite: bool = False,
-                 multithread: bool = False,
-                 nthreads: int = 4,
-                 max_retries: int = -1,
-                 robust: bool = False,
-                ) -> List:
+    def download(
+        self,
+        targetdir: Path,
+        username: str,
+        password: str,
+        overwrite: bool = False,
+        multithread: bool = False,
+        nthreads: int = 4,
+        max_retries: int = -1,
+        robust: bool = False,
+    ) -> List:
         """Download MODIS HDF files.
 
         This method downloads the MODIS HDF files contained in the
@@ -333,18 +342,29 @@ class ModisQuery(object):
                 retries = Retry(total=5, backoff_factor=backoff, status_forcelist=[502, 503, 504])
                 session.mount(
                     "https://",
-                    HTTPAdapter(pool_connections=nthreads, pool_maxsize=nthreads*2, max_retries=retries)
+                    HTTPAdapter(
+                        pool_connections=nthreads, pool_maxsize=nthreads * 2, max_retries=retries
+                    ),
                 )
 
                 if multithread:
-                    log.debug("Multithreaded download using %s threads. Warming up connection pool.", nthreads)
+                    log.debug(
+                        "Multithreaded download using %s threads. Warming up connection pool.",
+                        nthreads,
+                    )
                     # warm up pool
-                    _ = session.get(list(to_download.values())[0]["link"], stream=True, allow_redirects=True)
+                    _ = session.get(
+                        list(to_download.values())[0]["link"], stream=True, allow_redirects=True
+                    )
 
                     with ThreadPoolExecutor(nthreads) as executor:
 
-                        futures = [executor.submit(self._fetch, session, values["link"], targetdir, overwrite, robust)
-                                   for key, values in to_download.items()]
+                        futures = [
+                            executor.submit(
+                                self._fetch, session, values["link"], targetdir, overwrite, robust
+                            )
+                            for key, values in to_download.items()
+                        ]
 
                     downloaded_temp = [x.result() for x in futures]
 
@@ -364,7 +384,7 @@ class ModisQuery(object):
                     try:
                         del to_download[fid]
                     except KeyError:
-                        del to_download[fid[:-4]]
+                        del to_download[fid[:-3] if fid.endswith(".h5") else fid[:-4]]
                     downloaded.append(fid)
 
             if to_download:
