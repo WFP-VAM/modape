@@ -6,17 +6,17 @@ from typing import Any
 from osgeo import gdal
 
 REGEX_PATTERNS = {
-    "product": re.compile(r"^(?:VNP|M[O|Y]D)\d{2}\w{1}\d{1}"),
+    "product": re.compile(r"^(?:VNP|M[O|Y|X]D)\d{2}\w{1}\d{1}"),
     "version": re.compile(r".+\.(\d{3})\..+"),
     "tile": re.compile(r"h\d+v\d+"),
     "date": re.compile(r".+A(\d{7}).+"),
     "processing_timestamp": re.compile(r".+(\d{13}).+"),
-    "AquaTerra": re.compile(r"^M[Y|O]D\d{2}.+"),
+    "AquaTerra": re.compile(r"^M[O|Y|X]D\d{2}.+"),
     "Aqua": re.compile(r"^MYD\d{2}.+"),
     "Terra": re.compile(r"^MYD\d{2}.+"),
     "VIM": re.compile(r"^(?:VNP|M[O|Y|X]D)13.+"),
     "LST": re.compile(r"^M[Y|O]D11.+"),
-    "VIMLST": re.compile(r"^(?:VNP|M[O|Y]D)[11|13].+"),
+    "VIMLST": re.compile(r"^(?:VNP|M[O|Y|X]D)[11|13].+"),
 }
 
 VAM_PRODUCT_CODES = dict(zip(["VIM", "VEM", "LTD", "LTN"], ["NDVI", "EVI", "LST_Day", "LST_Night"]))

@@ -63,12 +63,12 @@ class TestConsoleScripts(unittest.TestCase):
     def tearDownClass(cls):
         try:
             shutil.rmtree("__pycache__")
-        except:  # pylint: disable=W0702
+        except Exception as _:
             pass
 
         try:
             shutil.rmtree("/tmp/data")
-        except:  # pylint: disable=W0702
+        except Exception as _:
             pass
 
     def setUp(self):
@@ -716,6 +716,7 @@ class TestConsoleScripts(unittest.TestCase):
                 force=True,
                 last_collected=None,
                 tiles_required="h18v09",
+                report_collected=False,
             )
 
             for tile, dates_len in tile_dates_len.items():
@@ -807,6 +808,7 @@ class TestConsoleScripts(unittest.TestCase):
                 force=True,
                 last_collected=None,
                 tiles_required="h18v09",
+                report_collected=False,
             )
 
             # 5. Do forward processing and export dekads

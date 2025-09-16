@@ -18,8 +18,6 @@ from osgeo import gdal
 from modape.exceptions import DownloadError, HDF5WriteError
 from modape.modis import ModisQuery, ModisRawH5, ModisSmoothH5, ModisMosaic
 from modape.utils import SessionWithHeaderRedirection
-from modape.modis.io import HDF5Base
-
 
 class MockResponse:
     """Mock response for testing"""
@@ -211,7 +209,7 @@ class TestModisQuery(unittest.TestCase):
     def tearDownClass(cls):
         try:
             shutil.rmtree("__pycache__")
-        except:
+        except Exception as _:
             pass
 
     def test_query(self):
@@ -394,7 +392,7 @@ class TestModisCollect(unittest.TestCase):
     def tearDownClass(cls):
         try:
             shutil.rmtree("__pycache__")
-        except:
+        except Exception as _:
             pass
 
         for file in Path("/tmp").glob("*h5"):
@@ -403,27 +401,27 @@ class TestModisCollect(unittest.TestCase):
     def tearDown(self):
         try:
             shutil.rmtree("/tmp/VIM")
-        except:
+        except Exception as _:
             pass
 
         try:
             shutil.rmtree("/tmp/TDA")
-        except:
+        except Exception as _:
             pass
 
         try:
             shutil.rmtree("/tmp/TNA")
-        except:
+        except Exception as _:
             pass
 
         try:
             shutil.rmtree("/tmp/TDT")
-        except:
+        except Exception as _:
             pass
 
         try:
             shutil.rmtree("/tmp/TNT")
-        except:
+        except Exception as _:
             pass
 
     def test_raw_instance(self):
@@ -528,9 +526,8 @@ class TestModisCollect(unittest.TestCase):
 
             h5f.filename.unlink()
 
-    @patch("modape.modis.collect.HDFHandler.open_datasets")
     @patch("modape.modis.collect.HDFHandler.read_chunk")
-    def test_update(self, mocked_chunk, mocked_handles):
+    def test_update(self, mocked_chunk):
         """Test updating dataset"""
 
         ones = np.ones((48, 1200), dtype="int16")
@@ -548,10 +545,7 @@ class TestModisCollect(unittest.TestCase):
             h5f.create()
 
         mocked_chunk.return_value = ones
-
-        with patch("modape.modis.collect.HDFHandler.iter_handles") as mocked_iter:
-            mocked_iter.return_value = ((ii, None) for ii, x in enumerate(h5f.files))
-            h5f.update()
+        h5f.update()
 
         for test_arr in h5f.read_chunked("data", xchunk=10):
             for dim in range(test_arr.shape[1]):
@@ -576,9 +570,7 @@ class TestModisCollect(unittest.TestCase):
             mocked_md.return_value = self.referece_metadata
             h5f.create()
 
-        with patch("modape.modis.collect.HDFHandler.iter_handles") as mocked_iter:
-            mocked_iter.return_value = ((ii, None) for ii, x in enumerate(h5f.files))
-            h5f.update()
+        h5f.update()
 
         dates_init = h5f.rawdates
 
@@ -596,9 +588,7 @@ class TestModisCollect(unittest.TestCase):
 
         mocked_chunk.return_value = twos
 
-        with patch("modape.modis.collect.HDFHandler.iter_handles") as mocked_iter:
-            mocked_iter.return_value = ((ii, None) for ii, x in enumerate(h5f.files))
-            h5f.update()
+        h5f.update()
 
         for test_arr in h5f.read_chunked("data", xchunk=10):
             ii = 0
@@ -625,9 +615,7 @@ class TestModisCollect(unittest.TestCase):
             mocked_md.return_value = self.referece_metadata
             h5f.create()
 
-        with patch("modape.modis.collect.HDFHandler.iter_handles") as mocked_iter:
-            mocked_iter.return_value = ((ii, None) for ii, x in enumerate(h5f.files))
-            h5f.update()
+        h5f.update()
 
         del h5f
 
@@ -636,11 +624,8 @@ class TestModisCollect(unittest.TestCase):
             targetdir="/tmp",
         )
 
-        with patch("modape.modis.collect.HDFHandler.iter_handles") as mocked_iter:
-            mocked_iter.return_value = ((ii, None) for ii, x in enumerate(h5f.files))
-
-            with self.assertRaises(AssertionError):
-                h5f.update()
+        with self.assertRaises(AssertionError):
+            h5f.update()
 
 
 class TestModisSmooth(unittest.TestCase):
@@ -661,7 +646,7 @@ class TestModisSmooth(unittest.TestCase):
         cls.testfile.unlink()
         try:
             shutil.rmtree(str(cls.testpath))
-        except:
+        except Exception as _:
             pass
 
     def test_smooth_instance(self):
@@ -857,7 +842,7 @@ class TestModisMosaic(unittest.TestCase):
         cls.testfile.unlink()
         try:
             shutil.rmtree(str(cls.testpath))
-        except:
+        except Exception as _:
             pass
 
     def test_instance(self):

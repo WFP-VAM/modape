@@ -6,7 +6,7 @@ import re
 import uuid
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Generator, List, Tuple
+from typing import Any, Generator
 
 import h5py
 import numpy as np
@@ -321,7 +321,7 @@ class HDFHandler(object):
                 except AttributeError:
                     yield None, xx
 
-    def __init__(self, files: List[str], sds: str) -> None:
+    def __init__(self, files: list[str], sds: str) -> None:
         """Initialize HDFHandler instance.
 
         Reads the datasets, extracts the subdatasets and keeps

@@ -12,7 +12,6 @@ import warnings
 # pylint: disable=E0401
 from datetime import datetime
 from pathlib import Path
-from typing import List, Tuple
 
 import h5py
 import numpy as np
@@ -41,7 +40,7 @@ class ModisRawH5(HDF5Base):
 
     def __init__(
         self,
-        files: List[str],
+        files: list[str],
         targetdir: str,
         vam_product_code: str = None,
         interleave: bool = False,
@@ -226,7 +225,7 @@ class ModisRawH5(HDF5Base):
 
     def create(self,
                compression: str = "gzip",
-               chunks: Tuple[int] = None,
+               chunks: tuple[int] = None,
                pre_allocate: bool = True) -> None:
         """Creates HDF5 file.
 
@@ -325,7 +324,7 @@ class ModisRawH5(HDF5Base):
                 f"Error creating {str(self.filename)}! Check if file exists, or if compression / chunksize is OK."
             )
 
-    def update(self, force: bool = False) -> List:
+    def update(self, force: bool = False) -> list[str]:
         """Updates MODIS raw HDF5 file with raw data.
 
         The files specified in `__init__` get collected into the HDF5 file,
@@ -392,7 +391,7 @@ class ModisRawH5(HDF5Base):
 
         hdf_datasets = HDFHandler(files=self.files, sds=sds_indicator)
 
-        collected = set()
+        collected: set[str] = set()
 
         block_gen = ((x, x // attrs["RasterXSize"]) for x in range(0, dataset_shape[0], chunks[0]))
 
@@ -404,8 +403,6 @@ class ModisRawH5(HDF5Base):
 
                 for ii, hdf, filename in open_datasets:
                     try:
-                        if hdf is None:
-                            raise AttributeError()
                         arr[:, ii] = HDFHandler.read_chunk(
                             hdf, yoff=int(yoff_rst), ysize=int(ysize)
                         ).flatten()
