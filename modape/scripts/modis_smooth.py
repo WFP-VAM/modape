@@ -171,11 +171,11 @@ def cli(
         # Other arguments need to be not set:
         assert (
             svalue is None
-            and len(srange) == 0
+            and (srange is None or len(srange) == 0)
             and pvalue is None
             and nsmooth == 0
             and nupdate == 0
-            and soptimize == False
+            and not soptimize
             and last_collected is None
         )
         for rawfile in files:
@@ -194,7 +194,7 @@ def cli(
 
     click.echo("Starting MODIS SMOOTH!")
 
-    if len(srange) != 0:
+    if srange is not None and len(srange) != 0:
         assert len(srange) == 3, "Expected 3 values for s-range"
 
         srange = np.arange(
@@ -270,21 +270,19 @@ def _worker(
     last_collected: str,
     **kwargs: dict,
 ):
-
-    with h5py.File(str(rawfile), "r") as h5f_open:
-        if len("".join(x.decode() for x in h5f_open.get("dates"))) == 0:
-            log.info("File %s is empty; nothing to smooth", str(rawfile))
-            return True
-
     smt_h5 = ModisSmoothH5(
         rawfile=str(rawfile), targetdir=str(targetdir), tempint=tempint, startdate=tempint_start
     )
-
     if not smt_h5.exists:
         if not kwargs["soptimize"] and not kwargs["svalue"]:
             msg = "Smoothing requires Sgrid which has not been initialized. Please run --soptimize first!"
             raise SgridNotInitializedError(msg)
         smt_h5.create()
+
+    with h5py.File(str(rawfile), "r") as h5f_open:
+        if len("".join(x.decode() for x in h5f_open.get("dates"))) == 0:
+            log.info("File %s is empty; nothing to smooth", str(rawfile))
+            return True
 
     if last_collected is not None:
         last_collected_in_rawfile = smt_h5.last_collected

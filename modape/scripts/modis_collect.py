@@ -273,7 +273,7 @@ def cli(
 def _worker(raw_h5: ModisRawH5, compression: str, force: bool, create_only: bool):
 
     if not raw_h5.exists:
-        raw_h5.create(compression=compression)
+        raw_h5.create(compression=compression, pre_allocate= not create_only)
 
     if create_only:
         return raw_h5.files

@@ -211,7 +211,8 @@ class ModisRawH5(HDF5Base):
 
     def create(self,
                compression: str = "gzip",
-               chunks: Tuple[int] = None) -> None:
+               chunks: Tuple[int] = None,
+               pre_allocate: bool = True) -> None:
         """Creates HDF5 file.
 
         If the corresponding HDF5 is not found in the target directory,
@@ -259,7 +260,7 @@ class ModisRawH5(HDF5Base):
                 # create data array
                 dset = h5f.create_dataset(
                     name="data",
-                    shape=(row_number*col_number, self.nfiles),
+                    shape=(row_number*col_number, self.nfiles if pre_allocate else 0),
                     dtype="int16",
                     maxshape=(row_number*col_number, None),
                     chunks=chunks,
@@ -269,7 +270,7 @@ class ModisRawH5(HDF5Base):
                 # create dates
                 _ = h5f.create_dataset(
                     name="dates",
-                    shape=(self.nfiles,),
+                    shape=(self.nfiles if pre_allocate else 0,),
                     maxshape=(None,),
                     dtype="S8",
                     compression=compression
