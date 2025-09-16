@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # pylint: disable=broad-except,E0401
 """modis_collect.py: Collect raw MODIS data into HDF5 file."""
+import hashlib
 import logging
 import multiprocessing as mp
 import re
@@ -233,6 +234,7 @@ def cli(
         )
 
     log.debug("Start processing!")
+    ts_processing_start = datetime.now().isoformat()
 
     if parallel_tiles > 1:
         log.debug("Processing %s parallel tiles!", parallel_tiles)
@@ -275,7 +277,15 @@ def cli(
             log.debug("Cleaning up collected files")
             for to_remove in collected:
                 to_remove_obj = Path(to_remove)
-                tf_open.write(to_remove_obj.name + "\n")
+                sha256_hash = hashlib.sha256()
+                with open(to_remove_obj, "rb") as f:
+                    chunk = f.read(65536)
+                    while chunk:
+                        sha256_hash.update(chunk)
+                        chunk = f.read(65536)
+                tf_open.write(
+                    f"{to_remove_obj.name};{sha256_hash.hexdigest().lower()};{ts_processing_start}\n"
+                )
                 log.debug("Removing %s", to_remove)
                 to_remove_obj.unlink()
 

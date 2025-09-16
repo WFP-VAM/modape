@@ -15,7 +15,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from os.path import exists
 from pathlib import Path
-from typing import List, Tuple, Union
+from typing import Generator, List, Tuple, Union
 from xml.etree import ElementTree
 
 import pandas as pd
@@ -144,7 +144,7 @@ class ModisQuery(object):
         )
 
     @staticmethod
-    def _parse_response(query: List[dict]) -> dict:
+    def _parse_response(query: List[dict]) -> Generator[dict, None, None]:
         """Generator for parsing API response.
 
         Args:
@@ -205,6 +205,7 @@ class ModisQuery(object):
         destination: Path,
         overwrite: bool,
         check: bool,
+        mirror: Path,
     ) -> Tuple[str, Union[None, Exception]]:
         """Helper function to fetch HDF files
 
@@ -220,69 +221,95 @@ class ModisQuery(object):
                 either (filename, None) for success and (URL, Exception) for error.
 
         """
+
+        def _check(_downloaded: Path, raise_on_error=True) -> bool:
+            try:
+                with session.get(url + ".xml", allow_redirects=True) as hdfxml:
+                    if hdfxml.status_code == 404:
+                        with session.get(url[:-4] + ".cmr.xml", allow_redirects=True) as cmrxml:
+                            cmrxml.raise_for_status()
+                            file_metadata = self._parse_cmrxml(cmrxml, url.split("/")[-1])
+                    else:
+                        hdfxml.raise_for_status()
+                        file_metadata = self._parse_hdfxml(hdfxml)
+
+                # check filesize
+                assert (
+                    str(_downloaded.stat().st_size).strip() == file_metadata["FileSize"]
+                ), f'Size: {_downloaded.stat().st_size} != {file_metadata["FileSize"]}'
+                with open(_downloaded, "rb") as openfile:
+                    if file_metadata["ChecksumType"] == "CKSUM":
+                        checksum = str(cksum(openfile))
+                    elif file_metadata["ChecksumType"] == "MD5":
+                        md5_hash = hashlib.md5()
+                        chunk = openfile.read(65536)
+                        while chunk:
+                            md5_hash.update(chunk)
+                            chunk = openfile.read(65536)
+                        checksum = md5_hash.hexdigest().lower()
+                    elif file_metadata["ChecksumType"] == "SHA256":
+                        sha256_hash = hashlib.sha256()
+                        chunk = openfile.read(65536)
+                        while chunk:
+                            sha256_hash.update(chunk)
+                            chunk = openfile.read(65536)
+                        checksum = sha256_hash.hexdigest().lower()
+                    else:
+                        raise ValueError(f'Unknown Checksum Type: {file_metadata["ChecksumType"]}')
+                # check checksum
+                assert (
+                    checksum == file_metadata["Checksum"]
+                ), f'Hash: {checksum} != {file_metadata["Checksum"]}'
+            except Exception:
+                if raise_on_error:
+                    raise
+                return False
+            return True
+
         filename = url.split("/")[-1]
         filename_full = destination.joinpath(filename)
 
         if not exists(filename_full) or overwrite:
 
-            filename_temp = filename_full.with_suffix(".modapedl")
+            fp_download = filename_full if mirror is None else mirror.joinpath(filename)
+            fp_modapedl = fp_download.with_suffix(".modapedl")
 
             try:
 
+                if exists(fp_download):
+                    if _check(fp_download, not overwrite):
+                        # File is fine...
+                        if mirror is None:
+                            # ... leave as-is
+                            pass
+                        else:
+                            # ... or re-do symlink from mirror into destination
+                            if exists(filename_full):
+                                filename_full.unlink()
+                            filename_full.symlink_to(fp_download)
+                        return (filename, None)
+                    else:
+                        # File is not valid, but since <overwrite> is True, no exception was raised;
+                        # remove the file in preparation of re-download:
+                        fp_download.unlink()
+
                 with session.get(url, stream=True, allow_redirects=True) as response:
                     response.raise_for_status()
-                    with open(filename_temp, "wb") as openfile:
+                    with open(fp_modapedl, "wb") as openfile:
                         shutil.copyfileobj(response.raw, openfile, length=16 * 1024 * 1024)
 
                 if check:
+                    _check(fp_modapedl)
 
-                    with session.get(url + ".xml", allow_redirects=True) as hdfxml:
-                        if hdfxml.status_code == 404:
-                            with session.get(
-                                (url[:-3] if url.endswith(".h5") else url[:-4]) + ".cmr.xml",
-                                allow_redirects=True,
-                            ) as cmrxml:
-                                cmrxml.raise_for_status()
-                                file_metadata = self._parse_cmrxml(cmrxml, url.split("/")[-1])
-                        else:
-                            hdfxml.raise_for_status()
-                            file_metadata = self._parse_hdfxml(hdfxml)
-
-                    # check filesize
-                    assert (
-                        str(filename_temp.stat().st_size).strip() == file_metadata["FileSize"]
-                    ), f'Size: {filename_temp.stat().st_size} != {file_metadata["FileSize"]}'
-                    with open(filename_temp, "rb") as openfile:
-                        if file_metadata["ChecksumType"] == "CKSUM":
-                            checksum = str(cksum(openfile))
-                        elif file_metadata["ChecksumType"] == "MD5":
-                            md5_hash = hashlib.md5()
-                            chunk = openfile.read(65536)
-                            while chunk:
-                                md5_hash.update(chunk)
-                                chunk = openfile.read(65536)
-                            checksum = md5_hash.hexdigest().lower()
-                        elif file_metadata["ChecksumType"] == "SHA256":
-                            sha256_hash = hashlib.sha256()
-                            chunk = openfile.read(65536)
-                            while chunk:
-                                sha256_hash.update(chunk)
-                                chunk = openfile.read(65536)
-                            checksum = sha256_hash.hexdigest().lower()
-                        else:
-                            raise ValueError(
-                                f'Unknown Checksum Type: {file_metadata["ChecksumType"]}'
-                            )
-                    # check checksum
-                    assert (
-                        checksum == file_metadata["Checksum"]
-                    ), f'Hash: {checksum} != {file_metadata["Checksum"]}'
-
-                shutil.move(filename_temp, filename_full)
+                shutil.move(fp_modapedl, fp_download)
+                if mirror is not None:
+                    if exists(filename_full):
+                        filename_full.unlink()
+                    filename_full.symlink_to(fp_download)
 
             except (HTTPError, ConnectionError, AssertionError, FileNotFoundError) as e:
                 try:
-                    filename_temp.unlink()
+                    fp_modapedl.unlink()
                 except FileNotFoundError:
                     pass
                 return (filename, e)
@@ -301,6 +328,7 @@ class ModisQuery(object):
         nthreads: int = 4,
         max_retries: int = -1,
         robust: bool = False,
+        mirror: Path = None,
     ) -> List:
         """Download MODIS HDF files.
 
@@ -318,6 +346,7 @@ class ModisQuery(object):
             nthreads (int): Number of threads.
             max_retries (int): Maximum number of retries for failed downloads (for no max, set -1).
             robust (bool): Perform robust downloading (checks file size and checksum).
+            mirror (Path): Download files to mirror instead; symlink into target directory
 
         Raises:
             DownloadError: If one or more errors were encountered during downloading.
@@ -328,6 +357,10 @@ class ModisQuery(object):
         # make sure target directory is dir and exists
         assert targetdir.is_dir()
         assert targetdir.exists()
+
+        if mirror is not None:
+            assert mirror.is_dir()
+            assert mirror.exists()
 
         retry_count = 0
         to_download = self.results.copy()
@@ -361,7 +394,13 @@ class ModisQuery(object):
 
                         futures = [
                             executor.submit(
-                                self._fetch, session, values["link"], targetdir, overwrite, robust
+                                self._fetch,
+                                session,
+                                values["link"],
+                                targetdir,
+                                overwrite,
+                                robust,
+                                mirror,
                             )
                             for key, values in to_download.items()
                         ]
@@ -375,7 +414,9 @@ class ModisQuery(object):
                     for _, values in to_download.items():
 
                         downloaded_temp.append(
-                            self._fetch(session, values["link"], targetdir, overwrite, robust)
+                            self._fetch(
+                                session, values["link"], targetdir, overwrite, robust, mirror
+                            )
                         )
 
             # check if downloads are OK

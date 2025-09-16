@@ -9,48 +9,76 @@ import sys
 from typing import List
 
 import click
+
 from modape.exceptions import TargetNotEmptyError
 from modape.modis import ModisQuery
 
+
 @click.command()
 @click.argument("products", nargs=-1, type=click.STRING)
-@click.option("--roi", type=click.STRING, help="Region of interest. Either LON,LAT or xmin,ymin,xmax,ymax")
-@click.option("-b", "--begin-date", type=click.DateTime(formats=["%Y-%m-%d"]), help="Start date for query")
-@click.option("-e", "--end-date", type=click.DateTime(formats=["%Y-%m-%d"]), help="End date for query")
-@click.option("-d", "--targetdir", type=click.Path(dir_okay=True, writable=True, resolve_path=True),
-              help="Destination directory for downloaded files")
-@click.option("--target-empty", is_flag=True, help="Fail if there are hdf files in the target directory")
+@click.option(
+    "--roi", type=click.STRING, help="Region of interest. Either LON,LAT or xmin,ymin,xmax,ymax"
+)
+@click.option(
+    "-b", "--begin-date", type=click.DateTime(formats=["%Y-%m-%d"]), help="Start date for query"
+)
+@click.option(
+    "-e", "--end-date", type=click.DateTime(formats=["%Y-%m-%d"]), help="End date for query"
+)
+@click.option(
+    "-d",
+    "--targetdir",
+    type=click.Path(dir_okay=True, writable=True, resolve_path=True),
+    help="Destination directory for downloaded files",
+)
+@click.option(
+    "--target-empty", is_flag=True, help="Fail if there are hdf files in the target directory"
+)
 @click.option("--tile-filter", type=click.STRING, help="Filter tiles - supplied as csv list")
 @click.option("--username", type=click.STRING, help="Earthdata username")
 @click.option("--password", type=click.STRING, help="Earthdata password")
-@click.option("--match-begin", is_flag=True, help="Don't allow files with timestamps outside of provided date(s)")
+@click.option(
+    "--match-begin",
+    is_flag=True,
+    help="Don't allow files with timestamps outside of provided date(s)",
+)
 @click.option("--print-results", is_flag=True, help="Print results to console")
 @click.option("--download", is_flag=True, help="Download data")
 @click.option("--overwrite", is_flag=True, help="Overwrite existing files")
 @click.option("--robust", is_flag=True, help="Perform robust download")
-@click.option("--max-retries", type=click.INT, help="Max number of retries for downloading", default=-1)
+@click.option(
+    "--max-retries", type=click.INT, help="Max number of retries for downloading", default=-1
+)
 @click.option("--multithread", is_flag=True, help="Use multiple threads for downloading")
 @click.option("--nthreads", type=click.INT, help="Number of threads to use", default=4)
 @click.option("-c", "--collection", type=click.STRING, default="006", help="MODIS collection")
-def cli(products: List[str],
-        begin_date: datetime.datetime,
-        end_date: datetime.datetime,
-        targetdir: str,
-        roi: str,
-        target_empty: bool,
-        tile_filter: str,
-        username: str,
-        password: str,
-        match_begin: bool,
-        print_results: bool,
-        download: bool,
-        overwrite: bool,
-        robust: bool,
-        max_retries: int,
-        multithread: bool,
-        nthreads: int,
-        collection: str,
-        ) -> List:
+@click.option(
+    "--mirror",
+    type=click.Path(dir_okay=True, writable=True, resolve_path=True),
+    default=None,
+    help="Mirror downloads here; create symlink in target dir",
+)
+def cli(
+    products: List[str],
+    begin_date: datetime.datetime,
+    end_date: datetime.datetime,
+    targetdir: str,
+    roi: str,
+    target_empty: bool,
+    tile_filter: str,
+    username: str,
+    password: str,
+    match_begin: bool,
+    print_results: bool,
+    download: bool,
+    overwrite: bool,
+    robust: bool,
+    max_retries: int,
+    multithread: bool,
+    nthreads: int,
+    collection: str,
+    mirror: str,
+) -> List:
     """Query and download MODIS products.
 
     This function allows for querying and downloading MODIS products in bulk.
@@ -101,10 +129,17 @@ def cli(products: List[str],
     assert targetdir.exists()
     assert targetdir.is_dir()
 
+    if mirror is not None:
+        mirror = pathlib.Path(mirror)
+        assert mirror.is_dir()
+        assert mirror.exists()
+
     if target_empty:
         for _ in targetdir.glob("M*hdf"):
             try:
-                raise TargetNotEmptyError("Found HDF files in target directory with flag --target-empty set!")
+                raise TargetNotEmptyError(
+                    "Found HDF files in target directory with flag --target-empty set!"
+                )
             except StopIteration:
                 pass
 
@@ -120,7 +155,7 @@ def cli(products: List[str],
     if roi is not None:
 
         try:
-            coords = list(map(float, roi.split(',')))
+            coords = list(map(float, roi.split(",")))
         except ValueError:
             click.echo("Error parsing ROI coordinates. Expected numeric!")
 
@@ -130,16 +165,16 @@ def cli(products: List[str],
 
     # parse tile filter and check if OK
     if tile_filter is not None:
-        tile_regxp = re.compile(r'^h\d{2}v\d{2}$')
+        tile_regxp = re.compile(r"^h\d{2}v\d{2}$")
         tiles = []
 
-        for tile_sel in tile_filter.split(','):
+        for tile_sel in tile_filter.split(","):
             assert re.match(tile_regxp, tile_sel.lower())
             tiles.append(tile_sel.lower())
 
         tile_filter = tiles
 
-    click.echo('Querying NASA CMR ...')
+    click.echo("Querying NASA CMR ...")
 
     query = ModisQuery(
         products=products_parsed,
@@ -153,10 +188,12 @@ def cli(products: List[str],
     query.search(match_begin=match_begin)
 
     if query.nresults == 0:
-        click.echo("No results found! Please check query or make sure CMR is available / reachable.")
+        click.echo(
+            "No results found! Please check query or make sure CMR is available / reachable."
+        )
         return []
 
-    click.echo(f'Done! Found {query.nresults} results!')
+    click.echo(f"Done! Found {query.nresults} results!")
 
     if print_results:
         click.echo("\n")
@@ -169,7 +206,7 @@ def cli(products: List[str],
 
     if download:
 
-        click.echo('Downloading!')
+        click.echo("Downloading!")
 
         if query.nresults > 0:
 
@@ -182,18 +219,21 @@ def cli(products: List[str],
                 nthreads=nthreads,
                 robust=robust,
                 max_retries=max_retries,
+                mirror=mirror,
             )
 
-    click.echo('modis_download.py COMPLETED! Bye! \n')
+    click.echo("modis_download.py COMPLETED! Bye! \n")
     return downloaded
+
 
 def cli_wrap():
     """Wrapper for cli"""
 
     if len(sys.argv) == 1:
-        cli.main(['--help'])
+        cli.main(["--help"])
     else:
-        cli() #pylint: disable=E1120
+        cli()  # pylint: disable=E1120
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     cli_wrap()
