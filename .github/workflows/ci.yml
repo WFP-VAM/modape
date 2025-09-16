@@ -23,7 +23,6 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: install dependencies
         run: |
-          sudo add-apt-repository ppa:ubuntugis/ppa
           sudo apt-get update && sudo apt-get install -y libgdal-dev
           pip install cython numpy
       - name: build gdal
