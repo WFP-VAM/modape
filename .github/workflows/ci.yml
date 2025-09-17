@@ -48,7 +48,9 @@ jobs:
         run: |
           sudo python -m pip uninstall gdal --break-system-packages \
             && python -m pip install "numpy<2" --break-system-packages \
-            && sudo python -m pip install gdal==$(gdal-config --version) \
+            && sudo python -m pip install \
+              --no-build-isolation --no-cache-dir --force-reinstall \
+              gdal==$(gdal-config --version) \
               --global-option=build_ext --global-option="-I/usr/include/gdal" \
               --break-system-packages
       - name: build
