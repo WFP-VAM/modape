@@ -35,9 +35,9 @@ jobs:
             && cd /bin \
             && ln -s $(readlink -f $(which python3)) python \
             && rm -rf /var/lib/apt/lists/*
-          sudo pip install --upgrade pip
-          sudo pip install pytest pytest-cov cython "numpy<2"
-          sudo pip install "setuptools~=57.5.0" \
+          sudo python -m pip install --upgrade pip
+          sudo python -m pip install pytest pytest-cov cython "numpy<2"
+          sudo python -m pip install "setuptools~=57.5.0" \
             "h5py>=2.9" \
             "pandas>=0.24" \
             "click==7.1.2" \
@@ -46,13 +46,13 @@ jobs:
             "requests>=2" \
             "pycksum>=0.4.3"
       - name: build gdal
-        run: sudo pip install gdal==$(gdal-config --version)
+        run: sudo python -m pip install gdal==$(gdal-config --version)
       - name: build
         run: |
           cd $GITHUB_WORKSPACE \
-            && sudo pip install pytest pytest-cov \
-            && sudo pip install -e .[dev] --break-system-packages
+            && sudo python -m pip install pytest pytest-cov \
+            && sudo python -m pip install -e .[dev] --break-system-packages
       - name: test
         run: |
           cd $GITHUB_WORKSPACE \
-            && python -m pytest
+            && sudo python -m pytest
