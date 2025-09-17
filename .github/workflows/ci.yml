@@ -37,7 +37,7 @@ jobs:
             && rm -rf /var/lib/apt/lists/*
           sudo python -m pip install --upgrade pip
           sudo python -m pip install pytest pytest-cov cython "numpy<2" "pandas<2"
-          sudo python -m pip install "setuptools~=57.5.0" \
+          sudo python -m pip install "setuptools~=57.5.0" wheel \
             "h5py>=2.9" \
             "click==7.1.2" \
             "flask==2.0.3" \
