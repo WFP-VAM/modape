@@ -50,6 +50,7 @@ jobs:
       - name: build
         run: |
           cd $GITHUB_WORKSPACE \
+            && sudo pip install pytest pytest-cov \
             && sudo pip install -e .[dev] --break-system-packages
       - name: test
         run: |
