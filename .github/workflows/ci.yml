@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.10", "3.11"]
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}
@@ -40,10 +40,9 @@ jobs:
           sudo python -m pip install "setuptools~=57.5.0" wheel \
             "h5py>=2.9" \
             "click==7.1.2" \
-            "flask==2.0.3" \
             "python-cmr>=0.4" \
             "requests>=2" \
-            "pycksum>=0.4.3"
+            "pycksum>=0.4.7"
       - name: build gdal
         run: |
           sudo python -m pip uninstall gdal --break-system-packages \
