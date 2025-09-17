@@ -45,7 +45,12 @@ jobs:
             "requests>=2" \
             "pycksum>=0.4.3"
       - name: build gdal
-        run: sudo python -m pip install gdal==$(gdal-config --version)
+        run: |
+          sudo python -m pip uninstall gdal --break-system-packages \
+            && python -m pip install "numpy<2" --break-system-packages \
+            && sudo python -m pip install gdal==$(gdal-config --version) \
+              --global-option=build_ext --global-option="-I/usr/include/gdal" \
+              --break-system-packages
       - name: build
         run: |
           cd $GITHUB_WORKSPACE \
