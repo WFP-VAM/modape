@@ -19,6 +19,7 @@ license = {text = "MIT"}  # Update with your actual license
 requires-python = ">=3.6, <4"
 dependencies = [
     "click<8",
+    "cython",
     "numpy>=1.16.1",
     "gdal>=2",
     "h5py>=2.9",
@@ -49,7 +50,7 @@ modis_info = "modape.scripts.modis_info:cli_wrap"
 modape_version = "_version.version_info:main"
 
 [project.optional-dependencies]
-test = ["pytest", "pytest-runner", "click"]
+test = ["pytest", "pytest-runner", "click", "cython"]
 dev = ["pytest", "pytest-runner", "click", "cython"]
 
 [tool.pytest.ini_options]

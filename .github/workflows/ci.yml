@@ -30,7 +30,7 @@ jobs:
         run: pip install gdal==$(gdal-config --version)
       - name: build
         run: |
-          cd $GITHUB_WORKSPACE && pip install .
+          cd $GITHUB_WORKSPACE && pip install . -vv 2>&1 | grep -A 10 -B 10 "whittaker\|cython\|extension"
       - name: test
         run: |
           cd $GITHUB_WORKSPACE && python -m pytest
