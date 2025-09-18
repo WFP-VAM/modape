@@ -25,10 +25,7 @@ jobs:
       - name: install dependencies
         run: |
           sudo apt-get update && sudo apt-get install -y \
-              libgdal-dev build-essential pkg-config git \
-              libssl-dev libcurl4-openssl-dev nginx \
-              swig sqlite3 bison flex unzip libntirpc-dev \
-              libsqlite3-dev libtiff-dev libnetcdf-dev libzstd-dev \
+              libgdal-dev build-essential swig  \
               python3-dev python3-pip \
             && cd /usr/local/bin \
             && ln -s $(readlink -f $(which python3)) python \
@@ -37,12 +34,7 @@ jobs:
             && rm -rf /var/lib/apt/lists/*
           sudo python -m pip install --upgrade pip
           sudo python -m pip install pytest pytest-cov cython "numpy<2" "pandas<2"
-          sudo python -m pip install "setuptools~=57.5.0" wheel \
-            "h5py>=2.9" \
-            "click==7.1.2" \
-            "python-cmr>=0.4" \
-            "requests>=2" \
-            "pycksum>=0.4.7"
+          sudo python -m pip install "setuptools~=57.5.0" wheel
       - name: build gdal
         run: |
           sudo python -m pip uninstall gdal --break-system-packages \
