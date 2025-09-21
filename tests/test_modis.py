@@ -359,6 +359,11 @@ class TestModisCollect(unittest.TestCase):
             "MOD13A2.A2002193.h18v06.006.2015149022847.hdf",
         ]
 
+        cls.viirs_files = [
+            "VNP13A2.A2025001.h18v09.002.2025017085341.h5",
+            "VNP13A2.A2025009.h18v09.002.2025031192612.h5",
+        ]
+
         cls.vim_files_terra = [x for x in cls.vim_files if "MOD13A2" in x]
         cls.vim_files_aqua = [x for x in cls.vim_files if "MYD13A2" in x]
 
@@ -488,7 +493,7 @@ class TestModisCollect(unittest.TestCase):
         )
         self.assertEqual(raw_h5.files, sorted(self.lst_files_terra))
 
-    def test_create(self):
+    def test_create_modis_vim(self):
         """Test creation of file"""
         h5f = ModisRawH5(
             files=self.vim_files,
@@ -496,6 +501,7 @@ class TestModisCollect(unittest.TestCase):
             interleave=True,
         )
 
+        self.assertEqual(h5f.filename.name, 'MXD13A2.h18v06.006.VIM.h5')
         self.assertFalse(h5f.exists)
 
         with patch.object(ModisRawH5, "_get_reference_metadata") as mocked_md:
@@ -525,6 +531,16 @@ class TestModisCollect(unittest.TestCase):
                 )
 
             h5f.filename.unlink()
+
+    def test_create_viirs_vim(self):
+        """Test creation of file"""
+        h5f = ModisRawH5(
+            files=self.viirs_files,
+            targetdir="/tmp",
+            interleave=True,
+        )
+
+        self.assertEqual(h5f.filename.name, 'VNP13A2.h18v09.002.VIM.h5')
 
     @patch("modape.modis.collect.HDFHandler.read_chunk")
     def test_update(self, mocked_chunk):

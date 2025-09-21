@@ -73,18 +73,23 @@ TEMPORAL_DICT = {
     "VNP13": {
         "temporalresolution": 8,
         "tshift": 8,
+        "mux": "VNP",
+        "min_date": "2012017",
     },
     "MXD13": {
         "temporalresolution": 8,
         "tshift": 8,
+        "min_date": "2002185",
     },
     "MOD13": {
         "temporalresolution": 16,
         "tshift": 8,
+        "mux": "MXD",
     },
     "MYD13": {
         "temporalresolution": 16,
         "tshift": 8,
+        "mux": "MXD",
     },
     "MOD11": {
         "temporalresolution": 8,

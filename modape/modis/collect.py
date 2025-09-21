@@ -157,8 +157,13 @@ class ModisRawH5(HDF5Base):
             self.vam_product_code = vam_product_code
 
         satset = {x[:3] for x in products}
+        
+        try:
+            muxset: set[str] = {TEMPORAL_DICT[product[:5]]["mux"] for product in products}
+        except KeyError:
+            muxset: set[str] = set()
 
-        if interleave and not self.vam_product_code == "VIM":
+        if interleave and len(muxset) != 1:
             log.debug(
                 "Interleaving only possible for M{O|Y}D13 (VIM) products! Proceeding without interleave."
             )
@@ -166,12 +171,12 @@ class ModisRawH5(HDF5Base):
 
         if interleave:
 
-            self.satellite = "MXD"
-            self.product = f"MXD{products[0][3:]}"
+            self.satellite = list(muxset)[0]
+            self.product = f"{list(muxset)[0]}{products[0][3:]}"
 
             # for interleaving, exclude all dates before 1st aqua date
             ix = 0
-            min_date = fromjulian("2002185")
+            min_date = fromjulian(TEMPORAL_DICT[self.product[:5]]["min_date"])
             for x in self.rawdates:
                 start = ix
                 if fromjulian(x) >= min_date:
