@@ -509,24 +509,30 @@ class ModisSmoothH5(HDF5Base):
             dates_ds[...] = np.array(raw_dates_all, dtype="S8")
 
     @property
-    def last_collected(self):
+    def last_collected(self) -> str:
         """Last collected date in raw file"""
-        with h5py.File(self.rawfile, "r") as h5f_raw:
-            dates = h5f_raw.get("dates")
-            last_date = dates[-1].decode()
+        try:
+            with h5py.File(self.rawfile, "r") as h5f_raw:
+                dates = h5f_raw.get("dates")
+                last_date = dates[-1].decode()
 
-        return last_date
+            return last_date
+        except Exception:
+            return ""
 
     @property
     def last_smoothed(self):
         """Last smoothed date in file"""
         assert self.exists, "File doesn't exist!"
 
-        with h5py.File(self.filename, "r") as h5_open:
-            dates = h5_open.get("rawdates")
-            last_date = dates[-1].decode()
+        try:
+            with h5py.File(self.filename, "r") as h5_open:
+                dates = h5_open.get("rawdates")
+                last_date = dates[-1].decode()
 
-        return last_date
+            return last_date
+        except Exception:
+            return ""
 
     # pylint: disable=C0103
     @staticmethod
