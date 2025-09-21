@@ -1,5 +1,7 @@
 """test_modis.py: Test MODIS classes and functions."""
+
 # pylint: disable=E0401,E0611,W0702,W0613,C0103
+import os
 from datetime import datetime
 from pathlib import Path, PosixPath
 import pickle
@@ -10,7 +12,7 @@ from unittest.mock import patch, MagicMock
 from uuid import uuid4
 
 import numpy as np
-import h5py #pylint: disable=import-error
+import h5py  # pylint: disable=import-error
 from osgeo import gdal
 
 from modape.exceptions import DownloadError, HDF5WriteError
@@ -18,32 +20,35 @@ from modape.modis import ModisQuery, ModisRawH5, ModisSmoothH5, ModisMosaic
 from modape.utils import SessionWithHeaderRedirection
 
 class MockResponse:
-    '''Mock response for testing'''
+    """Mock response for testing"""
+
     def __init__(self, content, status_code):
-        '''Create instance, setting content and status_code'''
+        """Create instance, setting content and status_code"""
         self._content = content
         self.status_code = status_code
 
     @property
     def content(self):
-        '''Return content'''
+        """Return content"""
         return self._content
 
     def raise_for_status(self):
-        '''don't raise for status'''
-        pass #pylint: disable=W0107
+        """don't raise for status"""
+        pass  # pylint: disable=W0107
+
 
 class MockedPath(PosixPath):
-    '''Mocked version of PosixPath'''
+    """Mocked version of PosixPath"""
 
     # file size for testing
     _filesize = 7526571
+
     def __init__(self, filename):
         super().__init__()
 
     @property
     def filesize(self):
-        '''Get file size'''
+        """Get file size"""
         return self._filesize
 
     def is_dir(self):
@@ -55,6 +60,7 @@ class MockedPath(PosixPath):
     def stat(self):
         return SimpleNamespace(st_size=self.filesize, st_mode=33188)
 
+
 def create_gdal(x, y):
     """Create in-memory gdal dataset for testing.
 
@@ -65,11 +71,13 @@ def create_gdal(x, y):
     ds = driver.Create("/vsimem/{}.tif".format(str(uuid4())), x, y, 1, 3)
     return ds
 
-def create_h5temp(rows: int,
-                  cols: int,
-                  tr: int,
-                  ts: int,
-                  ) -> Path:
+
+def create_h5temp(
+    rows: int,
+    cols: int,
+    tr: int,
+    ts: int,
+) -> Path:
     """Create temporary HDF5 rawfile.
 
     Args:
@@ -85,16 +93,16 @@ def create_h5temp(rows: int,
 
     fn = Path("/tmp/data/MXD13A2.h21v10.006.VIM.h5")
 
-
     with h5py.File(fn, "a", driver="core", backing_store=True) as h5f:
-
-        dset = h5f.create_dataset("data",
-                                  shape=(rows*cols, 4),
-                                  dtype="int16",
-                                  maxshape=(rows*cols, None),
-                                  chunks=((rows*cols)//25, 10),
-                                  compression="gzip",
-                                  fillvalue=-3000)
+        dset = h5f.create_dataset(
+            "data",
+            shape=(rows * cols, 4),
+            dtype="int16",
+            maxshape=(rows * cols, None),
+            chunks=((rows * cols) // 24, 10),
+            compression="gzip",
+            fillvalue=-3000,
+        )
 
         dset.attrs.update(
             dict(
@@ -103,22 +111,25 @@ def create_h5temp(rows: int,
                 tshift=ts,
                 RasterXSize=rows,
                 RasterYSize=cols,
-                geotransform=(0, 0, 0, 0, 0),
+                geotransform=(0, 10, 0, 0, 0, 10),
                 projection="EPSG:4326",
                 resolution=(1000, -1000),
                 globalproduct=False,
                 vamcode="VIM",
-                )
+            )
         )
 
-        h5f.create_dataset("dates",
-                           shape=(4,),
-                           data=np.array(["2002185", "2002193", "2002201", "2002209"], dtype="S8"),
-                           maxshape=(None,),
-                           dtype="S8",
-                           compression="gzip")
+        h5f.create_dataset(
+            "dates",
+            shape=(4,),
+            data=np.array(["2002185", "2002193", "2002201", "2002209"], dtype="S8"),
+            maxshape=(None,),
+            dtype="S8",
+            compression="gzip",
+        )
 
     return fn
+
 
 def create_h5temp_global() -> Path:
     """Create temporary global HDF5 rawfile.
@@ -134,14 +145,15 @@ def create_h5temp_global() -> Path:
     cols = 7200
 
     with h5py.File(fn, "a", driver="core", backing_store=True) as h5f:
-
-        dset = h5f.create_dataset("data",
-                                  shape=(rows*cols, 4),
-                                  dtype="int16",
-                                  maxshape=(rows*cols, None),
-                                  chunks=((rows*cols)//25, 10),
-                                  compression="gzip",
-                                  fillvalue=-3000)
+        dset = h5f.create_dataset(
+            "data",
+            shape=(rows * cols, 4),
+            dtype="int16",
+            maxshape=(rows * cols, None),
+            chunks=((rows * cols) // 25, 10),
+            compression="gzip",
+            fillvalue=-3000,
+        )
 
         dset.attrs.update(
             dict(
@@ -150,22 +162,25 @@ def create_h5temp_global() -> Path:
                 tshift=8,
                 RasterXSize=rows,
                 RasterYSize=cols,
-                geotransform=(0, 0, 0, 0, 0),
+                geotransform=(0, 10, 0, 0, 0, 10),
                 projection="EPSG:4326",
                 resolution=(0.05, 0.05),
                 globalproduct=True,
                 vamcode="VIM",
-                )
+            )
         )
 
-        h5f.create_dataset("dates",
-                           shape=(4,),
-                           data=np.array(["2002185", "2002193", "2002201", "2002209"], dtype="S8"),
-                           maxshape=(None,),
-                           dtype="S8",
-                           compression="gzip")
+        h5f.create_dataset(
+            "dates",
+            shape=(4,),
+            data=np.array(["2002185", "2002193", "2002201", "2002209"], dtype="S8"),
+            maxshape=(None,),
+            dtype="S8",
+            compression="gzip",
+        )
 
     return fn
+
 
 class TestModisQuery(unittest.TestCase):
     """Test class for ModisQuery tests."""
@@ -194,7 +209,7 @@ class TestModisQuery(unittest.TestCase):
     def tearDownClass(cls):
         try:
             shutil.rmtree("__pycache__")
-        except:
+        except Exception as _:
             pass
 
     def test_query(self):
@@ -202,14 +217,17 @@ class TestModisQuery(unittest.TestCase):
 
         self.assertEqual(self.query.api.params["short_name"], ["MOD13A2", "MYD13A2"])
         self.assertEqual(self.query.api.params["bounding_box"], "10.0,10.0,20.0,20.0")
-        self.assertEqual(self.query.api.params["temporal"], ["2020-01-01T00:00:00Z,2020-07-24T00:00:00Z"])
+        self.assertEqual(
+            self.query.api.params["temporal"],
+            ["2020-01-01T00:00:00Z,2020-07-24T00:00:00Z"],
+        )
 
     def test_response_parse(self):
         """Test parsing of response"""
 
-        with patch("modape.modis.download.GranuleQuery.get_all",
-                   return_value=self.api_response):
-
+        with patch(
+            "modape.modis.download.GranuleQuery.get_all", return_value=self.api_response
+        ):
             self.query.search(match_begin=False)
 
             self.assertTrue(self.query.results)
@@ -223,16 +241,34 @@ class TestModisQuery(unittest.TestCase):
             self.query.tile_filter = tiles_select
             self.query.search(match_begin=True)
 
-            self.assertEqual(len({values["tile"] for key, values in self.query.results.items()}), 2)
-            self.assertTrue(all([values["time_start"] >= self.query.begin.date() for key, values in self.query.results.items()]))
-            self.assertTrue(all([values["time_end"] <= self.query.end.date() for key, values in self.query.results.items()]))
+            self.assertEqual(
+                len({values["tile"] for key, values in self.query.results.items()}), 2
+            )
+            self.assertTrue(
+                all(
+                    [
+                        values["time_start"] >= self.query.begin.date()
+                        for key, values in self.query.results.items()
+                    ]
+                )
+            )
+            self.assertTrue(
+                all(
+                    [
+                        values["time_end"] <= self.query.end.date()
+                        for key, values in self.query.results.items()
+                    ]
+                )
+            )
 
     @patch("modape.modis.download.cksum", return_value=1534015008)
     @patch("modape.modis.download.shutil")
     @patch("modape.modis.download.open")
     @patch("modape.modis.download.ThreadPoolExecutor")
     @patch("modape.modis.download.GranuleQuery.get_all")
-    def test_download(self, mock_response, mock_submit, mock_open, mock_shutil, mock_cksum):
+    def test_download(
+        self, mock_response, mock_submit, mock_open, mock_shutil, mock_cksum
+    ):
         """Test download"""
 
         mock_response.return_value = self.api_response
@@ -249,7 +285,9 @@ class TestModisQuery(unittest.TestCase):
         future_result = (fid, None)
         mock_submit.return_value.__enter__.return_value.submit.return_value.result.return_value = future_result
 
-        with patch("modape.modis.download.ModisQuery._fetch", return_value=future_result) as mocked_fetch:
+        with patch(
+            "modape.modis.download.ModisQuery._fetch", return_value=future_result
+        ) as mocked_fetch:
             self.query.download(
                 targetdir=(self.testpath),
                 username="test",
@@ -276,15 +314,16 @@ class TestModisQuery(unittest.TestCase):
                     username="test",
                     password="test",
                     multithread=True,
-                    max_retries=5
+                    max_retries=5,
                 )
 
         # 1 + 5 retriess
         self.assertEqual(mock_submit.call_count, 6)
 
         # check robust download
-        with patch("modape.modis.download.SessionWithHeaderRedirection") as session_mock:
-
+        with patch(
+            "modape.modis.download.SessionWithHeaderRedirection"
+        ) as session_mock:
             xml_mock = MockResponse(self.hdfxml, 200)
             session_mock.return_value.__enter__.return_value.get.return_value.__enter__.side_effect = [
                 MagicMock(),
@@ -304,6 +343,7 @@ class TestModisQuery(unittest.TestCase):
 
             self.assertEqual(dl, ["MOD13A2.A2020001.h18v07.006.2020018001022.hdf"])
 
+
 class TestModisCollect(unittest.TestCase):
     """Test class for ModisQuery tests."""
 
@@ -311,25 +351,33 @@ class TestModisCollect(unittest.TestCase):
     def setUpClass(cls):
         """Set up testing class"""
 
+        cls.vim_files = [
+            "MYD13A2.A2002201.h18v06.006.2015149071105.hdf",
+            "MYD13A2.A2002185.h18v06.006.2015149071113.hdf",
+            "MOD13A2.A2002177.h18v06.006.2015149001129.hdf",
+            "MOD13A2.A2002209.h18v06.006.2015149180726.hdf",
+            "MOD13A2.A2002193.h18v06.006.2015149022847.hdf",
+        ]
 
-        cls.vim_files = ["MYD13A2.A2002201.h18v06.006.2015149071105.hdf",
-                         "MYD13A2.A2002185.h18v06.006.2015149071113.hdf",
-                         "MOD13A2.A2002177.h18v06.006.2015149001129.hdf",
-                         "MOD13A2.A2002209.h18v06.006.2015149180726.hdf",
-                         "MOD13A2.A2002193.h18v06.006.2015149022847.hdf"]
+        cls.viirs_files = [
+            "VNP13A2.A2025001.h18v09.002.2025017085341.h5",
+            "VNP13A2.A2025009.h18v09.002.2025031192612.h5",
+        ]
 
         cls.vim_files_terra = [x for x in cls.vim_files if "MOD13A2" in x]
         cls.vim_files_aqua = [x for x in cls.vim_files if "MYD13A2" in x]
 
-        cls.lst_files = ["MYD11A2.A2002193.h18v06.006.2015146152945.hdf",
-                         "MOD11A2.A2002209.h18v06.006.2015145152020.hdf",
-                         "MYD11A2.A2002201.h18v06.006.2015146153241.hdf",
-                         "MYD11A2.A2002185.h18v06.006.2015146152642.hdf",
-                         "MOD11A2.A2002177.h18v06.006.2015144183717.hdf",
-                         "MYD11A2.A2002209.h18v06.006.2015152152813.hdf",
-                         "MOD11A2.A2002185.h18v06.006.2015145002847.hdf",
-                         "MOD11A2.A2002193.h18v06.006.2015145055806.hdf",
-                         "MOD11A2.A2002201.h18v06.006.2015145105749.hdf"]
+        cls.lst_files = [
+            "MYD11A2.A2002193.h18v06.006.2015146152945.hdf",
+            "MOD11A2.A2002209.h18v06.006.2015145152020.hdf",
+            "MYD11A2.A2002201.h18v06.006.2015146153241.hdf",
+            "MYD11A2.A2002185.h18v06.006.2015146152642.hdf",
+            "MOD11A2.A2002177.h18v06.006.2015144183717.hdf",
+            "MYD11A2.A2002209.h18v06.006.2015152152813.hdf",
+            "MOD11A2.A2002185.h18v06.006.2015145002847.hdf",
+            "MOD11A2.A2002193.h18v06.006.2015145055806.hdf",
+            "MOD11A2.A2002201.h18v06.006.2015145105749.hdf",
+        ]
 
         cls.lst_files_terra = [x for x in cls.lst_files if "MOD11A2" in x]
         cls.lst_files_aqua = [x for x in cls.lst_files if "MYD11A2" in x]
@@ -349,7 +397,7 @@ class TestModisCollect(unittest.TestCase):
     def tearDownClass(cls):
         try:
             shutil.rmtree("__pycache__")
-        except:
+        except Exception as _:
             pass
 
         for file in Path("/tmp").glob("*h5"):
@@ -358,27 +406,27 @@ class TestModisCollect(unittest.TestCase):
     def tearDown(self):
         try:
             shutil.rmtree("/tmp/VIM")
-        except:
+        except Exception as _:
             pass
 
         try:
             shutil.rmtree("/tmp/TDA")
-        except:
+        except Exception as _:
             pass
 
         try:
             shutil.rmtree("/tmp/TNA")
-        except:
+        except Exception as _:
             pass
 
         try:
             shutil.rmtree("/tmp/TDT")
-        except:
+        except Exception as _:
             pass
 
         try:
             shutil.rmtree("/tmp/TNT")
-        except:
+        except Exception as _:
             pass
 
     def test_raw_instance(self):
@@ -391,16 +439,22 @@ class TestModisCollect(unittest.TestCase):
         self.assertEqual(raw_h5.tshift, 8)
         self.assertEqual(str(raw_h5.filename), "/tmp/VIM/MYD13A2.h18v06.006.VIM.h5")
 
-        raw_h5 = ModisRawH5(files=self.vim_files_aqua, targetdir="/tmp", vam_product_code="VEM")
+        raw_h5 = ModisRawH5(
+            files=self.vim_files_aqua, targetdir="/tmp", vam_product_code="VEM"
+        )
         self.assertEqual(raw_h5.vam_product_code, "VEM")
         self.assertEqual(raw_h5.product, "MYD13A2")
         self.assertEqual(str(raw_h5.filename), "/tmp/VEM/MYD13A2.h18v06.006.VEM.h5")
 
         with self.assertRaises(AssertionError):
-            raw_h5 = ModisRawH5(files=self.vim_files_aqua + self.vim_files_terra, targetdir="/tmp")
+            raw_h5 = ModisRawH5(
+                files=self.vim_files_aqua + self.vim_files_terra, targetdir="/tmp"
+            )
 
         with self.assertRaises(AssertionError):
-            raw_h5 = ModisRawH5(files=self.vim_files_aqua, targetdir="/tmp", vam_product_code="LTD")
+            raw_h5 = ModisRawH5(
+                files=self.vim_files_aqua, targetdir="/tmp", vam_product_code="LTD"
+            )
 
         raw_h5 = ModisRawH5(files=self.vim_files, targetdir="/tmp", interleave=True)
         self.assertEqual(raw_h5.vam_product_code, "VIM")
@@ -418,7 +472,9 @@ class TestModisCollect(unittest.TestCase):
         self.assertEqual(raw_h5.tshift, 4)
         self.assertEqual(str(raw_h5.filename), "/tmp/TDA/MYD11A2.h18v06.006.TDA.h5")
 
-        raw_h5 = ModisRawH5(files=self.lst_files_aqua, targetdir="/tmp", vam_product_code="LTN")
+        raw_h5 = ModisRawH5(
+            files=self.lst_files_aqua, targetdir="/tmp", vam_product_code="LTN"
+        )
         self.assertEqual(raw_h5.vam_product_code, "LTN")
         self.assertEqual(str(raw_h5.filename), "/tmp/TNA/MYD11A2.h18v06.006.TNA.h5")
 
@@ -428,12 +484,16 @@ class TestModisCollect(unittest.TestCase):
         self.assertEqual(str(raw_h5.filename), "/tmp/TDT/MOD11A2.h18v06.006.TDT.h5")
 
         with self.assertRaises(AssertionError):
-            raw_h5 = ModisRawH5(files=self.lst_files_terra, targetdir="/tmp", vam_product_code="VIM")
+            raw_h5 = ModisRawH5(
+                files=self.lst_files_terra, targetdir="/tmp", vam_product_code="VIM"
+            )
 
-        raw_h5 = ModisRawH5(files=self.lst_files_terra + self.lst_duplicate, targetdir="/tmp")
+        raw_h5 = ModisRawH5(
+            files=self.lst_files_terra + self.lst_duplicate, targetdir="/tmp"
+        )
         self.assertEqual(raw_h5.files, sorted(self.lst_files_terra))
 
-    def test_create(self):
+    def test_create_modis_vim(self):
         """Test creation of file"""
         h5f = ModisRawH5(
             files=self.vim_files,
@@ -441,6 +501,7 @@ class TestModisCollect(unittest.TestCase):
             interleave=True,
         )
 
+        self.assertEqual(h5f.filename.name, 'MXD13A2.h18v06.006.VIM.h5')
         self.assertFalse(h5f.exists)
 
         with patch.object(ModisRawH5, "_get_reference_metadata") as mocked_md:
@@ -460,18 +521,34 @@ class TestModisCollect(unittest.TestCase):
 
                 dates = hdf5_file.get("dates")
                 self.assertTrue(dates)
-                self.assertTrue(dates.shape, (len(h5f.rawdates,)))
+                self.assertTrue(
+                    dates.shape,
+                    (
+                        len(
+                            h5f.rawdates,
+                        )
+                    ),
+                )
 
             h5f.filename.unlink()
 
-    @patch("modape.modis.collect.HDFHandler.open_datasets")
+    def test_create_viirs_vim(self):
+        """Test creation of file"""
+        h5f = ModisRawH5(
+            files=self.viirs_files,
+            targetdir="/tmp",
+            interleave=True,
+        )
+
+        self.assertEqual(h5f.filename.name, 'VNP13A2.h18v09.002.VIM.h5')
+
     @patch("modape.modis.collect.HDFHandler.read_chunk")
-    def test_update(self, mocked_chunk, mocked_handles):
+    def test_update(self, mocked_chunk):
         """Test updating dataset"""
 
         ones = np.ones((48, 1200), dtype="int16")
         ones_view = ones.view()
-        ones_view.shape = (48*1200,)
+        ones_view.shape = (48 * 1200,)
 
         h5f = ModisRawH5(
             files=self.vim_files,
@@ -484,10 +561,7 @@ class TestModisCollect(unittest.TestCase):
             h5f.create()
 
         mocked_chunk.return_value = ones
-
-        with patch("modape.modis.collect.HDFHandler.iter_handles") as mocked_iter:
-            mocked_iter.return_value = ((ii, None) for ii, x in enumerate(h5f.files))
-            h5f.update()
+        h5f.update()
 
         for test_arr in h5f.read_chunked("data", xchunk=10):
             for dim in range(test_arr.shape[1]):
@@ -512,9 +586,7 @@ class TestModisCollect(unittest.TestCase):
             mocked_md.return_value = self.referece_metadata
             h5f.create()
 
-        with patch("modape.modis.collect.HDFHandler.iter_handles") as mocked_iter:
-            mocked_iter.return_value = ((ii, None) for ii, x in enumerate(h5f.files))
-            h5f.update()
+        h5f.update()
 
         dates_init = h5f.rawdates
 
@@ -528,13 +600,11 @@ class TestModisCollect(unittest.TestCase):
         twos = ones.copy()
         twos[...] = 2
         twos_view = twos.view()
-        twos_view.shape = (48*1200,)
+        twos_view.shape = (48 * 1200,)
 
         mocked_chunk.return_value = twos
 
-        with patch("modape.modis.collect.HDFHandler.iter_handles") as mocked_iter:
-            mocked_iter.return_value = ((ii, None) for ii, x in enumerate(h5f.files))
-            h5f.update()
+        h5f.update()
 
         for test_arr in h5f.read_chunked("data", xchunk=10):
             ii = 0
@@ -549,7 +619,6 @@ class TestModisCollect(unittest.TestCase):
             dates = [x.decode() for x in hdf5_file.get("dates")]
             self.assertEqual(dates, dates_init + h5f.rawdates)
 
-
         h5f.filename.unlink()
         del h5f
 
@@ -562,9 +631,7 @@ class TestModisCollect(unittest.TestCase):
             mocked_md.return_value = self.referece_metadata
             h5f.create()
 
-        with patch("modape.modis.collect.HDFHandler.iter_handles") as mocked_iter:
-            mocked_iter.return_value = ((ii, None) for ii, x in enumerate(h5f.files))
-            h5f.update()
+        h5f.update()
 
         del h5f
 
@@ -573,11 +640,9 @@ class TestModisCollect(unittest.TestCase):
             targetdir="/tmp",
         )
 
-        with patch("modape.modis.collect.HDFHandler.iter_handles") as mocked_iter:
-            mocked_iter.return_value = ((ii, None) for ii, x in enumerate(h5f.files))
+        with self.assertRaises(AssertionError):
+            h5f.update()
 
-            with self.assertRaises(AssertionError):
-                h5f.update()
 
 class TestModisSmooth(unittest.TestCase):
     """Test class for ModisSmooth tests"""
@@ -586,15 +651,18 @@ class TestModisSmooth(unittest.TestCase):
     def setUpClass(cls):
         cls.testpath = Path("/tmp/data")
         cls.testpath.mkdir(exist_ok=True)
+        for root, dirs, files in os.walk(cls.testpath):
+            for f in files:
+                os.unlink(os.path.join(root, f))
         cls.testfile = create_h5temp(12, 12, 8, 8)
-        cls.y_chunksize = 12*12//25
+        cls.y_chunksize = 12 * 12 // 25
 
     @classmethod
     def tearDownClass(cls):
         cls.testfile.unlink()
         try:
             shutil.rmtree(str(cls.testpath))
-        except:
+        except Exception as _:
             pass
 
     def test_smooth_instance(self):
@@ -620,7 +688,6 @@ class TestModisSmooth(unittest.TestCase):
         self.assertTrue(smtH5.tinterpolate)
         self.assertEqual(smtH5.temporalresolution, 10)
         self.assertEqual(str(smtH5.filename), "/tmp/MXD13A2.h21v10.006.txd.VIM.h5")
-
 
         smtH5 = ModisSmoothH5(
             rawfile=self.testfile,
@@ -753,7 +820,10 @@ class TestModisSmooth(unittest.TestCase):
         _, mkwargs = mocked_whit.call_args
         np.testing.assert_array_equal(mkwargs["llas"], np.arange(0, 3.2, 0.2).round(2))
 
-        with patch("modape.modis.smooth.ws2doptv") as mocked_whit1, patch("modape.modis.smooth.ws2doptvp") as mocked_whit2:
+        with (
+            patch("modape.modis.smooth.ws2doptv") as mocked_whit1,
+            patch("modape.modis.smooth.ws2doptvp") as mocked_whit2,
+        ):
             mocked_read.return_value = iter([ones[:, 0]])
             mocked_whit2.return_value = (ts_test, 10)
             with patch("modape.modis.smooth.lag1corr", return_value=0.8):
@@ -767,6 +837,7 @@ class TestModisSmooth(unittest.TestCase):
         np.testing.assert_array_equal(mkwargs["p"], 0.9)
 
         smtH5.filename.unlink()
+
 
 class TestModisMosaic(unittest.TestCase):
     """Test class for ModisMosaic"""
@@ -782,37 +853,32 @@ class TestModisMosaic(unittest.TestCase):
         smt_file.create()
         cls.testfile_smt = smt_file.filename
 
-
     @classmethod
     def tearDownClass(cls):
         cls.testfile.unlink()
         try:
             shutil.rmtree(str(cls.testpath))
-        except:
+        except Exception as _:
             pass
 
     def test_instance(self):
         """Test instance creation"""
 
-        mosaic = ModisMosaic([self.testfile]*5)
+        mosaic = ModisMosaic([self.testfile] * 5)
 
         with h5py.File(self.testfile, "r") as h5f_open:
             dts = [x.decode() for x in h5f_open.get("dates")[...]]
 
-        self.assertEqual(
-            [x.strftime("%Y%j") for x in mosaic.dates],
-            dts
-        )
+        self.assertEqual([x.strftime("%Y%j") for x in mosaic.dates], dts)
         self.assertTrue(len(mosaic.files), 5)
 
         mosaic = ModisMosaic(self.testfile)
-        self.assertEqual(
-            [x.strftime("%Y%j") for x in mosaic.dates],
-            dts
-        )
+        self.assertEqual([x.strftime("%Y%j") for x in mosaic.dates], dts)
         self.assertTrue(len(mosaic.files), 1)
 
-    @patch("modape.modis.window.ModisMosaic._get_raster", return_value="/vsimem/inmem.tif")
+    @patch(
+        "modape.modis.window.ModisMosaic._get_raster", return_value="/vsimem/inmem.tif"
+    )
     @patch("modape.modis.window.ModisMosaic._mosaic")
     @patch("modape.modis.window.ModisMosaic._translate")
     def test_generate_mosaics_basic(self, mock_translate, mock_mosaic, mock_raster):
@@ -821,7 +887,7 @@ class TestModisMosaic(unittest.TestCase):
 
         mock_mosaic.return_value.__enter__.return_value = "/inmem/warped.tif"
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(NotImplementedError):
             mosaic.generate_mosaics("not_a_dataset", "/tmp/data", "EPSG:4326")
 
         mosaic.generate_mosaics("data", "/tmp/data", "EPSG:4326")
@@ -833,7 +899,7 @@ class TestModisMosaic(unittest.TestCase):
         self.assertEqual(margs[1], "data")
         self.assertEqual(margs[2], False)
         self.assertEqual(mkwargs["round_int"], None)
-        self.assertEqual(mkwargs["ix"], len(mosaic.dates)-1)
+        self.assertEqual(mkwargs["ix"], len(mosaic.dates) - 1)
 
         mock_mosaic.assert_called()
         margs, mkwargs = mock_mosaic.call_args
@@ -842,7 +908,9 @@ class TestModisMosaic(unittest.TestCase):
         self.assertEqual(mkwargs["target_srs"], "EPSG:4326")
         self.assertEqual(mkwargs["dtype"], 3)
         self.assertEqual(mkwargs["nodata"], -3000)
-        np.testing.assert_almost_equal(mkwargs["resolution"], [1000/112000, (1000/112000)*-1])
+        np.testing.assert_almost_equal(
+            mkwargs["resolution"], [1000 / 112000, (1000 / 112000) * -1]
+        )
 
         mock_translate.assert_called()
         _, mkwargs = mock_translate.call_args
@@ -853,8 +921,9 @@ class TestModisMosaic(unittest.TestCase):
         self.assertEqual(mkwargs["noData"], -3000)
         self.assertEqual(mkwargs["outputType"], 3)
 
-
-    @patch("modape.modis.window.ModisMosaic._get_raster", return_value="/vsimem/inmem.tif")
+    @patch(
+        "modape.modis.window.ModisMosaic._get_raster", return_value="/vsimem/inmem.tif"
+    )
     @patch("modape.modis.window.ModisMosaic._mosaic")
     @patch("modape.modis.window.ModisMosaic._translate")
     def test_generate_mosaics_sgrid(self, mock_translate, mock_mosaic, mock_raster):
@@ -881,7 +950,9 @@ class TestModisMosaic(unittest.TestCase):
         self.assertEqual(mkwargs["target_srs"], "EPSG:4326")
         self.assertEqual(mkwargs["dtype"], 6)
         self.assertEqual(mkwargs["nodata"], 0)
-        np.testing.assert_almost_equal(mkwargs["resolution"], [1000/112000, (1000/112000)*-1])
+        np.testing.assert_almost_equal(
+            mkwargs["resolution"], [1000 / 112000, (1000 / 112000) * -1]
+        )
 
         mock_translate.assert_called()
         _, mkwargs = mock_translate.call_args
@@ -892,10 +963,14 @@ class TestModisMosaic(unittest.TestCase):
         self.assertEqual(mkwargs["noData"], 0)
         self.assertEqual(mkwargs["outputType"], 6)
 
-    @patch("modape.modis.window.ModisMosaic._get_raster", return_value="/vsimem/inmem.tif")
+    @patch(
+        "modape.modis.window.ModisMosaic._get_raster", return_value="/vsimem/inmem.tif"
+    )
     @patch("modape.modis.window.ModisMosaic._mosaic")
     @patch("modape.modis.window.ModisMosaic._translate")
-    def test_generate_mosaics_kwarg_propagation(self, mock_translate, mock_mosaic, mock_raster):
+    def test_generate_mosaics_kwarg_propagation(
+        self, mock_translate, mock_mosaic, mock_raster
+    ):
         """Test mosaic creation"""
         mosaic = ModisMosaic(self.testfile)
 
@@ -904,23 +979,24 @@ class TestModisMosaic(unittest.TestCase):
         cos = ["COMPRESS=LZW", "PREDICTOR=2"]
         aoi = [0, 0, 10, 10]
 
-        mosaic.generate_mosaics("data",
-                                "/tmp/data",
-                                "EPSG:3857",
-                                aoi=aoi,
-                                overwrite=True,
-                                force_doy=True,
-                                prefix="test",
-                                clip_valid=True,
-                                round_int=-2,
-                                xRes=10,
-                                yRes=10,
-                                noData=-1,
-                                outputType=0,
-                                creationOptions=cos,
-                                resampleAlg="bilinear",
-                                multithread=True,
-                                )
+        mosaic.generate_mosaics(
+            "data",
+            "/tmp/data",
+            "EPSG:3857",
+            aoi=aoi,
+            overwrite=True,
+            force_doy=True,
+            prefix="test",
+            clip_valid=True,
+            round_int=-2,
+            xRes=10,
+            yRes=10,
+            noData=-1,
+            outputType=0,
+            creationOptions=cos,
+            resampleAlg="bilinear",
+            multithread=True,
+        )
 
         mock_raster.assert_called()
         margs, mkwargs = mock_raster.call_args
@@ -950,7 +1026,9 @@ class TestModisMosaic(unittest.TestCase):
         self.assertEqual(mkwargs["projWin"], aoi)
         self.assertEqual(mkwargs["outputBounds"], aoi)
 
-    @patch("modape.modis.window.ModisMosaic._get_raster", return_value="/vsimem/inmem.tif")
+    @patch(
+        "modape.modis.window.ModisMosaic._get_raster", return_value="/vsimem/inmem.tif"
+    )
     @patch("modape.modis.window.ModisMosaic._mosaic")
     @patch("modape.modis.window.ModisMosaic._translate")
     def test_generate_mosaics_global(self, mock_translate, mock_mosaic, mock_raster):
@@ -958,7 +1036,7 @@ class TestModisMosaic(unittest.TestCase):
 
         mosaic = ModisMosaic(self.testfile_global)
         mock_mosaic.return_value.__enter__.return_value = "/vsimem/warped.tif"
-        mosaic.generate_mosaics("data", "/tmp/data", None)
+        mosaic.generate_mosaics("data", "/tmp/data")
 
         mock_raster.assert_called()
         self.assertEqual(mock_raster.call_count, len(mosaic.dates))
@@ -969,7 +1047,7 @@ class TestModisMosaic(unittest.TestCase):
         self.assertEqual(mock_translate.call_count, len(mosaic.dates))
         self.assertEqual(mkwargs["src"], "/vsimem/warped.tif")
         self.assertEqual(mkwargs["dst"], "/tmp/data/vim2002j209.tif")
-        self.assertEqual(mkwargs["outputSRS"], None)
+        self.assertTrue("outputSRS" not in mkwargs)
 
         mock_translate.reset_mock()
         mock_mosaic.reset_mock()
@@ -989,7 +1067,9 @@ class TestModisMosaic(unittest.TestCase):
         self.assertEqual(mkwargs["dst"], "/tmp/data/vim2002j209.tif")
         self.assertEqual(mkwargs["outputSRS"], "EPSG:3857")
 
-    @patch("modape.modis.window.ModisMosaic._get_raster", return_value="/vsimem/inmem.tif")
+    @patch(
+        "modape.modis.window.ModisMosaic._get_raster", return_value="/vsimem/inmem.tif"
+    )
     @patch("modape.modis.window.ModisMosaic._mosaic")
     @patch("modape.modis.window.ModisMosaic._translate")
     def test_generate_mosaics_dates(self, mock_translate, mock_mosaic, mock_raster):
@@ -998,11 +1078,13 @@ class TestModisMosaic(unittest.TestCase):
 
         mock_mosaic.return_value.__enter__.return_value = "/vsimem/warped.tif"
 
-        mosaic.generate_mosaics("data",
-                                "/tmp/data",
-                                "EPSG:4326",
-                                start=datetime(2002, 7, 10).date(),
-                                stop=datetime(2002, 7, 21).date())
+        mosaic.generate_mosaics(
+            "data",
+            "/tmp/data",
+            "EPSG:4326",
+            start=datetime(2002, 7, 10).date(),
+            stop=datetime(2002, 7, 21).date(),
+        )
 
         n = len(mosaic.dates[1:3])
 

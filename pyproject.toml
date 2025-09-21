@@ -1,0 +1,73 @@
+[build-system]
+requires = [
+    "setuptools>=61.0",
+    "wheel",
+    "numpy>=1.16.1",
+    "cython>=0.29.0; platform_python_implementation != 'PyPy'"
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "modape"
+description = "MODIS Assimilation and Processing Engine"
+dynamic = ["version"]
+authors = [
+    {name = "Valentin Pesendorfer", email = "valentin.pesendorfer@wfp.org"}
+]
+readme = "README.md"  # Assuming you have a README.md file
+license = {text = "MIT"}  # Update with your actual license
+requires-python = ">=3.6, <4"
+dependencies = [
+    "click<8",
+    "cython",
+    "numpy>=1.16.1",
+    "gdal>=2",
+    "h5py>=2.9",
+    "python-cmr>=0.4",
+    "requests>=2",
+    "pandas>=0.24",
+    "pycksum>=0.4.7",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+
+[project.urls]
+Homepage = "http://wfp-vam.github.io/modape"
+Repository = "https://github.com/WFP-VAM/modape"
+Documentation = "http://wfp-vam.github.io/modape"
+
+[project.scripts]
+modis_download = "modape.scripts.modis_download:cli_wrap"
+modis_collect = "modape.scripts.modis_collect:cli_wrap"
+modis_smooth = "modape.scripts.modis_smooth:cli_wrap"
+modis_window = "modape.scripts.modis_window:cli_wrap"
+csv_smooth = "modape.scripts.csv_smooth:cli_wrap"
+modis_info = "modape.scripts.modis_info:cli_wrap"
+modape_version = "_version.version_info:main"
+
+[project.optional-dependencies]
+test = ["pytest", "pytest-runner", "click", "cython"]
+dev = ["pytest", "pytest-runner", "click", "cython"]
+
+[tool.pytest.ini_options]
+python_files = ["tests/test_*.py"]
+filterwarnings = [
+    "ignore::UserWarning"
+]
+
+[tool.setuptools.packages.find]
+# Equivalent to find_packages()
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.dynamic]
+version = {attr = "_version.__version__"}
+
+# Optional: If you want to use setuptools-scm instead of _version.py
+# [tool.setuptools_scm]
+# write_to = "modape/_version.py"

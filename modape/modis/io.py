@@ -1,21 +1,28 @@
 """IO module for modape"""
-# pylint: disable=E0401, C0103
-from contextlib import contextmanager
-import logging
-from pathlib import Path
-from typing import List, Tuple
 
-from osgeo import gdal
+# pylint: disable=E0401, C0103
+import logging
+import re
+import uuid
+from contextlib import contextmanager
+from pathlib import Path
+from typing import Any, Generator
+
 import h5py
 import numpy as np
+from osgeo import gdal
+
+from modape.constants import PRODUCT_SDS_DICT, PRODUCT_SRS_DICT, REGEX_PATTERNS
 
 log = logging.getLogger(__name__)
+
 
 class HDF5Base(object):
     """Parent class for interaction with HDF5 files
 
     This class serves as a parent class for ModisRawH5 and ModisSmoothH5,
     enabling uniform chunked read and write of datasets and attributes to and from HDF5 files."""
+
     def __init__(self, filename: str) -> None:
         """Initialize HDF5Base instance.
 
@@ -29,11 +36,9 @@ class HDF5Base(object):
         self.filename = Path(filename)
         self.exists = self.filename.exists()
 
-    def read_chunked(self,
-                     dataset: str,
-                     xoffset: int = 0,
-                     xchunk: int = None,
-                     arr_out: np.ndarray = None) -> np.ndarray:
+    def read_chunked(
+        self, dataset: str, xoffset: int = 0, xchunk: int = None, arr_out: np.ndarray = None
+    ) -> Generator[np.ndarray, None, None]:
         """Read data from dataset in a chunked manner.
 
         The chunks are iterated in a row by column pattern, where
@@ -74,7 +79,11 @@ class HDF5Base(object):
                 if len(ds_shape) == 1:
                     arr_out = np.full((ychunk,), fill_value=ds.fillvalue, dtype=ds.dtype.name)
                 else:
-                    arr_out = np.full((ychunk, ds_shape[1]-xoffset), fill_value=ds.fillvalue, dtype=ds.dtype.name)
+                    arr_out = np.full(
+                        (ychunk, ds_shape[1] - xoffset),
+                        fill_value=ds.fillvalue,
+                        dtype=ds.dtype.name,
+                    )
 
             else:
                 assert isinstance(arr_out, np.ndarray)
@@ -94,24 +103,36 @@ class HDF5Base(object):
 
             with h5py.File(self.filename, "r") as h5f_open:
                 ds = h5f_open.get(dataset)
-                log.debug("Reading chunk %s - %s", yb, yb+ychunk)
+                log.debug("Reading chunk %s - %s", yb, yb + ychunk)
                 if xsize is not None:
                     for xb in range(0, xsize, xchunk):
                         xb_data = xb + xoffset
 
-                        log.debug("Reading arr_out[%s : %s, %s : %s] from dataset[:, %s : %s]", yb, yb+ychunk, xb, xb+xchunk, xb_data, xb_data+xchunk)
-                        arr_out[:, xb:(xb+xchunk)] = ds[yb:(yb+ychunk), xb_data:(xb_data+xchunk)]
+                        log.debug(
+                            "Reading arr_out[%s : %s, %s : %s] from dataset[:, %s : %s]",
+                            yb,
+                            yb + ychunk,
+                            xb,
+                            xb + xchunk,
+                            xb_data,
+                            xb_data + xchunk,
+                        )
+                        arr_out[:, xb : (xb + xchunk)] = ds[
+                            yb : (yb + ychunk), xb_data : (xb_data + xchunk)
+                        ]
                 else:
-                    arr_out[...] = ds[yb:(yb+ychunk)]
+                    arr_out[...] = ds[yb : (yb + ychunk)]
 
             yield arr_out
 
-    def write_chunk(self,
-                    dataset: str,
-                    arr_in: np.ndarray,
-                    xoffset: int = 0,
-                    xchunk: int = None,
-                    yoffset: int = 0) -> bool:
+    def write_chunk(
+        self,
+        dataset: str,
+        arr_in: np.ndarray,
+        xoffset: int = 0,
+        xchunk: int = None,
+        yoffset: int = 0,
+    ) -> bool:
         """Write chunk back to HDF5 file.
 
         Writes complete chunk back to HDF5 file, iterating
@@ -155,7 +176,7 @@ class HDF5Base(object):
                 if xchunk is None:
                     xchunk = xsize
             except ValueError:
-                ysize, = arr_in.shape
+                (ysize,) = arr_in.shape
                 xsize = None
 
             ysize = max(ysize, ychunk)
@@ -167,17 +188,26 @@ class HDF5Base(object):
 
                 for xb in range(0, xsize, xchunk):
                     xb_data = xb + xoffset
-                    log.debug("Writing dataset[%s : %s, %s : %s] from arr_in[:, %s : %s]", yoffset, yoffset+ysize, xb_data, xb_data+xchunk, xb, xb+xchunk)
-                    ds[yoffset:(yoffset+ysize), xb_data:(xb_data+xchunk)] = arr_in[:, xb:(xb+xchunk)]
+                    log.debug(
+                        "Writing dataset[%s : %s, %s : %s] from arr_in[:, %s : %s]",
+                        yoffset,
+                        yoffset + ysize,
+                        xb_data,
+                        xb_data + xchunk,
+                        xb,
+                        xb + xchunk,
+                    )
+                    ds[yoffset : (yoffset + ysize), xb_data : (xb_data + xchunk)] = arr_in[
+                        :, xb : (xb + xchunk)
+                    ]
             else:
-                log.debug("Writing dataset[%s : %s] from arr_in", yoffset, yoffset+ysize)
-                ds[yoffset:(yoffset+ysize)] = arr_in[...]
+                log.debug("Writing dataset[%s : %s] from arr_in", yoffset, yoffset + ysize)
+                ds[yoffset : (yoffset + ysize)] = arr_in[...]
 
         return True
 
     @staticmethod
-    def _get_reference_metadata(reference_file: str,
-                                sds_filter: str = None)-> dict:
+    def _get_reference_metadata(reference_file: str, sds_filter: str = None) -> dict:
         """Helper function to get metadata from reference file.
 
         Extracts metadata from subdataset, eitjer filtered
@@ -200,6 +230,23 @@ class HDF5Base(object):
             dict: Dictionary with metadata
 
         """
+
+        if reference_file.endswith(".h5"):
+            with HDFHandler._open_h5_source(reference_file, sds_filter) as h5_source:
+                band: gdal.Band | None = h5_source.GetRasterBand(1)
+                try:
+                    assert band is not None
+                    c, a, b, f, d, e = h5_source.GetGeoTransform()
+                    return dict(
+                        RasterXSize=h5_source.RasterXSize,
+                        RasterYSize=h5_source.RasterYSize,
+                        geotransform=(c, a, b, f, d, e),
+                        projection=h5_source.GetProjection(),
+                        resolution=(a, e),
+                        nodata=band.GetNoDataValue(),
+                    )
+                finally:
+                    band = None
 
         ds = gdal.Open(reference_file)
         sds_all = ds.GetSubDatasets()
@@ -226,14 +273,55 @@ class HDF5Base(object):
 
         return metadata
 
+
 class HDFHandler(object):
     """Class to handle reading from MODIS HDF files.
 
     This class enables reading specific subdatasets and attributes
     from the raw MODIS HDF files."""
-    def __init__(self,
-                 files: List[str],
-                 sds: str) -> None:
+
+    class HandleCollection:
+        def __init__(self, files, sds) -> None:
+            self.handles: list[gdal.Dataset | None] = []
+            self.files: list[str] = []
+
+            for ds_handle, filename in self._gen_sds_handle(files, sds):
+                self.handles.append(ds_handle)
+                self.files.append(filename)
+
+        def release(self):
+            for ii in range(len(self.handles)):
+                self.handles[ii] = None
+            self.handles = []
+
+        def __iter__(self) -> Generator[tuple[int, gdal.Dataset | None, str], None, None]:
+            """Iterates over all open dataset handles
+            coming from `open_datasets` and returns a Tuple with index and a
+            `gdal.Dataset` + filename for each.
+
+            Returns:
+                Tuple with index, corresponding `gdal.Dataset` and filename
+
+            """
+            assert len(self.handles) == len(self.files)
+            for ix, handle in enumerate(self.handles):
+                yield (ix, handle, self.files[ix])
+
+        @staticmethod
+        def _gen_sds_handle(
+            x: list[str], sds: str
+        ) -> Generator[tuple[gdal.Dataset | None, str], None, None]:
+            for xx in x:
+                try:
+                    ds = gdal.Open(xx)
+                    ds_sds = [x[0] for x in ds.GetSubDatasets() if sds in x[0]][0]
+                    yield gdal.Open(ds_sds), xx
+                    ds = None
+
+                except AttributeError:
+                    yield None, xx
+
+    def __init__(self, files: list[str], sds: str) -> None:
         """Initialize HDFHandler instance.
 
         Reads the datasets, extracts the subdatasets and keeps
@@ -247,41 +335,23 @@ class HDFHandler(object):
 
         self.files = files
         self.sds = sds
-        self.handles = []
 
     @contextmanager
-    def open_datasets(self) -> None:
+    def open(self) -> Generator[HandleCollection, None, None]:
         """Opens the selected subdataset from all files
         within a context manager and stores them in a class variable.
         When the context manager closes, the refereces are removed, closing
         all datasets.
 
         """
-        for ds_handle in self._gen_sds_handle(self.files, self.sds):
-            self.handles.append(ds_handle)
 
-        yield
-
-        for ii in range(len(self.handles)):
-            self.handles[ii] = None
-        self.handles = []
-
-    def iter_handles(self) -> Tuple[int, "gdal.Dataset"]:
-        """Iterates over all open dataset handles
-        coming from `open_datasets` and returns a Tuple with index and a
-        `gdal.Dataset` for each.
-
-        Returns:
-            Tuple with index and corresponding `gdal.Dataset`
-
-        """
-        ix = 0
-        for handle in self.handles:
-            yield (ix, handle)
-            ix += 1
+        try:
+            yield (handles := HDFHandler.HandleCollection(self.files, self.sds))
+        finally:
+            handles.release()
 
     @staticmethod
-    def read_chunk(x: "gdal.Dataset", **kwargs: dict) -> np.ndarray:
+    def read_chunk(x: gdal.Dataset, **kwargs: dict[str, int | Any]) -> np.ndarray | None:
         """Reads a chunk of an opened subdataset.
 
         The size of the chunk being read is defined by the
@@ -299,13 +369,116 @@ class HDFHandler(object):
         return x.ReadAsArray(**kwargs)
 
     @staticmethod
-    def _gen_sds_handle(x: str, sds: str):
-        for xx in x:
-            try:
-                ds = gdal.Open(xx)
-                ds_sds = [x[0] for x in ds.GetSubDatasets() if sds in x[0]][0]
-                yield gdal.Open(ds_sds)
-                ds = None
+    @contextmanager
+    def _open_h5_source(path: str, sds_filter: str) -> Generator[gdal.Dataset, None, None]:
+        """Helper function to open .h5 sources for which GDAL has trouble
+        parsing metadata correctly. Also, products may have multiple NoData
+        values, i.e.: VNP13A2 defines -15000 as well as -13000
+        """
 
-            except AttributeError:
-                yield None
+        def write_memfile(memfile, buffer: bytes | str):
+            vsiFile = gdal.VSIFOpenL(memfile, "wb")
+            try:
+                if isinstance(buffer, str):
+                    buffer = str.encode(buffer)
+                gdal.VSIFWriteL(buffer, 1, len(buffer), vsiFile)
+            finally:
+                gdal.VSIFCloseL(vsiFile)
+
+        datatypes = {
+            gdal.GDT_Byte: ("Byte", 0, 255),
+            gdal.GDT_UInt16: ("UInt16", 0, 65535),
+            gdal.GDT_Int16: ("Int16", -32768, 32768),
+            gdal.GDT_UInt32: ("UInt32", 0, 4294967295),
+            gdal.GDT_Int32: ("Int32", -2147483648, 2147483647),
+        }
+
+        product = REGEX_PATTERNS["product"].findall(Path(path).name)[0]
+        tile = REGEX_PATTERNS["tile"].findall(Path(path).name)[0]
+        sds = PRODUCT_SDS_DICT[f"{product}_{sds_filter}"]
+        srs = PRODUCT_SRS_DICT[product]
+
+        # Example geotransformation for h16v07
+        #   tuple:
+        #     GT = (-2223901.0393329998, 926.62543305499980, 0.0, 2223901.0393329998, 0.0, -926.62543305499980):
+        #   explained:
+        #     GT[0] = UL x-coordinate for UL pixel: -2223901.0393329998
+        #     GT[1] = W-E pixel resolution / pixel width: 926.62543305499980
+        #     GT[2] = row rotation: 0
+        #     GT[3] = UL y-coordinate for UL pixel: 2223901.0393329998
+        #     GT[4] = column rotation: 0
+        #     GT[5] = N-S pixel resolution / pixel height: -926.62543305499980
+        #       (negative value for a north-up image).
+        #   computed:
+        #     GT[0] = (16 - 18) * 1200 * 926.6254330558334 = -2223901.03933
+        #     GT[3] = (7 - 9) * 1200 * -926.6254330558334 = 2223901.03933
+        h, v = tuple([int(hv) for hv in re.split(r"[^\d]+", tile) if len(hv) > 0])
+        srs_origin = srs["Origin"]
+        gdal_gt = ",".join(
+            str(factor)
+            for factor in [
+                ((h - srs_origin["h"]["index"]) * sds["Size"][0] * srs["PixelSize"][0])
+                + srs_origin["h"]["offset"],
+                srs["PixelSize"][0],
+                0.0,
+                ((v - srs_origin["v"]["index"]) * sds["Size"][1] * srs["PixelSize"][1])
+                + srs_origin["v"]["offset"],
+                0.0,
+                srs["PixelSize"][1],
+            ]
+        )
+        gdal_dt = datatypes[sds["DataType"]]
+        assert all(
+            (val < min(sds["ValueRange"]) or val > max(sds["ValueRange"]))
+            for val in sds["NoDataValue"]
+        ), f"Invalid Data / NoData configuration for product: {product}_{sds_filter}"
+
+        # Setup a LUT to reclass multiple NoData values into a single (lowest):
+        lut = []
+        for entry in sorted(
+            set([gdal_dt[1], gdal_dt[2], sds["ValueRange"][0], sds["ValueRange"][1]])
+        ):
+            if entry == min(sds["ValueRange"]):
+                if len(lut) > 0:
+                    lut.append(f"{entry-1}:{min(sds['NoDataValue'])}")
+                lut.append(f"{entry}:{entry}")
+            elif entry == max(sds["ValueRange"]):
+                lut.append(f"{entry}:{entry}")
+                if entry < gdal_dt[2]:
+                    lut.append(f"{entry+1}:{min(sds['NoDataValue'])}")
+            elif entry == gdal_dt[1] or (
+                entry == gdal_dt[2] and entry > (max(sds["ValueRange"]) + 1)
+            ):
+                lut.append(f"{entry}:{min(sds['NoDataValue'])}")
+
+        vrt = f"""\
+<VRTDataset rasterXSize="{sds['Size'][0]}" rasterYSize="{sds['Size'][1]}">
+  <SRS dataAxisToSRSAxisMapping="{srs['AxisMapping']}">{srs['ProjectionWKT']}</SRS>
+  <GeoTransform>{gdal_gt}</GeoTransform>
+  <VRTRasterBand
+    dataType="{gdal_dt[0]}" band="1"
+    BlockXSize="{sds["BlockSize"][0]}" BlockYSize="{sds["BlockSize"][1]}">
+    <NoDataValue>{min(sds['NoDataValue'])}</NoDataValue>
+    <ComplexSource>
+      <SourceFilename relativeToVRT="0">HDF5:{path}:{sds['Name']}</SourceFilename>
+      <SourceBand>1</SourceBand>
+      <SourceProperties
+        RasterXSize="{sds["Size"][0]}" RasterYSize="{sds["Size"][1]}"
+        DataType="{gdal_dt[0]}"
+        BlockXSize="{sds["BlockSize"][0]}" BlockYSize="{sds["BlockSize"][1]}" />
+      <SrcRect xOff="0" yOff="0" xSize="{sds["Size"][0]}" ySize="{sds["Size"][1]}" />
+      <DstRect xOff="0" yOff="0" xSize="{sds["Size"][0]}" ySize="{sds["Size"][1]}" />
+      <LUT>{lut}</LUT>
+    </ComplexSource>
+  </VRTRasterBand>
+</VRTDataset>
+        """
+        fn_vsi = f"/vsimem/{str(uuid.uuid4())}.vrt"
+        write_memfile(fn_vsi, vrt)
+        ds: gdal.Dataset | None = gdal.Open(fn_vsi)
+        try:
+            assert ds is not None
+            yield ds
+        finally:
+            ds = None
+            gdal.Unlink(fn_vsi)

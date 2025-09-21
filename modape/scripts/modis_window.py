@@ -1,56 +1,79 @@
 #!/usr/bin/env python
 # pylint: disable=broad-except,C0103,E0401
-"""modis_window.py: Create mosaics from smooth MODIS HDF5 files and
-   save them as GeoTIFFs.
-"""
+"""modis_window.py: Create mosaics from smooth MODIS HDF5 files and save them as GeoTIFFs."""
 import datetime
 import logging
-from pathlib import Path
 import re
 import sys
+from pathlib import Path
 from typing import Dict, List, Tuple, Union
 
 import click
+
 from modape.constants import REGEX_PATTERNS
 from modape.modis import ModisMosaic
 
 log = logging.getLogger(__name__)
 
+
 @click.command()
 @click.argument("src")
-@click.option("-d", "--targetdir", type=click.Path(dir_okay=True, resolve_path=True, writable=True), help="Target directory for Tiffs")
-@click.option("-b", "--begin-date", type=click.DateTime(formats=["%Y-%m-%d"]), help="Begin date for Tiffs")
-@click.option("-e", "--end-date", type=click.DateTime(formats=["%Y-%m-%d"]), help="End date for Tiffs")
+@click.option(
+    "-d",
+    "--targetdir",
+    type=click.Path(dir_okay=True, resolve_path=True, writable=True),
+    help="Target directory for Tiffs",
+)
+@click.option(
+    "-b", "--begin-date", type=click.DateTime(formats=["%Y-%m-%d"]), help="Begin date for Tiffs"
+)
+@click.option(
+    "-e", "--end-date", type=click.DateTime(formats=["%Y-%m-%d"]), help="End date for Tiffs"
+)
 @click.option("--roi", type=click.STRING, help="AOI for clipping (as xmin,ymin,xmax,ymax)")
-@click.option("--region", type=click.STRING, help="Region prefix for Tiffs (default is reg)", default="reg")
+@click.option(
+    "--region", type=click.STRING, help="Region prefix for Tiffs (default is reg)", default="reg"
+)
 @click.option("--sgrid", is_flag=True, help="Extract sgrid instead of data")
 @click.option("--force-doy", is_flag=True, help="Force DOY filenaming")
 @click.option("--filter-product", type=click.STRING, help="Filter by product")
 @click.option("--filter-vampc", help="Filter by VAM parameter code")
 @click.option("--target-srs", help="Target spatial reference for warping", default="EPSG:4326")
-@click.option('--co', multiple=True, help="GDAL creationOptions", default=["COMPRESS=LZW", "PREDICTOR=2"])
+@click.option(
+    "--co", multiple=True, help="GDAL creationOptions", default=["COMPRESS=LZW", "PREDICTOR=2"]
+)
 @click.option("--clip-valid", is_flag=True, help="clip values to valid range for product")
-@click.option("--round-int", type=click.INT, help="Round to integer places (either decimals or exponent of 10)")
+@click.option(
+    "--round-int",
+    type=click.INT,
+    help="Round to integer places (either decimals or exponent of 10)",
+)
 @click.option("--gdal-kwarg", type=click.STRING, multiple=True, help="Addition kwargs for GDAL")
 @click.option("--overwrite", is_flag=True, help="Overwrite existsing Tiffs")
-@click.option('--last-smoothed', type=click.DateTime(formats=['%Y%j']), help='Last smoothed date in julian format (YYYYDDD - %Y%j)')
-def cli(src: str,
-        targetdir: str,
-        begin_date: datetime.date,
-        end_date: datetime.date,
-        roi: Union[str, List[float]],
-        region: str,
-        sgrid: bool,
-        force_doy: bool,
-        filter_product: str,
-        filter_vampc: str,
-        target_srs: str,
-        co: Tuple[str],
-        clip_valid: bool,
-        round_int: int,
-        gdal_kwarg: Union[Tuple[str], Dict[str, Union[str, int, float]]],
-        overwrite: bool,
-        last_smoothed: str) -> List:
+@click.option(
+    "--last-smoothed",
+    type=click.DateTime(formats=["%Y%j"]),
+    help="Last smoothed date in julian format (YYYYDDD - %Y%j)",
+)
+def cli(
+    src: str,
+    targetdir: str,
+    begin_date: datetime.date,
+    end_date: datetime.date,
+    roi: Union[str, List[float]],
+    region: str,
+    sgrid: bool,
+    force_doy: bool,
+    filter_product: str,
+    filter_vampc: str,
+    target_srs: str,
+    co: Tuple[str],
+    clip_valid: bool,
+    round_int: int,
+    gdal_kwarg: Union[Tuple[str], Dict[str, Union[str, int, float]]],
+    overwrite: bool,
+    last_smoothed: str,
+) -> List:
     """Creates GeoTiff Mosaics from HDF5 files.
 
     The input can be either raw or smoothed HDF5 files. With the latter,
@@ -87,7 +110,13 @@ def cli(src: str,
         clip_valid (bool): Clip data to valid range.
         round_int (int): Round integer.
         gdal_kwarg (Tuple[str]): translateOptions to the internal call to gdal::translate();
-                                 the Tuple of strings (item formatting: "key=value") is parsed into a dict.
+                                 the Tuple of strings (item formatting: "key=value") is parsed into a dict;
+                                 for the metadataOptions key, an ampersand (&) separated syntax is supported
+                                 on the command line, for example:
+                                   --gdal-kwarg metadataOptions=CONSOLIDATION_STAGE=2&FINAL=TRUE
+                                 which would add 2 metadata tags:
+                                   CONSOLIDATION_STAGE = 2
+                                   FINAL = TRUE
                                  Alternatively, passing a dict instead of a Tuple[str] is also supported.
         overwrite (bool): Overwrite existing Tiffs.
         last_smoothed (str): Rawdate (MODIS time step) that is checked to be the last in series at time of smoothing.
@@ -122,18 +151,19 @@ def cli(src: str,
     groups = [REGEX_PATTERNS["tile"].sub("*", x.name) for x in files]
     group_check = {".".join(x.split(".")[:-2]) for x in groups}
     if len(group_check) > 1:
-        raise ValueError("Multiple product groups in input. Please filter or use separate directories!")
+        raise ValueError(
+            "Multiple product groups in input. Please filter or use separate directories!"
+        )
 
     groups = list(set(groups))
 
     if roi is not None:
         if not isinstance(roi, list):
-            roi = [float(x) for x in roi.split(',')]
+            roi = [float(x) for x in roi.split(",")]
         if len(roi) != 4:
             raise ValueError("ROI for clip needs to be bounding box in format xmin,ymin,xmax,ymax")
 
         roi[1], roi[3] = roi[3], roi[1]
-
 
     if targetdir is None:
         if src_input.is_dir():
@@ -172,15 +202,19 @@ def cli(src: str,
     gdal_kwargs = {}
     if gdal_kwarg:
         if not isinstance(gdal_kwarg, dict):
-            gdal_kwargs.update(
-                {key:value for x in gdal_kwarg for key, value in [x.split("=")]}
-            )
+            for pair in gdal_kwarg:
+                if str(pair).lower().startswith("metadataoptions"):
+                    gdal_kwargs["metadataOptions"] = [
+                        metaPair.strip() for metaPair in pair[len("metadataOptions=") :].split("&")
+                    ]
+                else:
+                    gdal_kwargs.update({key: value for key, value in [pair.split("=")]})
         else:
             gdal_kwargs = gdal_kwarg
-    
+
     if last_smoothed is not None:
         last_smoothed = last_smoothed.strftime("%Y%j")
-    
+
     click.echo("\nSTARTING modis_window.py!")
 
     mosaics = []
@@ -208,19 +242,21 @@ def cli(src: str,
                 last_smoothed=last_smoothed,
                 creationOptions=list(co),
                 **gdal_kwargs,
-                )
+            )
         )
 
     click.echo("\nCOMPLETED modis_window.py!")
     return mosaics
 
+
 def cli_wrap():
     """Wrapper for cli"""
 
     if len(sys.argv) == 1:
-        cli.main(['--help'])
+        cli.main(["--help"])
     else:
-        cli() #pylint: disable=E1120
+        cli()  # pylint: disable=E1120
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     cli_wrap()
