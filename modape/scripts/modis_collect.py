@@ -218,17 +218,18 @@ def cli(
                     f"Last collected date in file is {last_collected_infile} not {last_collected}"
                 )
 
+        create_only = False
+        if tiles_required is not None:
+            create_only = (
+                re.search(r"(h[0-9]+v[0-9]+)", group, re.IGNORECASE).group(1) not in tiles_required
+            )
         to_process.update(
             {
                 group: {
                     "raw_h5": _raw_h5,
                     "compression": compression,
                     "force": force,
-                    "create_only": (
-                        False
-                        if tiles_required is None
-                        else group.split(".")[2].strip("*") not in tiles_required
-                    ),
+                    "create_only": create_only,
                 }
             }
         )
