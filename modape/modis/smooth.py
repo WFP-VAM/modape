@@ -8,7 +8,6 @@ import logging
 
 # pylint: disable=import-error
 from array import array
-from collections import namedtuple
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -87,7 +86,9 @@ class ModisSmoothH5(HDF5Base):
 
         # Filename for smoothed HDF5
         rawfile_trunk = self.rawfile.name.split(".")
-        smoothfile_trunk = ".".join(rawfile_trunk[:-2] + ["tx" + txflag] + rawfile_trunk[-2:-1])
+        smoothfile_trunk = ".".join(
+            rawfile_trunk[:-2] + ["tx" + txflag] + rawfile_trunk[-2:-1]
+        )
 
         filename = f"{targetdir}/{smoothfile_trunk}.h5"
 
@@ -148,7 +149,6 @@ class ModisSmoothH5(HDF5Base):
 
         try:
             with h5py.File(self.filename, "x", libver="latest") as h5f:
-
                 dset = h5f.create_dataset(
                     "data",
                     shape=(rawshape[0], dates_length),
@@ -173,7 +173,9 @@ class ModisSmoothH5(HDF5Base):
                     try:
                         # Check projection:
                         assert (
-                            osr.SpatialReference(raw_attrs["projection"]).IsSame(ds.GetSpatialRef())
+                            osr.SpatialReference(raw_attrs["projection"]).IsSame(
+                                ds.GetSpatialRef()
+                            )
                             == 1
                         )
                         h5gt = tuple(raw_attrs["geotransform"])
@@ -320,7 +322,9 @@ class ModisSmoothH5(HDF5Base):
             # Resize if date list is bigger than shape of smoothed data
             if dates.target_length > smt_shape[1]:
                 log.debug(
-                    "Resizing dataset! Current %s, required %s", smt_shape[1], dates.target_length
+                    "Resizing dataset! Current %s, required %s",
+                    smt_shape[1],
+                    dates.target_length,
                 )
                 smt_dates = h5f_open.get("dates")
                 smt_dates.resize((dates.target_length,))
@@ -335,6 +339,10 @@ class ModisSmoothH5(HDF5Base):
 
         if nsmooth > 0:
             read_offset = raw_shape[1] - nsmooth
+            if read_offset < 0:
+                raise ValueError(
+                    f"Insufficient data points for requested smoothing path (--nsmooth {nsmooth}): {raw_shape[1]}"
+                )
         else:
             read_offset = 0
 
@@ -345,7 +353,9 @@ class ModisSmoothH5(HDF5Base):
 
         if self.tinterpolate:
             log.debug("Temporal interpolation triggered!")
-            arr_smt = np.full((smt_chunks[0], len(dix)), fill_value=nodata, dtype="double")
+            arr_smt = np.full(
+                (smt_chunks[0], len(dix)), fill_value=nodata, dtype="double"
+            )
             vector_daily = dates.getDV(nodata)
 
             # Shift for interpolation
@@ -391,11 +401,12 @@ class ModisSmoothH5(HDF5Base):
                 arr_sgrid = next(sgrid_generator)
 
             for ix in map_index:
-
                 w = wts[ix, :].astype("double")
                 if soptimize:
                     if srange is None:
-                        lag_correlation = lag1corr(arr_raw[ix, :-1], arr_raw[ix, 1:], nodata)
+                        lag_correlation = lag1corr(
+                            arr_raw[ix, :-1], arr_raw[ix, 1:], nodata
+                        )
                         if lag_correlation > 0.5:
                             sr = np.arange(-2, 1.2, 0.2).round(2)
                         elif lag_correlation <= 0.5:
@@ -427,7 +438,6 @@ class ModisSmoothH5(HDF5Base):
                         arr_raw[ix, :] = ws2dp(y=arr_raw[ix, :], lmda=s, w=w, p=p)
 
                 if self.tinterpolate:
-
                     arr_smt[ix, :] = self._apply_tinterpolate(
                         z1=arr_raw[ix, :],
                         nodata=nodata,
@@ -451,7 +461,6 @@ class ModisSmoothH5(HDF5Base):
                 raise HDF5WriteError(msg % self.filename)
 
             if arr_sgrid is not None:
-
                 arr_sgrid[arr_sgrid > 0] = np.log10(arr_sgrid[arr_sgrid > 0])
 
                 write_check = self.write_chunk(
@@ -484,7 +493,9 @@ class ModisSmoothH5(HDF5Base):
 
         if p is not None:
             processing_info.update({"pvalue": p})
-            processing_info["lastrun"] = processing_info["lastrun"] + f" and with P-value of {p}"
+            processing_info["lastrun"] = (
+                processing_info["lastrun"] + f" and with P-value of {p}"
+            )
 
         log.debug("Last run: %s", processing_info["lastrun"])
 
@@ -539,6 +550,8 @@ class ModisSmoothH5(HDF5Base):
     def _apply_tinterpolate(z1, nodata, vector_daily, dix):
         z2 = vector_daily.copy()
         z2[z2 != nodata] = z1
-        z2[...] = ws2d(y=z2, lmda=0.0001, w=np.array((z2 != nodata) * 1, dtype="double"))
+        z2[...] = ws2d(
+            y=z2, lmda=0.0001, w=np.array((z2 != nodata) * 1, dtype="double")
+        )
 
         return z2[dix]
