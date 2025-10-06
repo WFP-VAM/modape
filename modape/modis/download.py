@@ -193,11 +193,15 @@ class ModisQuery(object):
     @staticmethod
     def _parse_cmrxml(response, hdf_filename):
         result = {}
-        tree = ElementTree.fromstring(response.content)
-        entry = tree.find(f"DataGranule/AdditionalFile[Name = '{hdf_filename}']")
-        result.update({"FileSize": entry.find("SizeInBytes").text})
-        result.update({"ChecksumType": entry.find("Checksum/Algorithm").text})
-        result.update({"Checksum": entry.find("Checksum/Value").text})
+        try:
+            tree = ElementTree.fromstring(response.content)
+            entry = tree.find(f"DataGranule/AdditionalFile[Name = '{hdf_filename}']")
+            result.update({"FileSize": entry.find("SizeInBytes").text})
+            result.update({"ChecksumType": entry.find("Checksum/Algorithm").text})
+            result.update({"Checksum": entry.find("Checksum/Value").text})
+        except Exception:
+            log.info(response.content)
+            raise
         return result
 
     def _fetch(
