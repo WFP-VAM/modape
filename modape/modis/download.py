@@ -193,15 +193,11 @@ class ModisQuery(object):
     @staticmethod
     def _parse_cmrxml(response, hdf_filename):
         result = {}
-        try:
-            tree = ElementTree.fromstring(response.content)
-            entry = tree.find(f"DataGranule/AdditionalFile[Name = '{hdf_filename}']")
-            result.update({"FileSize": entry.find("SizeInBytes").text})
-            result.update({"ChecksumType": entry.find("Checksum/Algorithm").text})
-            result.update({"Checksum": entry.find("Checksum/Value").text})
-        except Exception:
-            log.info(response.content)
-            raise
+        tree = ElementTree.fromstring(response.content)
+        entry = tree.find(f"DataGranule/AdditionalFile[Name = '{hdf_filename}']")
+        result.update({"FileSize": entry.find("SizeInBytes").text})
+        result.update({"ChecksumType": entry.find("Checksum/Algorithm").text})
+        result.update({"Checksum": entry.find("Checksum/Value").text})
         return result
 
     def _fetch(
@@ -238,12 +234,24 @@ class ModisQuery(object):
                             allow_redirects=True,
                         ) as cmrxml:
                             cmrxml.raise_for_status()
-                            file_metadata = self._parse_cmrxml(
-                                cmrxml, url.split("/")[-1]
-                            )
+                            try:
+                                file_metadata = self._parse_cmrxml(
+                                    cmrxml, url.split("/")[-1]
+                                )
+                            except Exception:
+                                log.info(
+                                    f"CMR METADATA URL: {url.split('/')[-1]} -- {cmrxml.content}"
+                                )
+                                raise
                     else:
                         hdfxml.raise_for_status()
-                        file_metadata = self._parse_hdfxml(hdfxml)
+                        try:
+                            file_metadata = self._parse_hdfxml(hdfxml)
+                        except Exception:
+                            log.info(
+                                f"HDF METADATA URL: {url.split('/')[-1]} -- {cmrxml.content}"
+                            )
+                            raise
 
                 # check filesize
                 assert (
