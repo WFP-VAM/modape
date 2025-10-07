@@ -234,17 +234,24 @@ class ModisQuery(object):
                             allow_redirects=True,
                         ) as cmrxml:
                             cmrxml.raise_for_status()
-                            file_metadata = self._parse_cmrxml(
-                                cmrxml, url.split("/")[-1]
-                            )
+                            try:
+                                file_metadata = self._parse_cmrxml(
+                                    cmrxml, url.split("/")[-1]
+                                )
+                            except AttributeError:
+                                log.info(
+                                    f"WARNING: Metadata cannot be parsed for {url.split('/')[-1]}!"
+                                )
+                                return True
                     else:
                         hdfxml.raise_for_status()
                         file_metadata = self._parse_hdfxml(hdfxml)
 
-                # check filesize
+                # check filesize:
                 assert (
                     str(_downloaded.stat().st_size).strip() == file_metadata["FileSize"]
                 ), f"Size: {_downloaded.stat().st_size} != {file_metadata['FileSize']}"
+                # check hash (checksum):
                 with open(_downloaded, "rb") as openfile:
                     if file_metadata["ChecksumType"] == "CKSUM":
                         checksum = str(cksum(openfile))
@@ -266,7 +273,6 @@ class ModisQuery(object):
                         raise ValueError(
                             f"Unknown Checksum Type: {file_metadata['ChecksumType']}"
                         )
-                # check checksum
                 assert checksum == file_metadata["Checksum"], (
                     f"Hash: {checksum} != {file_metadata['Checksum']}"
                 )
